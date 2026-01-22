@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:locorda_core/src/generated/rdf.dart';
 import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
 
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:test/test.dart';
 
 class MockRdfGraphFetcher implements RdfGraphFetcher {

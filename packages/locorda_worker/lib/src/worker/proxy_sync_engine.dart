@@ -11,7 +11,7 @@ import 'package:locorda_worker/src/worker/locorda_worker.dart';
 import 'package:locorda_worker/src/worker/worker_messages.dart';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:logging/logging.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 final _log = Logger('ProxySyncEngine');
 

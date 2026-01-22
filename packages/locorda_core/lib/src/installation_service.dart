@@ -5,7 +5,7 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/generated/_index.dart';
 import 'package:locorda_core/src/hlc_service.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:uuid/uuid.dart';
 
 /// Factory function for generating installation IDs.

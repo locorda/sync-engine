@@ -6,6 +6,7 @@ repository: https://github.com/locorda/locorda
 issue_tracker: https://github.com/locorda/locorda/issues
 publish_to: none
 publisher: locorda.dev
+resolution: workspace
 
 topics:
   - solid
@@ -23,12 +24,9 @@ dependencies:
     sdk: flutter
   intl: any
   logging: ^1.3.0
-  locorda_core:
-    path: ../locorda_core
-  locorda_solid:
-    path: ../locorda_solid
-  locorda_ui:
-    path: ../locorda_ui
+  locorda_core: any
+  locorda_solid: any
+  locorda_ui: any
   # Solid authentication
   # TODO: Use published version when available
   solid_auth:
@@ -44,11 +42,3 @@ dev_dependencies:
 
 flutter:
   generate: true
-
-# TODO: Remove when solid_auth and a fixed oidc_core are published
-dependency_overrides:
-  oidc_core:
-    git:
-      url: https://github.com/kkalass/oidc.git
-      ref: fix/oidc-hook-execute-stack-overflow
-      path: packages/oidc_core

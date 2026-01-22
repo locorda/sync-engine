@@ -6,7 +6,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:locorda_core/src/generated/_index.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 /// Factory function for generating physical timestamps (wall-clock time)
 typedef PhysicalTimestampFactory = DateTime Function();

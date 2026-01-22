@@ -14,7 +14,7 @@ import 'package:locorda_core/src/index/shard_determiner.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/util/retry.dart';
 import 'package:logging/logging.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 final _log = Logger('IndexManager');
 

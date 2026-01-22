@@ -11,7 +11,7 @@ import 'package:locorda_core/src/installation_service.dart'
     show InstallationIdFactory;
 import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
 import 'package:locorda_core/src/standard_sync_engine.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 typedef IdentifiedGraph = (IriTerm id, RdfGraph graph);
 typedef HydrationBatch = ({

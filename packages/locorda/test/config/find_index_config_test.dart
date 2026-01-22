@@ -1,7 +1,7 @@
 import 'package:locorda/locorda.dart';
 import 'package:locorda/src/config/locorda_config_util.dart';
 import 'package:test/test.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 // Test model classes
 class TestNote {

@@ -15,7 +15,7 @@ library;
 
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 /// Set to true to enable debug output during test development
 const _debug = false;

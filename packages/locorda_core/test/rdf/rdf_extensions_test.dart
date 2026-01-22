@@ -1,7 +1,7 @@
 import 'package:locorda_core/src/generated/rdf.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/util/structure_validation_logger.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:test/test.dart';
 
 void main() {

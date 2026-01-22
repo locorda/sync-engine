@@ -1,8 +1,0 @@
-targets:
-  $default:
-    builders:
-      rdf_vocabulary_to_dart|rdf_to_dart_generator:
-        enabled: true
-        options:
-          vocabulary_config_path: "lib/src/all.vocabulary_sources.vocab.json"
-          output_dir: "lib/src/generated"

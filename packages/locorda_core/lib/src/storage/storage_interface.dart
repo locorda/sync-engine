@@ -5,7 +5,7 @@
 library;
 
 import 'package:locorda_core/locorda_core.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 abstract interface class Storage {
   /// Save a document with content, metadata, and property changes atomically.

@@ -1,6 +1,6 @@
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/crdt/crdt_types.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'merge_contract.dart';
 
 /// Creates a MergeContract from a list of DocumentMappings

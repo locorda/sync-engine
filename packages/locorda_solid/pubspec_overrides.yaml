@@ -1,4 +1,0 @@
-# melos_managed_dependency_overrides: locorda_core
-dependency_overrides:
-  locorda_core:
-    path: ../locorda_core

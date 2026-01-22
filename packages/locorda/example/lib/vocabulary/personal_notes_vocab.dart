@@ -2,10 +2,10 @@
 ///
 /// This demonstrates a simple approach for managing custom vocabulary IRIs
 /// in example applications. For production applications, consider using
-/// rdf_vocabulary_to_dart to generate these constants from your .ttl files.
+/// locorda_rdf_terms_generator to generate these constants from your .ttl files.
 library;
 
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 /// Constants for the Personal Notes vocabulary.
 ///

@@ -8,13 +8,13 @@
 // ignore_for_file: lines_longer_than_80_chars, avoid_redundant_argument_values
 // ignore_for_file: unused_field, unnecessary_string_interpolations
 
-import 'package:rdf_core/rdf_core.dart';
-import 'package:rdf_mapper/rdf_mapper.dart';
+import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_mapper/mapper.dart';
 
 // Other imports
 import 'package:personal_notes_app/models/note.dart' as note;
 import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
-import 'package:rdf_vocabularies_schema/schema.dart';
+import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:personal_notes_app/models/weblink.dart';
 import 'package:personal_notes_app/models/comment.dart';
 import 'package:personal_notes_app/models/comment.rdf_mapper.g.dart' as crmg;
@@ -33,8 +33,8 @@ class NoteMapper implements GlobalResourceMapper<note.Note> {
   const NoteMapper({
     required IriTermMapper<String> categoryIdMapper,
     required IriTermMapper<(String id,)> iriMapper,
-  }) : _categoryIdMapper = categoryIdMapper,
-       _iriMapper = iriMapper;
+  })  : _categoryIdMapper = categoryIdMapper,
+        _iriMapper = iriMapper;
 
   @override
   IriTerm? get typeIri => PersonalNotesVocab.PersonalNote;
@@ -61,20 +61,20 @@ class NoteMapper implements GlobalResourceMapper<note.Note> {
     final DateTime modifiedAt = reader.require(
       SchemaNoteDigitalDocument.dateModified,
     );
-    final Set<Weblink> weblinks = reader
-        .requireCollection<Set<Weblink>, Weblink>(
-          Schema.relatedLink,
-          UnorderedItemsSetMapper.new,
-        );
-    final Set<Comment> comments = reader
-        .requireCollection<Set<Comment>, Comment>(
-          Schema.comment,
-          UnorderedItemsSetMapper.new,
-          itemDeserializer: crmg.CommentMapper(
-            rootResourceIriProvider: () =>
-                throw Exception('Must not call provider for deserialization'),
-          ),
-        );
+    final Set<Weblink> weblinks =
+        reader.requireCollection<Set<Weblink>, Weblink>(
+      Schema.relatedLink,
+      UnorderedItemsSetMapper.new,
+    );
+    final Set<Comment> comments =
+        reader.requireCollection<Set<Comment>, Comment>(
+      Schema.comment,
+      UnorderedItemsSetMapper.new,
+      itemDeserializer: crmg.CommentMapper(
+        rootResourceIriProvider: () =>
+            throw Exception('Must not call provider for deserialization'),
+      ),
+    );
 
     // Get unmapped triples as the last reader operation for lossless mapping
     final RdfGraph other = reader.getUnmapped<RdfGraph>(globalUnmapped: true);

@@ -3,8 +3,8 @@ library;
 
 import 'package:locorda/locorda.dart';
 import 'package:locorda/src/config/locorda_config_util.dart';
-import 'package:rdf_core/rdf_core.dart';
-import 'package:rdf_mapper/rdf_mapper.dart';
+import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_mapper/mapper.dart';
 
 class GroupKeyConverterException implements Exception {
   final String message;

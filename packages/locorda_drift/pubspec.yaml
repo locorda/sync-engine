@@ -1,6 +1,7 @@
 name: locorda_drift
 description: Locorda Drift - SQLite storage implementation for locorda_core
 version: 0.1.0-dev
+resolution: workspace
 homepage: https://locorda.dev/
 repository: https://github.com/locorda/locorda
 issue_tracker: https://github.com/locorda/locorda/issues
@@ -21,15 +22,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  locorda_core:
-    path: ../locorda_core
+  locorda_core: any
   drift: ^2.28.1
   drift_flutter: ^0.2.6
   sqlite3_flutter_libs: ^0.5.39
   path_provider: ^2.1.0
   path: ^1.9.0
   sqlite3: ^2.4.0
-  rdf_core: ^0.9.24
+  locorda_rdf_core: ^0.11.4
   logging: ^1.3.0
 
 dev_dependencies:

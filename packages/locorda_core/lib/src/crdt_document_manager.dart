@@ -15,7 +15,7 @@ import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/split_document.dart';
 import 'package:logging/logging.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 final _log = Logger('CrdtDocumentManager');
 

@@ -1,8 +1,0 @@
-# melos_managed_dependency_overrides: locorda_core,locorda_solid,locorda_worker
-dependency_overrides:
-  locorda_core:
-    path: ../locorda_core
-  locorda_solid:
-    path: ../locorda_solid
-  locorda_worker:
-    path: ../locorda_worker

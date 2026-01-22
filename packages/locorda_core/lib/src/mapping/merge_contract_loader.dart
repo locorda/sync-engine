@@ -8,7 +8,7 @@ import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/util/lru_cache.dart';
 import 'package:logging/logging.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 final _log = Logger('MergeContractLoader');
 

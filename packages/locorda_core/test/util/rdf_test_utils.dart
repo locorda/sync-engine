@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/generated/_index.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:rdf_canonicalization/rdf_canonicalization.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_canonicalization/canonicalization.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:test/test.dart';
 
 /// Writes an RDF graph to a file in Turtle format.

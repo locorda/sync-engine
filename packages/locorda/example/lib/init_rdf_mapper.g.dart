@@ -7,7 +7,7 @@
 // ignore_for_file: lines_longer_than_80_chars, avoid_redundant_argument_values
 // ignore_for_file: unused_field
 
-import 'package:rdf_mapper/rdf_mapper.dart';
+import 'package:locorda_rdf_mapper/mapper.dart';
 
 import 'package:personal_notes_app/models/category.dart' as category;
 import 'package:personal_notes_app/models/category.rdf_mapper.g.dart' as crmg;
@@ -37,7 +37,7 @@ RdfMapper initRdfMapper({
   RdfMapper? rdfMapper,
   required IriTermMapper<(String id,)> Function<T>(Type) $indexItemIriFactory,
   required IriTermMapper<(String id,)> Function<T>(locorda_core.RootIriConfig)
-  $resourceIriFactory,
+      $resourceIriFactory,
   required IriTermMapper<String> Function<T>(Type) $resourceRefFactory,
 }) {
   if (rdfMapper == null) {

@@ -1,7 +1,7 @@
 import 'package:locorda_core/src/config/sync_engine_config.dart';
 import 'package:locorda_core/src/mapping/iri_translator.dart';
 import 'package:locorda_core/src/mapping/resource_locator.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:test/test.dart';
 
 void main() {

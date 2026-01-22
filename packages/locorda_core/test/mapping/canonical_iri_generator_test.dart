@@ -1,7 +1,7 @@
 import 'package:locorda_core/src/mapping/framework_iri_generator.dart';
 import 'package:locorda_core/src/mapping/identified_blank_node_builder.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:test/test.dart';
 
 IriTerm generateCanonicalIri(IdentifiedBlankNode ibn) {

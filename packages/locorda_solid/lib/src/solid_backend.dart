@@ -4,7 +4,7 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/storage/remote_storage.dart';
 import 'package:locorda_solid/src/solid_profile_parser.dart';
 import 'package:logging/logging.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 import 'auth/solid_auth_provider.dart';
 import 'package:http/http.dart' as http;

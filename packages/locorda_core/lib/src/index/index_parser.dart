@@ -11,7 +11,7 @@ import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/index/index_rdf_generator.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/util/structure_validation_logger.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 /// Result of parsing a FullIndex document.
 ///

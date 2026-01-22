@@ -1,5 +1,5 @@
 import 'package:locorda_core/src/mapping/identified_blank_node_builder.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 import 'canonical_iri_generator_test.dart' show generateCanonicalIri;
 

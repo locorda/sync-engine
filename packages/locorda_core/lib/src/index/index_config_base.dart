@@ -7,7 +7,7 @@ library;
 
 import 'package:locorda_core/src/generated/_index.dart';
 import 'package:locorda_core/src/rdf/xsd.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 sealed class ItemFetchPolicy {
   /// Proactive item fetching - all items referenced in the index are automatically

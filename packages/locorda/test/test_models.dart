@@ -1,8 +1,8 @@
 /// Test model classes for configuration validation tests.
 library;
 
-import 'package:rdf_core/rdf_core.dart';
-import 'package:rdf_mapper/rdf_mapper.dart';
+import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_mapper/mapper.dart';
 
 /// Test vocabulary constants
 class TestVocab {

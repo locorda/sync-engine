@@ -1,5 +1,5 @@
 import 'package:locorda/locorda.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:test/test.dart';
 
 import '../test_models.dart';

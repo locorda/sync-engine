@@ -1,7 +1,7 @@
 /// Category display settings for UI presentation preferences.
 library;
 
-import 'package:rdf_mapper_annotations/rdf_mapper_annotations.dart';
+import 'package:locorda_rdf_mapper_annotations/annotations.dart';
 import 'package:locorda_annotations/locorda_annotations.dart';
 import '../vocabulary/personal_notes_vocab.dart';
 

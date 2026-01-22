@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 /// Translates between application identifiers and storage IRIs for different backends.
 ///

@@ -2,7 +2,7 @@
 library;
 
 import 'package:locorda_core/src/config/sync_engine_config.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'filesystem_safety.dart';
 import 'rdf_group_extractor.dart';
 

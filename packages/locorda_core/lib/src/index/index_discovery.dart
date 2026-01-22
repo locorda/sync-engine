@@ -25,7 +25,7 @@ import 'package:locorda_core/src/storage/storage_interface.dart'
 import 'package:locorda_core/src/util/build_effective_config.dart';
 import 'package:locorda_core/src/util/lru_cache.dart';
 import 'package:logging/logging.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 final _log = Logger('IndexDiscovery');
 

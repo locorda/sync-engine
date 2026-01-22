@@ -2,7 +2,7 @@
 library;
 
 import 'package:locorda_core/src/config/sync_engine_config.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_core/src/index/group_key_generator.dart';
 
 /// Exception thrown when group index subscription validation fails.

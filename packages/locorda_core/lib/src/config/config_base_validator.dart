@@ -6,7 +6,7 @@
 library;
 
 import 'package:locorda_core/locorda_core.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_core/src/index/regex_transform_validation.dart';
 
 /// Configuration for the entire sync system organized by resources.

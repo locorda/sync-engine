@@ -11,7 +11,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:locorda_core/src/generated/_index.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 /// Manages shard-level operations for index sharding.
 ///

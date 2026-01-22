@@ -1,4 +1,4 @@
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_core/src/index/group_key_generator.dart';
 import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/config/sync_engine_config.dart';

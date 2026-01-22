@@ -1,7 +1,7 @@
 import 'package:locorda/src/config/locorda_config_util.dart';
 import 'package:locorda_core/locorda_core.dart';
-import 'package:rdf_core/rdf_core.dart';
-import 'package:rdf_mapper/rdf_mapper.dart';
+import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_mapper/mapper.dart';
 import 'package:test/test.dart';
 
 import '../../../locorda/lib/src/mapping/local_resource_iri_service.dart';

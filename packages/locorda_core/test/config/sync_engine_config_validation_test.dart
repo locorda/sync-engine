@@ -1,6 +1,6 @@
 import 'package:locorda_core/locorda_core.dart';
 import 'package:test/test.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 void main() {
   group('SyncEngineConfigValidator', () {

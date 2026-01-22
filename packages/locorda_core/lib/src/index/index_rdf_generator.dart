@@ -13,7 +13,7 @@ import 'package:locorda_core/src/mapping/resource_locator.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/rdf/xsd.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 

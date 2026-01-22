@@ -8,8 +8,8 @@
 // ignore_for_file: lines_longer_than_80_chars, avoid_redundant_argument_values
 // ignore_for_file: unused_field, unnecessary_string_interpolations
 
-import 'package:rdf_core/rdf_core.dart';
-import 'package:rdf_mapper/rdf_mapper.dart';
+import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_mapper/mapper.dart';
 
 // Other imports
 import 'package:personal_notes_app/models/category_display_settings.dart'

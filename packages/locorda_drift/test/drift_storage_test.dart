@@ -2,7 +2,7 @@ import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_drift/src/drift_storage.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 import 'test_sync_database.dart';
 

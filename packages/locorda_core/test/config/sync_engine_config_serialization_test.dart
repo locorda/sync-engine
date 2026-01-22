@@ -1,7 +1,7 @@
 import 'package:locorda_core/src/config/sync_engine_config.dart';
 import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/sync/sync_manager.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:test/test.dart';
 
 void main() {

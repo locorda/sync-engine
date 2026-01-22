@@ -1,0 +1,46 @@
+{
+  "vocabularies": {
+    "algo": {
+      "type": "file",
+      "namespace": "https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#",
+      "source": "../../spec/vocabularies/crdt-algorithms.ttl",
+      "generate": true
+    },
+    "crdt": {
+      "type": "file",
+      "namespace": "https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#",
+      "source": "../../spec/vocabularies/crdt-mechanics.ttl",
+      "generate": true
+    },
+    "idx": {
+      "type": "file",
+      "namespace": "https://w3id.org/solid-crdt-sync/vocab/idx#",
+      "source": "../../spec/vocabularies/idx.ttl",
+      "generate": true
+    },
+    "mc": {
+      "type": "file",
+      "namespace": "https://w3id.org/solid-crdt-sync/vocab/merge-contract#",
+      "source": "../../spec/vocabularies/merge-contract.ttl",
+      "generate": true
+    },
+    "solidsync": {
+      "type": "file",
+      "namespace": "https://w3id.org/solid-crdt-sync/vocab/solid#",
+      "source": "../../spec/vocabularies/solid-extensions.ttl",
+      "generate": true
+    },
+    "sync": {
+      "type": "file",
+      "namespace": "https://w3id.org/solid-crdt-sync/vocab/sync#",
+      "source": "../../spec/vocabularies/sync.ttl",
+      "generate": true
+    },
+    "rdf": {
+      "generate": true
+    },
+    "foaf": {
+      "generate": true
+    }
+  }
+}

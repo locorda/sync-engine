@@ -5,7 +5,7 @@
 /// providers, and type index resolvers.
 library;
 
-import 'package:rdf_mapper/rdf_mapper.dart';
+import 'package:locorda_rdf_mapper/mapper.dart';
 import 'package:locorda_core/locorda_core.dart';
 
 /// Provides framework services to mapper initializer functions.

@@ -16,8 +16,8 @@ import 'package:locorda_worker/src/worker/locorda_worker_impl_native.dart'
     if (dart.library.html) 'package:locorda_worker/src/worker/locorda_worker_impl_web.dart'
     as impl;
 import 'package:logging/logging.dart';
-import 'package:rdf_core/rdf_core.dart';
-import 'package:rdf_mapper/rdf_mapper.dart';
+import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_mapper/mapper.dart';
 
 /// Type alias for mapper initializer functions.
 ///

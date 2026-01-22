@@ -8,13 +8,13 @@
 // ignore_for_file: lines_longer_than_80_chars, avoid_redundant_argument_values
 // ignore_for_file: unused_field, unnecessary_string_interpolations
 
-import 'package:rdf_core/rdf_core.dart';
-import 'package:rdf_mapper/rdf_mapper.dart';
+import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_mapper/mapper.dart';
 
 // Other imports
 import 'package:personal_notes_app/models/weblink.dart' as weblink;
 import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
-import 'package:rdf_vocabularies_schema/schema.dart';
+import 'package:locorda_rdf_terms_schema/schema.dart';
 
 /// Generated mapper for [weblink.Weblink] global resources.
 ///

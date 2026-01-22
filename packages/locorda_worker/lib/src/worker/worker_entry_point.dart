@@ -13,7 +13,7 @@ import 'package:locorda_worker/src/worker/worker_channel.dart';
 import 'package:locorda_worker/src/worker/locorda_worker.dart';
 import 'package:locorda_worker/src/worker/worker_messages.dart';
 import 'package:logging/logging.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 // Conditional import for web worker implementation
 import 'web_worker_entry_point_stub.dart'

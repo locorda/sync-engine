@@ -31,7 +31,7 @@ import 'package:locorda_core/src/sync/sync_function.dart';
 import 'package:locorda_core/src/util/build_effective_config.dart';
 import 'package:locorda_core/src/util/retry.dart';
 import 'package:logging/logging.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:rxdart/rxdart.dart';
 
 final _log = Logger('StandardSyncEngine');

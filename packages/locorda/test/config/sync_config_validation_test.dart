@@ -3,8 +3,8 @@ import 'package:locorda/src/config/locorda_config_util.dart';
 import 'package:locorda/src/config/locorda_config_validator.dart';
 import 'package:locorda_core/src/config/validation.dart';
 import 'package:test/test.dart';
-import 'package:rdf_core/rdf_core.dart';
-import 'package:rdf_mapper/rdf_mapper.dart';
+import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_mapper/mapper.dart';
 
 import '../test_models.dart';
 

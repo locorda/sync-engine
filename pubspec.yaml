@@ -5,11 +5,73 @@ homepage: https://locorda.dev/
 repository: https://github.com/locorda/locorda
 issue_tracker: https://github.com/locorda/locorda/issues
 documentation: https://locorda.dev/
-publish_to: none
 
 environment:
   sdk: ^3.6.0
 
+workspace:
+  - packages/locorda
+  - packages/locorda_annotations
+  - packages/locorda_builder
+  - packages/locorda_core
+  - packages/locorda_drift
+  - packages/locorda_solid
+  - packages/locorda_solid_auth
+  - packages/locorda_solid_auth_worker
+  - packages/locorda_solid_ui
+  - packages/locorda_ui
+  - packages/locorda_worker
+  - packages/locorda/example
+
 dev_dependencies:
-  melos: ^6.1.0
+  melos: ^7.3.0
   test: ^1.26.3
+
+dependency_overrides:
+  oidc_core:
+    git:
+      url: https://github.com/kkalass/oidc.git
+      ref: fix/oidc-hook-execute-stack-overflow
+      path: packages/oidc_core
+
+melos:
+  name: locorda
+  
+  command:
+    version:
+      linkToCommits: true
+      branch: main
+      workspaceChangelog: true
+
+  scripts:
+    analyze:
+      run: dart analyze .
+      description: Run analysis for all packages.
+
+    test:
+      run: dart test
+      description: Run tests for all packages.
+
+    format:
+      run: dart format .
+      description: Run formatting for all packages.
+
+    lint:
+      run: dart analyze && dart format --set-exit-if-changed .
+      description: Run linting (analyze + format check) for all packages.
+
+    clean:
+      run: dart pub get
+      description: Clean and get dependencies for all packages.
+
+    version:
+      run: melos version
+      description: Update package versions with conventional commits and changelog generation.
+
+    publish:
+      run: melos publish
+      description: Publish all packages to pub.dev (with confirmations).
+
+    release:
+      run: melos version --no-git-tag-version && melos publish --dry-run
+      description: Preview a full release (version + publish preview).

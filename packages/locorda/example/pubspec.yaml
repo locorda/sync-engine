@@ -2,6 +2,7 @@ name: personal_notes_app
 description: Simple offline-first personal notes app demonstrating locorda
 publish_to: none
 version: 0.1.0-dev
+resolution: workspace
 
 environment:
   sdk: ^3.6.0
@@ -25,33 +26,23 @@ dependencies:
       ref: feat/dpop-worker-thread-support
       
   # Solid CRDT Sync packages
-  locorda:
-    path: ../
-  locorda_annotations:
-    path: ../../locorda_annotations
-  locorda_core:
-    path: ../../locorda_core
-  locorda_solid_auth:
-    path: ../../locorda_solid_auth
-  locorda_solid:
-    path: ../../locorda_solid
-  locorda_solid_ui:
-    path: ../../locorda_solid_ui
-  locorda_ui:
-    path: ../../locorda_ui
-  locorda_drift:
-    path: ../../locorda_drift
-  locorda_worker:
-    path: ../../locorda_worker
-  locorda_solid_auth_worker:
-    path: ../../locorda_solid_auth_worker
+  locorda: any
+  locorda_annotations: any
+  locorda_core: any
+  locorda_solid_auth: any
+  locorda_solid: any
+  locorda_solid_ui: any
+  locorda_ui: any
+  locorda_drift: any
+  locorda_worker: any
+  locorda_solid_auth_worker: any
 
   # RDF mapping
-  rdf_core: ^0.9.24
-  rdf_mapper: ^0.10.4
-  rdf_vocabularies_schema: ^0.4.5
-  rdf_vocabularies_core: ^0.4.5
-  rdf_mapper_annotations: ^0.10.4
+  locorda_rdf_core: ^0.11.4
+  locorda_rdf_mapper: ^0.11.4
+  locorda_rdf_terms_schema: ^0.11.4
+  locorda_rdf_terms_core: ^0.11.4
+  locorda_rdf_mapper_annotations: ^0.11.4
   
   # UI
   flutter_chips_input: ^2.0.0
@@ -70,9 +61,8 @@ dev_dependencies:
   # Code generation
   build_runner: ^2.4.0
   drift_dev: ^2.19.0
-  rdf_mapper_generator: ^0.10.9
-  locorda_builder:  
-     path: ../../locorda_builder
+  locorda_rdf_mapper_generator: ^0.11.4
+  locorda_builder: any
 
 flutter:
   uses-material-design: true

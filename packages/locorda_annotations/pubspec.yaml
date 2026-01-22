@@ -3,14 +3,14 @@ description: Locorda Annotations - CRDT merge strategy annotations for code gene
 version: 0.1.0-dev
 publisher: locorda.dev
 publish_to: none
+resolution: workspace
 
 environment:
   sdk: '>=3.5.0 <4.0.0'
 
 dependencies:
   rdf_mapper_annotations: ^0.10.4
-  locorda_core: 
-    path: ../locorda_core
+  locorda_core: any
 
 dev_dependencies:
   test: ^1.21.0

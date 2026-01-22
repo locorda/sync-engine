@@ -1,6 +1,6 @@
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/util/lru_cache.dart';
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 extension IriTermExtensions on IriTerm {
   static final LRUCache<IriTerm, String> _debugStringCache =

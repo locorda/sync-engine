@@ -1,4 +1,4 @@
-import 'package:rdf_core/rdf_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 // Copyright (c) 2025, Klas Kalaß <habbatical@gmail.com>
 // All rights reserved. Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.

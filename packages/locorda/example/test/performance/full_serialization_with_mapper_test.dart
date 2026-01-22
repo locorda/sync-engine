@@ -28,8 +28,8 @@ import 'package:personal_notes_app/models/category.dart';
 import 'package:personal_notes_app/models/comment.dart';
 import 'package:personal_notes_app/models/note.dart';
 import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
-import 'package:rdf_core/rdf_core.dart';
-import 'package:rdf_mapper/rdf_mapper.dart';
+import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_mapper/mapper.dart';
 
 /// Set to true to enable debug output during test development
 const _debug = false;

@@ -22,7 +22,7 @@ import 'package:personal_notes_app/models/note_group_key.dart';
 import 'package:personal_notes_app/models/note_index_entry.dart';
 import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
 import 'package:personal_notes_app/worker.dart';
-import 'package:rdf_vocabularies_schema/schema.dart';
+import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:solid_auth/solid_auth.dart';
 
 import 'screens/notes_list_screen.dart';
