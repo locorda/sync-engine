@@ -1,16 +1,23 @@
-name: Deploy GitHub Pages from doc/
+# DEPRECATED: This workflow is no longer used for deployment
+# Sync-engine content is now deployed via the locorda/locorda homepage repository
+# See .github/HOMEPAGE_INTEGRATION.md for details
+#
+# To trigger homepage deployment, see .github/workflows/trigger-homepage-deploy.yml
+
+name: Deploy GitHub Pages from doc/ (DEPRECATED)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'doc/**'
-      - 'spec/vocabularies/**'
-      - 'spec/mappings/**'
-      - 'packages/locorda/example/**'
-      - '.github/workflows/pages.yml'
-      - 'pubspec.yaml'
-      - 'README.md'
+  workflow_dispatch:  # Manual trigger only
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - 'doc/**'
+  #     - 'spec/vocabularies/**'
+  #     - 'spec/mappings/**'
+  #     - 'packages/locorda/example/**'
+  #     - '.github/workflows/pages.yml'
+  #     - 'pubspec.yaml'
+  #     - 'README.md'
 
 permissions:
   id-token: write
@@ -33,7 +40,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.4'
+          flutter-version: '3.38.7'
           cache: true
 
       - name: Setup Dart/Melos

@@ -1,0 +1,28 @@
+name: Trigger Homepage Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'spec/vocabularies/**'
+      - 'spec/mappings/**'
+      - 'packages/locorda/example/**'
+      - '.github/workflows/trigger-homepage-deploy.yml'
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger locorda/locorda homepage deployment
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.HOMEPAGE_DISPATCH_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/locorda/locorda/dispatches \
+            -d '{"event_type":"sync-engine-update","client_payload":{"ref":"${{ github.ref }}","sha":"${{ github.sha }}"}}'
+      
+      - name: Log trigger
+        run: |
+          echo "✅ Triggered homepage deployment for sync-engine update"
+          echo "   Ref: ${{ github.ref }}"
+          echo "   SHA: ${{ github.sha }}"
