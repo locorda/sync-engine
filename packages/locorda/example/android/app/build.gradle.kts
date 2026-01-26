@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.personal_notes_app"
+    namespace = "dev.locorda.example.personal_notes_app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

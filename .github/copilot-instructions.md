@@ -104,7 +104,7 @@ dart pub run melos publish   # Publish to pub.dev
 ### Database Management (macOS)
 ```bash
 # Clean corrupted Drift databases
-rm -f ~/Library/Containers/com.example.personalNotesApp/Data/Documents/*.sqlite*
+rm -f ~/Library/Containers/dev.locorda.example.personalNotesApp/Data/Documents/*.sqlite*
 ```
 
 ## Development Workflow Rules
