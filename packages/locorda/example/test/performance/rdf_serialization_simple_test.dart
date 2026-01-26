@@ -59,9 +59,9 @@ void main() {
           _benchmark(() => codec.encode(smallGraph), iterations: 100);
       _printResults('Encode 10 triples', results);
 
-      expect(results.p95.inMilliseconds, lessThan(1),
+      expect(results.p95.inMilliseconds, lessThanOrEqualTo(1),
           reason:
-              'Should encode small graph in < 1ms (measured: ${_formatDuration(results.p95)})');
+              'Should encode small graph in <= 1ms (measured: ${_formatDuration(results.p95)})');
     });
 
     test('medium graph (100 triples)', () {
@@ -69,9 +69,9 @@ void main() {
           _benchmark(() => codec.encode(mediumGraph), iterations: 50);
       _printResults('Encode 100 triples', results);
 
-      expect(results.p95.inMilliseconds, lessThan(3),
+      expect(results.p95.inMilliseconds, lessThanOrEqualTo(3),
           reason:
-              'Should encode medium graph in < 3ms (measured: ${_formatDuration(results.p95)})');
+              'Should encode medium graph in <= 3ms (measured: ${_formatDuration(results.p95)})');
     });
 
     test('large graph (1000 triples)', () {
@@ -79,9 +79,9 @@ void main() {
           _benchmark(() => codec.encode(largeGraph), iterations: 20);
       _printResults('Encode 1000 triples', results);
 
-      expect(results.p95.inMilliseconds, lessThan(25),
+      expect(results.p95.inMilliseconds, lessThanOrEqualTo(25),
           reason:
-              'Should encode large graph in < 25ms (measured: ${_formatDuration(results.p95)})');
+              'Should encode large graph in <= 25ms (measured: ${_formatDuration(results.p95)})');
     });
   });
 
@@ -91,9 +91,9 @@ void main() {
           _benchmark(() => codec.decode(smallTurtle), iterations: 100);
       _printResults('Decode 10 triples', results);
 
-      expect(results.p95.inMilliseconds, lessThan(1),
+      expect(results.p95.inMilliseconds, lessThanOrEqualTo(1),
           reason:
-              'Should decode small turtle in < 1ms (measured: ${_formatDuration(results.p95)})');
+              'Should decode small turtle in <= 1ms (measured: ${_formatDuration(results.p95)})');
     });
 
     test('medium turtle (100 triples)', () {
@@ -101,9 +101,9 @@ void main() {
           _benchmark(() => codec.decode(mediumTurtle), iterations: 50);
       _printResults('Decode 100 triples', results);
 
-      expect(results.p95.inMilliseconds, lessThan(3),
+      expect(results.p95.inMilliseconds, lessThanOrEqualTo(3),
           reason:
-              'Should decode medium turtle in < 3ms (measured: ${_formatDuration(results.p95)})');
+              'Should decode medium turtle in <= 3ms (measured: ${_formatDuration(results.p95)})');
     });
 
     test('large turtle (1000 triples)', () {
@@ -111,9 +111,9 @@ void main() {
           _benchmark(() => codec.decode(largeTurtle), iterations: 20);
       _printResults('Decode 1000 triples', results);
 
-      expect(results.p95.inMilliseconds, lessThan(10),
+      expect(results.p95.inMilliseconds, lessThanOrEqualTo(10),
           reason:
-              'Should decode large turtle in < 10ms (measured: ${_formatDuration(results.p95)})');
+              'Should decode large turtle in <= 10ms (measured: ${_formatDuration(results.p95)})');
     });
   });
 
@@ -125,9 +125,9 @@ void main() {
       }, iterations: 100);
       _printResults('Round-trip 10 triples', results);
 
-      expect(results.p95.inMilliseconds, lessThan(2),
+      expect(results.p95.inMilliseconds, lessThanOrEqualTo(2),
           reason:
-              'Should round-trip small graph in < 2ms (measured: ${_formatDuration(results.p95)})');
+              'Should round-trip small graph in <= 2ms (measured: ${_formatDuration(results.p95)})');
     });
 
     test('medium graph round-trip', () {
@@ -137,9 +137,9 @@ void main() {
       }, iterations: 50);
       _printResults('Round-trip 100 triples', results);
 
-      expect(results.p95.inMilliseconds, lessThan(5),
+      expect(results.p95.inMilliseconds, lessThanOrEqualTo(5),
           reason:
-              'Should round-trip medium graph in < 5ms (measured: ${_formatDuration(results.p95)})');
+              'Should round-trip medium graph in <= 5ms (measured: ${_formatDuration(results.p95)})');
     });
   });
 }

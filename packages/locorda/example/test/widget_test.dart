@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:locorda_solid_auth/locorda_solid_auth.dart';
+import 'package:locorda_ui/locorda_ui.dart';
 import 'package:personal_notes_app/screens/notes_list_screen.dart';
 import 'package:personal_notes_app/services/categories_service.dart';
 import 'package:personal_notes_app/services/notes_service.dart';
@@ -20,6 +21,10 @@ import 'services/mock_solid_crdt_sync.dart';
 
 void main() {
   testWidgets('Personal Notes App starts up', (WidgetTester tester) async {
+    // Set a larger screen size to accommodate the AppBar with all actions
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     // Create mock repositories and services for testing
     final mockCategoryRepo = MockCategoryRepository();
     final mockNoteRepo = MockNoteRepository();
@@ -40,9 +45,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         title: 'Personal Notes',
-        localizationsDelegates: const [
+        localizationsDelegates: [
           ...GlobalMaterialLocalizations.delegates,
           SolidAuthLocalizations.delegate,
+          LocordaUILocalizations.delegate,
         ],
         home: NotesListScreen(
           notesService: mockNotesService,
