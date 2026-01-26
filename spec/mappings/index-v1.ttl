@@ -1,3 +1,4 @@
+@base <https://w3id.org/solid-crdt-sync/mappings/index-v1#> .
 @prefix crdt: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
 @prefix algo: <https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#> .
 @prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
