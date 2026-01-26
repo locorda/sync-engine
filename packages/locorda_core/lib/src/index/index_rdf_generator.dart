@@ -6,7 +6,7 @@
 library;
 
 import 'package:locorda_core/src/config/sync_engine_config.dart';
-import 'package:locorda_core/src/generated/_index.dart';
+import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/index/shard_manager.dart';
 import 'package:locorda_core/src/mapping/resource_locator.dart';

@@ -1,5 +1,5 @@
 // TODO: generalize to a generic fetcher that also does etag caching etc?
-import 'package:locorda_core/src/generated/rdf.dart';
+import 'package:locorda_core/src/vocab/generated/rdf.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:http/http.dart' as http;

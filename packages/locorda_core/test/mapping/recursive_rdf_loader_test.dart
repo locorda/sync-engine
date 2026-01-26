@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:locorda_core/src/generated/rdf.dart';
+import 'package:locorda_core/src/vocab/generated/rdf.dart';
 import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
 
 import 'package:locorda_rdf_core/core.dart';

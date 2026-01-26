@@ -1,5 +1,5 @@
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_core/src/generated/rdf.dart';
+import 'package:locorda_core/src/vocab/generated/rdf.dart';
 import 'package:locorda_core/src/rdf/xsd.dart';
 import 'package:locorda_core/src/util/lru_cache.dart';
 import 'package:locorda_core/src/util/structure_validation_logger.dart';

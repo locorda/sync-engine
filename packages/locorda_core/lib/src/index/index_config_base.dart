@@ -5,7 +5,7 @@
 /// and idx:FullIndex RDF resources on the Solid Pod.
 library;
 
-import 'package:locorda_core/src/generated/_index.dart';
+import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/rdf/xsd.dart';
 import 'package:locorda_rdf_core/core.dart';
 

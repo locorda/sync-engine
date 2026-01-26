@@ -5,7 +5,7 @@ import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/local_document_merger.dart';
-import 'package:locorda_core/src/generated/_index.dart';
+import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/hlc_service.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart';
 import 'package:locorda_core/src/mapping/framework_iri_generator.dart';

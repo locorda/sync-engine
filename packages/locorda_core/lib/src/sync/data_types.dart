@@ -1,5 +1,5 @@
 import 'package:locorda_core/src/crdt/crdt_types.dart';
-import 'package:locorda_core/src/generated/_index.dart';
+import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/hlc_service.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:logging/logging.dart';

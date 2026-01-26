@@ -6,7 +6,7 @@ library;
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/crdt_document_manager.dart';
-import 'package:locorda_core/src/generated/_index.dart';
+import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/index/index_discovery.dart';
 import 'package:locorda_core/src/index/index_property_resolver.dart';
 import 'package:locorda_core/src/index/index_rdf_generator.dart';

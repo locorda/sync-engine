@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
-import 'package:locorda_core/src/generated/_index.dart';
-import 'package:locorda_core/src/generated/sync.dart';
+import 'package:locorda_core/src/vocab/generated/_index.dart';
+import 'package:locorda_core/src/vocab/generated/sync.dart';
 import 'package:locorda_core/src/mapping/identified_blank_node_builder.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_rdf_core/core.dart';

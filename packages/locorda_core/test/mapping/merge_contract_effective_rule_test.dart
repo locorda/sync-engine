@@ -1,7 +1,7 @@
 import 'package:test/test.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_core/src/mapping/merge_contract.dart';
-import 'package:locorda_core/src/generated/algo.dart';
+import 'package:locorda_core/src/vocab/generated/algo.dart';
 
 /// Tests for the new getEffectivePredicateRule() logic including:
 /// - Class-specific rules with global fallback

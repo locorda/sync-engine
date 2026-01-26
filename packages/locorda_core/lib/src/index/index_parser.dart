@@ -6,7 +6,7 @@
 library;
 
 import 'package:locorda_core/src/config/sync_engine_config.dart';
-import 'package:locorda_core/src/generated/_index.dart';
+import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/index/index_rdf_generator.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';

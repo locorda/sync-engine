@@ -39,7 +39,7 @@ export 'src/config/validation.dart'
 // TODO: why do we export these?
 export 'src/crdt/crdt_types.dart' show CrdtType, LwwRegister, OrSet;
 // Vocabularies
-export 'src/generated/_index.dart'
+export 'src/vocab/generated/_index.dart'
     show
         IdxShardEntry,
         Algo,

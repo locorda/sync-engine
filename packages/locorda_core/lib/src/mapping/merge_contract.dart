@@ -1,6 +1,6 @@
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/crdt/crdt_types.dart';
-import 'package:locorda_core/src/generated/rdf.dart';
+import 'package:locorda_core/src/vocab/generated/rdf.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:logging/logging.dart';
 import 'package:locorda_rdf_core/core.dart';

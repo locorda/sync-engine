@@ -30,6 +30,7 @@ import 'package:locorda_core/src/sync/standard_sync_manager.dart';
 import 'package:locorda_core/src/sync/sync_function.dart';
 import 'package:locorda_core/src/util/build_effective_config.dart';
 import 'package:locorda_core/src/util/retry.dart';
+import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:logging/logging.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:rxdart/rxdart.dart';
