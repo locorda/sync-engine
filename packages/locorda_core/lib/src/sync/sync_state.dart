@@ -23,6 +23,9 @@ enum SyncTrigger {
 
   /// Sync triggered by pull-to-refresh gesture.
   pullToRefresh,
+
+  /// Sync triggered after user authentication/login.
+  login,
 }
 
 /// Current status of the sync operation.

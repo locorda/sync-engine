@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:logging/logging.dart';
@@ -146,14 +148,18 @@ class _LocordaStatusWidgetState extends State<LocordaStatusWidget> {
 
     if (success) {
       // Refresh auth status after successful login
-      _checkAuthStatus();
+      await _checkAuthStatus();
+
+      // Trigger automatic sync after login
+      _log.info('Login successful, triggering automatic sync');
+      unawaited(widget.syncManager.sync(trigger: SyncTrigger.login));
     }
   }
 
   Future<void> _disconnect() async {
     try {
       await widget.auth.logout();
-      _checkAuthStatus();
+      await _checkAuthStatus();
     } catch (e, stackTrace) {
       _log.severe('Error during logout', e, stackTrace);
       if (mounted) {

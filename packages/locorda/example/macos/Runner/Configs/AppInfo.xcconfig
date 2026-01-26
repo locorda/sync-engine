@@ -5,10 +5,10 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = personal_notes_app
+PRODUCT_NAME = Locorda Personal Notes
 
 // The application's bundle identifier
 PRODUCT_BUNDLE_IDENTIFIER = dev.locorda.example.personalNotesApp
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 dev.locorda.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025-2026 locorda.dev. All rights reserved.
