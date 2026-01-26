@@ -1582,6 +1582,11 @@
               "expected": {
                 "documents": [
                   {
+                    "type_iri": "https://w3id.org/solid-crdt-sync/vocab/idx#FullIndex",
+                    "id": "index-full-e679d72f/index",
+                    "path": "test_cases/save/36_foreign_shard_discovery/02_default-installation_sync/expected_index_recipes_full.ttl"
+                  },
+                  {
                     "type_iri": "https://w3id.org/solid-crdt-sync/vocab/idx#Shard",
                     "id": "index-full-bbcf09f5/shard-mod-md5-1-0-v1_0_0",
                     "path": "test_cases/save/36_foreign_shard_discovery/02_default-installation_sync/expected_shard_index-of-indices-full_local-2.ttl"
@@ -1590,11 +1595,6 @@
                     "type_iri": "https://w3id.org/solid-crdt-sync/vocab/idx#Shard",
                     "id": "index-full-5f68b5b7/shard-mod-md5-1-0-v1_0_0",
                     "path": "test_cases/save/36_foreign_shard_discovery/02_default-installation_sync/expected_shard_index-of-indices-group_local-2.ttl"
-                  },
-                  {
-                    "type_iri": "https://w3id.org/solid-crdt-sync/vocab/idx#FullIndex",
-                    "id": "index-full-e679d72f/index",
-                    "path": "test_cases/save/36_foreign_shard_discovery/02_default-installation_sync/expected_index_recipes_full.ttl"
                   },
                   {
                     "iri": "tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC1iYmNmMDlmNS9pbmRleA==",

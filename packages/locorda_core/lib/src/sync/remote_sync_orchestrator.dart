@@ -352,6 +352,10 @@ class RemoteSyncOrchestrator {
         localGraph: localDocument,
         remoteGraph: remoteGraph,
       );
+      //_log.fine('Local graph: ${turtle.encode(localDocument ?? RdfGraph())}');
+      //_log.fine('Remote graph: ${turtle.encode(remoteGraph)}');
+      //_log.fine(
+      //    'Merged graph for $debugName: ${turtle.encode(mergeResult.mergedGraph)}');
       final actualGovernanceIris = _mergeContractLoader.extractGovernanceIris(
           mergeResult.mergedGraph, documentIri);
       if (!ListEquality().equals(actualGovernanceIris, governanceIris)) {
@@ -359,7 +363,7 @@ class RemoteSyncOrchestrator {
             'Expected: $governanceIris, '
             'Found: $actualGovernanceIris');
       }
-      if (remoteGraph == mergeResult.mergedGraph) {
+      if (localDocument == mergeResult.mergedGraph) {
         _log.finest('No changes after merging $debugName');
         // Note: it would be more correct to use rdf canonicalization here,
         // but for performance reasons we just use graph equality, assuming
@@ -596,13 +600,14 @@ class RemoteSyncOrchestrator {
     ShardSyncSpec shard,
     RdfGraph? originalRemoteShard,
   ) async {
+    //_log.fine('Building document queue for shard $shard');
     // For PartialShardSync, we already have the local clockHashes from the query
     // Just need to load remote entries
     if (shard is PartialShardSync) {
       Map<IriTerm, String> remoteEntries =
           _extractResourceClockHashes(originalRemoteShard, shard.shardIri)
               .map((key, value) => MapEntry(key, value.$1));
-
+      //_log.fine('PartialShardSync Remote entries: $remoteEntries');
       // Build queue entries for resources in PartialShardSync
       return shard.resourceClockHashes.entries.map((entry) {
         return _DocumentQueueEntry(
@@ -644,7 +649,8 @@ class RemoteSyncOrchestrator {
     final remoteEntries = _extractResourceClockHashes(
         originalRemoteShard, shardIri,
         filterPredicate: filter?.filterPredicate);
-
+    //_log.fine('Remote entries: ${remoteEntries.keys.map((k) => k.debug)}');
+    //_log.fine('Local entries: ${localEntries.keys.map((k) => k.debug)}');
     // Build queue entries for all resources present locally or remotely
     return <IriTerm>{
       ...localEntries.keys,
@@ -672,6 +678,7 @@ class RemoteSyncOrchestrator {
     if (originalRemoteShard != null) {
       for (final entryIri in originalRemoteShard
           .getMultiValueObjectList<IriTerm>(shardIri, IdxShard.containsEntry)) {
+        //_log.fine('Processing remote entry ${entryIri.debug}');
         final resourceIri = originalRemoteShard.expectSingleObject<IriTerm>(
             entryIri, IdxShardEntry.resource);
         final clockHash = originalRemoteShard.expectSingleObject<LiteralTerm>(
@@ -833,7 +840,8 @@ class RemoteSyncOrchestrator {
         shard,
         originalRemoteShard,
       );
-
+      //_log.fine(
+      //    'Document queue for ${shardIri.debug}: ${documentQueue.map((e) => e.resourceIri.debug).join(', ')}');
       // Sync documents based on clock hash differences and fetch policy
       for (final queueEntry in documentQueue) {
         // Determine if this document should be synced:

@@ -42,8 +42,18 @@ melos:
       description: Run analysis for all packages.
 
     test:
-      run: dart test
-      description: Run tests for all packages.
+      run: |
+        dart run melos exec --dir-exists=test --no-flutter -- dart test
+        dart run melos exec --dir-exists=test --flutter -- flutter test
+      description: Run tests for all packages (Dart and Flutter).
+
+    test:dart:
+      run: dart run melos exec --dir-exists=test --no-flutter -- dart test
+      description: Run tests for pure Dart packages only.
+
+    test:flutter:
+      run: dart run melos exec --dir-exists=test --flutter -- flutter test
+      description: Run tests for Flutter packages only.
 
     format:
       run: dart format .
