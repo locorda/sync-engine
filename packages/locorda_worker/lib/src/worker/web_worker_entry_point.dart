@@ -75,7 +75,7 @@ void startWebWorkerLoop(WorkerSetup workerSetup) {
   });
   WorkerContext? context;
   bool isInitializing = false;
-  
+
   // Helper callbacks for managing initialization state
   void resetInitializing() => isInitializing = false;
   void markAsInitializing() => isInitializing = true;
@@ -187,14 +187,14 @@ Future<void> _handleWorkerMessage(
     } catch (e, st) {
       // Log error with full details
       _log.severe('Worker initialization failed: $e\n$st');
-      
+
       // Send error to main thread
       _postMessage({
         'type': 'error',
         'error': 'Initialization failed: $e',
         'stackTrace': '$st',
       }.jsify());
-      
+
       // CRITICAL: Reset initialization flag so worker can retry
       resetInitializing();
     }
