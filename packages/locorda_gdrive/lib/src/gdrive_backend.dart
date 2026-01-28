@@ -3,10 +3,11 @@ import 'dart:convert';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:http/http.dart' as http;
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_gdrive/src/auth/gdrive_auth_provider.dart';
-import 'package:locorda_gdrive/src/gdrive_type_index_manager.dart';
-import 'package:logging/logging.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:logging/logging.dart';
+
+import 'auth/gdrive_auth_provider.dart';
+import 'gdrive_type_index_manager.dart';
 
 final _log = Logger('GDriveBackend');
 final _clientLog = Logger('GDriveClient');

@@ -2,12 +2,11 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:locorda_core/locorda_core.dart';
-
-import 'package:locorda_gdrive/src/rdf/rdf_extensions.dart';
-import 'package:logging/logging.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:logging/logging.dart';
 
 import 'gdrive_backend.dart';
+import 'rdf/rdf_extensions.dart';
 
 final _log = Logger('GDriveTypeIndexManager');
 
