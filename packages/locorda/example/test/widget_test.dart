@@ -8,16 +8,62 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:locorda_solid_auth/locorda_solid_auth.dart';
-import 'package:locorda_ui/locorda_ui.dart';
+import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda/locorda.dart';
 import 'package:personal_notes_app/screens/notes_list_screen.dart';
 import 'package:personal_notes_app/services/categories_service.dart';
 import 'package:personal_notes_app/services/notes_service.dart';
-import 'package:solid_auth/solid_auth.dart';
-
+//import 'package:locorda_worker/worker_main.dart';
 import 'services/mock_category_repository.dart';
 import 'services/mock_note_repository.dart';
 import 'services/mock_solid_crdt_sync.dart';
+
+class MockAuthValueListenable implements AuthValueListenable {
+  @override
+  bool get isAuthenticated => false;
+
+  @override
+  void addListener(void Function() listener) {}
+
+  @override
+  void removeListener(void Function() listener) {}
+}
+
+class MockAuth implements Auth {
+  @override
+  Future<bool> isAuthenticated() => Future.value(false);
+
+  @override
+  AuthValueListenable get isAuthenticatedNotifier => MockAuthValueListenable();
+
+  @override
+  Future<void> logout() => Future.value();
+
+  @override
+  String? get userDisplayName => null;
+}
+
+class MockRemoteMainHandler implements RemoteMainHandler, RemoteUiAdapter {
+  @override
+  final String id;
+
+  MockRemoteMainHandler(this.id);
+
+  @override
+  String get displayName => id;
+
+  @override
+  IconData get icon => Icons.cloud;
+
+  @override
+  Auth get auth => MockAuth();
+
+  @override
+  List<WorkerPluginFactory> get workerConnectors => [];
+
+  @override
+  Future<bool> showLogin(BuildContext context) => Future.value(false);
+}
 
 void main() {
   testWidgets('Personal Notes App starts up', (WidgetTester tester) async {
@@ -31,15 +77,16 @@ void main() {
     final mockNotesService = NotesService(mockNoteRepo);
     final mockCategoriesService = CategoriesService(mockCategoryRepo);
 
-    // Create a mock SolidAuth for testing
-    final mockSolidAuth = SolidAuth(
-      oidcClientId: 'test-client-id',
-      appUrlScheme: 'test-scheme',
-      frontendRedirectUrl: Uri.parse('https://test.example.com/redirect'),
-    );
-
     // Create mock sync system
-    final mockLocorda = MockLocorda();
+    final mockSyncManager = MockSyncManager();
+
+    // Create mock plugin registry
+    final mockSolidPlugin = MockRemoteMainHandler('solid');
+    final mockGDrivePlugin = MockRemoteMainHandler('gdrive');
+    final mockPluginRegistry = UiAdapterRegistry.withRemotes([
+      mockSolidPlugin,
+      mockGDrivePlugin,
+    ]);
 
     // Build our app with mock services
     await tester.pumpWidget(
@@ -49,12 +96,17 @@ void main() {
           ...GlobalMaterialLocalizations.delegates,
           SolidAuthLocalizations.delegate,
           LocordaUILocalizations.delegate,
+          GDriveLocalizations.delegate,
         ],
+        supportedLocales: SolidAuthLocalizations.supportedLocales
+            .toSet()
+            .intersection(GDriveLocalizations.supportedLocales.toSet())
+            .intersection(LocordaUILocalizations.supportedLocales.toSet()),
         home: NotesListScreen(
           notesService: mockNotesService,
           categoriesService: mockCategoriesService,
-          solidAuth: mockSolidAuth,
-          syncSystem: mockLocorda,
+          uiAdapterRegistry: mockPluginRegistry,
+          syncManager: mockSyncManager,
         ),
       ),
     );

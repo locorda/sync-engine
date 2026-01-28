@@ -2,17 +2,14 @@
 import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_worker/src/worker/native_worker_handle.dart';
-import 'package:locorda_worker/src/worker/worker_entry_point.dart';
+import 'package:locorda_worker/worker.dart';
+import 'package:locorda_worker/src/main/native_worker_handle.dart';
 import 'package:test/test.dart';
 
-Future<EngineParams> _createEngineParams(
-  SyncEngineConfig config,
-  WorkerContext context,
-) async {
-  return EngineParams(
-    backends: [],
-    storage: InMemoryStorage(),
+Future<WorkerParams> _setupWorker() async {
+  return WorkerParams(
+    remotes: [],
+    storage: InMemoryStorageWorkerHandler(),
   );
 }
 
@@ -24,7 +21,7 @@ void main() {
   group('NativeWorkerHandle', () {
     test('creates worker successfully', () async {
       final worker = await NativeWorkerHandle.create(
-        _createEngineParams,
+        _setupWorker,
         _createTestConfig().toJson(),
         'test-worker',
         (_) async {}, // No plugins
@@ -37,7 +34,7 @@ void main() {
 
     test('exposes messages stream', () async {
       final worker = await NativeWorkerHandle.create(
-        _createEngineParams,
+        _setupWorker,
         _createTestConfig().toJson(),
         'test-worker',
         (_) async {}, // No plugins
@@ -51,7 +48,7 @@ void main() {
 
     test('can send messages', () async {
       final worker = await NativeWorkerHandle.create(
-        _createEngineParams,
+        _setupWorker,
         _createTestConfig().toJson(),
         'test-worker',
         (_) async {}, // No plugins
@@ -71,7 +68,7 @@ void main() {
 
     test('disposes cleanly', () async {
       final worker = await NativeWorkerHandle.create(
-        _createEngineParams,
+        _setupWorker,
         _createTestConfig().toJson(),
         'test-worker',
         (_) async {}, // No plugins
@@ -83,13 +80,13 @@ void main() {
 
     test('can create multiple workers', () async {
       final worker1 = await NativeWorkerHandle.create(
-        _createEngineParams,
+        _setupWorker,
         _createTestConfig().toJson(),
         'worker-1',
         (_) async {}, // No plugins
       );
       final worker2 = await NativeWorkerHandle.create(
-        _createEngineParams,
+        _setupWorker,
         _createTestConfig().toJson(),
         'worker-2',
         (_) async {}, // No plugins

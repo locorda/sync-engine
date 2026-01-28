@@ -24,10 +24,8 @@ import 'package:locorda_core/src/storage/storage_interface.dart'
     show IndexEntryWithIri;
 import 'package:locorda_core/src/util/build_effective_config.dart';
 import 'package:locorda_core/src/util/lru_cache.dart';
-import 'package:locorda_core/src/vocab/generated/_index.dart';
-import 'package:locorda_core/src/vocab/generated/idx.dart';
-import 'package:logging/logging.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:logging/logging.dart';
 
 final _log = Logger('IndexDiscovery');
 

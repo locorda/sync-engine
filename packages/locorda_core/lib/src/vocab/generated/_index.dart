@@ -11,6 +11,8 @@ export 'crdt.dart';
 export 'crdt/index.dart';
 export 'foaf.dart';
 export 'foaf/index.dart';
+export 'gdrive.dart';
+export 'gdrive/index.dart';
 export 'idx.dart';
 export 'idx/index.dart';
 export 'mc.dart';

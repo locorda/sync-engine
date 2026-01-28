@@ -11,16 +11,20 @@ environment:
 
 workspace:
   - packages/locorda
+  - packages/locorda_flutter_core
+  - packages/locorda_flutter
   - packages/locorda_annotations
   - packages/locorda_builder
   - packages/locorda_core
+  - packages/locorda_objects
   - packages/locorda_drift
   - packages/locorda_solid
+  - packages/locorda_solid_core
   - packages/locorda_solid_auth
   - packages/locorda_solid_auth_worker
-  - packages/locorda_solid_ui
   - packages/locorda_ui
   - packages/locorda_worker
+  - packages/locorda_gdrive
   - packages/locorda/example
 
 dev_dependencies:

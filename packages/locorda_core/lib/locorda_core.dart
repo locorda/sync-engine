@@ -52,6 +52,9 @@ export 'src/vocab/generated/_index.dart'
         AlgoOR_Set,
         CrdtClientInstallation,
         CrdtClockEntry,
+        Gdrive,
+        GdriveTypeIndex,
+        GdriveTypeMapping,
         Idx,
         IdxFullIndex,
         IdxGroupIndex,
@@ -98,7 +101,14 @@ export 'src/mapping/resource_locator.dart'
 export 'src/mapping/iri_translator.dart'
     show IriTranslator, BaseIriTranslator, NoOpIriTranslator;
 export 'src/storage/remote_id.dart' show RemoteId;
-export 'src/storage/remote_storage.dart' show RemoteStorage;
+export 'src/storage/remote_storage.dart'
+    show
+        RemoteStorage,
+        RemoteSyncStorage,
+        RemoteUploadResult,
+        SuccessUploadResult,
+        ConflictUploadResult,
+        RemoteDownloadResult;
 export 'src/storage/storage_interface.dart'
     show
         Storage,
@@ -110,6 +120,13 @@ export 'src/storage/storage_interface.dart'
 export 'src/storage/concurrent_update_exception.dart'
     show ConcurrentUpdateException;
 export 'src/storage/in_memory_storage.dart' show InMemoryStorage;
+
+export 'src/hlc_service.dart' show PhysicalTimestampFactory;
+export 'src/index/group_index_subscription_manager.dart'
+    show GroupIndexGraphSubscriptionException;
+export 'src/installation_service.dart' show InstallationIdFactory;
+export 'src/mapping/recursive_rdf_loader.dart' show Fetcher;
+export 'src/standard_sync_engine.dart' show StandardSyncEngine;
 
 // NOTE: CRDT annotations have been moved to locorda_annotations package
 // Use that package for @CrdtLwwRegister, @CrdtOrSet, etc. annotations

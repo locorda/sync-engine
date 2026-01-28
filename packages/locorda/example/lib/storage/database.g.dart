@@ -3165,21 +3165,73 @@ class $AppDatabaseManager {
 
 mixin _$CategoryDaoMixin on DatabaseAccessor<AppDatabase> {
   $CategoriesTable get categories => attachedDatabase.categories;
+  CategoryDaoManager get managers => CategoryDaoManager(this);
 }
+
+class CategoryDaoManager {
+  final _$CategoryDaoMixin _db;
+  CategoryDaoManager(this._db);
+  $$CategoriesTableTableManager get categories =>
+      $$CategoriesTableTableManager(_db.attachedDatabase, _db.categories);
+}
+
 mixin _$CommentDaoMixin on DatabaseAccessor<AppDatabase> {
   $CategoriesTable get categories => attachedDatabase.categories;
   $NotesTable get notes => attachedDatabase.notes;
   $CommentsTable get comments => attachedDatabase.comments;
+  CommentDaoManager get managers => CommentDaoManager(this);
 }
+
+class CommentDaoManager {
+  final _$CommentDaoMixin _db;
+  CommentDaoManager(this._db);
+  $$CategoriesTableTableManager get categories =>
+      $$CategoriesTableTableManager(_db.attachedDatabase, _db.categories);
+  $$NotesTableTableManager get notes =>
+      $$NotesTableTableManager(_db.attachedDatabase, _db.notes);
+  $$CommentsTableTableManager get comments =>
+      $$CommentsTableTableManager(_db.attachedDatabase, _db.comments);
+}
+
 mixin _$NoteDaoMixin on DatabaseAccessor<AppDatabase> {
   $CategoriesTable get categories => attachedDatabase.categories;
   $NotesTable get notes => attachedDatabase.notes;
+  NoteDaoManager get managers => NoteDaoManager(this);
 }
+
+class NoteDaoManager {
+  final _$NoteDaoMixin _db;
+  NoteDaoManager(this._db);
+  $$CategoriesTableTableManager get categories =>
+      $$CategoriesTableTableManager(_db.attachedDatabase, _db.categories);
+  $$NotesTableTableManager get notes =>
+      $$NotesTableTableManager(_db.attachedDatabase, _db.notes);
+}
+
 mixin _$NoteIndexEntryDaoMixin on DatabaseAccessor<AppDatabase> {
   $NoteIndexEntriesTable get noteIndexEntries =>
       attachedDatabase.noteIndexEntries;
+  NoteIndexEntryDaoManager get managers => NoteIndexEntryDaoManager(this);
 }
+
+class NoteIndexEntryDaoManager {
+  final _$NoteIndexEntryDaoMixin _db;
+  NoteIndexEntryDaoManager(this._db);
+  $$NoteIndexEntriesTableTableManager get noteIndexEntries =>
+      $$NoteIndexEntriesTableTableManager(
+          _db.attachedDatabase, _db.noteIndexEntries);
+}
+
 mixin _$CursorDaoMixin on DatabaseAccessor<AppDatabase> {
   $HydrationCursorsTable get hydrationCursors =>
       attachedDatabase.hydrationCursors;
+  CursorDaoManager get managers => CursorDaoManager(this);
+}
+
+class CursorDaoManager {
+  final _$CursorDaoMixin _db;
+  CursorDaoManager(this._db);
+  $$HydrationCursorsTableTableManager get hydrationCursors =>
+      $$HydrationCursorsTableTableManager(
+          _db.attachedDatabase, _db.hydrationCursors);
 }

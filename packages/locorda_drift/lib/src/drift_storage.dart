@@ -5,7 +5,7 @@ import 'dart:convert';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart' as storage;
-import 'package:locorda_drift/src/rdf/rdf_extensions.dart';
+import 'rdf/rdf_extensions.dart';
 import 'package:locorda_rdf_core/core.dart';
 
 import 'drift_options.dart';

@@ -19,17 +19,14 @@ library;
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:locorda/src/config/locorda_config_util.dart';
-import 'package:locorda/src/mapping/local_resource_iri_service.dart';
-import 'package:locorda/src/mapping/solid_mapping_context.dart';
-import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda/test.dart';
+import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_mapper/mapper.dart';
 import 'package:personal_notes_app/init_rdf_mapper.g.dart';
 import 'package:personal_notes_app/models/category.dart';
 import 'package:personal_notes_app/models/comment.dart';
 import 'package:personal_notes_app/models/note.dart';
 import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
-import 'package:locorda_rdf_core/core.dart';
-import 'package:locorda_rdf_mapper/mapper.dart';
 
 /// Set to true to enable debug output during test development
 const _debug = false;
@@ -43,36 +40,20 @@ void main() {
   setUpAll(() {
     // Initialize mapper exactly as in Locorda.setup()
     final iriTermFactory = IriTerm.validated;
-    final rdfCore = RdfCore.withStandardCodecs();
 
-    final localResourceLocator =
-        LocalResourceLocator(iriTermFactory: iriTermFactory);
-    final iriService = LocalResourceIriService(localResourceLocator);
-
-    final context = SolidMappingContext(
-      resourceIriFactory: iriService.createResourceIriMapper,
-      resourceRefFactory: iriService.createResourceRefMapper,
-      indexItemIriFactory: iriService.createIndexItemIriMapper,
-      baseRdfMapper: RdfMapper(
-        registry: RdfMapperRegistry(),
-        iriTermFactory: iriTermFactory,
-        rdfCore: rdfCore,
-      ),
-    );
-
-    mapper = initRdfMapper(
-      rdfMapper: context.baseRdfMapper,
-      $indexItemIriFactory: context.indexItemIriFactory,
-      $resourceIriFactory: context.resourceIriFactory,
-      $resourceRefFactory: context.resourceRefFactory,
-    );
-    final validation = iriService.finishSetupAndValidate(
-      ResourceTypeCache({
-        Note: PersonalNotesVocab.PersonalNote,
-        Category: PersonalNotesVocab.NotesCategory,
-      }),
-    );
-    validation.throwIfInvalid();
+    mapper = createTestMapper(
+        resourceTypes: {
+          Note: PersonalNotesVocab.PersonalNote,
+          Category: PersonalNotesVocab.NotesCategory,
+        },
+        initRdfMapper: (rdfMapper, indexItemIriFactory, resourceIriFactory,
+                resourceRefFactory) =>
+            initRdfMapper(
+              rdfMapper: rdfMapper,
+              $indexItemIriFactory: indexItemIriFactory,
+              $resourceIriFactory: resourceIriFactory,
+              $resourceRefFactory: resourceRefFactory,
+            ));
 
     turtleCodec = TurtleCodec(iriTermFactory: iriTermFactory);
 

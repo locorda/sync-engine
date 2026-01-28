@@ -96,7 +96,6 @@ This package provides a convenient entry point to the locorda ecosystem:
 - `locorda_annotations` - CRDT merge strategy annotations  
 - `locorda_drift` - SQLite/Drift storage implementation
 - `locorda_solid_auth` - Solid authentication integration
-- `locorda_solid_ui` - Flutter UI components
 
 ## Examples
 

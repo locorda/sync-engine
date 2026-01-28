@@ -206,5 +206,6 @@ class StandardSyncManager implements SyncManager {
     _autoSyncTimer = null;
 
     await _statusController.close();
+    
   }
 }

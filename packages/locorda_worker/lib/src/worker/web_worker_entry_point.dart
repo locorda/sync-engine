@@ -5,14 +5,15 @@ library;
 
 import 'dart:js_interop';
 
+import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_worker/src/shared/worker_params.dart';
+import 'package:locorda_worker/src/worker/worker_params_to_engine_params.dart';
 import 'package:logging/logging.dart';
 import 'package:web/web.dart' as web;
 
-import 'js_interop_utils.dart';
+import '../shared/js_interop_utils.dart';
 import 'worker_channel.dart';
 import 'worker_entry_point.dart';
-import 'locorda_worker.dart';
-import 'package:locorda_core/locorda_core.dart';
 
 final _log = Logger('WebWorkerEntryPoint');
 
@@ -65,7 +66,7 @@ external void _postMessage(JSAny? message);
 ///
 /// This sets up the message handler for the web worker's global scope
 /// and initializes the worker when the first setup message arrives.
-void startWebWorkerLoop(EngineParamsFactory setupFn) {
+void startWebWorkerLoop(WorkerSetup workerSetup) {
   _log.info('Starting web worker');
 
   // Create WorkerChannel early (like native implementation does)
@@ -107,7 +108,7 @@ void startWebWorkerLoop(EngineParamsFactory setupFn) {
           context = newContext;
           isInitializing = false;
         },
-        setupFn,
+        workerSetup,
         channel,
         () => isInitializing,
         () => isInitializing = true,
@@ -136,7 +137,7 @@ Future<void> _handleWorkerMessage(
   Map<String, dynamic> data,
   WorkerContext? Function() getContext,
   void Function(WorkerContext) setContext,
-  EngineParamsFactory engineParamsFactory,
+  WorkerSetup workerSetup,
   WorkerChannel channel,
   bool Function() isInitializing,
   void Function() markInitializing,
@@ -165,7 +166,9 @@ Future<void> _handleWorkerMessage(
       final config = SyncEngineConfig.fromJson(
           configMap); // Create context and initialize sync system
       final newContext = WorkerContext(WebWorkerSender(), channel);
-      final engineParams = await engineParamsFactory(config, newContext);
+      final workerParams = await workerSetup();
+      final engineParams =
+          await toEngineParams(workerParams, newContext, config);
       final syncSystem =
           await SyncEngine.create(engineParams: engineParams, config: config);
       newContext.setSyncSystem(syncSystem);

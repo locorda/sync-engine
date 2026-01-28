@@ -1,0 +1,109 @@
+@prefix gdrive: <https://w3id.org/locorda-gdrive/vocab#> .
+@prefix crdt: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix schema: <https://schema.org/> .
+@prefix meal: <https://example.org/vocab/meal#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Example Google Drive Type Index for a Recipe & Meal Planning App
+# Location: MyRecipeApp/gdrive-index.ttl in Google Drive
+#
+# This is a special configuration file (NOT managed by CRDT framework).
+# 
+# Concurrency Rules:
+# - Updates MUST use optimistic locking (ETag-based conditional writes)
+# - Blank nodes are additive → duplicate TypeMappings would accumulate
+# - Write protocol: Read + ETag → Check for existing mapping → Add if missing → Write with If-Match
+# - On ETag conflict: Retry (another installation won the race)
+# - CRITICAL: A TypeMapping may only be used after:
+#   1. Successful upload with ETag check
+#   2. Re-read verification that mapping exists in official version
+#
+# Path Stability:
+# - Existing driveFolder values MUST NEVER be changed (breaks IRI mapping)
+# - Append-only: New types can be added, existing mappings are immutable
+#
+# This demonstrates a real-world setup with:
+# - Application data types (Recipe, ShoppingListEntry)
+# - Framework types (ClientInstallation, 4 index types)
+# - Human-readable folder structure
+# - File paths derived from ResourceIdentifier.id (from ResourceLocator)
+
+<#type-index> a gdrive:TypeIndex;
+    gdrive:hasTypeMapping 
+        # Client Installations: Framework-managed documents
+        [
+            a gdrive:TypeMapping;
+            gdrive:forType crdt:ClientInstallation;
+            gdrive:driveFolder "installations";
+            gdrive:driveFolderId "1AaBbCcDdEeFfGgHh"
+        ],
+        # Recipes: Main user data
+        [
+            a gdrive:TypeMapping;
+            gdrive:forType schema:Recipe;
+            gdrive:driveFolder "recipes";
+            gdrive:driveFolderId "1IiJjKkLlMmNnOoPp"
+        ],
+        # Shopping List Entries: Potentially many small items
+        [
+            a gdrive:TypeMapping;
+            gdrive:forType meal:ShoppingListEntry;
+            gdrive:driveFolder "shopping-entries";
+            gdrive:driveFolderId "1YyZzAaBbCcDdEeFf"
+        ],
+        # Index types: All stored in "indices" folder by convention
+        [
+            a gdrive:TypeMapping;
+            gdrive:forType <https://w3id.org/locorda/vocab/idx#FullIndex>;
+            gdrive:driveFolder "indices";
+            gdrive:driveFolderId "1GgHhIiJjKkLlMmNn"
+        ],
+        [
+            a gdrive:TypeMapping;
+            gdrive:forType <https://w3id.org/locorda/vocab/idx#GroupIndexTemplate>;
+            gdrive:driveFolder "indices";
+            gdrive:driveFolderId "1GgHhIiJjKkLlMmNn"
+        ],
+        [
+            a gdrive:TypeMapping;
+            gdrive:forType <https://w3id.org/locorda/vocab/idx#GroupIndex>;
+            gdrive:driveFolder "indices";
+            gdrive:driveFolderId "1GgHhIiJjKkLlMmNn"
+        ],
+        [
+            a gdrive:TypeMapping;
+            gdrive:forType <https://w3id.org/locorda/vocab/idx#Shard>;
+            gdrive:driveFolder "indices";
+            gdrive:driveFolderId "1GgHhIiJjKkLlMmNn"
+        ] .
+
+# Example resulting Drive structure:
+# File paths are derived from ResourceIdentifier.id (from ResourceLocator)
+# If id contains '/', subdirectories are created automatically
+#
+# MyRecipeApp/
+# ├── gdrive-index.ttl                              # This file
+# ├── installations/
+# │   ├── alice-phone-2024.ttl                     # id: "alice-phone-2024"
+# │   └── alice-laptop-2024.ttl                    # id: "alice-laptop-2024"
+# ├── recipes/
+# │   ├── beef-stew.ttl                            # id: "beef-stew"
+# │   ├── chocolate-cake.ttl                       # id: "chocolate-cake"
+# │   └── desserts/                                # id: "desserts/tiramisu"
+# │       └── tiramisu.ttl
+# ├── shopping-entries/
+# │   ├── 2024-11/                                 # id: "2024-11/item-001"
+# │   │   ├── item-001.ttl
+# │   │   └── item-002.ttl
+# │   └── 2024-12/                                 # id: "2024-12/item-003"
+# │       └── item-003.ttl
+# └── indices/
+#     ├── index-full-a1b2c3d4/                     # FullIndex (hash from type+config)
+#     │   ├── index.ttl
+#     │   └── shard-mod-md5-4-0-v1_2_0.ttl
+#     └── index-grouped-e5f6g7h8/                  # GroupIndexTemplate
+#         ├── index.ttl
+#         └── groups/
+#             └── 2024-11/                          # GroupIndex (one per group key)
+#                 ├── index.ttl
+#                 └── shard-mod-md5-2-0-v1_0_0.ttl

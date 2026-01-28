@@ -36,4 +36,18 @@ class LocordaUILocalizationsEn extends LocordaUILocalizations {
 
   @override
   String get retrySync => 'Retry Sync';
+
+  @override
+  String get storageBackends => 'Storage Backends';
+
+  @override
+  String get connect => 'Connect';
+
+  @override
+  String get disconnect => 'Disconnect';
+
+  @override
+  String errorDisconnecting(String error) {
+    return 'Error disconnecting: $error';
+  }
 }

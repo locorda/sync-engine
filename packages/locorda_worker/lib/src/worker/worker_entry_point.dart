@@ -9,9 +9,11 @@ import 'dart:convert';
 import 'dart:isolate';
 
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_worker/src/shared/worker_params.dart';
 import 'package:locorda_worker/src/worker/worker_channel.dart';
-import 'package:locorda_worker/src/worker/locorda_worker.dart';
-import 'package:locorda_worker/src/worker/worker_messages.dart';
+//import 'package:locorda_worker/src/main/locorda_worker.dart';
+import 'package:locorda_worker/src/shared/worker_messages.dart';
+import 'package:locorda_worker/src/worker/worker_params_to_engine_params.dart';
 import 'package:logging/logging.dart';
 import 'package:locorda_rdf_core/core.dart';
 
@@ -410,14 +412,14 @@ class WorkerContext {
 // FIXME: if this is needed, why is it unused?
 /// Global setup function storage (needed for web workers where main() is called)
 // ignore: unused_element
-EngineParamsFactory? _currentSetupFunction;
+WorkerSetup? _currentSetupFunction;
 
 /// Entry point for web workers - called when worker JS loads.
 ///
 /// Web workers start by calling the compiled main() function.
 /// Apps must call this with their setup function in worker.dart's main().
 ///
-/// The optional [workerInitializer] runs **before** engine setup, allowing
+/// The optional [onWorkerSpawn] runs **before** engine setup, allowing
 /// apps to configure logging or other worker-global state. Must be a
 /// **top-level function** (not a closure) for native platform compatibility.
 ///
@@ -440,10 +442,10 @@ EngineParamsFactory? _currentSetupFunction;
 ///   });
 /// }
 /// ```
-void workerMain(EngineParamsFactory setupFn, {void workerInitializer()?}) {
-  if (workerInitializer != null) {
+void workerMain(WorkerSetup setupFn, {void onWorkerSpawn()?}) {
+  if (onWorkerSpawn != null) {
     try {
-      workerInitializer();
+      onWorkerSpawn();
     } catch (e, st) {
       // Print to stderr since logger might not be configured yet if initializer failed
       // ignore: avoid_print
@@ -459,13 +461,10 @@ void workerMain(EngineParamsFactory setupFn, {void workerInitializer()?}) {
 }
 
 /// Entry point for native isolates - receives factory via parameter.
-
-/// Entry point for native isolates - receives factory via parameter.
 ///
 /// This is called by NativeWorkerHandle after Isolate.spawn().
 /// The factory function is passed in spawn, config arrives via first message.
-void startWorkerIsolate(
-    SendPort mainSendPort, EngineParamsFactory factory) async {
+void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
   // 1. Establish bidirectional communication
   final receivePort = ReceivePort();
   mainSendPort.send(receivePort.sendPort);
@@ -515,7 +514,9 @@ void startWorkerIsolate(
 
   // 5. Call app's setup function and initialize SyncEngine
   try {
-    final engineParams = await factory(receivedConfig, context);
+    final workerParams = await workerSetup();
+    final engineParams =
+        await toEngineParams(workerParams, context, receivedConfig);
     final syncSystem = await SyncEngine.create(
         config: receivedConfig, engineParams: engineParams);
     context.setSyncSystem(syncSystem);

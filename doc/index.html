@@ -479,7 +479,7 @@
 }
 
 <span class="code-comment">// 3. Set up the sync system</span>
-<span class="code-keyword">final</span> locorda = <span class="code-keyword">await</span> Locorda.create(
+<span class="code-keyword">final</span> locorda = <span class="code-keyword">await</span> Locorda.createSingleThreaded(
   storage: DriftStorage(
     native: DriftNativeOptions(),
     web: DriftWebOptions(

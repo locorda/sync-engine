@@ -1,0 +1,52 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix gdrive: <https://w3id.org/solid-crdt-sync/vocab/gdrive#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+# --- Ontology Definition ---
+
+<https://w3id.org/solid-crdt-sync/vocab/gdrive> a owl:Ontology;
+    rdfs:label "Locorda Google Drive Backend Vocabulary";
+    rdfs:comment "Vocabulary for mapping semantic RDF types to Google Drive folder structures in the locorda CRDT synchronization framework." ;
+    owl:versionInfo "0.1.0-dev" .
+
+# --- Class Definitions ---
+
+gdrive:TypeIndex a rdfs:Class;
+    rdfs:label "Google Drive Type Index";
+    rdfs:comment "A mapping document that defines how semantic RDF types are organized in Google Drive folders. Similar to Solid's Type Index but specific to Google Drive folder structures. Located in the app's root folder.";
+    rdfs:subClassOf foaf:Document .
+
+gdrive:TypeMapping a rdfs:Class;
+    rdfs:label "Type Mapping";
+    rdfs:comment "Maps a semantic RDF class (e.g., schema:Recipe) to a Google Drive folder structure. Includes both human-readable folder names and Drive API folder IDs." .
+
+
+
+# --- Property Definitions ---
+
+gdrive:hasTypeMapping a rdf:Property;
+    rdfs:label "has type mapping";
+    rdfs:comment "Links the Type Index document to individual type mapping entries.";
+    rdfs:domain gdrive:TypeIndex;
+    rdfs:range gdrive:TypeMapping .
+
+gdrive:forType a rdf:Property;
+    rdfs:label "for type";
+    rdfs:comment "The semantic RDF class that this mapping applies to (e.g., schema:Recipe, schema:Note).";
+    rdfs:domain gdrive:TypeMapping;
+    rdfs:range rdfs:Class .
+
+gdrive:driveFolder a rdf:Property;
+    rdfs:label "drive folder";
+    rdfs:comment "Human-readable folder name (relative path from app root) where resources of this type are stored (e.g., 'recipes', 'notes/personal').";
+    rdfs:domain gdrive:TypeMapping;
+    rdfs:range xsd:string .
+
+gdrive:driveFolderId a rdf:Property;
+    rdfs:label "drive folder ID";
+    rdfs:comment "Google Drive API folder ID where resources of this type are stored. Used for efficient API queries.";
+    rdfs:domain gdrive:TypeMapping;
+    rdfs:range xsd:string .

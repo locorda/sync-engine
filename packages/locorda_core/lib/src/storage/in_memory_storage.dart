@@ -47,7 +47,7 @@ class _WatchController<T> {
 /// ## Example
 ///
 /// ```dart
-/// final locorda = await Locorda.create(
+/// final locorda = await StandardSyncEngine.create(
 ///   storage: InMemoryStorage(),
 ///   backends: [InMemoryBackend()],
 ///   config: LocordaConfig(resources: [...]),

@@ -64,6 +64,11 @@ class _SolidLoginScreenState extends State<SolidLoginScreen> {
       if (!mounted) return;
 
       widget.onLoginSuccess?.call(userInfo);
+
+      // Close login screen and signal success
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
     } catch (e, stackTrace) {
       _log.severe('Authentication failed', e, stackTrace);
       if (!mounted) return;

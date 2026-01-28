@@ -1,22 +1,21 @@
 import 'package:collection/collection.dart';
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_core/src/index/index_config_base.dart';
-import 'package:locorda_core/src/local_document_merger.dart';
-import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/hlc_service.dart';
+import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/index/index_manager.dart';
 import 'package:locorda_core/src/index/index_rdf_generator.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart';
+import 'package:locorda_core/src/local_document_merger.dart';
 import 'package:locorda_core/src/mapping/merge_contract.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:locorda_core/src/storage/remote_storage.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
 import 'package:locorda_core/src/sync/remote_document_merger.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
 import 'package:locorda_core/src/util/retry.dart';
-import 'package:logging/logging.dart';
+import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:logging/logging.dart';
 
 final _log = Logger('RemoteSyncOrchestrator');
 
@@ -143,7 +142,8 @@ final class _DocumentQueueEntry {
 /// Assumes Phase 0 (Sync Preparation) has already been completed by
 /// _ensureShardDocumentsAreUpToDate, which materialized shard state in DB.
 class RemoteSyncOrchestrator {
-  final RemoteStorage _remoteStorage;
+  final RemoteSyncStorage _remoteSyncStorage;
+  final RemoteId _remoteId;
   final Storage _storage;
   final RemoteDocumentMerger _merger;
   final SyncEngineConfig _config;
@@ -156,7 +156,8 @@ class RemoteSyncOrchestrator {
   final ShardDocumentGenerator _shardDocumentGenerator;
   final PhysicalTimestampFactory _physicalTimestampFactory;
   RemoteSyncOrchestrator({
-    required RemoteStorage remoteStorage,
+    required RemoteSyncStorage remoteSyncStorage,
+    required RemoteId remoteId,
     required Storage storage,
     required RemoteDocumentMerger merger,
     required SyncEngineConfig config,
@@ -168,7 +169,8 @@ class RemoteSyncOrchestrator {
     required LocalDocumentMerger localDocumentMerger,
     required ShardDocumentGenerator shardDocumentGenerator,
     required PhysicalTimestampFactory physicalTimestampFactory,
-  })  : _remoteStorage = remoteStorage,
+  })  : _remoteSyncStorage = remoteSyncStorage,
+        _remoteId = remoteId,
         _storage = storage,
         _merger = merger,
         _config = config,
@@ -306,11 +308,11 @@ class RemoteSyncOrchestrator {
   }) async {
     // 1. Conditional GET
     final cachedETag = await _storage.getRemoteETag(
-      _remoteStorage.remoteId,
+      _remoteId,
       documentIri,
     );
 
-    final downloadResult = await _remoteStorage.download(
+    final downloadResult = await _remoteSyncStorage.download(
       documentIri,
       ifNoneMatch: cachedETag,
     );
@@ -498,7 +500,7 @@ class RemoteSyncOrchestrator {
     required DateTime syncTime,
     String debugName = '',
   }) async {
-    final uploadResult = await _remoteStorage.upload(
+    final uploadResult = await _remoteSyncStorage.upload(
       documentIri,
       documentToUpload,
       ifMatch: etag,
@@ -542,7 +544,7 @@ class RemoteSyncOrchestrator {
     // we need to update the stored ETag for future conditional requests.
     // Success - cache new ETag
     await _storage.setRemoteETag(
-      _remoteStorage.remoteId,
+      _remoteId,
       documentIri,
       mergedETag,
     );
@@ -752,8 +754,7 @@ class RemoteSyncOrchestrator {
     required Set<IriTerm> configuredIndexIris,
   }) async {
     // Get last sync timestamp to find dirty entries
-    final lastSync =
-        await _storage.getLastRemoteSyncTimestamp(_remoteStorage.remoteId);
+    final lastSync = await _storage.getLastRemoteSyncTimestamp(_remoteId);
 
     // Query for foreign index shards
     // This finds indices (not in configured set) with:

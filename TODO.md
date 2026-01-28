@@ -115,7 +115,9 @@
 - [x] Token refresh?
 - [x] UI: User is stuck with refresh button
 - [x] Remove extraOidcScopes from notes_list_screen (and client profile jsonld) again and verify it still works correctly
-- [ ] Example App Responsiveness: offload syncing from ui thread to web worker on web
+- [x] Example App Responsiveness: offload syncing from ui thread to web worker on web
+- [ ] Implement GDrive Backend
+- [ ] GDrive Backend: we have to search by name all the time - this seems very inefficient, especially for group indices and shards where the id is a relative path. Is there some better solution?
 - [ ] AutoSync - throttle sync after authorization (login)
 - [ ] AutoSync - throttled sync after changes (save)
 - [ ] Optimize: check after merge if merged result differs from remote and upload only if it does
@@ -171,6 +173,22 @@
 ## Later
 - [ ] Implement namespace in Resource Identity => maybe later
 - [ ] Final check if the spec in ARCHITECTURE.md is fully implemented
+
+## Future Feature Ideas
+
+### Auto-Generated Worker Configuration
+- [ ] Investigate automatic generation of worker.dart to eliminate parallel configuration
+  - **Problem**: Currently storage and remotes must be configured separately on main and worker sides
+  - **Idea**: Use code generation (similar to existing builder) to automatically generate worker.dart from main-side configuration
+  - **Benefits**: 
+    - DRY principle - single source of truth for backend configuration
+    - Reduced error potential - no manual synchronization needed between main/worker
+    - Better maintainability - changing backends only requires main-side update
+  - **Challenges**:
+    - Worker-specific configuration (e.g., WorkerContext dependencies)
+    - Platform-specific options (web vs native)
+    - Build-time vs runtime flexibility trade-offs
+  - **Related**: We already have builder infrastructure (locorda_builder package)
 
 ## Done
 - [x] Migrate to W3ID.org permanent IRIs

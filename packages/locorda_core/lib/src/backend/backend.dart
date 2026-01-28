@@ -8,4 +8,6 @@ abstract interface class Backend {
 
   /// Remote storage operations (GET/PUT/DELETE)
   List<RemoteStorage> get remotes;
+
+  Future<void> dispose();
 }

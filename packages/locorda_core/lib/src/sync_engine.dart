@@ -5,13 +5,9 @@ import 'dart:async';
 
 import 'package:http/http.dart' as http;
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_core/src/hlc_service.dart';
-import 'package:locorda_core/src/index/group_index_subscription_manager.dart';
-import 'package:locorda_core/src/installation_service.dart'
-    show InstallationIdFactory;
-import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
-import 'package:locorda_core/src/standard_sync_engine.dart';
-import 'package:locorda_rdf_core/core.dart';
+
+import 'package:locorda_rdf_core/core.dart'
+    show RdfCore, IriTerm, RdfGraph, IriTermFactory;
 
 typedef IdentifiedGraph = (IriTerm id, RdfGraph graph);
 typedef HydrationBatch = ({

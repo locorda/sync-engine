@@ -39,6 +39,59 @@
 library locorda;
 
 // Re-export the main API from core
-export 'src/config/locorda_config.dart';
-export 'src/driftworker/drift_native_options_connector.dart';
-export 'src/locorda.dart' show Locorda, TypedHydrationBatch;
+export 'package:locorda_flutter_core/locorda_flutter_core.dart'
+    show LocordaGraph;
+export 'package:locorda_flutter/locorda_flutter.dart' show Locorda;
+export 'package:locorda_drift/locorda_drift.dart' show DriftMainHandler;
+export 'package:locorda_gdrive/locorda_gdrive.dart'
+    show GDriveMainHandler, GDriveAuth, GDriveAuthProvider, GDriveLocalizations;
+export 'package:locorda_solid/locorda_solid.dart' show SolidMainHandler;
+export 'package:locorda_solid_auth/locorda_solid_auth.dart'
+    show SolidAuthLocalizations;
+export 'package:locorda_objects/locorda_objects.dart'
+    show
+        CrdtIndex,
+        FullIndex,
+        GroupIndex,
+        GroupingProperty,
+        IndexItem,
+        ItemFetchPolicy,
+        LocordaConfig,
+        ObjectSyncEngine,
+        RegexTransform,
+        ResourceConfig,
+        defaultIndexLocalName,
+        MapperInitializerFunction,
+        TypedHydrationBatch;
+export 'package:locorda_core/locorda_core.dart'
+    show SyncManager, ItemFetchPolicy, SyncEngine, SyncEngineConfig;
+export 'package:locorda_ui/locorda_ui.dart'
+    show
+        LocordaUILocalizations,
+        LocordaStatusDefaults,
+        LocordaStatusWidget,
+        LocordaStatusState,
+        MultiBackendStatusWidget,
+        RemoteUiAdapter,
+        UiAdapterRegistry,
+        SyncRefreshIndicator;
+export 'package:locorda_worker/worker_main.dart'
+    show
+        RemoteMainHandler,
+        StorageMainHandler,
+        WorkerPlugin,
+        WorkerPluginFactory;
+export 'package:locorda_annotations/locorda_annotations.dart'
+    show
+        CrdtImmutable,
+        CrdtLwwRegister,
+        CrdtOrSet,
+        IndexItemIriStrategy,
+        LcrdGroupKey,
+        LcrdIndexItem,
+        LcrdRootResource,
+        LcrdRootResourceRef,
+        LcrdSubResource,
+        McIdentifying,
+        RootIriStrategy,
+        SubIriStrategy;

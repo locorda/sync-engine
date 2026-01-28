@@ -5,9 +5,10 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_solid/locorda_solid.dart';
+
 import 'package:logging/logging.dart';
 import 'package:solid_auth/solid_auth.dart';
+import 'package:locorda_solid_core/locorda_solid_core.dart';
 
 final _log = Logger('SolidAuthBridge');
 

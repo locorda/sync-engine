@@ -1,0 +1,11 @@
+{
+  "@@locale": "de",
+  "connectToGoogleDrive": "Mit Google Drive verbinden",
+  "syncAcrossDevices": "Geräteübergreifend synchronisieren",
+  "signInWithGoogle": "Mit Google anmelden",
+  "connect": "Verbinden",
+  "cancel": "Abbrechen",
+  "errorConnectingGoogleDrive": "Fehler beim Verbinden mit Google Drive: {error}",
+  "noAccount": "Noch kein Google-Konto?",
+  "createAccount": "Konto erstellen"
+}

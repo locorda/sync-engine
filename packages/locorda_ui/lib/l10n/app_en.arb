@@ -41,5 +41,27 @@
   "retrySync": "Retry Sync",
   "@retrySync": {
     "description": "Button text to retry failed sync"
+  },
+  "storageBackends": "Storage Backends",
+  "@storageBackends": {
+    "description": "Title for storage backend selection"
+  },
+  "connect": "Connect",
+  "@connect": {
+    "description": "Button text to connect to a backend"
+  },
+  "disconnect": "Disconnect",
+  "@disconnect": {
+    "description": "Button text to disconnect from a backend"
+  },
+  "errorDisconnecting": "Error disconnecting: {error}",
+  "@errorDisconnecting": {
+    "description": "Error message when disconnection fails",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "description": "The error message"
+      }
+    }
   }
 }

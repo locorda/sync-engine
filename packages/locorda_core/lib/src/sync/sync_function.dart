@@ -31,17 +31,22 @@ class SyncFunction {
   final ShardDocumentGenerator _shardDocumentGenerator;
   final Storage _storage;
   final List<Backend> _backends;
-  final RemoteSyncOrchestrator Function(RemoteStorage remote)
+  final SyncEngineConfig _config;
+  final RemoteSyncOrchestrator Function(
+          RemoteSyncStorage syncStorage, RemoteId remoteId)
       _remoteSyncOrchestratorFactory;
 
   SyncFunction({
     required List<Backend> backends,
     required Storage storage,
-    required RemoteSyncOrchestrator Function(RemoteStorage remote)
+    required SyncEngineConfig config,
+    required RemoteSyncOrchestrator Function(
+            RemoteSyncStorage syncStorage, RemoteId remoteId)
         remoteSyncOrchestratorFactory,
     required ShardDocumentGenerator shardDocumentGenerator,
   })  : _backends = backends,
         _storage = storage,
+        _config = config,
         _shardDocumentGenerator = shardDocumentGenerator,
         _remoteSyncOrchestratorFactory = remoteSyncOrchestratorFactory;
 
@@ -106,8 +111,14 @@ class SyncFunction {
           return;
         }
 
+        // Create sync session with backend (e.g., load type index)
+        _log.fine(
+            'Creating sync storage session for backend: ${remote.remoteId}');
+        final remoteSyncStorage = await remote.createSyncStorage(_config);
+
         final remoteSyncOrchestrator = _remoteSyncOrchestratorFactory(
-          remote,
+          remoteSyncStorage,
+          remote.remoteId,
         );
 
         _log.info('Starting Phase A+B: Remote Synchronization');
@@ -124,6 +135,9 @@ class SyncFunction {
           // Don't update any timestamps on failure - will retry next sync
           // FIXME: Really rethrow? Shouldn't we just log and continue with next remote?
           rethrow;
+        } finally {
+          // Always finalize, even on error
+          await remoteSyncStorage.finalizeSync();
         }
       }
     }

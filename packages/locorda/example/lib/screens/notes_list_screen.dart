@@ -3,30 +3,27 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:locorda/locorda.dart';
-import 'package:solid_auth/solid_auth.dart';
-import 'package:locorda_solid_auth/locorda_solid_auth.dart';
-import 'package:locorda_solid_ui/locorda_ui.dart';
 
-import '../models/note_index_entry.dart';
 import '../models/category.dart' as models;
 import '../models/note_group_key.dart';
-import '../services/notes_service.dart';
+import '../models/note_index_entry.dart';
 import '../services/categories_service.dart';
+import '../services/notes_service.dart';
 import 'categories_screen.dart';
 import 'note_editor_screen.dart';
 
 class NotesListScreen extends StatefulWidget {
   final NotesService notesService;
   final CategoriesService categoriesService;
-  final SolidAuth solidAuth;
-  final Locorda syncSystem;
+  final UiAdapterRegistry uiAdapterRegistry;
+  final SyncManager syncManager;
 
   const NotesListScreen({
     super.key,
     required this.notesService,
     required this.categoriesService,
-    required this.solidAuth,
-    required this.syncSystem,
+    required this.uiAdapterRegistry,
+    required this.syncManager,
   });
 
   @override
@@ -349,15 +346,15 @@ class _NotesListScreenState extends State<NotesListScreen> {
             icon: const Icon(Icons.category),
             tooltip: 'Manage Categories',
           ),
-          // Solid connection and sync status
-          SolidStatusWidget(
-            solidAuth: widget.solidAuth,
-            syncManager: widget.syncSystem.syncManager,
+          // Multi-backend connection and sync status
+          MultiBackendStatusWidget(
+            registry: widget.uiAdapterRegistry,
+            syncManager: widget.syncManager,
           ),
         ],
       ),
       body: SyncRefreshIndicator(
-        syncManager: widget.syncSystem.syncManager,
+        syncManager: widget.syncManager,
         onSyncComplete: () {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(

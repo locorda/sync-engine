@@ -152,6 +152,30 @@ abstract class LocordaUILocalizations {
   /// In en, this message translates to:
   /// **'Retry Sync'**
   String get retrySync;
+
+  /// Title for storage backend selection
+  ///
+  /// In en, this message translates to:
+  /// **'Storage Backends'**
+  String get storageBackends;
+
+  /// Button text to connect to a backend
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get connect;
+
+  /// Button text to disconnect from a backend
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get disconnect;
+
+  /// Error message when disconnection fails
+  ///
+  /// In en, this message translates to:
+  /// **'Error disconnecting: {error}'**
+  String errorDisconnecting(String error);
 }
 
 class _LocordaUILocalizationsDelegate

@@ -28,7 +28,7 @@ class CommentMapper implements GlobalResourceMapper<comment.Comment> {
 
   /// Constructor
   const CommentMapper({required String Function() rootResourceIriProvider})
-      : _rootResourceIriProvider = rootResourceIriProvider;
+    : _rootResourceIriProvider = rootResourceIriProvider;
 
   @override
   IriTerm? get typeIri => Schema.Comment;

@@ -23,6 +23,7 @@ dependencies:
   flutter:
     sdk: flutter
   locorda_core: any
+  locorda_worker: any
   drift: ^2.28.1
   drift_flutter: ^0.2.7
   sqlite3_flutter_libs: ^0.5.39

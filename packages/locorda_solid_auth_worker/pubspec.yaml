@@ -15,7 +15,7 @@ dependencies:
     sdk: flutter
   locorda_core: any
   locorda_worker: any
-  locorda_solid: any
+  locorda_solid_core: any
 # Solid AUTH
   # TODO: Use published version when available
   solid_auth:

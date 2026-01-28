@@ -27,15 +27,8 @@ dependencies:
       
   # Solid CRDT Sync packages
   locorda: any
-  locorda_annotations: any
   locorda_core: any
-  locorda_solid_auth: any
-  locorda_solid: any
-  locorda_solid_ui: any
-  locorda_ui: any
-  locorda_drift: any
-  locorda_worker: any
-  locorda_solid_auth_worker: any
+  locorda_annotations: any
 
   # RDF mapping
   locorda_rdf_core: ^0.11.4
@@ -63,7 +56,7 @@ dev_dependencies:
   drift_dev: ^2.19.0
   locorda_rdf_mapper_generator: ^0.11.4
   locorda_builder: any
-
+  
 flutter:
   uses-material-design: true
 

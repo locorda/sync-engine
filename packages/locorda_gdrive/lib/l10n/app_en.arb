@@ -1,0 +1,41 @@
+{
+  "@@locale": "en",
+  "connectToGoogleDrive": "Connect to Google Drive",
+  "@connectToGoogleDrive": {
+    "description": "Title for the Google Drive login screen"
+  },
+  "syncAcrossDevices": "Sync Across Devices",
+  "@syncAcrossDevices": {
+    "description": "Subtitle explaining the purpose"
+  },
+  "signInWithGoogle": "Sign in with Google",
+  "@signInWithGoogle": {
+    "description": "Button text to sign in"
+  },
+  "connect": "Connect",
+  "@connect": {
+    "description": "Button text to initiate connection"
+  },
+  "cancel": "Cancel",
+  "@cancel": {
+    "description": "Button text to cancel"
+  },
+  "errorConnectingGoogleDrive": "Error connecting to Google Drive: {error}",
+  "@errorConnectingGoogleDrive": {
+    "description": "Error message when connection fails",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "description": "The error message"
+      }
+    }
+  },
+  "noAccount": "Don't have a Google Account?",
+  "@noAccount": {
+    "description": "Text asking if user doesn't have account"
+  },
+  "createAccount": "Create Account",
+  "@createAccount": {
+    "description": "Button text to create account"
+  }
+}

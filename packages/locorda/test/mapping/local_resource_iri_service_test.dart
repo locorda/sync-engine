@@ -1,10 +1,9 @@
-import 'package:locorda/src/config/locorda_config_util.dart';
+import 'package:locorda_objects/src/config/locorda_config_util.dart';
+import 'package:locorda_objects/src/mapping/local_resource_iri_service.dart';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_rdf_mapper/mapper.dart';
 import 'package:test/test.dart';
-
-import '../../../locorda/lib/src/mapping/local_resource_iri_service.dart';
 
 // Mock types for testing
 class TestNote {}

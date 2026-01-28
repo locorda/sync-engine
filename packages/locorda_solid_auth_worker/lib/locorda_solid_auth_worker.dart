@@ -35,7 +35,5 @@
 /// ```
 library;
 
-export 'src/worker/solid/solid_auth_connector.dart' show SolidAuthConnector;
-export 'src/worker/solid/solid_auth_messages.dart' show UpdateAuthMessage;
-export 'src/worker/solid/worker_solid_auth_provider.dart'
-    show SolidAuthReceiver;
+export 'src/main/solid_auth_connector.dart' show SolidAuthConnector;
+export 'src/shared/solid_auth_messages.dart' show UpdateAuthMessage;

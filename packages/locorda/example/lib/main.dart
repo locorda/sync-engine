@@ -12,9 +12,8 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:locorda/locorda.dart';
-import 'package:locorda_solid_auth/locorda_solid_auth.dart';
-import 'package:locorda_solid_auth_worker/locorda_solid_auth_worker.dart';
-import 'package:locorda_ui/locorda_ui.dart';
+import 'package:locorda_rdf_terms_schema/schema.dart';
+
 import 'package:personal_notes_app/init_rdf_mapper.g.dart';
 import 'package:personal_notes_app/models/category.dart';
 import 'package:personal_notes_app/models/note.dart';
@@ -22,7 +21,6 @@ import 'package:personal_notes_app/models/note_group_key.dart';
 import 'package:personal_notes_app/models/note_index_entry.dart';
 import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
 import 'package:personal_notes_app/worker.dart';
-import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:solid_auth/solid_auth.dart';
 
 import 'screens/notes_list_screen.dart';
@@ -53,19 +51,23 @@ void main() async {
 /// - Returns a fully configured sync system
 Future<Locorda> initializeLocorda({
   required SolidAuth solidAuth,
+  required GDriveAuth gdriveAuth,
 }) {
   // Setup sync system with worker
+  return Locorda.create(
+    workerSetup: setupWorkerEngine,
+    onWorkerSpawn: setupWorkerLogging,
 
-  return Locorda.createWithWorker(
-    engineParamsFactory: createEngineParams,
-    workerInitializer: setupWorkerLogging,
-
-    // Create bridge to sync Backend and Storage configs from main to worker
-    plugins: [
-      SolidAuthConnector.sender(solidAuth),
-      DriftNativeOptionsConnector.sender(),
+    // Provide remotes - those must be configured correspondingly in setupWorkerEngine as well
+    remotes: [
+      SolidMainHandler(solidAuth: solidAuth),
+      GDriveMainHandler(gdriveAuth: gdriveAuth),
     ],
 
+    // Provide storage - we have configured drift in setupWorkerEngine
+    storage: DriftMainHandler(),
+
+    // TODO: this should be able to reference generated code, like `mapperInitializer: mapperInitializer,`
     mapperInitializer: (context) => initRdfMapper(
         rdfMapper: context.baseRdfMapper,
         $indexItemIriFactory: context.indexItemIriFactory,
@@ -125,8 +127,12 @@ class PersonalNotesApp extends StatelessWidget {
         ...GlobalMaterialLocalizations.delegates,
         SolidAuthLocalizations.delegate,
         LocordaUILocalizations.delegate,
+        GDriveLocalizations.delegate,
       ],
-      supportedLocales: SolidAuthLocalizations.supportedLocales,
+      supportedLocales: SolidAuthLocalizations.supportedLocales
+          .toSet()
+          .intersection(GDriveLocalizations.supportedLocales.toSet())
+          .intersection(LocordaUILocalizations.supportedLocales.toSet()),
       home: const AppInitializer(),
     );
   }
@@ -141,13 +147,12 @@ class AppInitializer extends StatefulWidget {
 
 class _AppInitializerState extends State<AppInitializer>
     with WidgetsBindingObserver {
-  Locorda? syncSystem;
+  Locorda? locorda;
   AppDatabase? appDatabase;
   CategoryRepository? categoryRepository;
   NoteRepository? noteRepository;
   NotesService? notesService;
   CategoriesService? categoriesService;
-  SolidAuth? solidAuth;
   String? errorMessage;
   bool isInitializing = true;
 
@@ -163,7 +168,7 @@ class _AppInitializerState extends State<AppInitializer>
     categoryRepository?.dispose();
     noteRepository?.dispose();
     await appDatabase?.close();
-    await syncSystem?.close();
+    await locorda?.close();
   }
 
   @override
@@ -195,38 +200,44 @@ class _AppInitializerState extends State<AppInitializer>
       // - appUrlScheme provides secure custom URI scheme for mobile/macOS
       // - frontendRedirectUrl provides secure HTTPS redirect for web
       // See spec/docs/SECURITY.md for detailed security considerations
-      final solidAuthInstance = SolidAuth(
+      final solidAuth = SolidAuth(
           oidcClientId: '$appBaseUrl/auth/client-config.json',
           appUrlScheme: 'dev.locorda.personalnotes',
           frontendRedirectUrl: Uri.parse(
               '${kDebugMode ? 'http://localhost:3815' : appBaseUrl}/redirect.html'));
-      await solidAuthInstance.init();
+      await solidAuth.init();
+
+      final gdriveAuth = await GDriveAuth.create();
 
       // Initialize the CRDT sync system with worker architecture
       // This runs heavy operations (CRDT, DB, HTTP, DPoP) in separate isolate/worker
-      final syncSys = await initializeLocorda(solidAuth: solidAuthInstance);
+      final locorda =
+          await initializeLocorda(solidAuth: solidAuth, gdriveAuth: gdriveAuth);
 
       // Initialize app database (Drift)
       final appDb = AppDatabase(web: webOptions);
 
       // Initialize repositories with database DAOs, cursor DAO, and sync system, hydrating existing data
       final categoryRepo = await CategoryRepository.create(
-          appDb.categoryDao, appDb.cursorDao, syncSys);
-      final noteRepo = await NoteRepository.create(appDb.noteDao,
-          appDb.commentDao, appDb.noteIndexEntryDao, appDb.cursorDao, syncSys);
+          appDb.categoryDao, appDb.cursorDao, locorda.syncEngine);
+      final noteRepo = await NoteRepository.create(
+          appDb.noteDao,
+          appDb.commentDao,
+          appDb.noteIndexEntryDao,
+          appDb.cursorDao,
+          locorda.syncEngine);
 
       // Initialize services with repositories
       final notesSvc = NotesService(noteRepo);
       final categoriesSvc = CategoriesService(categoryRepo);
 
       setState(() {
-        syncSystem = syncSys;
+        this.locorda = locorda;
         appDatabase = appDb;
         categoryRepository = categoryRepo;
         noteRepository = noteRepo;
         notesService = notesSvc;
         categoriesService = categoriesSvc;
-        solidAuth = solidAuthInstance;
         isInitializing = false;
       });
     } catch (e) {
@@ -295,8 +306,8 @@ class _AppInitializerState extends State<AppInitializer>
     return NotesListScreen(
       notesService: notesService!,
       categoriesService: categoriesService!,
-      solidAuth: solidAuth!,
-      syncSystem: syncSystem!,
+      uiAdapterRegistry: locorda!.uiAdapterRegistry,
+      syncManager: locorda!.syncManager,
     );
   }
 }

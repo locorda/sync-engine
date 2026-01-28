@@ -30,6 +30,12 @@
       "source": "../../spec/vocabularies/solid-extensions.ttl",
       "generate": true
     },
+    "gdrive": {
+      "type": "file",
+      "namespace": "https://w3id.org/solid-crdt-sync/vocab/gdrive#",
+      "source": "../../spec/vocabularies/gdrive.ttl",
+      "generate": true
+    },
     "sync": {
       "type": "file",
       "namespace": "https://w3id.org/solid-crdt-sync/vocab/sync#",

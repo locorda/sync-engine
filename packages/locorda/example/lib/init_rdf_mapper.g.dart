@@ -37,7 +37,7 @@ RdfMapper initRdfMapper({
   RdfMapper? rdfMapper,
   required IriTermMapper<(String id,)> Function<T>(Type) $indexItemIriFactory,
   required IriTermMapper<(String id,)> Function<T>(locorda_core.RootIriConfig)
-      $resourceIriFactory,
+  $resourceIriFactory,
   required IriTermMapper<String> Function<T>(Type) $resourceRefFactory,
 }) {
   if (rdfMapper == null) {

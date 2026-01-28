@@ -1,18 +1,15 @@
 import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_worker/src/worker/worker_entry_point.dart';
-import 'package:locorda_worker/src/worker/locorda_worker.dart';
-import 'package:locorda_worker/src/worker/locorda_worker_impl_native.dart'
+import 'package:locorda_worker/src/main/locorda_worker.dart';
+import 'package:locorda_worker/src/main/locorda_worker_impl_native.dart'
     if (dart.library.html) 'package:locorda_worker/src/worker/locorda_worker_impl_web.dart'
     as impl;
+import 'package:locorda_worker/worker.dart';
 import 'package:test/test.dart';
 
-Future<EngineParams> _createEngineParams(
-  SyncEngineConfig config,
-  WorkerContext context,
-) async =>
-    EngineParams(storage: InMemoryStorage(), backends: []);
+Future<WorkerParams> _setupWorker() async =>
+    WorkerParams(storage: InMemoryStorageWorkerHandler(), remotes: []);
 
 SyncEngineConfig _createTestConfig() => SyncEngineConfig(
       resources: [],
@@ -20,13 +17,13 @@ SyncEngineConfig _createTestConfig() => SyncEngineConfig(
 
 /// Helper to create worker without plugins (for simple tests)
 Future<LocordaWorker> _createWorker({
-  required EngineParamsFactory engineParamsFactory,
+  required WorkerSetup workerSetup,
   required SyncEngineConfig config,
   required String jsScript,
   String? debugName,
 }) {
   return impl.createImpl(
-    engineParamsFactory,
+    workerSetup,
     config,
     jsScript,
     debugName,
@@ -38,7 +35,7 @@ void main() {
   group('LocordaWorker (platform-agnostic)', () {
     test('creates worker on current platform', () async {
       final worker = await _createWorker(
-        engineParamsFactory: _createEngineParams,
+        workerSetup: _setupWorker,
         config: _createTestConfig(),
         jsScript: 'worker.dart.js', // Ignored on native
         debugName: 'test-worker',
@@ -51,7 +48,7 @@ void main() {
 
     test('provides message stream', () async {
       final worker = await _createWorker(
-        engineParamsFactory: _createEngineParams,
+        workerSetup: _setupWorker,
         config: _createTestConfig(),
         jsScript: 'worker.dart.js',
       );
@@ -63,7 +60,7 @@ void main() {
 
     test('allows sending messages', () async {
       final worker = await _createWorker(
-        engineParamsFactory: _createEngineParams,
+        workerSetup: _setupWorker,
         config: _createTestConfig(),
         jsScript: 'worker.dart.js',
       );
@@ -80,7 +77,7 @@ void main() {
 
     test('disposes cleanly', () async {
       final worker = await _createWorker(
-        engineParamsFactory: _createEngineParams,
+        workerSetup: _setupWorker,
         config: _createTestConfig(),
         jsScript: 'worker.dart.js',
       );
@@ -90,14 +87,14 @@ void main() {
 
     test('can create multiple workers', () async {
       final worker1 = await _createWorker(
-        engineParamsFactory: _createEngineParams,
+        workerSetup: _setupWorker,
         config: _createTestConfig(),
         jsScript: 'worker.dart.js',
         debugName: 'worker-1',
       );
 
       final worker2 = await _createWorker(
-        engineParamsFactory: _createEngineParams,
+        workerSetup: _setupWorker,
         config: _createTestConfig(),
         jsScript: 'worker.dart.js',
         debugName: 'worker-2',

@@ -8,5 +8,9 @@
   "signOut": "Abmelden",
   "syncNow": "Jetzt synchronisieren",
   "retrySync": "Synchronisierung erneut versuchen",
-  "syncError": "Synchronisierungsfehler"
+  "syncError": "Synchronisierungsfehler",
+  "storageBackends": "Speicher-Backends",
+  "connect": "Verbinden",
+  "disconnect": "Trennen",
+  "errorDisconnecting": "Fehler beim Trennen: {error}"
 }

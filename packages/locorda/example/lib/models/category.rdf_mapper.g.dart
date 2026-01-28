@@ -27,7 +27,7 @@ class CategoryMapper implements GlobalResourceMapper<category.Category> {
 
   /// Constructor
   const CategoryMapper({required IriTermMapper<(String id,)> iriMapper})
-      : _iriMapper = iriMapper;
+    : _iriMapper = iriMapper;
 
   @override
   IriTerm? get typeIri => PersonalNotesVocab.NotesCategory;
