@@ -75,6 +75,10 @@ void startWebWorkerLoop(WorkerSetup workerSetup) {
   });
   WorkerContext? context;
   bool isInitializing = false;
+  
+  // Helper callbacks for managing initialization state
+  void resetInitializing() => isInitializing = false;
+  void markAsInitializing() => isInitializing = true;
 
   // Set up message listener on web worker global scope
   workerGlobalScope.addEventListener(
@@ -111,7 +115,8 @@ void startWebWorkerLoop(WorkerSetup workerSetup) {
         workerSetup,
         channel,
         () => isInitializing,
-        () => isInitializing = true,
+        markAsInitializing,
+        resetInitializing,
       ).catchError((e, st) {
         // Log error and attempt to send error message to main thread
         _log.severe('Web worker error: $e\n$st');
@@ -141,6 +146,7 @@ Future<void> _handleWorkerMessage(
   WorkerChannel channel,
   bool Function() isInitializing,
   void Function() markInitializing,
+  void Function() resetInitializing,
 ) async {
   final context = getContext();
 
@@ -179,13 +185,18 @@ Future<void> _handleWorkerMessage(
       _postMessage('ready'.toJS);
       _log.info('Worker initialized and ready');
     } catch (e, st) {
+      // Log error with full details
+      _log.severe('Worker initialization failed: $e\n$st');
+      
       // Send error to main thread
       _postMessage({
         'type': 'error',
-        'error': 'Initialization failed: $e\n$st',
+        'error': 'Initialization failed: $e',
+        'stackTrace': '$st',
       }.jsify());
-      // Reset initialization flag
-      markInitializing();
+      
+      // CRITICAL: Reset initialization flag so worker can retry
+      resetInitializing();
     }
   } else {
     // Worker is initialized - handle framework messages
