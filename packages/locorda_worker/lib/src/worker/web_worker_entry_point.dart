@@ -28,10 +28,10 @@ String _sanitizeForLog(dynamic data) {
     final fieldCount = data.length;
 
     // For channel messages, show the nested data type
-    if (channelFlag == true && data['data'] is Map) {
+    if (channelFlag is String && data['data'] is Map) {
       final nestedData = data['data'] as Map;
       final nestedType = nestedData['type'];
-      return '__channel message: $nestedType (${nestedData.length} fields)';
+      return '__channel $channelFlag message: $nestedType (${nestedData.length} fields)';
     }
 
     return 'type: $type, fields: $fieldCount';
@@ -99,7 +99,7 @@ void startWebWorkerLoop(WorkerSetup workerSetup) {
 
       final messageData = data as Map<String,
           dynamic>; // Check if this is a channel message - route directly to channel (like native impl)
-      if (messageData['__channel'] is String && messageData['data'] != null) {
+      if (messageData['__channel'] is String) {
         channel.deliver(
             messageData['__channel'] as String, messageData['data']);
         return;

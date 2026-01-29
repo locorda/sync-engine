@@ -521,7 +521,7 @@ void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
     // After config received, handle normal messages
     if (config != null && message is Map<String, dynamic>) {
       // Check if it's a channel message
-      if (message['__channel'] is String && message['data'] != null) {
+      if (message['__channel'] is String) {
         channel.deliver(message['__channel'] as String, message['data']);
         return;
       }
