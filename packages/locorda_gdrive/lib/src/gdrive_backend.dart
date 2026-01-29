@@ -669,7 +669,7 @@ class GDriveBackend implements Backend {
   }
 
   @override
-  List<RemoteStorage> get remotes => [];
+  List<RemoteStorage> get remotes => _remotes;
 
   @override
   Future<void> dispose() async {

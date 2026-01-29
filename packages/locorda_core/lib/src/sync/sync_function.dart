@@ -108,7 +108,7 @@ class SyncFunction {
         final remoteAvailable = await remote.isAvailable();
         if (!remoteAvailable) {
           _log.info('Remote storage not available - skipping remote sync');
-          return;
+          continue;
         }
 
         // Create sync session with backend (e.g., load type index)
