@@ -79,7 +79,7 @@ class _WorkerAuthNotifier implements AuthValueListenable {
 /// }
 /// ```
 class SolidAuthReceiver implements SolidAuthProvider {
-  final WorkerChannel _channel;
+  final WorkerHandlerChannel _channel;
   final _WorkerAuthNotifier _notifier = _WorkerAuthNotifier();
   DpopCredentials? _credentials;
   String? _webId;

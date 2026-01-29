@@ -7,6 +7,7 @@ import Foundation
 
 import fast_rsa
 import flutter_appauth
+import google_sign_in_ios
 import oidc_macos
 import shared_preferences_foundation
 import simple_secure_storage_darwin
@@ -18,6 +19,7 @@ import window_to_front
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   FastRsaPlugin.register(with: registry.registrar(forPlugin: "FastRsaPlugin"))
   FlutterAppauthPlugin.register(with: registry.registrar(forPlugin: "FlutterAppauthPlugin"))
+  FLTGoogleSignInPlugin.register(with: registry.registrar(forPlugin: "FLTGoogleSignInPlugin"))
   OidcPlugin.register(with: registry.registrar(forPlugin: "OidcPlugin"))
   SharedPreferencesPlugin.register(with: registry.registrar(forPlugin: "SharedPreferencesPlugin"))
   SimpleSecureStoragePlugin.register(with: registry.registrar(forPlugin: "SimpleSecureStoragePlugin"))

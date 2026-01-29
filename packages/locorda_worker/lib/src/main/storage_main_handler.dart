@@ -22,7 +22,7 @@
 /// ```
 library;
 
-import 'worker_plugin.dart';
+import 'main_handler.dart';
 
 /// Main-thread handler for local storage backend.
 ///
@@ -35,5 +35,5 @@ abstract class StorageMainHandler {
   /// storage-related data to the worker thread. For most storage backends
   /// (like Drift), this returns an empty list as configuration is passed
   /// directly to [StorageWorkerHandler.create].
-  List<WorkerPluginFactory> create();
+  List<MainHandlerFactory> create();
 }

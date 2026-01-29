@@ -25,7 +25,7 @@ class SolidWorkerHandler implements RemoteWorkerHandler {
 
   @override
   Future<Backend> createBackend(
-          WorkerContext context, SyncEngineConfig config) async =>
+          WorkerHandlerContext context, SyncEngineConfig config) async =>
       SolidBackend(
         auth: SolidAuthConnector.receiver(context),
       );

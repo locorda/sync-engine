@@ -33,4 +33,8 @@ class GDriveLocalizationsDe extends GDriveLocalizations {
 
   @override
   String get createAccount => 'Konto erstellen';
+
+  @override
+  String get dataPrivacyNotice =>
+      'Ihre Daten werden auf Google-Server übertragen und dort gespeichert. Die Daten werden unverschlüsselt in Ihrem Google Drive gespeichert. Wir haben keine Kontrolle darüber, was Google mit Ihren Daten macht.';
 }

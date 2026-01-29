@@ -12084,437 +12084,320 @@
       _.__Sqlite3Delegate_versionDelegate_A = $;
       _.isInTransaction = false;
     },
+    DownloadRestriction$fromJson(json_) {
+      return new A.DownloadRestriction(A._asBoolQ(json_.$index(0, "restrictedForReaders")), A._asBoolQ(json_.$index(0, "restrictedForWriters")));
+    },
     FileLabelInfo$fromJson(json_) {
-      var t1;
-      if (json_.containsKey$1("labels")) {
-        t1 = J.map$1$1$ax(type$.List_dynamic._as(json_.$index(0, "labels")), new A.FileLabelInfo$fromJson_closure(), type$.Label);
-        t1 = A.List_List$_of(t1, t1.$ti._eval$1("ListIterable.E"));
-      } else
+      var t1 = type$.nullable_List_dynamic._as(json_.$index(0, "labels"));
+      if (t1 == null)
         t1 = null;
+      else {
+        t1 = J.map$1$1$ax(t1, new A.FileLabelInfo$fromJson_closure(), type$.Label);
+        t1 = A.List_List$_of(t1, t1.$ti._eval$1("ListIterable.E"));
+      }
       return new A.FileLabelInfo(t1);
     },
-    File$(appProperties, capabilities, contentHints, contentRestrictions, copyRequiresWriterPermission, createdTime, description, driveId, explicitlyTrashed, exportLinks, fileExtension, folderColorRgb, fullFileExtension, hasAugmentedPermissions, hasThumbnail, headRevisionId, iconLink, id, imageMediaMetadata, isAppAuthorized, kind, labelInfo, lastModifyingUser, linkShareMetadata, md5Checksum, mimeType, modifiedByMe, modifiedByMeTime, modifiedTime, $name, originalFilename, ownedByMe, owners, parents, permissionIds, permissions, properties, quotaBytesUsed, resourceKey, sha1Checksum, sha256Checksum, shared, sharedWithMeTime, sharingUser, shortcutDetails, size, spaces, starred, teamDriveId, thumbnailLink, thumbnailVersion, trashed, trashedTime, trashingUser, version, videoMediaMetadata, viewedByMe, viewedByMeTime, viewersCanCopyContent, webContentLink, webViewLink, writersCanShare) {
-      return new A.File(appProperties, capabilities, contentHints, contentRestrictions, copyRequiresWriterPermission, createdTime, description, driveId, explicitlyTrashed, exportLinks, fileExtension, folderColorRgb, fullFileExtension, hasAugmentedPermissions, hasThumbnail, headRevisionId, iconLink, id, imageMediaMetadata, isAppAuthorized, kind, labelInfo, lastModifyingUser, linkShareMetadata, md5Checksum, mimeType, modifiedByMe, modifiedByMeTime, modifiedTime, $name, originalFilename, ownedByMe, owners, parents, permissionIds, permissions, properties, quotaBytesUsed, resourceKey, sha1Checksum, sha256Checksum, shared, sharedWithMeTime, sharingUser, shortcutDetails, size, spaces, starred, teamDriveId, thumbnailLink, thumbnailVersion, trashed, trashedTime, trashingUser, version, videoMediaMetadata, viewedByMe, viewedByMeTime, viewersCanCopyContent, webContentLink, webViewLink, writersCanShare);
+    File$(appProperties, capabilities, contentHints, contentRestrictions, copyRequiresWriterPermission, createdTime, description, downloadRestrictions, driveId, explicitlyTrashed, exportLinks, fileExtension, folderColorRgb, fullFileExtension, hasAugmentedPermissions, hasThumbnail, headRevisionId, iconLink, id, imageMediaMetadata, inheritedPermissionsDisabled, isAppAuthorized, kind, labelInfo, lastModifyingUser, linkShareMetadata, md5Checksum, mimeType, modifiedByMe, modifiedByMeTime, modifiedTime, $name, originalFilename, ownedByMe, owners, parents, permissionIds, permissions, properties, quotaBytesUsed, resourceKey, sha1Checksum, sha256Checksum, shared, sharedWithMeTime, sharingUser, shortcutDetails, size, spaces, starred, teamDriveId, thumbnailLink, thumbnailVersion, trashed, trashedTime, trashingUser, version, videoMediaMetadata, viewedByMe, viewedByMeTime, viewersCanCopyContent, webContentLink, webViewLink, writersCanShare) {
+      return new A.File(appProperties, capabilities, contentHints, contentRestrictions, copyRequiresWriterPermission, createdTime, description, downloadRestrictions, driveId, explicitlyTrashed, exportLinks, fileExtension, folderColorRgb, fullFileExtension, hasAugmentedPermissions, hasThumbnail, headRevisionId, iconLink, id, imageMediaMetadata, inheritedPermissionsDisabled, isAppAuthorized, kind, labelInfo, lastModifyingUser, linkShareMetadata, md5Checksum, mimeType, modifiedByMe, modifiedByMeTime, modifiedTime, $name, originalFilename, ownedByMe, owners, parents, permissionIds, permissions, properties, quotaBytesUsed, resourceKey, sha1Checksum, sha256Checksum, shared, sharedWithMeTime, sharingUser, shortcutDetails, size, spaces, starred, teamDriveId, thumbnailLink, thumbnailVersion, trashed, trashedTime, trashingUser, version, videoMediaMetadata, viewedByMe, viewedByMeTime, viewersCanCopyContent, webContentLink, webViewLink, writersCanShare);
     },
     File$fromJson(json_) {
-      var t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32, t33, t34, t35, t36, t37, t38, t39, t40, t41, t42, t43, t44, t45, t46, t47, t48, t49, t50, t51, t52, t53, t54, t55, t56, t57, t58, t59, t60, t61,
-        _s13_ = "appProperties",
-        _null = null,
+      var t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32, t33, t34, t35, t36, t37, t38, t39, t40, t41, t42, t43, t44, t45, t46, t47, t48, t49, t50, t51, t52, t53, t54, t55, t56, t57, t58, t59, t60, _null = null,
         _s12_ = "capabilities",
-        _s18_ = "canAcceptOwnership",
-        _s14_ = "canAddChildren",
-        _s28_ = "canAddFolderFromAnotherDrive",
-        _s19_ = "canAddMyDriveParent",
-        _s37_ = "canChangeCopyRequiresWriterPermission",
-        _s30_ = "canChangeSecurityUpdateEnabled",
-        _s30_0 = "canChangeViewersCanCopyContent",
-        _s10_ = "canComment",
-        _s9_ = "canDelete",
-        _s17_ = "canDeleteChildren",
-        _s11_ = "canDownload",
-        _s15_ = "canListChildren",
-        _s16_ = "canModifyContent",
-        _s27_ = "canModifyContentRestriction",
-        _s33_ = "canModifyEditorContentRestriction",
-        _s15_0 = "canModifyLabels",
-        _s32_ = "canModifyOwnerContentRestriction",
-        _s25_ = "canMoveChildrenOutOfDrive",
-        _s29_ = "canMoveChildrenOutOfTeamDrive",
-        _s26_ = "canMoveChildrenWithinDrive",
-        _s30_1 = "canMoveChildrenWithinTeamDrive",
-        _s24_ = "canMoveItemIntoTeamDrive",
-        _s21_ = "canMoveItemOutOfDrive",
-        _s25_0 = "canMoveItemOutOfTeamDrive",
-        _s22_ = "canMoveItemWithinDrive",
-        _s26_0 = "canMoveItemWithinTeamDrive",
-        _s20_ = "canMoveTeamDriveItem",
-        _s12_0 = "canReadDrive",
-        _s13_0 = "canReadLabels",
-        _s16_0 = "canReadRevisions",
-        _s16_1 = "canReadTeamDrive",
-        _s17_0 = "canRemoveChildren",
-        _s27_0 = "canRemoveContentRestriction",
-        _s22_0 = "canRemoveMyDriveParent",
-        _s9_0 = "canRename",
-        _s8_ = "canShare",
-        _s8_0 = "canTrash",
-        _s16_2 = "canTrashChildren",
-        _s10_0 = "canUntrash",
-        _s12_1 = "contentHints",
-        _s13_1 = "indexableText",
-        _s9_1 = "thumbnail",
-        _s8_1 = "mimeType",
-        _s19_0 = "contentRestrictions",
-        _s28_0 = "copyRequiresWriterPermission",
-        _s11_0 = "createdTime",
-        _s11_1 = "description",
-        _s17_1 = "explicitlyTrashed",
-        _s11_2 = "exportLinks",
-        _s13_2 = "fileExtension",
-        _s14_0 = "folderColorRgb",
-        _s17_2 = "fullFileExtension",
-        _s23_ = "hasAugmentedPermissions",
-        _s12_2 = "hasThumbnail",
-        _s14_1 = "headRevisionId",
-        _s8_2 = "iconLink",
-        _s18_0 = "imageMediaMetadata",
-        _s8_3 = "aperture",
-        _s10_1 = "cameraMake",
-        _s11_3 = "cameraModel",
-        _s10_2 = "colorSpace",
-        _s12_3 = "exposureBias",
-        _s12_4 = "exposureMode",
-        _s12_5 = "exposureTime",
-        _s9_2 = "flashUsed",
-        _s11_4 = "focalLength",
-        _s6_ = "height",
-        _s8_4 = "isoSpeed",
-        _s8_5 = "location",
-        _s8_6 = "altitude",
-        _s8_7 = "latitude",
-        _s9_3 = "longitude",
-        _s16_3 = "maxApertureValue",
-        _s12_6 = "meteringMode",
-        _s8_8 = "rotation",
-        _s15_1 = "subjectDistance",
-        _s12_7 = "whiteBalance",
-        _s5_ = "width",
-        _s15_2 = "isAppAuthorized",
-        _s9_4 = "labelInfo",
-        _s17_3 = "lastModifyingUser",
-        _s17_4 = "linkShareMetadata",
-        _s22_1 = "securityUpdateEligible",
-        _s21_0 = "securityUpdateEnabled",
-        _s11_5 = "md5Checksum",
-        _s12_8 = "modifiedByMe",
-        _s16_4 = "modifiedByMeTime",
-        _s12_9 = "modifiedTime",
-        _s16_5 = "originalFilename",
-        _s9_5 = "ownedByMe",
-        _s13_3 = "permissionIds",
-        _s11_6 = "permissions",
-        _s10_3 = "properties",
-        _s14_2 = "quotaBytesUsed",
-        _s11_7 = "resourceKey",
-        _s12_10 = "sha1Checksum",
-        _s14_3 = "sha256Checksum",
-        _s16_6 = "sharedWithMeTime",
-        _s11_8 = "sharingUser",
-        _s15_3 = "shortcutDetails",
-        _s8_9 = "targetId",
-        _s14_4 = "targetMimeType",
-        _s17_5 = "targetResourceKey",
-        _s11_9 = "teamDriveId",
-        _s13_4 = "thumbnailLink",
-        _s16_7 = "thumbnailVersion",
-        _s11_10 = "trashedTime",
-        _s12_11 = "trashingUser",
-        _s18_1 = "videoMediaMetadata",
-        _s14_5 = "durationMillis",
-        _s10_4 = "viewedByMe",
-        _s14_6 = "viewedByMeTime",
-        _s21_1 = "viewersCanCopyContent",
-        _s14_7 = "webContentLink",
-        _s11_11 = "webViewLink",
-        _s15_4 = "writersCanShare",
-        t1 = json_.containsKey$1(_s13_) ? type$.Map_String_dynamic._as(json_.$index(0, _s13_)).map$2$1(0, new A.File$fromJson_closure(), type$.String, type$.nullable_String) : _null;
+        _s12_0 = "contentHints",
+        _s9_ = "thumbnail",
+        _s8_ = "mimeType",
+        _s11_ = "createdTime",
+        _s20_ = "downloadRestrictions",
+        _s39_ = "effectiveDownloadRestrictionWithContext",
+        _s23_ = "itemDownloadRestriction",
+        _s18_ = "imageMediaMetadata",
+        _s8_0 = "location",
+        _s9_0 = "labelInfo",
+        _s17_ = "lastModifyingUser",
+        _s17_0 = "linkShareMetadata",
+        _s16_ = "modifiedByMeTime",
+        _s12_1 = "modifiedTime",
+        _s16_0 = "sharedWithMeTime",
+        _s11_0 = "sharingUser",
+        _s15_ = "shortcutDetails",
+        _s11_1 = "trashedTime",
+        _s12_2 = "trashingUser",
+        _s18_0 = "videoMediaMetadata",
+        _s14_ = "viewedByMeTime",
+        t1 = type$.nullable_Map_String_dynamic,
+        t2 = t1._as(json_.$index(0, "appProperties"));
+      t2 = t2 == null ? _null : t2.map$2$1(0, new A.File$fromJson_closure(), type$.String, type$.nullable_String);
       if (json_.containsKey$1(_s12_)) {
-        t2 = type$.Map_String_dynamic._as(json_.$index(0, _s12_));
-        t3 = t2.containsKey$1(_s18_) ? A._asBool(t2.$index(0, _s18_)) : _null;
-        t4 = t2.containsKey$1(_s14_) ? A._asBool(t2.$index(0, _s14_)) : _null;
-        t5 = t2.containsKey$1(_s28_) ? A._asBool(t2.$index(0, _s28_)) : _null;
-        t6 = t2.containsKey$1(_s19_) ? A._asBool(t2.$index(0, _s19_)) : _null;
-        t7 = t2.containsKey$1(_s37_) ? A._asBool(t2.$index(0, _s37_)) : _null;
-        t8 = t2.containsKey$1(_s30_) ? A._asBool(t2.$index(0, _s30_)) : _null;
-        t9 = t2.containsKey$1(_s30_0) ? A._asBool(t2.$index(0, _s30_0)) : _null;
-        t10 = t2.containsKey$1(_s10_) ? A._asBool(t2.$index(0, _s10_)) : _null;
-        t11 = t2.containsKey$1("canCopy") ? A._asBool(t2.$index(0, "canCopy")) : _null;
-        t12 = t2.containsKey$1(_s9_) ? A._asBool(t2.$index(0, _s9_)) : _null;
-        t13 = t2.containsKey$1(_s17_) ? A._asBool(t2.$index(0, _s17_)) : _null;
-        t14 = t2.containsKey$1(_s11_) ? A._asBool(t2.$index(0, _s11_)) : _null;
-        t15 = t2.containsKey$1("canEdit") ? A._asBool(t2.$index(0, "canEdit")) : _null;
-        t16 = t2.containsKey$1(_s15_) ? A._asBool(t2.$index(0, _s15_)) : _null;
-        t17 = t2.containsKey$1(_s16_) ? A._asBool(t2.$index(0, _s16_)) : _null;
-        t18 = t2.containsKey$1(_s27_) ? A._asBool(t2.$index(0, _s27_)) : _null;
-        t19 = t2.containsKey$1(_s33_) ? A._asBool(t2.$index(0, _s33_)) : _null;
-        t20 = t2.containsKey$1(_s15_0) ? A._asBool(t2.$index(0, _s15_0)) : _null;
-        t21 = t2.containsKey$1(_s32_) ? A._asBool(t2.$index(0, _s32_)) : _null;
-        t22 = t2.containsKey$1(_s25_) ? A._asBool(t2.$index(0, _s25_)) : _null;
-        t23 = t2.containsKey$1(_s29_) ? A._asBool(t2.$index(0, _s29_)) : _null;
-        t24 = t2.containsKey$1(_s26_) ? A._asBool(t2.$index(0, _s26_)) : _null;
-        t25 = t2.containsKey$1(_s30_1) ? A._asBool(t2.$index(0, _s30_1)) : _null;
-        t26 = t2.containsKey$1(_s24_) ? A._asBool(t2.$index(0, _s24_)) : _null;
-        t27 = t2.containsKey$1(_s21_) ? A._asBool(t2.$index(0, _s21_)) : _null;
-        t28 = t2.containsKey$1(_s25_0) ? A._asBool(t2.$index(0, _s25_0)) : _null;
-        t29 = t2.containsKey$1(_s22_) ? A._asBool(t2.$index(0, _s22_)) : _null;
-        t30 = t2.containsKey$1(_s26_0) ? A._asBool(t2.$index(0, _s26_0)) : _null;
-        t31 = t2.containsKey$1(_s20_) ? A._asBool(t2.$index(0, _s20_)) : _null;
-        t32 = t2.containsKey$1(_s12_0) ? A._asBool(t2.$index(0, _s12_0)) : _null;
-        t33 = t2.containsKey$1(_s13_0) ? A._asBool(t2.$index(0, _s13_0)) : _null;
-        t34 = t2.containsKey$1(_s16_0) ? A._asBool(t2.$index(0, _s16_0)) : _null;
-        t35 = t2.containsKey$1(_s16_1) ? A._asBool(t2.$index(0, _s16_1)) : _null;
-        t36 = t2.containsKey$1(_s17_0) ? A._asBool(t2.$index(0, _s17_0)) : _null;
-        t37 = t2.containsKey$1(_s27_0) ? A._asBool(t2.$index(0, _s27_0)) : _null;
-        t38 = t2.containsKey$1(_s22_0) ? A._asBool(t2.$index(0, _s22_0)) : _null;
-        t39 = t2.containsKey$1(_s9_0) ? A._asBool(t2.$index(0, _s9_0)) : _null;
-        t40 = t2.containsKey$1(_s8_) ? A._asBool(t2.$index(0, _s8_)) : _null;
-        t41 = t2.containsKey$1(_s8_0) ? A._asBool(t2.$index(0, _s8_0)) : _null;
-        t42 = t2.containsKey$1(_s16_2) ? A._asBool(t2.$index(0, _s16_2)) : _null;
-        t2 = new A.FileCapabilities(t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32, t33, t34, t35, t36, t37, t38, t39, t40, t41, t42, t2.containsKey$1(_s10_0) ? A._asBool(t2.$index(0, _s10_0)) : _null);
-      } else
-        t2 = _null;
-      if (json_.containsKey$1(_s12_1)) {
-        t3 = type$.Map_String_dynamic;
-        t4 = t3._as(json_.$index(0, _s12_1));
-        t5 = t4.containsKey$1(_s13_1) ? A._asString(t4.$index(0, _s13_1)) : _null;
-        if (t4.containsKey$1(_s9_1)) {
-          t3 = t3._as(t4.$index(0, _s9_1));
-          t4 = t3.containsKey$1("image") ? A._asString(t3.$index(0, "image")) : _null;
-          t3 = new A.FileContentHintsThumbnail(t4, t3.containsKey$1(_s8_1) ? A._asString(t3.$index(0, _s8_1)) : _null);
-        } else
-          t3 = _null;
-        t3 = new A.FileContentHints(t5, t3);
+        t3 = type$.Map_String_dynamic._as(json_.$index(0, _s12_));
+        t3 = new A.FileCapabilities(A._asBoolQ(t3.$index(0, "canAcceptOwnership")), A._asBoolQ(t3.$index(0, "canAddChildren")), A._asBoolQ(t3.$index(0, "canAddFolderFromAnotherDrive")), A._asBoolQ(t3.$index(0, "canAddMyDriveParent")), A._asBoolQ(t3.$index(0, "canChangeCopyRequiresWriterPermission")), A._asBoolQ(t3.$index(0, "canChangeItemDownloadRestriction")), A._asBoolQ(t3.$index(0, "canChangeSecurityUpdateEnabled")), A._asBoolQ(t3.$index(0, "canChangeViewersCanCopyContent")), A._asBoolQ(t3.$index(0, "canComment")), A._asBoolQ(t3.$index(0, "canCopy")), A._asBoolQ(t3.$index(0, "canDelete")), A._asBoolQ(t3.$index(0, "canDeleteChildren")), A._asBoolQ(t3.$index(0, "canDisableInheritedPermissions")), A._asBoolQ(t3.$index(0, "canDownload")), A._asBoolQ(t3.$index(0, "canEdit")), A._asBoolQ(t3.$index(0, "canEnableInheritedPermissions")), A._asBoolQ(t3.$index(0, "canListChildren")), A._asBoolQ(t3.$index(0, "canModifyContent")), A._asBoolQ(t3.$index(0, "canModifyContentRestriction")), A._asBoolQ(t3.$index(0, "canModifyEditorContentRestriction")), A._asBoolQ(t3.$index(0, "canModifyLabels")), A._asBoolQ(t3.$index(0, "canModifyOwnerContentRestriction")), A._asBoolQ(t3.$index(0, "canMoveChildrenOutOfDrive")), A._asBoolQ(t3.$index(0, "canMoveChildrenOutOfTeamDrive")), A._asBoolQ(t3.$index(0, "canMoveChildrenWithinDrive")), A._asBoolQ(t3.$index(0, "canMoveChildrenWithinTeamDrive")), A._asBoolQ(t3.$index(0, "canMoveItemIntoTeamDrive")), A._asBoolQ(t3.$index(0, "canMoveItemOutOfDrive")), A._asBoolQ(t3.$index(0, "canMoveItemOutOfTeamDrive")), A._asBoolQ(t3.$index(0, "canMoveItemWithinDrive")), A._asBoolQ(t3.$index(0, "canMoveItemWithinTeamDrive")), A._asBoolQ(t3.$index(0, "canMoveTeamDriveItem")), A._asBoolQ(t3.$index(0, "canReadDrive")), A._asBoolQ(t3.$index(0, "canReadLabels")), A._asBoolQ(t3.$index(0, "canReadRevisions")), A._asBoolQ(t3.$index(0, "canReadTeamDrive")), A._asBoolQ(t3.$index(0, "canRemoveChildren")), A._asBoolQ(t3.$index(0, "canRemoveContentRestriction")), A._asBoolQ(t3.$index(0, "canRemoveMyDriveParent")), A._asBoolQ(t3.$index(0, "canRename")), A._asBoolQ(t3.$index(0, "canShare")), A._asBoolQ(t3.$index(0, "canTrash")), A._asBoolQ(t3.$index(0, "canTrashChildren")), A._asBoolQ(t3.$index(0, "canUntrash")));
       } else
         t3 = _null;
-      if (json_.containsKey$1(_s19_0)) {
-        t4 = J.map$1$1$ax(type$.List_dynamic._as(json_.$index(0, _s19_0)), new A.File$fromJson_closure0(), type$.ContentRestriction);
-        t4 = A.List_List$_of(t4, t4.$ti._eval$1("ListIterable.E"));
+      if (json_.containsKey$1(_s12_0)) {
+        t4 = type$.Map_String_dynamic;
+        t5 = t4._as(json_.$index(0, _s12_0));
+        t6 = A._asStringQ(t5.$index(0, "indexableText"));
+        if (t5.containsKey$1(_s9_)) {
+          t4 = t4._as(t5.$index(0, _s9_));
+          t4 = new A.FileContentHintsThumbnail(A._asStringQ(t4.$index(0, "image")), A._asStringQ(t4.$index(0, _s8_)));
+        } else
+          t4 = _null;
+        t4 = new A.FileContentHints(t6, t4);
       } else
         t4 = _null;
-      t5 = json_.containsKey$1(_s28_0) ? A._asBool(json_.$index(0, _s28_0)) : _null;
-      t6 = json_.containsKey$1(_s11_0) ? A.DateTime_parse(A._asString(json_.$index(0, _s11_0))) : _null;
-      t7 = json_.containsKey$1(_s11_1) ? A._asString(json_.$index(0, _s11_1)) : _null;
-      t8 = json_.containsKey$1("driveId") ? A._asString(json_.$index(0, "driveId")) : _null;
-      t9 = json_.containsKey$1(_s17_1) ? A._asBool(json_.$index(0, _s17_1)) : _null;
-      if (json_.containsKey$1(_s11_2)) {
-        t10 = type$.String;
-        t10 = type$.Map_String_dynamic._as(json_.$index(0, _s11_2)).map$2$1(0, new A.File$fromJson_closure1(), t10, t10);
+      t5 = type$.nullable_List_dynamic;
+      t6 = t5._as(json_.$index(0, "contentRestrictions"));
+      if (t6 == null)
+        t6 = _null;
+      else {
+        t6 = J.map$1$1$ax(t6, new A.File$fromJson_closure0(), type$.ContentRestriction);
+        t6 = A.List_List$_of(t6, t6.$ti._eval$1("ListIterable.E"));
+      }
+      t7 = A._asBoolQ(json_.$index(0, "copyRequiresWriterPermission"));
+      t8 = json_.containsKey$1(_s11_) ? A.DateTime_parse(A._asString(json_.$index(0, _s11_))) : _null;
+      t9 = A._asStringQ(json_.$index(0, "description"));
+      if (json_.containsKey$1(_s20_)) {
+        t10 = type$.Map_String_dynamic;
+        t11 = t10._as(json_.$index(0, _s20_));
+        t12 = t11.containsKey$1(_s39_) ? A.DownloadRestriction$fromJson(t10._as(t11.$index(0, _s39_))) : _null;
+        t10 = new A.DownloadRestrictionsMetadata(t12, t11.containsKey$1(_s23_) ? A.DownloadRestriction$fromJson(t10._as(t11.$index(0, _s23_))) : _null);
       } else
         t10 = _null;
-      t11 = json_.containsKey$1(_s13_2) ? A._asString(json_.$index(0, _s13_2)) : _null;
-      t12 = json_.containsKey$1(_s14_0) ? A._asString(json_.$index(0, _s14_0)) : _null;
-      t13 = json_.containsKey$1(_s17_2) ? A._asString(json_.$index(0, _s17_2)) : _null;
-      t14 = json_.containsKey$1(_s23_) ? A._asBool(json_.$index(0, _s23_)) : _null;
-      t15 = json_.containsKey$1(_s12_2) ? A._asBool(json_.$index(0, _s12_2)) : _null;
-      t16 = json_.containsKey$1(_s14_1) ? A._asString(json_.$index(0, _s14_1)) : _null;
-      t17 = json_.containsKey$1(_s8_2) ? A._asString(json_.$index(0, _s8_2)) : _null;
-      t18 = json_.containsKey$1("id") ? A._asString(json_.$index(0, "id")) : _null;
-      if (json_.containsKey$1(_s18_0)) {
-        t19 = type$.Map_String_dynamic;
-        t20 = t19._as(json_.$index(0, _s18_0));
-        t21 = t20.containsKey$1(_s8_3) ? A._asNum(t20.$index(0, _s8_3)) : _null;
-        t22 = t20.containsKey$1(_s10_1) ? A._asString(t20.$index(0, _s10_1)) : _null;
-        t23 = t20.containsKey$1(_s11_3) ? A._asString(t20.$index(0, _s11_3)) : _null;
-        t24 = t20.containsKey$1(_s10_2) ? A._asString(t20.$index(0, _s10_2)) : _null;
-        t25 = t20.containsKey$1(_s12_3) ? A._asNum(t20.$index(0, _s12_3)) : _null;
-        t26 = t20.containsKey$1(_s12_4) ? A._asString(t20.$index(0, _s12_4)) : _null;
-        t27 = t20.containsKey$1(_s12_5) ? A._asNum(t20.$index(0, _s12_5)) : _null;
-        t28 = t20.containsKey$1(_s9_2) ? A._asBool(t20.$index(0, _s9_2)) : _null;
-        t29 = t20.containsKey$1(_s11_4) ? A._asNum(t20.$index(0, _s11_4)) : _null;
-        t30 = t20.containsKey$1(_s6_) ? A._asInt(t20.$index(0, _s6_)) : _null;
-        t31 = t20.containsKey$1(_s8_4) ? A._asInt(t20.$index(0, _s8_4)) : _null;
-        t32 = t20.containsKey$1("lens") ? A._asString(t20.$index(0, "lens")) : _null;
-        if (t20.containsKey$1(_s8_5)) {
-          t19 = t19._as(t20.$index(0, _s8_5));
-          t33 = t19.containsKey$1(_s8_6) ? A._asNum(t19.$index(0, _s8_6)) : _null;
-          t34 = t19.containsKey$1(_s8_7) ? A._asNum(t19.$index(0, _s8_7)) : _null;
-          t19 = new A.FileImageMediaMetadataLocation(t33, t34, t19.containsKey$1(_s9_3) ? A._asNum(t19.$index(0, _s9_3)) : _null);
+      t11 = A._asStringQ(json_.$index(0, "driveId"));
+      t12 = A._asBoolQ(json_.$index(0, "explicitlyTrashed"));
+      t13 = t1._as(json_.$index(0, "exportLinks"));
+      if (t13 == null)
+        t13 = _null;
+      else {
+        t14 = type$.String;
+        t14 = t13.map$2$1(0, new A.File$fromJson_closure1(), t14, t14);
+        t13 = t14;
+      }
+      t14 = A._asStringQ(json_.$index(0, "fileExtension"));
+      t15 = A._asStringQ(json_.$index(0, "folderColorRgb"));
+      t16 = A._asStringQ(json_.$index(0, "fullFileExtension"));
+      t17 = A._asBoolQ(json_.$index(0, "hasAugmentedPermissions"));
+      t18 = A._asBoolQ(json_.$index(0, "hasThumbnail"));
+      t19 = A._asStringQ(json_.$index(0, "headRevisionId"));
+      t20 = A._asStringQ(json_.$index(0, "iconLink"));
+      t21 = A._asStringQ(json_.$index(0, "id"));
+      if (json_.containsKey$1(_s18_)) {
+        t22 = type$.Map_String_dynamic;
+        t23 = t22._as(json_.$index(0, _s18_));
+        t24 = A._asNumQ(t23.$index(0, "aperture"));
+        if (t24 == null)
+          t24 = _null;
+        t25 = A._asStringQ(t23.$index(0, "cameraMake"));
+        t26 = A._asStringQ(t23.$index(0, "cameraModel"));
+        t27 = A._asStringQ(t23.$index(0, "colorSpace"));
+        t28 = A._asNumQ(t23.$index(0, "exposureBias"));
+        if (t28 == null)
+          t28 = _null;
+        t29 = A._asStringQ(t23.$index(0, "exposureMode"));
+        t30 = A._asNumQ(t23.$index(0, "exposureTime"));
+        if (t30 == null)
+          t30 = _null;
+        t31 = A._asBoolQ(t23.$index(0, "flashUsed"));
+        t32 = A._asNumQ(t23.$index(0, "focalLength"));
+        if (t32 == null)
+          t32 = _null;
+        t33 = A._asIntQ(t23.$index(0, "height"));
+        t34 = A._asIntQ(t23.$index(0, "isoSpeed"));
+        t35 = A._asStringQ(t23.$index(0, "lens"));
+        if (t23.containsKey$1(_s8_0)) {
+          t22 = t22._as(t23.$index(0, _s8_0));
+          t36 = A._asNumQ(t22.$index(0, "altitude"));
+          if (t36 == null)
+            t36 = _null;
+          t37 = A._asNumQ(t22.$index(0, "latitude"));
+          if (t37 == null)
+            t37 = _null;
+          t22 = A._asNumQ(t22.$index(0, "longitude"));
+          t22 = new A.FileImageMediaMetadataLocation(t36, t37, t22 == null ? _null : t22);
         } else
-          t19 = _null;
-        t33 = t20.containsKey$1(_s16_3) ? A._asNum(t20.$index(0, _s16_3)) : _null;
-        t34 = t20.containsKey$1(_s12_6) ? A._asString(t20.$index(0, _s12_6)) : _null;
-        t35 = t20.containsKey$1(_s8_8) ? A._asInt(t20.$index(0, _s8_8)) : _null;
-        t36 = t20.containsKey$1("sensor") ? A._asString(t20.$index(0, "sensor")) : _null;
-        t37 = t20.containsKey$1(_s15_1) ? A._asInt(t20.$index(0, _s15_1)) : _null;
-        t38 = t20.containsKey$1("time") ? A._asString(t20.$index(0, "time")) : _null;
-        t39 = t20.containsKey$1(_s12_7) ? A._asString(t20.$index(0, _s12_7)) : _null;
-        t19 = new A.FileImageMediaMetadata(t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32, t19, t33, t34, t35, t36, t37, t38, t39, t20.containsKey$1(_s5_) ? A._asInt(t20.$index(0, _s5_)) : _null);
+          t22 = _null;
+        t36 = A._asNumQ(t23.$index(0, "maxApertureValue"));
+        if (t36 == null)
+          t36 = _null;
+        t23 = new A.FileImageMediaMetadata(t24, t25, t26, t27, t28, t29, t30, t31, t32, t33, t34, t35, t22, t36, A._asStringQ(t23.$index(0, "meteringMode")), A._asIntQ(t23.$index(0, "rotation")), A._asStringQ(t23.$index(0, "sensor")), A._asIntQ(t23.$index(0, "subjectDistance")), A._asStringQ(t23.$index(0, "time")), A._asStringQ(t23.$index(0, "whiteBalance")), A._asIntQ(t23.$index(0, "width")));
+        t22 = t23;
       } else
-        t19 = _null;
-      t20 = json_.containsKey$1(_s15_2) ? A._asBool(json_.$index(0, _s15_2)) : _null;
-      t21 = json_.containsKey$1("kind") ? A._asString(json_.$index(0, "kind")) : _null;
-      t22 = json_.containsKey$1(_s9_4) ? A.FileLabelInfo$fromJson(type$.Map_String_dynamic._as(json_.$index(0, _s9_4))) : _null;
-      t23 = json_.containsKey$1(_s17_3) ? A.User$fromJson(type$.Map_String_dynamic._as(json_.$index(0, _s17_3))) : _null;
-      if (json_.containsKey$1(_s17_4)) {
-        t24 = type$.Map_String_dynamic._as(json_.$index(0, _s17_4));
-        t25 = t24.containsKey$1(_s22_1) ? A._asBool(t24.$index(0, _s22_1)) : _null;
-        t24 = new A.FileLinkShareMetadata(t25, t24.containsKey$1(_s21_0) ? A._asBool(t24.$index(0, _s21_0)) : _null);
+        t22 = _null;
+      t23 = A._asBoolQ(json_.$index(0, "inheritedPermissionsDisabled"));
+      t24 = A._asBoolQ(json_.$index(0, "isAppAuthorized"));
+      t25 = A._asStringQ(json_.$index(0, "kind"));
+      t26 = json_.containsKey$1(_s9_0) ? A.FileLabelInfo$fromJson(type$.Map_String_dynamic._as(json_.$index(0, _s9_0))) : _null;
+      t27 = json_.containsKey$1(_s17_) ? A.User$fromJson(type$.Map_String_dynamic._as(json_.$index(0, _s17_))) : _null;
+      if (json_.containsKey$1(_s17_0)) {
+        t28 = type$.Map_String_dynamic._as(json_.$index(0, _s17_0));
+        t28 = new A.FileLinkShareMetadata(A._asBoolQ(t28.$index(0, "securityUpdateEligible")), A._asBoolQ(t28.$index(0, "securityUpdateEnabled")));
       } else
-        t24 = _null;
-      t25 = json_.containsKey$1(_s11_5) ? A._asString(json_.$index(0, _s11_5)) : _null;
-      t26 = json_.containsKey$1(_s8_1) ? A._asString(json_.$index(0, _s8_1)) : _null;
-      t27 = json_.containsKey$1(_s12_8) ? A._asBool(json_.$index(0, _s12_8)) : _null;
-      t28 = json_.containsKey$1(_s16_4) ? A.DateTime_parse(A._asString(json_.$index(0, _s16_4))) : _null;
-      t29 = json_.containsKey$1(_s12_9) ? A.DateTime_parse(A._asString(json_.$index(0, _s12_9))) : _null;
-      t30 = json_.containsKey$1("name") ? A._asString(json_.$index(0, "name")) : _null;
-      t31 = json_.containsKey$1(_s16_5) ? A._asString(json_.$index(0, _s16_5)) : _null;
-      t32 = json_.containsKey$1(_s9_5) ? A._asBool(json_.$index(0, _s9_5)) : _null;
-      if (json_.containsKey$1("owners")) {
-        t33 = J.map$1$1$ax(type$.List_dynamic._as(json_.$index(0, "owners")), new A.File$fromJson_closure2(), type$.User);
-        t33 = A.List_List$_of(t33, t33.$ti._eval$1("ListIterable.E"));
+        t28 = _null;
+      t29 = A._asStringQ(json_.$index(0, "md5Checksum"));
+      t30 = A._asStringQ(json_.$index(0, _s8_));
+      t31 = A._asBoolQ(json_.$index(0, "modifiedByMe"));
+      t32 = json_.containsKey$1(_s16_) ? A.DateTime_parse(A._asString(json_.$index(0, _s16_))) : _null;
+      t33 = json_.containsKey$1(_s12_1) ? A.DateTime_parse(A._asString(json_.$index(0, _s12_1))) : _null;
+      t34 = A._asStringQ(json_.$index(0, "name"));
+      t35 = A._asStringQ(json_.$index(0, "originalFilename"));
+      t36 = A._asBoolQ(json_.$index(0, "ownedByMe"));
+      t37 = t5._as(json_.$index(0, "owners"));
+      if (t37 == null)
+        t37 = _null;
+      else {
+        t37 = J.map$1$1$ax(t37, new A.File$fromJson_closure2(), type$.User);
+        t37 = A.List_List$_of(t37, t37.$ti._eval$1("ListIterable.E"));
+      }
+      t38 = t5._as(json_.$index(0, "parents"));
+      if (t38 == null)
+        t38 = _null;
+      else {
+        t38 = J.map$1$1$ax(t38, new A.File$fromJson_closure3(), type$.String);
+        t38 = A.List_List$_of(t38, t38.$ti._eval$1("ListIterable.E"));
+      }
+      t39 = t5._as(json_.$index(0, "permissionIds"));
+      if (t39 == null)
+        t39 = _null;
+      else {
+        t39 = J.map$1$1$ax(t39, new A.File$fromJson_closure4(), type$.String);
+        t39 = A.List_List$_of(t39, t39.$ti._eval$1("ListIterable.E"));
+      }
+      t40 = t5._as(json_.$index(0, "permissions"));
+      if (t40 == null)
+        t40 = _null;
+      else {
+        t40 = J.map$1$1$ax(t40, new A.File$fromJson_closure5(), type$.Permission);
+        t40 = A.List_List$_of(t40, t40.$ti._eval$1("ListIterable.E"));
+      }
+      t1 = t1._as(json_.$index(0, "properties"));
+      t1 = t1 == null ? _null : t1.map$2$1(0, new A.File$fromJson_closure6(), type$.String, type$.nullable_String);
+      t41 = A._asStringQ(json_.$index(0, "quotaBytesUsed"));
+      t42 = A._asStringQ(json_.$index(0, "resourceKey"));
+      t43 = A._asStringQ(json_.$index(0, "sha1Checksum"));
+      t44 = A._asStringQ(json_.$index(0, "sha256Checksum"));
+      t45 = A._asBoolQ(json_.$index(0, "shared"));
+      t46 = json_.containsKey$1(_s16_0) ? A.DateTime_parse(A._asString(json_.$index(0, _s16_0))) : _null;
+      t47 = json_.containsKey$1(_s11_0) ? A.User$fromJson(type$.Map_String_dynamic._as(json_.$index(0, _s11_0))) : _null;
+      if (json_.containsKey$1(_s15_)) {
+        t48 = type$.Map_String_dynamic._as(json_.$index(0, _s15_));
+        t48 = new A.FileShortcutDetails(A._asStringQ(t48.$index(0, "targetId")), A._asStringQ(t48.$index(0, "targetMimeType")), A._asStringQ(t48.$index(0, "targetResourceKey")));
       } else
-        t33 = _null;
-      if (json_.containsKey$1("parents")) {
-        t34 = J.map$1$1$ax(type$.List_dynamic._as(json_.$index(0, "parents")), new A.File$fromJson_closure3(), type$.String);
-        t34 = A.List_List$_of(t34, t34.$ti._eval$1("ListIterable.E"));
+        t48 = _null;
+      t49 = A._asStringQ(json_.$index(0, "size"));
+      t5 = t5._as(json_.$index(0, "spaces"));
+      if (t5 == null)
+        t5 = _null;
+      else {
+        t5 = J.map$1$1$ax(t5, new A.File$fromJson_closure7(), type$.String);
+        t5 = A.List_List$_of(t5, t5.$ti._eval$1("ListIterable.E"));
+      }
+      t50 = A._asBoolQ(json_.$index(0, "starred"));
+      t51 = A._asStringQ(json_.$index(0, "teamDriveId"));
+      t52 = A._asStringQ(json_.$index(0, "thumbnailLink"));
+      t53 = A._asStringQ(json_.$index(0, "thumbnailVersion"));
+      t54 = A._asBoolQ(json_.$index(0, "trashed"));
+      t55 = json_.containsKey$1(_s11_1) ? A.DateTime_parse(A._asString(json_.$index(0, _s11_1))) : _null;
+      t56 = json_.containsKey$1(_s12_2) ? A.User$fromJson(type$.Map_String_dynamic._as(json_.$index(0, _s12_2))) : _null;
+      t57 = A._asStringQ(json_.$index(0, "version"));
+      if (json_.containsKey$1(_s18_0)) {
+        t58 = type$.Map_String_dynamic._as(json_.$index(0, _s18_0));
+        t58 = new A.FileVideoMediaMetadata(A._asStringQ(t58.$index(0, "durationMillis")), A._asIntQ(t58.$index(0, "height")), A._asIntQ(t58.$index(0, "width")));
       } else
-        t34 = _null;
-      if (json_.containsKey$1(_s13_3)) {
-        t35 = J.map$1$1$ax(type$.List_dynamic._as(json_.$index(0, _s13_3)), new A.File$fromJson_closure4(), type$.String);
-        t35 = A.List_List$_of(t35, t35.$ti._eval$1("ListIterable.E"));
-      } else
-        t35 = _null;
-      if (json_.containsKey$1(_s11_6)) {
-        t36 = J.map$1$1$ax(type$.List_dynamic._as(json_.$index(0, _s11_6)), new A.File$fromJson_closure5(), type$.Permission);
-        t36 = A.List_List$_of(t36, t36.$ti._eval$1("ListIterable.E"));
-      } else
-        t36 = _null;
-      t37 = json_.containsKey$1(_s10_3) ? type$.Map_String_dynamic._as(json_.$index(0, _s10_3)).map$2$1(0, new A.File$fromJson_closure6(), type$.String, type$.nullable_String) : _null;
-      t38 = json_.containsKey$1(_s14_2) ? A._asString(json_.$index(0, _s14_2)) : _null;
-      t39 = json_.containsKey$1(_s11_7) ? A._asString(json_.$index(0, _s11_7)) : _null;
-      t40 = json_.containsKey$1(_s12_10) ? A._asString(json_.$index(0, _s12_10)) : _null;
-      t41 = json_.containsKey$1(_s14_3) ? A._asString(json_.$index(0, _s14_3)) : _null;
-      t42 = json_.containsKey$1("shared") ? A._asBool(json_.$index(0, "shared")) : _null;
-      t43 = json_.containsKey$1(_s16_6) ? A.DateTime_parse(A._asString(json_.$index(0, _s16_6))) : _null;
-      t44 = json_.containsKey$1(_s11_8) ? A.User$fromJson(type$.Map_String_dynamic._as(json_.$index(0, _s11_8))) : _null;
-      if (json_.containsKey$1(_s15_3)) {
-        t45 = type$.Map_String_dynamic._as(json_.$index(0, _s15_3));
-        t46 = t45.containsKey$1(_s8_9) ? A._asString(t45.$index(0, _s8_9)) : _null;
-        t47 = t45.containsKey$1(_s14_4) ? A._asString(t45.$index(0, _s14_4)) : _null;
-        t45 = new A.FileShortcutDetails(t46, t47, t45.containsKey$1(_s17_5) ? A._asString(t45.$index(0, _s17_5)) : _null);
-      } else
-        t45 = _null;
-      t46 = json_.containsKey$1("size") ? A._asString(json_.$index(0, "size")) : _null;
-      if (json_.containsKey$1("spaces")) {
-        t47 = J.map$1$1$ax(type$.List_dynamic._as(json_.$index(0, "spaces")), new A.File$fromJson_closure7(), type$.String);
-        t47 = A.List_List$_of(t47, t47.$ti._eval$1("ListIterable.E"));
-      } else
-        t47 = _null;
-      t48 = json_.containsKey$1("starred") ? A._asBool(json_.$index(0, "starred")) : _null;
-      t49 = json_.containsKey$1(_s11_9) ? A._asString(json_.$index(0, _s11_9)) : _null;
-      t50 = json_.containsKey$1(_s13_4) ? A._asString(json_.$index(0, _s13_4)) : _null;
-      t51 = json_.containsKey$1(_s16_7) ? A._asString(json_.$index(0, _s16_7)) : _null;
-      t52 = json_.containsKey$1("trashed") ? A._asBool(json_.$index(0, "trashed")) : _null;
-      t53 = json_.containsKey$1(_s11_10) ? A.DateTime_parse(A._asString(json_.$index(0, _s11_10))) : _null;
-      t54 = json_.containsKey$1(_s12_11) ? A.User$fromJson(type$.Map_String_dynamic._as(json_.$index(0, _s12_11))) : _null;
-      t55 = json_.containsKey$1("version") ? A._asString(json_.$index(0, "version")) : _null;
-      if (json_.containsKey$1(_s18_1)) {
-        t56 = type$.Map_String_dynamic._as(json_.$index(0, _s18_1));
-        t57 = t56.containsKey$1(_s14_5) ? A._asString(t56.$index(0, _s14_5)) : _null;
-        t58 = t56.containsKey$1(_s6_) ? A._asInt(t56.$index(0, _s6_)) : _null;
-        t56 = new A.FileVideoMediaMetadata(t57, t58, t56.containsKey$1(_s5_) ? A._asInt(t56.$index(0, _s5_)) : _null);
-      } else
-        t56 = _null;
-      t57 = json_.containsKey$1(_s10_4) ? A._asBool(json_.$index(0, _s10_4)) : _null;
-      t58 = json_.containsKey$1(_s14_6) ? A.DateTime_parse(A._asString(json_.$index(0, _s14_6))) : _null;
-      t59 = json_.containsKey$1(_s21_1) ? A._asBool(json_.$index(0, _s21_1)) : _null;
-      t60 = json_.containsKey$1(_s14_7) ? A._asString(json_.$index(0, _s14_7)) : _null;
-      t61 = json_.containsKey$1(_s11_11) ? A._asString(json_.$index(0, _s11_11)) : _null;
-      return new A.File(t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32, t33, t34, t35, t36, t37, t38, t39, t40, t41, t42, t43, t44, t45, t46, t47, t48, t49, t50, t51, t52, t53, t54, t55, t56, t57, t58, t59, t60, t61, json_.containsKey$1(_s15_4) ? A._asBool(json_.$index(0, _s15_4)) : _null);
+        t58 = _null;
+      t59 = A._asBoolQ(json_.$index(0, "viewedByMe"));
+      t60 = json_.containsKey$1(_s14_) ? A.DateTime_parse(A._asString(json_.$index(0, _s14_))) : _null;
+      return new A.File(t2, t3, t4, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32, t33, t34, t35, t36, t37, t38, t39, t40, t1, t41, t42, t43, t44, t45, t46, t47, t48, t49, t5, t50, t51, t52, t53, t54, t55, t56, t57, t58, t59, t60, A._asBoolQ(json_.$index(0, "viewersCanCopyContent")), A._asStringQ(json_.$index(0, "webContentLink")), A._asStringQ(json_.$index(0, "webViewLink")), A._asBoolQ(json_.$index(0, "writersCanShare")));
     },
     FileList$fromJson(json_) {
-      var t1, t2, t3, _null = null,
-        _s16_ = "incompleteSearch",
-        _s13_ = "nextPageToken";
-      if (json_.containsKey$1("files")) {
-        t1 = J.map$1$1$ax(type$.List_dynamic._as(json_.$index(0, "files")), new A.FileList$fromJson_closure(), type$.File);
+      var t1 = type$.nullable_List_dynamic._as(json_.$index(0, "files"));
+      if (t1 == null)
+        t1 = null;
+      else {
+        t1 = J.map$1$1$ax(t1, new A.FileList$fromJson_closure(), type$.File);
         t1 = A.List_List$_of(t1, t1.$ti._eval$1("ListIterable.E"));
-      } else
-        t1 = _null;
-      t2 = json_.containsKey$1(_s16_) ? A._asBool(json_.$index(0, _s16_)) : _null;
-      t3 = json_.containsKey$1("kind") ? A._asString(json_.$index(0, "kind")) : _null;
-      return new A.FileList(t1, t2, t3, json_.containsKey$1(_s13_) ? A._asString(json_.$index(0, _s13_)) : _null);
+      }
+      return new A.FileList(t1, A._asBoolQ(json_.$index(0, "incompleteSearch")), A._asStringQ(json_.$index(0, "kind")), A._asStringQ(json_.$index(0, "nextPageToken")));
     },
     Label$fromJson(json_) {
-      var _null = null,
-        _s10_ = "revisionId",
-        t1 = json_.containsKey$1("fields") ? type$.Map_String_dynamic._as(json_.$index(0, "fields")).map$2$1(0, new A.Label$fromJson_closure(), type$.String, type$.LabelField) : _null,
-        t2 = json_.containsKey$1("id") ? A._asString(json_.$index(0, "id")) : _null,
-        t3 = json_.containsKey$1("kind") ? A._asString(json_.$index(0, "kind")) : _null;
-      return new A.Label(t1, t2, t3, json_.containsKey$1(_s10_) ? A._asString(json_.$index(0, _s10_)) : _null);
+      var t1 = type$.nullable_Map_String_dynamic._as(json_.$index(0, "fields"));
+      t1 = t1 == null ? null : t1.map$2$1(0, new A.Label$fromJson_closure(), type$.String, type$.LabelField);
+      return new A.Label(t1, A._asStringQ(json_.$index(0, "id")), A._asStringQ(json_.$index(0, "kind")), A._asStringQ(json_.$index(0, "revisionId")));
     },
     LabelField$fromJson(json_) {
-      var t1, t2, t3, t4, t5, t6, t7,
-        _s10_ = "dateString",
-        _null = null,
-        _s9_ = "selection",
-        _s9_0 = "valueType";
-      if (json_.containsKey$1(_s10_)) {
-        t1 = J.map$1$1$ax(type$.List_dynamic._as(json_.$index(0, _s10_)), new A.LabelField$fromJson_closure(), type$.DateTime);
-        t1 = A.List_List$_of(t1, t1.$ti._eval$1("ListIterable.E"));
-      } else
-        t1 = _null;
-      t2 = json_.containsKey$1("id") ? A._asString(json_.$index(0, "id")) : _null;
-      if (json_.containsKey$1("integer")) {
-        t3 = J.map$1$1$ax(type$.List_dynamic._as(json_.$index(0, "integer")), new A.LabelField$fromJson_closure0(), type$.String);
-        t3 = A.List_List$_of(t3, t3.$ti._eval$1("ListIterable.E"));
-      } else
-        t3 = _null;
-      t4 = json_.containsKey$1("kind") ? A._asString(json_.$index(0, "kind")) : _null;
-      if (json_.containsKey$1(_s9_)) {
-        t5 = J.map$1$1$ax(type$.List_dynamic._as(json_.$index(0, _s9_)), new A.LabelField$fromJson_closure1(), type$.String);
-        t5 = A.List_List$_of(t5, t5.$ti._eval$1("ListIterable.E"));
-      } else
-        t5 = _null;
-      if (json_.containsKey$1("text")) {
-        t6 = J.map$1$1$ax(type$.List_dynamic._as(json_.$index(0, "text")), new A.LabelField$fromJson_closure2(), type$.String);
-        t6 = A.List_List$_of(t6, t6.$ti._eval$1("ListIterable.E"));
-      } else
+      var t3, t4, t5, t6, t7, _null = null,
+        t1 = type$.nullable_List_dynamic,
+        t2 = t1._as(json_.$index(0, "dateString"));
+      if (t2 == null)
+        t2 = _null;
+      else {
+        t2 = J.map$1$1$ax(t2, new A.LabelField$fromJson_closure(), type$.DateTime);
+        t2 = A.List_List$_of(t2, t2.$ti._eval$1("ListIterable.E"));
+      }
+      t3 = A._asStringQ(json_.$index(0, "id"));
+      t4 = t1._as(json_.$index(0, "integer"));
+      if (t4 == null)
+        t4 = _null;
+      else {
+        t4 = J.map$1$1$ax(t4, new A.LabelField$fromJson_closure0(), type$.String);
+        t4 = A.List_List$_of(t4, t4.$ti._eval$1("ListIterable.E"));
+      }
+      t5 = A._asStringQ(json_.$index(0, "kind"));
+      t6 = t1._as(json_.$index(0, "selection"));
+      if (t6 == null)
         t6 = _null;
-      if (json_.containsKey$1("user")) {
-        t7 = J.map$1$1$ax(type$.List_dynamic._as(json_.$index(0, "user")), new A.LabelField$fromJson_closure3(), type$.User);
-        t7 = A.List_List$_of(t7, t7.$ti._eval$1("ListIterable.E"));
-      } else
+      else {
+        t6 = J.map$1$1$ax(t6, new A.LabelField$fromJson_closure1(), type$.String);
+        t6 = A.List_List$_of(t6, t6.$ti._eval$1("ListIterable.E"));
+      }
+      t7 = t1._as(json_.$index(0, "text"));
+      if (t7 == null)
         t7 = _null;
-      return new A.LabelField(t1, t2, t3, t4, t5, t6, t7, json_.containsKey$1(_s9_0) ? A._asString(json_.$index(0, _s9_0)) : _null);
+      else {
+        t7 = J.map$1$1$ax(t7, new A.LabelField$fromJson_closure2(), type$.String);
+        t7 = A.List_List$_of(t7, t7.$ti._eval$1("ListIterable.E"));
+      }
+      t1 = t1._as(json_.$index(0, "user"));
+      if (t1 == null)
+        t1 = _null;
+      else {
+        t1 = J.map$1$1$ax(t1, new A.LabelField$fromJson_closure3(), type$.User);
+        t1 = A.List_List$_of(t1, t1.$ti._eval$1("ListIterable.E"));
+      }
+      return new A.LabelField(t2, t3, t4, t5, t6, t7, t1, A._asStringQ(json_.$index(0, "valueType")));
     },
     Permission$fromJson(json_) {
-      var t10, t11, t12, t13, t14,
-        _s18_ = "allowFileDiscovery",
-        _null = null,
-        _s11_ = "displayName",
-        _s12_ = "emailAddress",
+      var t13, t14,
         _s14_ = "expirationTime",
-        _s12_0 = "pendingOwner",
-        _s17_ = "permissionDetails",
-        _s9_ = "photoLink",
-        _s26_ = "teamDrivePermissionDetails",
-        t1 = json_.containsKey$1(_s18_) ? A._asBool(json_.$index(0, _s18_)) : _null,
-        t2 = json_.containsKey$1("deleted") ? A._asBool(json_.$index(0, "deleted")) : _null,
-        t3 = json_.containsKey$1(_s11_) ? A._asString(json_.$index(0, _s11_)) : _null,
-        t4 = json_.containsKey$1("domain") ? A._asString(json_.$index(0, "domain")) : _null,
-        t5 = json_.containsKey$1(_s12_) ? A._asString(json_.$index(0, _s12_)) : _null,
-        t6 = json_.containsKey$1(_s14_) ? A.DateTime_parse(A._asString(json_.$index(0, _s14_))) : _null,
-        t7 = json_.containsKey$1("id") ? A._asString(json_.$index(0, "id")) : _null,
-        t8 = json_.containsKey$1("kind") ? A._asString(json_.$index(0, "kind")) : _null,
-        t9 = json_.containsKey$1(_s12_0) ? A._asBool(json_.$index(0, _s12_0)) : _null;
-      if (json_.containsKey$1(_s17_)) {
-        t10 = J.map$1$1$ax(type$.List_dynamic._as(json_.$index(0, _s17_)), new A.Permission$fromJson_closure(), type$.PermissionPermissionDetails);
-        t10 = A.List_List$_of(t10, t10.$ti._eval$1("ListIterable.E"));
-      } else
-        t10 = _null;
-      t11 = json_.containsKey$1(_s9_) ? A._asString(json_.$index(0, _s9_)) : _null;
-      t12 = json_.containsKey$1("role") ? A._asString(json_.$index(0, "role")) : _null;
-      if (json_.containsKey$1(_s26_)) {
-        t13 = J.map$1$1$ax(type$.List_dynamic._as(json_.$index(0, _s26_)), new A.Permission$fromJson_closure0(), type$.PermissionTeamDrivePermissionDetails);
-        t13 = A.List_List$_of(t13, t13.$ti._eval$1("ListIterable.E"));
-      } else
-        t13 = _null;
-      t14 = json_.containsKey$1("type") ? A._asString(json_.$index(0, "type")) : _null;
-      return new A.Permission(t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, json_.containsKey$1("view") ? A._asString(json_.$index(0, "view")) : _null);
+        t1 = A._asBoolQ(json_.$index(0, "allowFileDiscovery")),
+        t2 = A._asBoolQ(json_.$index(0, "deleted")),
+        t3 = A._asStringQ(json_.$index(0, "displayName")),
+        t4 = A._asStringQ(json_.$index(0, "domain")),
+        t5 = A._asStringQ(json_.$index(0, "emailAddress")),
+        t6 = json_.containsKey$1(_s14_) ? A.DateTime_parse(A._asString(json_.$index(0, _s14_))) : null,
+        t7 = A._asStringQ(json_.$index(0, "id")),
+        t8 = A._asBoolQ(json_.$index(0, "inheritedPermissionsDisabled")),
+        t9 = A._asStringQ(json_.$index(0, "kind")),
+        t10 = A._asBoolQ(json_.$index(0, "pendingOwner")),
+        t11 = type$.nullable_List_dynamic,
+        t12 = t11._as(json_.$index(0, "permissionDetails"));
+      if (t12 == null)
+        t12 = null;
+      else {
+        t12 = J.map$1$1$ax(t12, new A.Permission$fromJson_closure(), type$.PermissionPermissionDetails);
+        t12 = A.List_List$_of(t12, t12.$ti._eval$1("ListIterable.E"));
+      }
+      t13 = A._asStringQ(json_.$index(0, "photoLink"));
+      t14 = A._asStringQ(json_.$index(0, "role"));
+      t11 = t11._as(json_.$index(0, "teamDrivePermissionDetails"));
+      if (t11 == null)
+        t11 = null;
+      else {
+        t11 = J.map$1$1$ax(t11, new A.Permission$fromJson_closure0(), type$.PermissionTeamDrivePermissionDetails);
+        t11 = A.List_List$_of(t11, t11.$ti._eval$1("ListIterable.E"));
+      }
+      return new A.Permission(t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t12, t13, t14, t11, A._asStringQ(json_.$index(0, "type")), A._asStringQ(json_.$index(0, "view")));
     },
     User$fromJson(json_) {
-      var _s11_ = "displayName",
-        _null = null,
-        _s12_ = "emailAddress",
-        _s12_0 = "permissionId",
-        _s9_ = "photoLink",
-        t1 = json_.containsKey$1(_s11_) ? A._asString(json_.$index(0, _s11_)) : _null,
-        t2 = json_.containsKey$1(_s12_) ? A._asString(json_.$index(0, _s12_)) : _null,
-        t3 = json_.containsKey$1("kind") ? A._asString(json_.$index(0, "kind")) : _null,
-        t4 = json_.containsKey$1("me") ? A._asBool(json_.$index(0, "me")) : _null,
-        t5 = json_.containsKey$1(_s12_0) ? A._asString(json_.$index(0, _s12_0)) : _null;
-      return new A.User(t1, t2, t3, t4, t5, json_.containsKey$1(_s9_) ? A._asString(json_.$index(0, _s9_)) : _null);
+      return new A.User(A._asStringQ(json_.$index(0, "displayName")), A._asStringQ(json_.$index(0, "emailAddress")), A._asStringQ(json_.$index(0, "kind")), A._asBoolQ(json_.$index(0, "me")), A._asStringQ(json_.$index(0, "permissionId")), A._asStringQ(json_.$index(0, "photoLink")));
     },
     DriveApi: function DriveApi(t0) {
       this._requester = t0;
@@ -12532,49 +12415,60 @@
       _.systemRestricted = t5;
       _.type = t6;
     },
-    FileCapabilities: function FileCapabilities(t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32, t33, t34, t35, t36, t37, t38, t39, t40) {
+    DownloadRestriction: function DownloadRestriction(t0, t1) {
+      this.restrictedForReaders = t0;
+      this.restrictedForWriters = t1;
+    },
+    DownloadRestrictionsMetadata: function DownloadRestrictionsMetadata(t0, t1) {
+      this.effectiveDownloadRestrictionWithContext = t0;
+      this.itemDownloadRestriction = t1;
+    },
+    FileCapabilities: function FileCapabilities(t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32, t33, t34, t35, t36, t37, t38, t39, t40, t41, t42, t43) {
       var _ = this;
       _.canAcceptOwnership = t0;
       _.canAddChildren = t1;
       _.canAddFolderFromAnotherDrive = t2;
       _.canAddMyDriveParent = t3;
       _.canChangeCopyRequiresWriterPermission = t4;
-      _.canChangeSecurityUpdateEnabled = t5;
-      _.canChangeViewersCanCopyContent = t6;
-      _.canComment = t7;
-      _.canCopy = t8;
-      _.canDelete = t9;
-      _.canDeleteChildren = t10;
-      _.canDownload = t11;
-      _.canEdit = t12;
-      _.canListChildren = t13;
-      _.canModifyContent = t14;
-      _.canModifyContentRestriction = t15;
-      _.canModifyEditorContentRestriction = t16;
-      _.canModifyLabels = t17;
-      _.canModifyOwnerContentRestriction = t18;
-      _.canMoveChildrenOutOfDrive = t19;
-      _.canMoveChildrenOutOfTeamDrive = t20;
-      _.canMoveChildrenWithinDrive = t21;
-      _.canMoveChildrenWithinTeamDrive = t22;
-      _.canMoveItemIntoTeamDrive = t23;
-      _.canMoveItemOutOfDrive = t24;
-      _.canMoveItemOutOfTeamDrive = t25;
-      _.canMoveItemWithinDrive = t26;
-      _.canMoveItemWithinTeamDrive = t27;
-      _.canMoveTeamDriveItem = t28;
-      _.canReadDrive = t29;
-      _.canReadLabels = t30;
-      _.canReadRevisions = t31;
-      _.canReadTeamDrive = t32;
-      _.canRemoveChildren = t33;
-      _.canRemoveContentRestriction = t34;
-      _.canRemoveMyDriveParent = t35;
-      _.canRename = t36;
-      _.canShare = t37;
-      _.canTrash = t38;
-      _.canTrashChildren = t39;
-      _.canUntrash = t40;
+      _.canChangeItemDownloadRestriction = t5;
+      _.canChangeSecurityUpdateEnabled = t6;
+      _.canChangeViewersCanCopyContent = t7;
+      _.canComment = t8;
+      _.canCopy = t9;
+      _.canDelete = t10;
+      _.canDeleteChildren = t11;
+      _.canDisableInheritedPermissions = t12;
+      _.canDownload = t13;
+      _.canEdit = t14;
+      _.canEnableInheritedPermissions = t15;
+      _.canListChildren = t16;
+      _.canModifyContent = t17;
+      _.canModifyContentRestriction = t18;
+      _.canModifyEditorContentRestriction = t19;
+      _.canModifyLabels = t20;
+      _.canModifyOwnerContentRestriction = t21;
+      _.canMoveChildrenOutOfDrive = t22;
+      _.canMoveChildrenOutOfTeamDrive = t23;
+      _.canMoveChildrenWithinDrive = t24;
+      _.canMoveChildrenWithinTeamDrive = t25;
+      _.canMoveItemIntoTeamDrive = t26;
+      _.canMoveItemOutOfDrive = t27;
+      _.canMoveItemOutOfTeamDrive = t28;
+      _.canMoveItemWithinDrive = t29;
+      _.canMoveItemWithinTeamDrive = t30;
+      _.canMoveTeamDriveItem = t31;
+      _.canReadDrive = t32;
+      _.canReadLabels = t33;
+      _.canReadRevisions = t34;
+      _.canReadTeamDrive = t35;
+      _.canRemoveChildren = t36;
+      _.canRemoveContentRestriction = t37;
+      _.canRemoveMyDriveParent = t38;
+      _.canRename = t39;
+      _.canShare = t40;
+      _.canTrash = t41;
+      _.canTrashChildren = t42;
+      _.canUntrash = t43;
     },
     FileContentHintsThumbnail: function FileContentHintsThumbnail(t0, t1) {
       this.image = t0;
@@ -12632,7 +12526,7 @@
       this.height = t1;
       this.width = t2;
     },
-    File: function File(t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32, t33, t34, t35, t36, t37, t38, t39, t40, t41, t42, t43, t44, t45, t46, t47, t48, t49, t50, t51, t52, t53, t54, t55, t56, t57, t58, t59, t60, t61) {
+    File: function File(t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32, t33, t34, t35, t36, t37, t38, t39, t40, t41, t42, t43, t44, t45, t46, t47, t48, t49, t50, t51, t52, t53, t54, t55, t56, t57, t58, t59, t60, t61, t62, t63) {
       var _ = this;
       _.appProperties = t0;
       _.capabilities = t1;
@@ -12641,61 +12535,63 @@
       _.copyRequiresWriterPermission = t4;
       _.createdTime = t5;
       _.description = t6;
-      _.driveId = t7;
-      _.explicitlyTrashed = t8;
-      _.exportLinks = t9;
-      _.fileExtension = t10;
-      _.folderColorRgb = t11;
-      _.fullFileExtension = t12;
-      _.hasAugmentedPermissions = t13;
-      _.hasThumbnail = t14;
-      _.headRevisionId = t15;
-      _.iconLink = t16;
-      _.id = t17;
-      _.imageMediaMetadata = t18;
-      _.isAppAuthorized = t19;
-      _.kind = t20;
-      _.labelInfo = t21;
-      _.lastModifyingUser = t22;
-      _.linkShareMetadata = t23;
-      _.md5Checksum = t24;
-      _.mimeType = t25;
-      _.modifiedByMe = t26;
-      _.modifiedByMeTime = t27;
-      _.modifiedTime = t28;
-      _.name = t29;
-      _.originalFilename = t30;
-      _.ownedByMe = t31;
-      _.owners = t32;
-      _.parents = t33;
-      _.permissionIds = t34;
-      _.permissions = t35;
-      _.properties = t36;
-      _.quotaBytesUsed = t37;
-      _.resourceKey = t38;
-      _.sha1Checksum = t39;
-      _.sha256Checksum = t40;
-      _.shared = t41;
-      _.sharedWithMeTime = t42;
-      _.sharingUser = t43;
-      _.shortcutDetails = t44;
-      _.size = t45;
-      _.spaces = t46;
-      _.starred = t47;
-      _.teamDriveId = t48;
-      _.thumbnailLink = t49;
-      _.thumbnailVersion = t50;
-      _.trashed = t51;
-      _.trashedTime = t52;
-      _.trashingUser = t53;
-      _.version = t54;
-      _.videoMediaMetadata = t55;
-      _.viewedByMe = t56;
-      _.viewedByMeTime = t57;
-      _.viewersCanCopyContent = t58;
-      _.webContentLink = t59;
-      _.webViewLink = t60;
-      _.writersCanShare = t61;
+      _.downloadRestrictions = t7;
+      _.driveId = t8;
+      _.explicitlyTrashed = t9;
+      _.exportLinks = t10;
+      _.fileExtension = t11;
+      _.folderColorRgb = t12;
+      _.fullFileExtension = t13;
+      _.hasAugmentedPermissions = t14;
+      _.hasThumbnail = t15;
+      _.headRevisionId = t16;
+      _.iconLink = t17;
+      _.id = t18;
+      _.imageMediaMetadata = t19;
+      _.inheritedPermissionsDisabled = t20;
+      _.isAppAuthorized = t21;
+      _.kind = t22;
+      _.labelInfo = t23;
+      _.lastModifyingUser = t24;
+      _.linkShareMetadata = t25;
+      _.md5Checksum = t26;
+      _.mimeType = t27;
+      _.modifiedByMe = t28;
+      _.modifiedByMeTime = t29;
+      _.modifiedTime = t30;
+      _.name = t31;
+      _.originalFilename = t32;
+      _.ownedByMe = t33;
+      _.owners = t34;
+      _.parents = t35;
+      _.permissionIds = t36;
+      _.permissions = t37;
+      _.properties = t38;
+      _.quotaBytesUsed = t39;
+      _.resourceKey = t40;
+      _.sha1Checksum = t41;
+      _.sha256Checksum = t42;
+      _.shared = t43;
+      _.sharedWithMeTime = t44;
+      _.sharingUser = t45;
+      _.shortcutDetails = t46;
+      _.size = t47;
+      _.spaces = t48;
+      _.starred = t49;
+      _.teamDriveId = t50;
+      _.thumbnailLink = t51;
+      _.thumbnailVersion = t52;
+      _.trashed = t53;
+      _.trashedTime = t54;
+      _.trashingUser = t55;
+      _.version = t56;
+      _.videoMediaMetadata = t57;
+      _.viewedByMe = t58;
+      _.viewedByMeTime = t59;
+      _.viewersCanCopyContent = t60;
+      _.webContentLink = t61;
+      _.webViewLink = t62;
+      _.writersCanShare = t63;
     },
     File$fromJson_closure: function File$fromJson_closure() {
     },
@@ -12770,7 +12666,7 @@
       _.role = t2;
       _.teamDrivePermissionType = t3;
     },
-    Permission: function Permission(t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14) {
+    Permission: function Permission(t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15) {
       var _ = this;
       _.allowFileDiscovery = t0;
       _.deleted = t1;
@@ -12779,14 +12675,15 @@
       _.emailAddress = t4;
       _.expirationTime = t5;
       _.id = t6;
-      _.kind = t7;
-      _.pendingOwner = t8;
-      _.permissionDetails = t9;
-      _.photoLink = t10;
-      _.role = t11;
-      _.teamDrivePermissionDetails = t12;
-      _.type = t13;
-      _.view = t14;
+      _.inheritedPermissionsDisabled = t7;
+      _.kind = t8;
+      _.pendingOwner = t9;
+      _.permissionDetails = t10;
+      _.photoLink = t11;
+      _.role = t12;
+      _.teamDrivePermissionDetails = t13;
+      _.type = t14;
+      _.view = t15;
     },
     Permission$fromJson_closure: function Permission$fromJson_closure() {
     },
@@ -45710,6 +45607,30 @@
       return t1;
     }
   };
+  A.DownloadRestriction.prototype = {
+    toJson$0() {
+      var t1 = A.LinkedHashMap_LinkedHashMap$_empty(type$.String, type$.dynamic),
+        t2 = this.restrictedForReaders;
+      if (t2 != null)
+        t1.$indexSet(0, "restrictedForReaders", t2);
+      t2 = this.restrictedForWriters;
+      if (t2 != null)
+        t1.$indexSet(0, "restrictedForWriters", t2);
+      return t1;
+    }
+  };
+  A.DownloadRestrictionsMetadata.prototype = {
+    toJson$0() {
+      var t1 = A.LinkedHashMap_LinkedHashMap$_empty(type$.String, type$.dynamic),
+        t2 = this.effectiveDownloadRestrictionWithContext;
+      if (t2 != null)
+        t1.$indexSet(0, "effectiveDownloadRestrictionWithContext", t2);
+      t2 = this.itemDownloadRestriction;
+      if (t2 != null)
+        t1.$indexSet(0, "itemDownloadRestriction", t2);
+      return t1;
+    }
+  };
   A.FileCapabilities.prototype = {
     toJson$0() {
       var _this = this,
@@ -45729,6 +45650,9 @@
       t2 = _this.canChangeCopyRequiresWriterPermission;
       if (t2 != null)
         t1.$indexSet(0, "canChangeCopyRequiresWriterPermission", t2);
+      t2 = _this.canChangeItemDownloadRestriction;
+      if (t2 != null)
+        t1.$indexSet(0, "canChangeItemDownloadRestriction", t2);
       t2 = _this.canChangeSecurityUpdateEnabled;
       if (t2 != null)
         t1.$indexSet(0, "canChangeSecurityUpdateEnabled", t2);
@@ -45747,12 +45671,18 @@
       t2 = _this.canDeleteChildren;
       if (t2 != null)
         t1.$indexSet(0, "canDeleteChildren", t2);
+      t2 = _this.canDisableInheritedPermissions;
+      if (t2 != null)
+        t1.$indexSet(0, "canDisableInheritedPermissions", t2);
       t2 = _this.canDownload;
       if (t2 != null)
         t1.$indexSet(0, "canDownload", t2);
       t2 = _this.canEdit;
       if (t2 != null)
         t1.$indexSet(0, "canEdit", t2);
+      t2 = _this.canEnableInheritedPermissions;
+      if (t2 != null)
+        t1.$indexSet(0, "canEnableInheritedPermissions", t2);
       t2 = _this.canListChildren;
       if (t2 != null)
         t1.$indexSet(0, "canListChildren", t2);
@@ -46031,6 +45961,9 @@
       t2 = _this.description;
       if (t2 != null)
         t1.$indexSet(0, "description", t2);
+      t2 = _this.downloadRestrictions;
+      if (t2 != null)
+        t1.$indexSet(0, "downloadRestrictions", t2);
       t2 = _this.driveId;
       if (t2 != null)
         t1.$indexSet(0, "driveId", t2);
@@ -46067,6 +46000,9 @@
       t2 = _this.imageMediaMetadata;
       if (t2 != null)
         t1.$indexSet(0, "imageMediaMetadata", t2);
+      t2 = _this.inheritedPermissionsDisabled;
+      if (t2 != null)
+        t1.$indexSet(0, "inheritedPermissionsDisabled", t2);
       t2 = _this.isAppAuthorized;
       if (t2 != null)
         t1.$indexSet(0, "isAppAuthorized", t2);
@@ -46213,21 +46149,17 @@
   };
   A.File$fromJson_closure0.prototype = {
     call$1(value) {
-      var t2, t3, t4, t5, t6, _null = null,
-        _s15_ = "ownerRestricted",
-        _s8_ = "readOnly",
-        _s15_0 = "restrictingUser",
-        _s15_1 = "restrictionTime",
-        _s16_ = "systemRestricted",
+      var t2, t3, t4, t5,
+        _s15_ = "restrictingUser",
+        _s15_0 = "restrictionTime",
         t1 = type$.Map_String_dynamic;
       t1._as(value);
-      t2 = value.containsKey$1(_s15_) ? A._asBool(value.$index(0, _s15_)) : _null;
-      t3 = value.containsKey$1(_s8_) ? A._asBool(value.$index(0, _s8_)) : _null;
-      t4 = value.containsKey$1("reason") ? A._asString(value.$index(0, "reason")) : _null;
-      t1 = value.containsKey$1(_s15_0) ? A.User$fromJson(t1._as(value.$index(0, _s15_0))) : _null;
-      t5 = value.containsKey$1(_s15_1) ? A.DateTime_parse(A._asString(value.$index(0, _s15_1))) : _null;
-      t6 = value.containsKey$1(_s16_) ? A._asBool(value.$index(0, _s16_)) : _null;
-      return new A.ContentRestriction(t2, t3, t4, t1, t5, t6, value.containsKey$1("type") ? A._asString(value.$index(0, "type")) : _null);
+      t2 = A._asBoolQ(value.$index(0, "ownerRestricted"));
+      t3 = A._asBoolQ(value.$index(0, "readOnly"));
+      t4 = A._asStringQ(value.$index(0, "reason"));
+      t1 = value.containsKey$1(_s15_) ? A.User$fromJson(t1._as(value.$index(0, _s15_))) : null;
+      t5 = value.containsKey$1(_s15_0) ? A.DateTime_parse(A._asString(value.$index(0, _s15_0))) : null;
+      return new A.ContentRestriction(t2, t3, t4, t1, t5, A._asBoolQ(value.$index(0, "systemRestricted")), A._asStringQ(value.$index(0, "type")));
     },
     $signature: 341
   };
@@ -46458,6 +46390,9 @@
       t2 = _this.id;
       if (t2 != null)
         t1.$indexSet(0, "id", t2);
+      t2 = _this.inheritedPermissionsDisabled;
+      if (t2 != null)
+        t1.$indexSet(0, "inheritedPermissionsDisabled", t2);
       t2 = _this.kind;
       if (t2 != null)
         t1.$indexSet(0, "kind", t2);
@@ -46487,29 +46422,15 @@
   };
   A.Permission$fromJson_closure.prototype = {
     call$1(value) {
-      var t1, t2, t3, _null = null,
-        _s9_ = "inherited",
-        _s13_ = "inheritedFrom",
-        _s14_ = "permissionType";
       type$.Map_String_dynamic._as(value);
-      t1 = value.containsKey$1(_s9_) ? A._asBool(value.$index(0, _s9_)) : _null;
-      t2 = value.containsKey$1(_s13_) ? A._asString(value.$index(0, _s13_)) : _null;
-      t3 = value.containsKey$1(_s14_) ? A._asString(value.$index(0, _s14_)) : _null;
-      return new A.PermissionPermissionDetails(t1, t2, t3, value.containsKey$1("role") ? A._asString(value.$index(0, "role")) : _null);
+      return new A.PermissionPermissionDetails(A._asBoolQ(value.$index(0, "inherited")), A._asStringQ(value.$index(0, "inheritedFrom")), A._asStringQ(value.$index(0, "permissionType")), A._asStringQ(value.$index(0, "role")));
     },
     $signature: 396
   };
   A.Permission$fromJson_closure0.prototype = {
     call$1(value) {
-      var t1, t2, t3, _null = null,
-        _s9_ = "inherited",
-        _s13_ = "inheritedFrom",
-        _s23_ = "teamDrivePermissionType";
       type$.Map_String_dynamic._as(value);
-      t1 = value.containsKey$1(_s9_) ? A._asBool(value.$index(0, _s9_)) : _null;
-      t2 = value.containsKey$1(_s13_) ? A._asString(value.$index(0, _s13_)) : _null;
-      t3 = value.containsKey$1("role") ? A._asString(value.$index(0, "role")) : _null;
-      return new A.PermissionTeamDrivePermissionDetails(t1, t2, t3, value.containsKey$1(_s23_) ? A._asString(value.$index(0, _s23_)) : _null);
+      return new A.PermissionTeamDrivePermissionDetails(A._asBoolQ(value.$index(0, "inherited")), A._asStringQ(value.$index(0, "inheritedFrom")), A._asStringQ(value.$index(0, "role")), A._asStringQ(value.$index(0, "teamDrivePermissionType")));
     },
     $signature: 403
   };
@@ -62393,7 +62314,7 @@
                 break;
               }
               t2.log$4(B.Level_FINE_500, "Folder not found, creating new folder", null, null);
-              folderMetadata0 = A.File$(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+              folderMetadata0 = A.File$(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
               folderMetadata0.name = folderName;
               folderMetadata0.mimeType = "application/vnd.google-apps.folder";
               folderMetadata = folderMetadata0;
@@ -62502,7 +62423,7 @@
               t1.log$4(B.Level_FINE_500, 'Creating file "' + A.S(actualFileName) + '" in folder=' + A.S(parentId), null, null);
               $content = $async$self._rdfCore.encode$1(graph);
               bytes = B.C_Utf8Encoder.convert$1(A._asString($content));
-              fileMetadata0 = A.File$(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+              fileMetadata0 = A.File$(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
               fileMetadata0.set$name(actualFileName);
               fileMetadata0.set$parents(A._setArrayType([parentId], type$.JSArray_String));
               fileMetadata0.mimeType = "text/turtle";
@@ -62949,7 +62870,7 @@
               bytes = B.C_Utf8Encoder.convert$1(A._asString($content));
               media = A.Media$(A.Stream_Stream$value(bytes, type$.List_int), J.get$length$asx(bytes), "application/octet-stream");
               $async$goto = 8;
-              return A._asyncAwait(new A.FilesResource(t2).update$4$$fields$uploadMedia(A.File$(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null), fileId, "md5Checksum", media), $async$upload$4$ifMatch$isRetry);
+              return A._asyncAwait(new A.FilesResource(t2).update$4$$fields$uploadMedia(A.File$(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null), fileId, "md5Checksum", media), $async$upload$4$ifMatch$isRetry);
             case 8:
               // returning from await.
               updated = $async$result;
@@ -89200,7 +89121,7 @@
       _inheritMany = hunkHelpers.inheritMany,
       _inherit = hunkHelpers.inherit;
     _inheritMany(null, [A.Object, A.AbortableStreamedRequest]);
-    _inheritMany(A.Object, [A.JS_CONST, J.Interceptor, A.SafeToStringHook, J.ArrayIterator, A._CopyingBytesBuilder, A.Iterable, A.CastIterator, A.Closure, A.MapBase, A.Error, A.ListBase, A.SentinelValue, A.ListIterator, A.MappedIterator, A.WhereIterator, A.ExpandIterator, A.TakeIterator, A.SkipIterator, A.SkipWhileIterator, A.EmptyIterator, A.WhereTypeIterator, A.NonNullsIterator, A.IndexedIterator, A.FixedLengthListMixin, A.UnmodifiableListMixin, A.Symbol, A._Record, A.MapView, A.ConstantMap, A._KeysOrValuesOrElementsIterator, A.SetBase, A.TypeErrorDecoder, A.NullThrownFromJavaScriptException, A.ExceptionAndStackTrace, A._StackTrace, A.LinkedHashMapCell, A.LinkedHashMapKeyIterator, A.LinkedHashMapValueIterator, A.LinkedHashMapEntryIterator, A.JSSyntaxRegExp, A._MatchImplementation, A._AllMatchesIterator, A.StringMatch, A._StringAllMatchesIterator, A._Cell, A._InitializedCell, A._UnmodifiableNativeByteBufferView, A.Rti, A._FunctionParameters, A._Type, A._TimerImpl, A._AsyncAwaitCompleter, A._AsyncStarStreamController, A._IterationMarker, A._SyncStarIterator, A.AsyncError, A.Stream, A._BufferingStreamSubscription, A._BroadcastStreamController, A.TimeoutException, A._Completer, A._FutureListener, A._Future, A._AsyncCallbackEntry, A.StreamTransformerBase, A._StreamController, A._SyncStreamControllerDispatch, A._AsyncStreamControllerDispatch, A._StreamSinkWrapper, A._AddStreamState, A._DelayedEvent, A._DelayedDone, A._PendingEvents, A._DoneStreamSubscription, A._StreamIterator, A._EventSinkWrapper, A._ZoneFunction, A._ZoneSpecification, A._ZoneDelegate, A._Zone, A._HashMapKeyIterator, A._HashSetIterator, A._LinkedHashSetCell, A._LinkedHashSetIterator, A._LinkedListIterator, A.LinkedListEntry, A._MapBaseValueIterator, A._UnmodifiableMapMixin, A._ListQueueIterator, A._UnmodifiableSetMixin, A.StringConversionSink, A.Codec, A.Converter, A.ByteConversionSink, A._Base64Encoder, A._Base64Decoder, A.ChunkedConversionSink, A._ConverterStreamEventSink, A._JsonStringifier, A._JsonPrettyPrintMixin, A._ClosableStringSink, A._StringConversionSinkAsStringSinkAdapter, A._Utf8Encoder, A._Utf8Decoder, A._BigIntImpl, A._BigIntClassic, A._FinalizationRegistryWrapper, A.DateTime, A.Duration, A._Enum, A.OutOfMemoryError, A.StackOverflowError, A._Exception, A.FormatException, A.IntegerDivisionByZeroException, A.MapEntry, A.Null, A._StringStackTrace, A.StringBuffer, A._Uri, A.UriData, A._SimpleUri, A.Expando, A.ServiceExtensionResponse, A.NullRejectionException, A._JSRandom, A._JSSecureRandom, A.Endian, A.ApiRequester, A.MultipartMediaUploader, A.BaseRequest, A.Media, A.UploadOptions, A.DownloadOptions, A.ByteRange, A.ApiRequestError, A.ApiRequestErrorDetail, A.DelegatingStreamSubscription, A.FutureGroup, A.ErrorResult, A.ValueResult, A.StreamQueue, A._NextRequest, A._CancelRequest, A.StreamSplitter, A.CanonicalizedMap, A.DefaultEquality, A.ListEquality, A._UnorderedEquality, A._MapEntry, A.MapEquality, A._QueueList_Object_ListMixin, A.NonGrowableListMixin, A.UnmodifiableMapMixin, A.Digest, A.DigestSink, A.HashSink, A.Expression, A.HasResultSet, A.DriftClient, A.QueryExecutor, A.StreamQueryStore, A.DriftCommunication, A._PendingRequest, A.ConnectionClosedException, A.DriftRemoteException, A.DriftProtocol, A.Message, A.PrimitiveResponsePayload, A.ExecuteQuery, A.RequestCancellation, A.ExecuteBatchedStatement, A.RunNestedExecutorControl, A.EnsureOpen, A.ServerInfo, A.RunBeforeOpen, A.NotifyTablesUpdated, A.SelectResult, A.WebProtocol, A.DriftDatabaseOptions, A.Batch, A.DatabaseConnection, A.DatabaseConnectionUser, A.DriftRuntimeOptions, A.StreamQueryUpdateRules, A.TableUpdate, A.TableUpdateQuery, A.CancellationToken, A.CancellationException, A.DataClass, A.UpdateCompanion, A.Value, A.ValueSerializer, A.VerificationMeta, A.VerificationResult, A.VerificationContext, A.TrackedDatabase, A.DriftServiceExtension, A.InvalidDataException, A.DriftWrappedException, A.CouldNotRollBackException, A.BatchedStatements, A.ArgumentsForBatchedStatement, A.QueryDelegate, A.TransactionDelegate, A.DbVersionDelegate, A.QueryResult, A.QueryInterceptor, A.QueryStreamFetcher, A.StreamKey, A.QueryStream, A._QueryStreamListener, A.Component, A.GenerationContext, A.MigrationStrategy, A.Migrator, A.OpeningDetails, A.TableInfo, A.InsertStatement, A.UpsertClause, A.Selectable, A.SingleTableQueryMixin, A.LimitContainerMixin, A._CustomSelectStatement_Object_Selectable, A.QueryRow, A.TypedResult, A._ResultStructure, A.SqlTypes, A.DriftAny, A.PreparedStatementsCache, A.Lock, A.WasmDatabaseOpener, A._DriftWorker, A._ProbeResult, A.WasmInitializationMessage, A.DriftServerController, A.WasmDatabaseResult, A.DriveApi, A.FilesResource, A.ContentRestriction, A.FileCapabilities, A.FileContentHintsThumbnail, A.FileContentHints, A.FileImageMediaMetadataLocation, A.FileImageMediaMetadata, A.FileLabelInfo, A.FileLinkShareMetadata, A.FileShortcutDetails, A.FileVideoMediaMetadata, A.File, A.FileList, A.Label, A.LabelField, A.PermissionPermissionDetails, A.PermissionTeamDrivePermissionDetails, A.Permission, A.User, A.BaseClient, A.ClientException, A.BaseResponse, A.MediaType, A.ResourceConfigBase, A.ConfigBase, A.ConfigBaseValidator, A.IndexItemConfigBase, A.CrdtIndexConfigBase, A.DocumentIriTemplate, A.SyncEngineConfigValidator, A.ValidationResult, A.ValidationIssue, A.SyncConfigValidationException, A.MetadataStatement, A.MetadataStatementKey, A.MergeResults, A.GRegister, A.LwwRegister, A.Immutable, A.OrSet, A.CrdtMergeContext, A.RemoteCrdtMergeContext, A.CrdtTypeRegistry, A.CrdtDocumentManager, A.HlcService, A.GroupIndexGraphSubscriptionException, A.GroupIndexGraphSubscriptionManager, A.GroupKeyGenerator, A._PropertyExtractor, A.ItemFetchPolicy, A.RegexTransform, A.GroupingProperty, A._ParsedIndexCacheEntry, A._IndexMetadata, A.IndexDiscovery, A.IndexManager, A.ParsedFullIndex, A.ParsedGroupIndexTemplate, A.IndexParser, A.IndexPropertyResolver, A.IndexRdfGenerator, A.RdfGroupExtractor, A.MissingIndexDocument, A.MissingGroupIndex, A.ShardDeterminationResult, A.ShardDeterminer, A.ShardManager, A.ShardingConfig, A.InstallationService, A.LocalDocumentMerger, A.CrdtMetadataResult, A.FrameworkIriGenerator, A._GraphWithLabels, A.IdentifiedBlankNodeParent, A.IdentifiedBlankNode, A.IdentifiedBlankNodes, A.UnidentifiedBlankNodeException, A.UnidentifiedBlankNodeWithContextException, A.IdentifiedBlankNodeBuilder, A.IdentifiedRdfSubject, A.NoOpIriTranslator, A.BaseIriTranslator, A.ResourceLocator, A.PredicateRule, A.DocumentMapping, A.PredicateMapping, A.ClassMapping, A.PredicateMergeRule, A.ClassMergeRules, A.MergeContract, A.DocumentMappingDependencyExtractor, A.MergeContractLoader, A.MetadataGenerator, A.IdTerm, A.HttpFetcher, A.StandardRdfGraphFetcher, A.RecursiveRdfLoader, A.UnsupportedIriException, A.ResourceIdentifier, A.LocalResourceLocator, A.StandardSyncEngine, A.ConcurrentUpdateException, A.RemoteId, A.RemoteDownloadResult, A.RemoteUploadResult, A.IndexEntryWithIri, A.IndexEntriesPage, A.StoredDocument, A.SaveDocumentResult, A.DocumentsResult, A.DocumentMetadata, A.PropertyChange, A.OrganizedStatements, A.MergeObject, A.MergeSubject, A.OrganizedBlankNodeMappings, A.RdfObjectKey, A.OrganizedGraph, A.MergeResult, A.RemoteDocumentMerger, A.IndexSyncSpec, A.ShardSyncSpec, A._DocumentQueueEntry, A.RemoteSyncOrchestrator, A.ShardDocumentGenerator, A.StandardSyncManager, A.SyncFunction, A.AutoSyncConfig, A.SyncState, A.EngineParams, A.LRUCache, A.RdfExpectations, A.LocordaDriftWebOptions, A.LocordaDriftNativeOptions, A.DriftStorage, A.IriBatchLoader, A.DriftIndexEntry, A.SubscribedGroupIndexData, A.IndexEntriesPage0, A.DocumentWithIri, A._$SyncDocumentDaoMixin, A._$SyncPropertyChangeDaoMixin, A._$IndexDaoMixin, A._$RemoteSyncStateDaoMixin, A.StorageWorkerHandler, A.GDriveClient, A.GDriveClientException, A.GDriveSyncStorage, A.GDriveRemoteStorage, A.GDriveBackend, A.GDriveConfig, A.GDriveTypeIndexManager, A._TypeIndexFile, A.TypeMapping, A.TypeIndexMappings, A.GDriveAuthMessage, A.GDriveWorkerHandler, A._WorkerAuthNotifier, A.WorkerGDriveAuthProvider, A.RdfCore, A.Quad, A.RdfDataset, A.RdfNamedGraph, A.RdfException, A.SourceLocation, A.RdfGraph, A.RdfTerm, A.Triple, A.IriCompactionSettings, A.CompactIri, A.IriCompactionResult, A.IriCompaction, A.RdfGraphDecoderOptions, A.JsonLdParser, A.RdfGraphEncoderOptions, A._BlankNodeLabelFactoryImpl, A._NoOpBlankNodeCounter, A.CodecNotSupportedException, A.BaseRdfCodecRegistry, A.RdfCodecRegistry, A.IriRelativizationOptions, A.TurtleParser, A.Token, A.TurtleTokenizer, A.RdfNamespaceMappings, A.SolidWorkerHandler, A.UpdateAuthMessage0, A._WorkerAuthNotifier0, A.SolidAuthReceiver, A.SolidBackend, A.SolidClientException, A.NotFoundException, A.SolidClient, A.SolidRemoteStorage, A.SolidSyncStorage, A.SolidProfileParser, A.WorkerMessage, A.WorkerParams, A.WebWorkerSender, A.WorkerChannel, A.WorkerContext, A.Level, A.LogRecord, A.Logger, A.Context, A._PathDirection, A._PathRelation, A.Style, A.ParsedPath, A.PathException, A.BaseBlockCipher, A.AsymmetricKeyParameter, A.CipherParameters, A.ParametersWithIV, A.RegistryFactoryException, A.ASN1Object, A.ASN1Parser, A.UnsupportedASN1TagException, A.RSAAsymmetricKey, A.RSASignature, A.BaseAsymmetricBlockCipher, A.DesBase, A.BaseAEADBlockCipher, A.BaseDigest, A.ECSignature, A.ECDomainParametersImpl, A.ECFieldElementBase, A.ECPointBase, A.ECCurveBase, A._WNafPreCompInfo, A.BaseKeyDerivator, A.PKCS12ParametersGenerator, A.PKCS5S1ParameterGenerator, A.ECKeyGenerator, A.RSAKeyGenerator, A.BaseMac, A.PaddedBlockCipherImpl, A.BasePadding, A.AutoSeedBlockCtrRandom, A.SecureRandomBase, A.FortunaRandom, A.ECDSASigner, A._RFC6979KCalculator, A._RandomKCalculator, A.PSSSigner, A.RSASigner, A.BaseAEADCipher, A.BaseStreamCipher, A.Platform, A.PlatformException, A._JsBuiltInEntropySource, A._JsNodeEntropySource, A.FactoryConfig, A._RegistryImpl, A.Register64, A.Register64List, A.ForwardingSink, A._EnhancedEventSink, A.JWTAlgorithm, A.JWT, A.JWTKey, A.DpopCredentials, A.SourceFile, A.SourceLocationMixin, A.SourceSpanMixin, A.Highlighter, A._Highlight, A._Line, A.SourceLocation0, A.SourceSpanException, A.SqliteException, A.AllowedArgumentCount, A.RawSqliteBindings, A.SqliteResult, A.RawSqliteDatabase, A.RawStatementCompiler, A.RawSqliteStatement, A.RawSqliteContext, A.RawSqliteValue, A.FinalizablePart, A.DatabaseImplementation, A.Sqlite3Implementation, A.CommonPreparedStatement, A.VirtualFileSystem, A.BaseVfsFile, A.Cursor, A._Row_Object_UnmodifiableMapMixin, A._ResultIterator, A.IndexedParameters, A.VfsException, A.Sqlite3Filename, A._CursorReader, A.RequestResponseSynchronizer, A.MessageSerializer, A.Message0, A.AsynchronousIndexedDbFileSystem, A._FileWriteRequest, A._OffsetAndBuffer, A._IndexedDbFile, A.WasmBindings, A._InjectedValues, A.DartCallbacks, A.RegisteredFunctionSet, A.Chain, A.Frame, A.LazyTrace, A.Trace, A.UnparsedFrame, A.StreamChannelMixin, A._GuaranteeSink, A.StreamChannelController, A.StringScanner, A.RNG, A.Uuid, A.EventStreamProvider, A._EventStreamSubscription]);
+    _inheritMany(A.Object, [A.JS_CONST, J.Interceptor, A.SafeToStringHook, J.ArrayIterator, A._CopyingBytesBuilder, A.Iterable, A.CastIterator, A.Closure, A.MapBase, A.Error, A.ListBase, A.SentinelValue, A.ListIterator, A.MappedIterator, A.WhereIterator, A.ExpandIterator, A.TakeIterator, A.SkipIterator, A.SkipWhileIterator, A.EmptyIterator, A.WhereTypeIterator, A.NonNullsIterator, A.IndexedIterator, A.FixedLengthListMixin, A.UnmodifiableListMixin, A.Symbol, A._Record, A.MapView, A.ConstantMap, A._KeysOrValuesOrElementsIterator, A.SetBase, A.TypeErrorDecoder, A.NullThrownFromJavaScriptException, A.ExceptionAndStackTrace, A._StackTrace, A.LinkedHashMapCell, A.LinkedHashMapKeyIterator, A.LinkedHashMapValueIterator, A.LinkedHashMapEntryIterator, A.JSSyntaxRegExp, A._MatchImplementation, A._AllMatchesIterator, A.StringMatch, A._StringAllMatchesIterator, A._Cell, A._InitializedCell, A._UnmodifiableNativeByteBufferView, A.Rti, A._FunctionParameters, A._Type, A._TimerImpl, A._AsyncAwaitCompleter, A._AsyncStarStreamController, A._IterationMarker, A._SyncStarIterator, A.AsyncError, A.Stream, A._BufferingStreamSubscription, A._BroadcastStreamController, A.TimeoutException, A._Completer, A._FutureListener, A._Future, A._AsyncCallbackEntry, A.StreamTransformerBase, A._StreamController, A._SyncStreamControllerDispatch, A._AsyncStreamControllerDispatch, A._StreamSinkWrapper, A._AddStreamState, A._DelayedEvent, A._DelayedDone, A._PendingEvents, A._DoneStreamSubscription, A._StreamIterator, A._EventSinkWrapper, A._ZoneFunction, A._ZoneSpecification, A._ZoneDelegate, A._Zone, A._HashMapKeyIterator, A._HashSetIterator, A._LinkedHashSetCell, A._LinkedHashSetIterator, A._LinkedListIterator, A.LinkedListEntry, A._MapBaseValueIterator, A._UnmodifiableMapMixin, A._ListQueueIterator, A._UnmodifiableSetMixin, A.StringConversionSink, A.Codec, A.Converter, A.ByteConversionSink, A._Base64Encoder, A._Base64Decoder, A.ChunkedConversionSink, A._ConverterStreamEventSink, A._JsonStringifier, A._JsonPrettyPrintMixin, A._ClosableStringSink, A._StringConversionSinkAsStringSinkAdapter, A._Utf8Encoder, A._Utf8Decoder, A._BigIntImpl, A._BigIntClassic, A._FinalizationRegistryWrapper, A.DateTime, A.Duration, A._Enum, A.OutOfMemoryError, A.StackOverflowError, A._Exception, A.FormatException, A.IntegerDivisionByZeroException, A.MapEntry, A.Null, A._StringStackTrace, A.StringBuffer, A._Uri, A.UriData, A._SimpleUri, A.Expando, A.ServiceExtensionResponse, A.NullRejectionException, A._JSRandom, A._JSSecureRandom, A.Endian, A.ApiRequester, A.MultipartMediaUploader, A.BaseRequest, A.Media, A.UploadOptions, A.DownloadOptions, A.ByteRange, A.ApiRequestError, A.ApiRequestErrorDetail, A.DelegatingStreamSubscription, A.FutureGroup, A.ErrorResult, A.ValueResult, A.StreamQueue, A._NextRequest, A._CancelRequest, A.StreamSplitter, A.CanonicalizedMap, A.DefaultEquality, A.ListEquality, A._UnorderedEquality, A._MapEntry, A.MapEquality, A._QueueList_Object_ListMixin, A.NonGrowableListMixin, A.UnmodifiableMapMixin, A.Digest, A.DigestSink, A.HashSink, A.Expression, A.HasResultSet, A.DriftClient, A.QueryExecutor, A.StreamQueryStore, A.DriftCommunication, A._PendingRequest, A.ConnectionClosedException, A.DriftRemoteException, A.DriftProtocol, A.Message, A.PrimitiveResponsePayload, A.ExecuteQuery, A.RequestCancellation, A.ExecuteBatchedStatement, A.RunNestedExecutorControl, A.EnsureOpen, A.ServerInfo, A.RunBeforeOpen, A.NotifyTablesUpdated, A.SelectResult, A.WebProtocol, A.DriftDatabaseOptions, A.Batch, A.DatabaseConnection, A.DatabaseConnectionUser, A.DriftRuntimeOptions, A.StreamQueryUpdateRules, A.TableUpdate, A.TableUpdateQuery, A.CancellationToken, A.CancellationException, A.DataClass, A.UpdateCompanion, A.Value, A.ValueSerializer, A.VerificationMeta, A.VerificationResult, A.VerificationContext, A.TrackedDatabase, A.DriftServiceExtension, A.InvalidDataException, A.DriftWrappedException, A.CouldNotRollBackException, A.BatchedStatements, A.ArgumentsForBatchedStatement, A.QueryDelegate, A.TransactionDelegate, A.DbVersionDelegate, A.QueryResult, A.QueryInterceptor, A.QueryStreamFetcher, A.StreamKey, A.QueryStream, A._QueryStreamListener, A.Component, A.GenerationContext, A.MigrationStrategy, A.Migrator, A.OpeningDetails, A.TableInfo, A.InsertStatement, A.UpsertClause, A.Selectable, A.SingleTableQueryMixin, A.LimitContainerMixin, A._CustomSelectStatement_Object_Selectable, A.QueryRow, A.TypedResult, A._ResultStructure, A.SqlTypes, A.DriftAny, A.PreparedStatementsCache, A.Lock, A.WasmDatabaseOpener, A._DriftWorker, A._ProbeResult, A.WasmInitializationMessage, A.DriftServerController, A.WasmDatabaseResult, A.DriveApi, A.FilesResource, A.ContentRestriction, A.DownloadRestriction, A.DownloadRestrictionsMetadata, A.FileCapabilities, A.FileContentHintsThumbnail, A.FileContentHints, A.FileImageMediaMetadataLocation, A.FileImageMediaMetadata, A.FileLabelInfo, A.FileLinkShareMetadata, A.FileShortcutDetails, A.FileVideoMediaMetadata, A.File, A.FileList, A.Label, A.LabelField, A.PermissionPermissionDetails, A.PermissionTeamDrivePermissionDetails, A.Permission, A.User, A.BaseClient, A.ClientException, A.BaseResponse, A.MediaType, A.ResourceConfigBase, A.ConfigBase, A.ConfigBaseValidator, A.IndexItemConfigBase, A.CrdtIndexConfigBase, A.DocumentIriTemplate, A.SyncEngineConfigValidator, A.ValidationResult, A.ValidationIssue, A.SyncConfigValidationException, A.MetadataStatement, A.MetadataStatementKey, A.MergeResults, A.GRegister, A.LwwRegister, A.Immutable, A.OrSet, A.CrdtMergeContext, A.RemoteCrdtMergeContext, A.CrdtTypeRegistry, A.CrdtDocumentManager, A.HlcService, A.GroupIndexGraphSubscriptionException, A.GroupIndexGraphSubscriptionManager, A.GroupKeyGenerator, A._PropertyExtractor, A.ItemFetchPolicy, A.RegexTransform, A.GroupingProperty, A._ParsedIndexCacheEntry, A._IndexMetadata, A.IndexDiscovery, A.IndexManager, A.ParsedFullIndex, A.ParsedGroupIndexTemplate, A.IndexParser, A.IndexPropertyResolver, A.IndexRdfGenerator, A.RdfGroupExtractor, A.MissingIndexDocument, A.MissingGroupIndex, A.ShardDeterminationResult, A.ShardDeterminer, A.ShardManager, A.ShardingConfig, A.InstallationService, A.LocalDocumentMerger, A.CrdtMetadataResult, A.FrameworkIriGenerator, A._GraphWithLabels, A.IdentifiedBlankNodeParent, A.IdentifiedBlankNode, A.IdentifiedBlankNodes, A.UnidentifiedBlankNodeException, A.UnidentifiedBlankNodeWithContextException, A.IdentifiedBlankNodeBuilder, A.IdentifiedRdfSubject, A.NoOpIriTranslator, A.BaseIriTranslator, A.ResourceLocator, A.PredicateRule, A.DocumentMapping, A.PredicateMapping, A.ClassMapping, A.PredicateMergeRule, A.ClassMergeRules, A.MergeContract, A.DocumentMappingDependencyExtractor, A.MergeContractLoader, A.MetadataGenerator, A.IdTerm, A.HttpFetcher, A.StandardRdfGraphFetcher, A.RecursiveRdfLoader, A.UnsupportedIriException, A.ResourceIdentifier, A.LocalResourceLocator, A.StandardSyncEngine, A.ConcurrentUpdateException, A.RemoteId, A.RemoteDownloadResult, A.RemoteUploadResult, A.IndexEntryWithIri, A.IndexEntriesPage, A.StoredDocument, A.SaveDocumentResult, A.DocumentsResult, A.DocumentMetadata, A.PropertyChange, A.OrganizedStatements, A.MergeObject, A.MergeSubject, A.OrganizedBlankNodeMappings, A.RdfObjectKey, A.OrganizedGraph, A.MergeResult, A.RemoteDocumentMerger, A.IndexSyncSpec, A.ShardSyncSpec, A._DocumentQueueEntry, A.RemoteSyncOrchestrator, A.ShardDocumentGenerator, A.StandardSyncManager, A.SyncFunction, A.AutoSyncConfig, A.SyncState, A.EngineParams, A.LRUCache, A.RdfExpectations, A.LocordaDriftWebOptions, A.LocordaDriftNativeOptions, A.DriftStorage, A.IriBatchLoader, A.DriftIndexEntry, A.SubscribedGroupIndexData, A.IndexEntriesPage0, A.DocumentWithIri, A._$SyncDocumentDaoMixin, A._$SyncPropertyChangeDaoMixin, A._$IndexDaoMixin, A._$RemoteSyncStateDaoMixin, A.StorageWorkerHandler, A.GDriveClient, A.GDriveClientException, A.GDriveSyncStorage, A.GDriveRemoteStorage, A.GDriveBackend, A.GDriveConfig, A.GDriveTypeIndexManager, A._TypeIndexFile, A.TypeMapping, A.TypeIndexMappings, A.GDriveAuthMessage, A.GDriveWorkerHandler, A._WorkerAuthNotifier, A.WorkerGDriveAuthProvider, A.RdfCore, A.Quad, A.RdfDataset, A.RdfNamedGraph, A.RdfException, A.SourceLocation, A.RdfGraph, A.RdfTerm, A.Triple, A.IriCompactionSettings, A.CompactIri, A.IriCompactionResult, A.IriCompaction, A.RdfGraphDecoderOptions, A.JsonLdParser, A.RdfGraphEncoderOptions, A._BlankNodeLabelFactoryImpl, A._NoOpBlankNodeCounter, A.CodecNotSupportedException, A.BaseRdfCodecRegistry, A.RdfCodecRegistry, A.IriRelativizationOptions, A.TurtleParser, A.Token, A.TurtleTokenizer, A.RdfNamespaceMappings, A.SolidWorkerHandler, A.UpdateAuthMessage0, A._WorkerAuthNotifier0, A.SolidAuthReceiver, A.SolidBackend, A.SolidClientException, A.NotFoundException, A.SolidClient, A.SolidRemoteStorage, A.SolidSyncStorage, A.SolidProfileParser, A.WorkerMessage, A.WorkerParams, A.WebWorkerSender, A.WorkerChannel, A.WorkerContext, A.Level, A.LogRecord, A.Logger, A.Context, A._PathDirection, A._PathRelation, A.Style, A.ParsedPath, A.PathException, A.BaseBlockCipher, A.AsymmetricKeyParameter, A.CipherParameters, A.ParametersWithIV, A.RegistryFactoryException, A.ASN1Object, A.ASN1Parser, A.UnsupportedASN1TagException, A.RSAAsymmetricKey, A.RSASignature, A.BaseAsymmetricBlockCipher, A.DesBase, A.BaseAEADBlockCipher, A.BaseDigest, A.ECSignature, A.ECDomainParametersImpl, A.ECFieldElementBase, A.ECPointBase, A.ECCurveBase, A._WNafPreCompInfo, A.BaseKeyDerivator, A.PKCS12ParametersGenerator, A.PKCS5S1ParameterGenerator, A.ECKeyGenerator, A.RSAKeyGenerator, A.BaseMac, A.PaddedBlockCipherImpl, A.BasePadding, A.AutoSeedBlockCtrRandom, A.SecureRandomBase, A.FortunaRandom, A.ECDSASigner, A._RFC6979KCalculator, A._RandomKCalculator, A.PSSSigner, A.RSASigner, A.BaseAEADCipher, A.BaseStreamCipher, A.Platform, A.PlatformException, A._JsBuiltInEntropySource, A._JsNodeEntropySource, A.FactoryConfig, A._RegistryImpl, A.Register64, A.Register64List, A.ForwardingSink, A._EnhancedEventSink, A.JWTAlgorithm, A.JWT, A.JWTKey, A.DpopCredentials, A.SourceFile, A.SourceLocationMixin, A.SourceSpanMixin, A.Highlighter, A._Highlight, A._Line, A.SourceLocation0, A.SourceSpanException, A.SqliteException, A.AllowedArgumentCount, A.RawSqliteBindings, A.SqliteResult, A.RawSqliteDatabase, A.RawStatementCompiler, A.RawSqliteStatement, A.RawSqliteContext, A.RawSqliteValue, A.FinalizablePart, A.DatabaseImplementation, A.Sqlite3Implementation, A.CommonPreparedStatement, A.VirtualFileSystem, A.BaseVfsFile, A.Cursor, A._Row_Object_UnmodifiableMapMixin, A._ResultIterator, A.IndexedParameters, A.VfsException, A.Sqlite3Filename, A._CursorReader, A.RequestResponseSynchronizer, A.MessageSerializer, A.Message0, A.AsynchronousIndexedDbFileSystem, A._FileWriteRequest, A._OffsetAndBuffer, A._IndexedDbFile, A.WasmBindings, A._InjectedValues, A.DartCallbacks, A.RegisteredFunctionSet, A.Chain, A.Frame, A.LazyTrace, A.Trace, A.UnparsedFrame, A.StreamChannelMixin, A._GuaranteeSink, A.StreamChannelController, A.StringScanner, A.RNG, A.Uuid, A.EventStreamProvider, A._EventStreamSubscription]);
     _inheritMany(J.Interceptor, [J.JSBool, J.JSNull, J.JavaScriptObject, J.JavaScriptBigInt, J.JavaScriptSymbol, J.JSNumber, J.JSString]);
     _inheritMany(J.JavaScriptObject, [J.LegacyJavaScriptObject, J.JSArray, A.NativeByteBuffer, A.NativeTypedData]);
     _inheritMany(J.LegacyJavaScriptObject, [J.PlainJavaScriptObject, J.UnknownJavaScriptObject, J.JavaScriptFunction]);
@@ -91573,7 +91494,7 @@
     _lazyFinal($, "WebStorageApi_byName", "$get$WebStorageApi_byName", () => A.EnumByName_asNameMap(B.List_WebStorageApi_0_WebStorageApi_1, A.findType("WebStorageApi")));
     _lazyFinal($, "requestHeaders", "$get$requestHeaders", () => {
       var t1 = type$.String;
-      return A.LinkedHashMap_LinkedHashMap$_literal(["user-agent", "google-api-dart-client/13.2.0", "x-goog-api-client", "gl-dart/unknown gdcl/13.2.0"], t1, t1);
+      return A.LinkedHashMap_LinkedHashMap$_literal(["user-agent", "google-api-dart-client/15.0.0", "x-goog-api-client", "gl-dart/unknown gdcl/15.0.0"], t1, t1);
     });
     _lazyFinal($, "BaseRequest__tokenRE", "$get$BaseRequest__tokenRE", () => A.RegExp_RegExp("^[\\w!#%&'*+\\-.^`|~]+$", true, false, false, false));
     _lazyFinal($, "_escapedChar", "$get$_escapedChar", () => A.RegExp_RegExp('["\\x00-\\x1F\\x7F]', true, false, false, false));

@@ -12,7 +12,7 @@
 /// implementations typically also implement [RemoteUiAdapter] via [RemoteIntegration].
 library;
 
-import 'worker_plugin.dart';
+import 'main_handler.dart';
 
 /// Main-thread handler for remote backend communication.
 ///
@@ -70,5 +70,5 @@ abstract interface class RemoteMainHandler {
   ///   SolidAuthConnector.sender(solidAuth),  // Sends auth to worker
   /// ];
   /// ```
-  List<WorkerPluginFactory> get workerConnectors;
+  List<MainHandlerFactory> get workerConnectors;
 }

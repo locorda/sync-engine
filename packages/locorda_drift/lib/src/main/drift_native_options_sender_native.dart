@@ -22,8 +22,8 @@ final _log = Logger('DriftNativeOptionsSender');
 ///
 /// Listens for path requests from worker and responds with resolved paths
 /// from path_provider (or custom providers for testing).
-class DriftNativeOptionsSender implements WorkerPlugin {
-  final LocordaWorker _workerHandle;
+class DriftNativeOptionsSender implements MainHandler {
+  final MainHandlerChannel _workerHandle;
   final Future<Object> Function()? _databaseDirectoryProvider;
   final Future<String?> Function()? _tempDirectoryPathProvider;
   final Future<String> Function()? _databasePathProvider;
@@ -39,18 +39,18 @@ class DriftNativeOptionsSender implements WorkerPlugin {
 
   /// Creates a plugin factory for this connector.
   ///
-  /// The returned factory will be called by the worker framework with the [LocordaWorker].
+  /// The returned factory will be called by the worker framework with the [MainHandlerContext].
   ///
   /// By default, uses [getApplicationDocumentsDirectory] and [getTemporaryDirectory].
   /// For testing or custom paths, provide custom provider functions.
-  static WorkerPluginFactory sender({
+  static MainHandlerFactory sender({
     final Future<String> Function()? databasePath,
     final Future<Object> Function()? databaseDirectory,
     final Future<String?> Function()? tempDirectoryPath,
   }) {
-    return (LocordaWorker workerHandle) {
+    return (MainHandlerContext context) {
       return DriftNativeOptionsSender._(
-        workerHandle,
+        context.createChannel('locorda_drift/drift_native_options'),
         databasePath: databasePath,
         databaseDirectory: databaseDirectory,
         tempDirectoryPath: tempDirectoryPath,
@@ -66,13 +66,7 @@ class DriftNativeOptionsSender implements WorkerPlugin {
     _log.info('Plugin initialized, listening for requests...');
 
     // Listen for requests from worker (filter __channel messages)
-    _workerHandle.messages.listen((message) async {
-      if (message is! Map<String, dynamic>) return;
-
-      // Only process __channel messages
-      if (message['__channel'] != true) return;
-
-      final channelData = message['data'];
+    _workerHandle.messages.listen((channelData) async {
       _log.fine(
           'Received __channel message: ${channelData is Map ? channelData['type'] : channelData.runtimeType}');
 
@@ -111,10 +105,7 @@ class DriftNativeOptionsSender implements WorkerPlugin {
         );
 
         _log.info('Sending response via __channel: ${response.toJson()}');
-        _workerHandle.sendMessage({
-          '__channel': true,
-          'data': response.toJson(),
-        });
+        _workerHandle.send(response.toJson());
         _log.info('Response sent successfully');
       }
     });

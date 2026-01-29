@@ -35,7 +35,7 @@ class GDriveWorkerHandler implements RemoteWorkerHandler {
 
   @override
   Future<Backend> createBackend(
-      WorkerContext context, SyncEngineConfig syncEngineConfig) async {
+      WorkerHandlerContext context, SyncEngineConfig syncEngineConfig) async {
     return GDriveBackend(
       auth: GDriveAuthConnector.receiver(context),
       config: config,

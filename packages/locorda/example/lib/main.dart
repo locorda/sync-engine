@@ -202,7 +202,7 @@ class _AppInitializerState extends State<AppInitializer>
       // See spec/docs/SECURITY.md for detailed security considerations
       final solidAuth = SolidAuth(
           oidcClientId: '$appBaseUrl/auth/client-config.json',
-          appUrlScheme: 'dev.locorda.personalnotes',
+          appUrlScheme: 'dev.locorda.example.personalNotesApp',
           frontendRedirectUrl: Uri.parse(
               '${kDebugMode ? 'http://localhost:3815' : appBaseUrl}/redirect.html'));
       await solidAuth.init();

@@ -13,15 +13,15 @@ import 'dart:async';
 import 'package:locorda_worker/worker_main.dart';
 
 /// No-Op implementation for web:
-class DriftNativeOptionsSender implements WorkerPlugin {
+class DriftNativeOptionsSender implements MainHandler {
   const DriftNativeOptionsSender._();
 
-  static WorkerPluginFactory sender({
+  static MainHandlerFactory sender({
     final Future<String> Function()? databasePath,
     final Future<Object> Function()? databaseDirectory,
     final Future<String?> Function()? tempDirectoryPath,
   }) {
-    return (LocordaWorker workerHandle) {
+    return (MainHandlerContext context) {
       return const DriftNativeOptionsSender._();
     };
   }

@@ -15,7 +15,8 @@ class DriftWorkerHandler extends StorageWorkerHandler {
         _native = native;
 
   @override
-  Future<Storage> create(WorkerContext context, SyncEngineConfig config) async {
+  Future<Storage> create(
+      WorkerHandlerContext context, SyncEngineConfig config) async {
     return await DriftStorage.create(
       web: _web,
       native:

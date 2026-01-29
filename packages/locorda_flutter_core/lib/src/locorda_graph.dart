@@ -203,7 +203,7 @@ class LocordaGraph {
     required StorageMainHandler storage,
     String jsScript = 'worker.dart.js',
     List<RemoteIntegration> remotes = const [],
-    List<WorkerPluginFactory> plugins = const [],
+    List<MainHandlerFactory> plugins = const [],
     IriTermFactory? iriTermFactory,
     RdfCore? rdfCore,
     String? debugName,

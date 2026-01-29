@@ -38,7 +38,7 @@ class DriftNativeOptionsConnector {
   /// Throws [TimeoutException] after 5 seconds if no response is received,
   /// with helpful error message about missing plugin registration.
   static Future<LocordaDriftNativeOptions> receiver(
-    WorkerContext context, {
+    WorkerHandlerContext context, {
     Duration timeout = const Duration(seconds: 5),
   }) =>
       DriftNativeOptionsReceiver.receiver(context, timeout: timeout);

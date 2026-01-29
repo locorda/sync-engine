@@ -55,7 +55,7 @@ class GDriveMainHandler implements RemoteIntegration {
   Auth get auth => _gdriveAuth;
 
   @override
-  List<WorkerPluginFactory> get workerConnectors => [
+  List<MainHandlerFactory> get workerConnectors => [
         GDriveAuthConnector.sender(_gdriveAuth),
       ];
 
@@ -64,7 +64,7 @@ class GDriveMainHandler implements RemoteIntegration {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => GDriveLoginScreen(
-          gdriveAuth: _gdriveAuth,
+          onSignIn: _gdriveAuth.authenticate,
         ),
       ),
     );

@@ -1,5 +1,25 @@
 import 'dart:async';
 
+abstract class MainHandlerContext {
+  MainHandlerChannel createChannel(String channel);
+}
+
+class MainHandlerContextImpl implements MainHandlerContext {
+  final LocordaWorker _worker;
+  final Set<String> _registeredChannels = {};
+  MainHandlerContextImpl(this._worker);
+
+  MainHandlerChannel createChannel(String channel) {
+    if (_registeredChannels.contains(channel)) {
+      throw StateError(
+          'Plugin channel "$channel" is already registered in this worker.');
+    } else {
+      _registeredChannels.add(channel);
+    }
+    return MainHandlerChannelImpl(_worker, channel);
+  }
+}
+
 /// Platform-agnostic handle for communication with worker isolate/thread.
 ///
 /// Provides unified interface for both native isolates (via Isolate.spawn)
@@ -100,6 +120,8 @@ abstract class LocordaWorker {
   /// Messages must be JSON-serializable (primitives, maps, lists).
   void sendMessage(Object message);
 
+  MainHandlerContext get mainHandlerContext;
+
   /// Stream of messages received from worker.
   ///
   /// Each message is a JSON-serializable object sent by worker.
@@ -113,4 +135,33 @@ abstract class LocordaWorker {
   ///
   /// After disposal, [sendMessage] and [messages] must not be used.
   Future<void> dispose();
+}
+
+abstract class MainHandlerChannel {
+  void send(Object message);
+  Stream<Object?> get messages;
+}
+
+class MainHandlerChannelImpl implements MainHandlerChannel {
+  final LocordaWorker _worker;
+  final String channel;
+
+  MainHandlerChannelImpl(this._worker, this.channel);
+
+  @override
+  void send(Object message) =>
+      _worker.sendMessage({'__channel': channel, 'data': message});
+
+  @override
+  Stream<Object?> get messages => _worker.messages.where((message) {
+        if (message is Map && message['__channel'] == channel) {
+          return true;
+        }
+        return false;
+      }).map((message) {
+        if (message is Map && message.containsKey('data')) {
+          return message['data'];
+        }
+        return null;
+      });
 }

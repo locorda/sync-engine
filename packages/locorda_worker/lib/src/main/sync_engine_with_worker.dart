@@ -12,20 +12,20 @@ import 'locorda_worker_impl_native.dart'
 import 'remote_main_handler.dart';
 import 'storage_main_handler.dart';
 import 'proxy_sync_engine.dart';
-import 'worker_plugin.dart';
+import 'main_handler.dart';
 
 class SyncEngineWithWorker {
   static Future<SyncEngine> create(
       {required List<RemoteMainHandler> remotes,
       required StorageMainHandler storage,
-      required List<WorkerPluginFactory> plugins,
+      required List<MainHandlerFactory> plugins,
       required WorkerSetup workerSetup,
       required SyncEngineConfig syncEngineConfig,
       required String jsScript,
       String? debugName,
       void Function()? onWorkerSpawn}) async {
     // Extract worker connectors from storage plugins and merge with other plugins
-    final List<WorkerPluginFactory> allPluginFactories = [
+    final List<MainHandlerFactory> allPluginFactories = [
       ...remotes.expand((r) => r.workerConnectors),
       ...storage.create(),
       ...plugins,
@@ -65,7 +65,7 @@ class SyncEngineWithWorker {
     required WorkerSetup workerSetup,
     required SyncEngineConfig config,
     required String jsScript,
-    required List<WorkerPluginFactory> pluginFactories,
+    required List<MainHandlerFactory> pluginFactories,
     String? debugName,
     void onWorkerSpawn()?,
   }) async {
@@ -77,9 +77,10 @@ class SyncEngineWithWorker {
       jsScript,
       debugName,
       (handle) async {
+        final context = handle.mainHandlerContext;
         // Initialize all plugins with the handle
         for (final pluginFactory in pluginFactories) {
-          final plugin = pluginFactory(handle);
+          final plugin = pluginFactory(context);
           await plugin.initialize();
           closeFunctions.add(plugin.dispose);
         }

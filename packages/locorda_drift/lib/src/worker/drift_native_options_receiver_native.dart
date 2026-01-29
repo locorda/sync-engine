@@ -46,16 +46,17 @@ class DriftNativeOptionsReceiver {
   /// Throws [TimeoutException] after 5 seconds if no response is received,
   /// with helpful error message about missing plugin registration.
   static Future<LocordaDriftNativeOptions> receiver(
-    WorkerContext context, {
+    WorkerHandlerContext context, {
     Duration timeout = const Duration(seconds: 5),
   }) async {
+    final channel = context.createChannel('locorda_drift/drift_native_options');
     _log.info('Worker: Starting provider...');
 
     final completer = Completer<LocordaDriftNativeOptions>();
     late final StreamSubscription subscription;
 
     // Listen for response from main thread via __channel
-    subscription = context.channel.messages.listen((message) {
+    subscription = channel.messages.listen((message) {
       _log.fine(
           'Worker: Received __channel message: ${message is Map ? message['type'] : message.runtimeType}');
 
@@ -87,7 +88,7 @@ class DriftNativeOptionsReceiver {
 
     // Send request to main thread via __channel
     _log.info('Worker: Sending RequestDriftOptions via __channel...');
-    context.channel.send({'type': 'RequestDriftOptions'});
+    channel.send({'type': 'RequestDriftOptions'});
     _log.info('Worker: Request sent, waiting for response...');
 
     // Wait for response with timeout

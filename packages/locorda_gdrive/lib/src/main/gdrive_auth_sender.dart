@@ -15,13 +15,13 @@ final _log = Logger('GDriveAuthSender');
 ///
 /// Listens to [GDriveAuth] authentication state changes and sends
 /// credentials to the worker via [WorkerChannel].
-class GDriveAuthSender implements WorkerPlugin {
+class GDriveAuthSender implements MainHandler {
   final GDriveAuthProvider _authBridge;
-  final LocordaWorker _workerHandle;
+  final MainHandlerChannel _workerHandle;
 
   GDriveAuthSender({
     required GDriveAuthProvider authBridge,
-    required LocordaWorker workerHandle,
+    required MainHandlerChannel workerHandle,
   })  : _authBridge = authBridge,
         _workerHandle = workerHandle;
 
@@ -51,13 +51,13 @@ class GDriveAuthSender implements WorkerPlugin {
 
       if (isAuth) {
         final accessToken = await _authBridge.getAccessToken();
-        _workerHandle.sendMessage(UpdateAuthMessage(
+        _workerHandle.send(UpdateAuthMessage(
           accessToken: accessToken,
           userEmail: _authBridge.userEmail,
           // TODO: Add token expiry time if available
         ).toJson());
       } else {
-        _workerHandle.sendMessage(UpdateAuthMessage(
+        _workerHandle.send(UpdateAuthMessage(
           accessToken: null,
           userEmail: null,
         ).toJson());
@@ -87,14 +87,14 @@ class GDriveAuthSender implements WorkerPlugin {
       await _authBridge.refreshToken(reason: request.reason);
       final accessToken = await _authBridge.getAccessToken();
 
-      _workerHandle.sendMessage(TokenRefreshResponse(
+      _workerHandle.send(TokenRefreshResponse(
         requestId: request.requestId,
         accessToken: accessToken,
         // TODO: Add expiry time
       ).toJson());
     } catch (e, stackTrace) {
       _log.severe('Token refresh failed', e, stackTrace);
-      _workerHandle.sendMessage(TokenRefreshResponse(
+      _workerHandle.send(TokenRefreshResponse(
         requestId: request.requestId,
         error: e.toString(),
       ).toJson());

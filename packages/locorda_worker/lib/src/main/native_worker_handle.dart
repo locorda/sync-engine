@@ -22,6 +22,7 @@ class NativeWorkerHandle implements LocordaWorker {
   final ReceivePort _receivePort;
   final Isolate _isolate;
   final StreamController<Object?> _controller;
+  late MainHandlerContext mainHandlerContext = MainHandlerContextImpl(this);
 
   NativeWorkerHandle._internal(
     this._sendPort,

@@ -41,5 +41,5 @@ abstract class StorageWorkerHandler {
   /// any connectors from [StorageMainHandler.create].
   ///
   /// Returns a [Storage] implementation that handles local persistence.
-  Future<Storage> create(WorkerContext context, SyncEngineConfig config);
+  Future<Storage> create(WorkerHandlerContext context, SyncEngineConfig config);
 }

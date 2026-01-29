@@ -64,12 +64,14 @@ void main() {
         config: _createTestConfig(),
         jsScript: 'worker.dart.js',
       );
+      final pluginHandle =
+          worker.mainHandlerContext.createChannel('test-channel');
 
       // Send test channel messages (won't be deserialized by framework)
       // Using __channel marker so worker treats them as app-specific messages
-      worker.sendMessage({'__channel': true, 'data': 'test-message-1'});
-      worker.sendMessage({'__channel': true, 'data': 'test-message-2'});
-      worker.sendMessage({'__channel': true, 'data': 'test-message-3'});
+      pluginHandle.send('test-message-1');
+      pluginHandle.send('test-message-2');
+      pluginHandle.send('test-message-3');
 
       await Future.delayed(const Duration(milliseconds: 50));
       await worker.dispose();

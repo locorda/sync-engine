@@ -40,7 +40,8 @@ class GDriveStatusDefaults {
 
       final user = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
-          builder: (context) => GDriveLoginScreen(gdriveAuth: gdriveAuth),
+          builder: (context) =>
+              GDriveLoginScreen(onSignIn: gdriveAuth.authenticate),
           fullscreenDialog: true,
         ),
       );

@@ -59,7 +59,7 @@ class MockRemoteMainHandler implements RemoteMainHandler, RemoteUiAdapter {
   Auth get auth => MockAuth();
 
   @override
-  List<WorkerPluginFactory> get workerConnectors => [];
+  List<MainHandlerFactory> get workerConnectors => [];
 
   @override
   Future<bool> showLogin(BuildContext context) => Future.value(false);

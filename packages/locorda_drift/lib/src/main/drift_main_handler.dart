@@ -4,7 +4,7 @@ import 'drift_native_options_connector.dart';
 
 class DriftMainHandler extends StorageMainHandler {
   @override
-  List<WorkerPluginFactory> create() {
+  List<MainHandlerFactory> create() {
     return [DriftNativeOptionsConnector.sender()];
   }
 }

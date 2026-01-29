@@ -274,24 +274,25 @@ class GDriveClient {
       return (graph: graph, etag: currentEtag, notModified: false);
     } on drive.DetailedApiRequestError catch (e, stackTrace) {
       // Handle API-specific errors
-      if (e.status == 401) {
+      final status = e.status;
+      if (status == 401 || status == 403) {
         if (isRetry) {
           // Already retried once after token refresh - give up
           _clientLog.severe(
-            '401 Unauthorized for file $fileId even after token refresh - authentication failed',
+            'Auth error ($status) for file $fileId even after token refresh - authentication failed',
           );
           throw GDriveClientException(
-            'Unauthorized (401) for file $fileId - token refresh did not resolve the issue',
+            'Unauthorized ($status) for file $fileId - token refresh did not resolve the issue',
           );
         }
 
         _clientLog.warning(
-            '401 Unauthorized for file $fileId - attempting token refresh');
+            'Auth error ($status) for file $fileId - attempting token refresh');
 
         // Token expired - request refresh and retry once
         try {
           await _authProvider.refreshToken(
-              reason: '401 on download file $fileId');
+              reason: '$status on download file $fileId');
           _clientLog.info('Token refreshed - retrying download');
 
           // Retry with fresh token (isRetry=true prevents infinite loop)
@@ -303,8 +304,13 @@ class GDriveClient {
         } catch (e) {
           // Other exceptions during refresh - add context
           _clientLog.severe('Token refresh failed: $e');
+          if (e is GDriveUserInteractionRequired) {
+            throw GDriveClientException(
+              'Re-authorization required. Show the Google sign-in button and try again.',
+            );
+          }
           throw GDriveClientException(
-            'Unauthorized (401) for file $fileId - refresh failed: $e',
+            'Unauthorized ($status) for file $fileId - refresh failed: $e',
           );
         }
       }
@@ -363,24 +369,25 @@ class GDriveClient {
       return RemoteUploadResult.success(newEtag);
     } on drive.DetailedApiRequestError catch (e, stackTrace) {
       // Handle API-specific errors
-      if (e.status == 401) {
+      final status = e.status;
+      if (status == 401 || status == 403) {
         if (isRetry) {
           // Already retried once after token refresh - give up
           _clientLog.severe(
-            '401 Unauthorized for file $fileId even after token refresh - authentication failed',
+            'Auth error ($status) for file $fileId even after token refresh - authentication failed',
           );
           throw GDriveClientException(
-            'Unauthorized (401) for file $fileId - token refresh did not resolve the issue',
+            'Unauthorized ($status) for file $fileId - token refresh did not resolve the issue',
           );
         }
 
         _clientLog.warning(
-            '401 Unauthorized for file $fileId - attempting token refresh');
+            'Auth error ($status) for file $fileId - attempting token refresh');
 
         // Token expired - request refresh and retry once
         try {
           await _authProvider.refreshToken(
-              reason: '401 on upload file $fileId');
+              reason: '$status on upload file $fileId');
           _clientLog.info('Token refreshed - retrying upload');
 
           // Retry with fresh token (isRetry=true prevents infinite loop)
@@ -392,8 +399,13 @@ class GDriveClient {
         } catch (e) {
           // Other exceptions during refresh - add context
           _clientLog.severe('Token refresh failed: $e');
+          if (e is GDriveUserInteractionRequired) {
+            throw GDriveClientException(
+              'Re-authorization required. Show the Google sign-in button and try again.',
+            );
+          }
           throw GDriveClientException(
-            'Unauthorized (401) for file $fileId - refresh failed: $e',
+            'Unauthorized ($status) for file $fileId - refresh failed: $e',
           );
         }
       }

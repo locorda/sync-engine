@@ -5,4 +5,4 @@ export 'package:locorda_gdrive/worker.dart'
     show GDriveWorkerHandler, GDriveConfig;
 export 'package:locorda_solid/worker.dart' show SolidWorkerHandler;
 export 'package:locorda_worker/worker.dart'
-    show WorkerContext, WorkerParams, workerMain;
+    show WorkerHandlerContext, WorkerParams, workerMain;

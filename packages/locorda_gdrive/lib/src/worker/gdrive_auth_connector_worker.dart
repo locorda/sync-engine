@@ -67,7 +67,8 @@ class GDriveAuthConnector {
   ///   });
   /// }
   /// ```
-  static GDriveAuthProvider receiver(WorkerContext context) {
-    return WorkerGDriveAuthProvider(context.channel);
+  static GDriveAuthProvider receiver(WorkerHandlerContext context) {
+    return WorkerGDriveAuthProvider(
+        context.createChannel('locorda_gdrive/gdrive_auth'));
   }
 }

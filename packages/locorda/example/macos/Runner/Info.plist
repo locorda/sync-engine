@@ -35,12 +35,14 @@
 				<string>Editor</string>
 				<key>CFBundleURLSchemes</key>
 				<array>
-					<string>dev.locorda.personalnotes</string>
+					<string>dev.locorda.example.personalNotesApp</string>
 					<string>com.googleusercontent.apps.789091466176-hgq9b5l4dgpnrabt0mdpgdkjm39d9pro</string>
 				</array>
 			</dict>
 		</array>
-		<key>GIDServerClientId</key>
+		<key>GIDClientID</key>
+		<string>789091466176-hgq9b5l4dgpnrabt0mdpgdkjm39d9pro.apps.googleusercontent.com</string>
+		<key>GIDServerClientID</key>
 		<string>789091466176-hgq9b5l4dgpnrabt0mdpgdkjm39d9pro.apps.googleusercontent.com</string>
 	</dict>
 </plist>

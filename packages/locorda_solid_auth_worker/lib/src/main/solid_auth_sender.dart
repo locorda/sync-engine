@@ -54,14 +54,14 @@ final _log = Logger('SolidAuthConnector');
 ///   // ... create storage and return SyncEngine
 /// }
 /// ```
-class SolidAuthSender implements WorkerPlugin {
+class SolidAuthSender implements MainHandler {
   final SolidAuth _solidAuth;
-  final LocordaWorker _workerHandle;
+  final MainHandlerChannel _workerHandle;
   StreamSubscription? _tokenChangedSubscription;
 
   SolidAuthSender({
     required SolidAuth solidAuth,
-    required LocordaWorker workerHandle,
+    required MainHandlerChannel workerHandle,
   })  : _solidAuth = solidAuth,
         _workerHandle = workerHandle;
 
@@ -86,13 +86,7 @@ class SolidAuthSender implements WorkerPlugin {
     _log.info('Plugin initialized, listening for requests...');
 
     // Listen for messages from worker (both state requests and refresh requests)
-    _workerHandle.messages.listen((message) async {
-      if (message is! Map<String, dynamic>) return;
-
-      // Only process __channel messages
-      if (message['__channel'] != true) return;
-
-      final channelData = message['data'];
+    _workerHandle.messages.listen((channelData) async {
       _log.fine(
           'Received __channel message: ${channelData is Map ? channelData['type'] : channelData.runtimeType}');
 
@@ -138,9 +132,8 @@ class SolidAuthSender implements WorkerPlugin {
 
     if (!_solidAuth.isAuthenticated) {
       _log.warning('Token refresh requested but not authenticated');
-      _workerHandle.sendMessage({
-        '__channel': true,
-        'data': {
+      _workerHandle.send({
+        {
           'type': 'TokenRefreshResponse',
           'requestId': requestId,
           'credentials': null,
@@ -153,14 +146,11 @@ class SolidAuthSender implements WorkerPlugin {
     final dpopCredentials = _solidAuth.exportDpopCredentials();
     final webId = _solidAuth.currentWebId;
 
-    _workerHandle.sendMessage({
-      '__channel': true,
-      'data': {
-        'type': 'TokenRefreshResponse',
-        'requestId': requestId,
-        'credentials': dpopCredentials.toJson(),
-        'webId': webId,
-      },
+    _workerHandle.send({
+      'type': 'TokenRefreshResponse',
+      'requestId': requestId,
+      'credentials': dpopCredentials.toJson(),
+      'webId': webId,
     });
     _log.info('Sent token refresh response (id=$requestId)');
   }
@@ -178,22 +168,16 @@ class SolidAuthSender implements WorkerPlugin {
     // Only send credentials when authenticated
     if (!_solidAuth.isAuthenticated || _solidAuth.currentWebId == null) {
       // Send empty credentials to clear worker auth
-      _workerHandle.sendMessage({
-        '__channel': true,
-        'data': UpdateAuthMessage(credentials: null).toJson(),
-      });
+      _workerHandle.send(UpdateAuthMessage(credentials: null).toJson());
       return;
     }
 
     final dpopCredentials = _solidAuth.exportDpopCredentials();
     final webId = _solidAuth.currentWebId;
-    _workerHandle.sendMessage({
-      '__channel': true,
-      'data': UpdateAuthMessage(
-        credentials: dpopCredentials,
-        webId: webId,
-      ).toJson(),
-    });
+    _workerHandle.send(UpdateAuthMessage(
+      credentials: dpopCredentials,
+      webId: webId,
+    ).toJson());
   }
 
   /// Stops listening and cleans up resources.

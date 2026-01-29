@@ -108,9 +108,10 @@ Future<WorkerParams> setupWorkerEngine() async => WorkerParams(
 **For Web:**
 ```
 Type: Web application
-Authorized redirect URIs:
-  - http://localhost:3000/redirect.html (development)
-  - https://yourdomain.com/redirect.html (production)
+Authorized JavaScript origins:
+  - http://localhost
+  - http://localhost:7357 (replace with your dev port)
+  - https://yourdomain.com
 ```
 
 **For Mobile/Desktop:**
@@ -130,6 +131,10 @@ Required scopes:
 **iOS:**
 Add to `ios/Runner/Info.plist`:
 ```xml
+<key>GIDClientID</key>
+<string>YOUR-IOS-CLIENT-ID.apps.googleusercontent.com</string>
+<key>GIDServerClientID</key>
+<string>YOUR-SERVER-CLIENT-ID.apps.googleusercontent.com</string>
 <key>CFBundleURLTypes</key>
 <array>
   <dict>
@@ -141,8 +146,16 @@ Add to `ios/Runner/Info.plist`:
     </array>
   </dict>
 </array>
-<key>GIDServerClientID</key>
-<string>YOUR-SERVER-CLIENT-ID.apps.googleusercontent.com</string>
+```
+
+**macOS:**
+Use `macos/Runner/Info.plist` with the same keys as iOS and ensure the
+entitlements include keychain sharing:
+```xml
+<key>keychain-access-groups</key>
+<array>
+  <string>$(AppIdentifierPrefix)com.google.GIDSignIn</string>
+</array>
 ```
 
 **Android:**
@@ -152,6 +165,24 @@ No additional setup needed if using default configuration.
 Add to `web/index.html` before `</head>`:
 ```html
 <meta name="google-signin-client_id" content="YOUR-CLIENT-ID.apps.googleusercontent.com">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+```
+
+On web, the sign-in UI must be provided by the GIS SDK. Use
+`google_sign_in_web`'s `renderButton()` and listen to `authenticationEvents`
+instead of calling `authenticate()` from a custom button.
+
+Recommended pattern (web):
+```dart
+// Render the official GIS button and handle auth via the stream.
+if (kIsWeb) {
+  return renderButton();
+}
+
+// Use authenticationEvents to track sign-in state on all platforms.
+GoogleSignIn.instance.authenticationEvents.listen((event) {
+  // Update UI state based on sign-in/sign-out events.
+});
 ```
 
 See [google_sign_in documentation](https://pub.dev/packages/google_sign_in) for detailed platform setup.

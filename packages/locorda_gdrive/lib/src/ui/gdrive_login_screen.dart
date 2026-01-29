@@ -1,9 +1,13 @@
 /// Google Drive login screen.
 library;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:locorda_gdrive/locorda_gdrive.dart';
 import 'package:logging/logging.dart';
+
+import 'gdrive_web_sign_in_button.dart'
+    if (dart.library.html) 'gdrive_web_sign_in_button_web.dart';
 
 final _log = Logger('GDriveLoginScreen');
 
@@ -15,12 +19,14 @@ final _log = Logger('GDriveLoginScreen');
 /// - Cancel if they choose
 ///
 /// Uses [GDriveAuth] to initiate OAuth2 flow.
+typedef GDriveSignInCallback = Future<bool> Function();
+
 class GDriveLoginScreen extends StatefulWidget {
-  final GDriveAuth gdriveAuth;
+  final GDriveSignInCallback onSignIn;
 
   const GDriveLoginScreen({
     super.key,
-    required this.gdriveAuth,
+    required this.onSignIn,
   });
 
   @override
@@ -38,7 +44,7 @@ class _GDriveLoginScreenState extends State<GDriveLoginScreen> {
     });
 
     try {
-      final success = await widget.gdriveAuth.authenticate();
+      final success = await widget.onSignIn();
 
       if (!mounted) return;
 
@@ -97,6 +103,14 @@ class _GDriveLoginScreenState extends State<GDriveLoginScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 16),
+              Text(
+                l10n.dataPrivacyNotice,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 48),
               if (_errorMessage != null) ...[
                 Container(
@@ -112,37 +126,39 @@ class _GDriveLoginScreenState extends State<GDriveLoginScreen> {
                 ),
                 const SizedBox(height: 24),
               ],
-              FilledButton.icon(
-                onPressed: _isConnecting ? null : _handleSignIn,
-                icon: _isConnecting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.login),
-                label: Text(l10n.signInWithGoogle),
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton(
-                onPressed: _isConnecting
-                    ? null
-                    : () => Navigator.of(context).pop(false),
-                child: Text(l10n.cancel),
-              ),
-              const SizedBox(height: 32),
-              Text(
-                l10n.noAccount,
-                style: theme.textTheme.bodySmall,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () {
-                  // TODO: Open Google account creation page
-                },
-                child: Text(l10n.createAccount),
-              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 140,
+                    child: OutlinedButton(
+                      onPressed: _isConnecting
+                          ? null
+                          : () => Navigator.of(context).pop(false),
+                      child: Text(l10n.cancel),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  if (kIsWeb)
+                    renderGDriveWebSignInButton()
+                  else
+                    SizedBox(
+                      width: 280,
+                      child: FilledButton.icon(
+                        onPressed: _isConnecting ? null : _handleSignIn,
+                        icon: _isConnecting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.login),
+                        label: Text(l10n.signInWithGoogle),
+                      ),
+                    )
+                ],
+              )
             ],
           ),
         ),

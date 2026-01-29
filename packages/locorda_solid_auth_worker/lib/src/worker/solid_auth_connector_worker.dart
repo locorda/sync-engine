@@ -30,7 +30,8 @@ class SolidAuthConnector {
   ///   // ... return EngineParams
   /// }
   /// ```
-  static SolidAuthProvider receiver(WorkerContext context) {
-    return SolidAuthReceiver(context.channel);
+  static SolidAuthProvider receiver(WorkerHandlerContext context) {
+    return SolidAuthReceiver(
+        context.createChannel("locorda_solid_auth_worker/solid_auth"));
   }
 }

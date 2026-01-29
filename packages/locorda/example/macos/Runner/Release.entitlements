@@ -7,6 +7,9 @@
 		<key>com.apple.security.network.client</key>
 		<true />
 		<key>keychain-access-groups</key>
-		<array />
+		<array>
+			<string>$(AppIdentifierPrefix)com.google.GIDSignIn</string>
+			<string>$(AppIdentifierPrefix)dev.locorda.example.personalNotesApp</string>
+		</array>
 	</dict>
 </plist>

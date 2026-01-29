@@ -71,7 +71,7 @@ void startWebWorkerLoop(WorkerSetup workerSetup) {
 
   // Create WorkerChannel early (like native implementation does)
   final channel = WorkerChannel((message) {
-    _postMessage({'__channel': true, 'data': message}.jsify());
+    _postMessage({'__channel': message.channel, 'data': message.data}.jsify());
   });
   WorkerContext? context;
   bool isInitializing = false;
@@ -99,8 +99,9 @@ void startWebWorkerLoop(WorkerSetup workerSetup) {
 
       final messageData = data as Map<String,
           dynamic>; // Check if this is a channel message - route directly to channel (like native impl)
-      if (messageData['__channel'] == true) {
-        channel.deliver(messageData['data']);
+      if (messageData['__channel'] is String && messageData['data'] != null) {
+        channel.deliver(
+            messageData['__channel'] as String, messageData['data']);
         return;
       }
 

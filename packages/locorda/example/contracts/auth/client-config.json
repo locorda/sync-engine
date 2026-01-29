@@ -6,12 +6,12 @@
   "redirect_uris": [
     "https://locorda.dev/example/personal_notes_app/redirect.html",
     "http://localhost:3815/redirect.html",
-    "dev.locorda.personalnotes://redirect"
+    "dev.locorda.example.personalNotesApp://redirect"
   ],
   "post_logout_redirect_uris": [
     "https://locorda.dev/example/personal_notes_app/redirect.html",
     "http://localhost:3815/redirect.html",
-    "dev.locorda.personalnotes://logout"
+    "dev.locorda.example.personalNotesApp://logout"
   ],
   "scope": "openid webid offline_access profile",
   "grant_types": [

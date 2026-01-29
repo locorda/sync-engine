@@ -53,12 +53,13 @@ class SolidAuthConnector {
   /// Creates a plugin factory for this connector.
   ///
   /// Pass the main thread's [solidAuth] instance. The returned factory will be
-  /// called by the worker framework with the [LocordaWorker].
-  static WorkerPluginFactory sender(SolidAuth solidAuth) {
-    return (LocordaWorker workerHandle) {
+  /// called by the worker framework with the [MainHandlerContext].
+  static MainHandlerFactory sender(SolidAuth solidAuth) {
+    return (MainHandlerContext context) {
       return SolidAuthSender(
         solidAuth: solidAuth,
-        workerHandle: workerHandle,
+        workerHandle:
+            context.createChannel('locorda_solid_auth_worker/solid_auth'),
       );
     };
   }

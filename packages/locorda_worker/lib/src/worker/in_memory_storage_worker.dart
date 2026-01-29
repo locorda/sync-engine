@@ -3,7 +3,8 @@ import 'package:locorda_worker/worker.dart';
 
 class InMemoryStorageWorkerHandler extends StorageWorkerHandler {
   @override
-  Future<Storage> create(WorkerContext context, SyncEngineConfig config) {
+  Future<Storage> create(
+      WorkerHandlerContext context, SyncEngineConfig config) {
     return Future.value(InMemoryStorage());
   }
 }

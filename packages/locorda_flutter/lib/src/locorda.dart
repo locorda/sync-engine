@@ -65,7 +65,7 @@ class Locorda {
   /// // Initialize auth (runs on main thread for UI access)
   /// final solidAuth = SolidAuth(
   ///   oidcClientId: '$appBaseUrl/auth/client-config.json',
-  ///   appUrlScheme: 'dev.locorda.personalnotes',
+  ///   appUrlScheme: 'dev.locorda.example.personalNotesApp',
   ///   frontendRedirectUrl: Uri.parse('$appBaseUrl/redirect.html'),
   /// );
   /// await solidAuth.init();
@@ -203,7 +203,7 @@ class Locorda {
     required StorageMainHandler storage,
     String jsScript = 'worker.dart.js',
     List<RemoteIntegration> remotes = const [],
-    List<WorkerPluginFactory> plugins = const [],
+    List<MainHandlerFactory> plugins = const [],
     IriTermFactory? iriTermFactory,
     RdfCore? rdfCore,
     String? debugName,

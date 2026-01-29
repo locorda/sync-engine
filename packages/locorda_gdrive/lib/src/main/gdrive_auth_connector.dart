@@ -56,12 +56,12 @@ class GDriveAuthConnector {
   /// Creates a plugin factory for this connector.
   ///
   /// Pass the main thread's [authBridge] instance. The returned factory will be
-  /// called by the worker framework with the [LocordaWorker].
-  static WorkerPluginFactory sender(GDriveAuthProvider authBridge) {
-    return (LocordaWorker workerHandle) {
+  /// called by the worker framework with the [MainHandlerContext].
+  static MainHandlerFactory sender(GDriveAuthProvider authBridge) {
+    return (MainHandlerContext context) {
       return GDriveAuthSender(
         authBridge: authBridge,
-        workerHandle: workerHandle,
+        workerHandle: context.createChannel('locorda_gdrive/gdrive_auth'),
       );
     };
   }

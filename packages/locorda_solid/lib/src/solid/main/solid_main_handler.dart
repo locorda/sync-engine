@@ -61,7 +61,7 @@ class SolidMainHandler implements RemoteIntegration {
   Auth get auth => _authBridge;
 
   @override
-  List<WorkerPluginFactory> get workerConnectors => [
+  List<MainHandlerFactory> get workerConnectors => [
         SolidAuthConnector.sender(_solidAuth),
       ];
 

@@ -63,7 +63,7 @@ class _WorkerAuthNotifier implements AuthValueListenable {
 /// 4. Notifies listeners via [isAuthenticatedNotifier]
 /// 5. [GDriveBackend] reacts by initializing remote storage
 class WorkerGDriveAuthProvider implements GDriveAuthProvider {
-  final WorkerChannel _channel;
+  final WorkerHandlerChannel _channel;
   final _WorkerAuthNotifier _notifier = _WorkerAuthNotifier();
 
   String? _accessToken;

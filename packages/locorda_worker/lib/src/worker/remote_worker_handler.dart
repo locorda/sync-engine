@@ -83,7 +83,8 @@ abstract interface class RemoteWorkerHandler {
   ///   );
   /// }
   /// ```
-  Future<Backend> createBackend(WorkerContext context, SyncEngineConfig config);
+  Future<Backend> createBackend(
+      WorkerHandlerContext context, SyncEngineConfig config);
 }
 
 /// Exception thrown when main and worker handler registrations don't match.

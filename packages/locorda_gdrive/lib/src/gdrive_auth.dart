@@ -44,28 +44,55 @@ class GDriveAuth implements GDriveAuthProvider {
   GoogleSignInAccount? _currentUser;
   final ValueNotifier<bool> _isAuthenticatedNotifier = ValueNotifier(false);
   late final AuthValueListenableImpl _authListenable;
+  StreamSubscription<GoogleSignInAuthenticationEvent>? _authEventsSubscription;
 
   GDriveAuth._({
     required String? clientId,
     required this.scopes,
   }) {
     _authListenable = AuthValueListenableImpl(_isAuthenticatedNotifier);
-
-    _googleSignIn = GoogleSignIn(
-      scopes: scopes,
-      serverClientId: clientId,
-    );
+    _googleSignIn = GoogleSignIn.instance;
 
     // Listen to sign-in state changes
-    _googleSignIn.onCurrentUserChanged.listen((account) {
-      _currentUser = account;
-      _isAuthenticatedNotifier.value = account != null;
-      if (account != null) {
-        _log.info('User signed in: ${account.email}');
-      } else {
+    _authEventsSubscription =
+        _googleSignIn.authenticationEvents.listen((event) {
+      if (event is GoogleSignInAuthenticationEventSignIn) {
+        _currentUser = event.user;
+        _isAuthenticatedNotifier.value = true;
+        _log.info('User signed in: ${event.user.email}');
+      } else if (event is GoogleSignInAuthenticationEventSignOut) {
+        _currentUser = null;
+        _isAuthenticatedNotifier.value = false;
         _log.info('User signed out');
       }
     });
+  }
+
+  void _markUserInteractionRequired(String message) {
+    _log.warning(message);
+    _currentUser = null;
+    _isAuthenticatedNotifier.value = false;
+  }
+
+  Future<GoogleSignInClientAuthorization> _authorizeScopes({
+    required bool allowUserInteraction,
+  }) async {
+    final authClient = _googleSignIn.authorizationClient;
+    final existing = await authClient.authorizationForScopes(scopes);
+    if (existing != null) {
+      return existing;
+    }
+
+    if (_googleSignIn.authorizationRequiresUserInteraction() ||
+        !allowUserInteraction) {
+      _markUserInteractionRequired(
+        'Authorization required. Show the Google sign-in button.',
+      );
+      throw GDriveUserInteractionRequired(
+          'Authorization required. Show the Google sign-in button.');
+    }
+
+    return authClient.authorizeScopes(scopes);
   }
 
   /// Creates and initializes Google Drive authentication.
@@ -92,8 +119,14 @@ class GDriveAuth implements GDriveAuthProvider {
 
     _log.info('Initializing Google Drive authentication');
     try {
+      await auth._googleSignIn.initialize(
+        clientId: clientId,
+        serverClientId: clientId,
+      );
+
       // Try silent sign-in for returning users
-      final account = await auth._googleSignIn.signInSilently();
+      final account =
+          await auth._googleSignIn.attemptLightweightAuthentication();
       if (account != null) {
         _log.info('Silent sign-in successful: ${account.email}');
       }
@@ -112,16 +145,15 @@ class GDriveAuth implements GDriveAuthProvider {
     try {
       _log.info('Starting Google Sign-In authentication flow');
 
-      // Trigger interactive sign-in
-      final account = await _googleSignIn.signIn();
-
-      if (account != null) {
-        _log.info('Authentication successful for user: ${account.email}');
-        return true;
+      if (!_googleSignIn.supportsAuthenticate()) {
+        throw GDriveUserInteractionRequired(
+            'Web sign-in must be triggered via the GIS button');
       }
 
-      _log.warning('User cancelled sign-in');
-      return false;
+      // Trigger interactive sign-in
+      final account = await _googleSignIn.authenticate(scopeHint: scopes);
+      _log.info('Authentication successful for user: ${account.email}');
+      return true;
     } on PlatformException catch (e) {
       _log.severe(
           'Google Sign-In platform exception: ${e.code} - ${e.message}', e);
@@ -149,16 +181,8 @@ class GDriveAuth implements GDriveAuthProvider {
     if (_currentUser == null) {
       throw StateError('Not authenticated - call authenticate() first');
     }
-
-    // Get authentication headers (automatically handles token refresh)
-    final auth = await _currentUser!.authentication;
-    final accessToken = auth.accessToken;
-
-    if (accessToken == null) {
-      throw StateError('Failed to get access token');
-    }
-
-    return accessToken;
+    final authorization = await _authorizeScopes(allowUserInteraction: false);
+    return authorization.accessToken;
   }
 
   @override
@@ -170,13 +194,15 @@ class GDriveAuth implements GDriveAuthProvider {
     _log.info('Refreshing access token${reason != null ? ': $reason' : ''}');
 
     try {
-      // Clear cached authentication to force refresh
-      await _currentUser!.clearAuthCache();
+      final authClient = _googleSignIn.authorizationClient;
+      final existing = await authClient.authorizationForScopes(scopes);
+      if (existing != null) {
+        await authClient.clearAuthorizationToken(
+            accessToken: existing.accessToken);
+      }
 
-      // Get fresh authentication (triggers token refresh)
-      final auth = await _currentUser!.authentication;
-
-      if (auth.accessToken == null) {
+      final authorization = await _authorizeScopes(allowUserInteraction: false);
+      if (authorization.accessToken.isEmpty) {
         throw StateError('Failed to refresh access token');
       }
 
@@ -195,6 +221,7 @@ class GDriveAuth implements GDriveAuthProvider {
 
   /// Clean up resources.
   void dispose() {
+    _authEventsSubscription?.cancel();
     _isAuthenticatedNotifier.dispose();
   }
 }

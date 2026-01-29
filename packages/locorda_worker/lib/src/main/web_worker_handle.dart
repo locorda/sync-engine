@@ -14,6 +14,7 @@ final _log = Logger('WebWorkerHandle');
 class WebWorkerHandle implements LocordaWorker {
   final web.Worker _worker;
   final StreamController<Object?> _controller = StreamController.broadcast();
+  late MainHandlerContext mainHandlerContext = MainHandlerContextImpl(this);
 
   WebWorkerHandle._(this._worker);
 

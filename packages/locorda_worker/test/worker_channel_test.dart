@@ -7,7 +7,7 @@ void main() {
   group('WorkerChannel', () {
     test('sends messages through provided callback', () async {
       final sentMessages = <Object?>[];
-      final channel = WorkerChannel((msg) => sentMessages.add(msg));
+      final channel = testChannel((msg) => sentMessages.add(msg));
 
       channel.send('test message');
       channel.send({'key': 'value'});
@@ -28,9 +28,9 @@ void main() {
       final subscription = channel.messages.listen(receivedMessages.add);
 
       // Simulate receiving messages from transport layer
-      channel.deliver('message 1');
-      channel.deliver({'data': 'message 2'});
-      channel.deliver(null);
+      channel.deliver('test', 'message 1');
+      channel.deliver('test', {'data': 'message 2'});
+      channel.deliver('test', null);
 
       // Wait for stream to process
       await Future.delayed(Duration.zero);
@@ -53,7 +53,7 @@ void main() {
       final sub1 = channel.messages.listen(listener1Messages.add);
       final sub2 = channel.messages.listen(listener2Messages.add);
 
-      channel.deliver('broadcast message');
+      channel.deliver('test', 'broadcast message');
       await Future.delayed(Duration.zero);
 
       expect(listener1Messages, ['broadcast message']);
@@ -72,19 +72,19 @@ void main() {
       late final WorkerChannel channelA;
       late final WorkerChannel channelB;
 
-      channelA = WorkerChannel((msg) => channelB.deliver(msg));
-      channelB = WorkerChannel((msg) => channelA.deliver(msg));
+      channelA = WorkerChannel((msg) => channelB.deliver('test', msg));
+      channelB = WorkerChannel((msg) => channelA.deliver('test', msg));
 
       channelA.messages.listen(messagesFromA.add);
       channelB.messages.listen(messagesFromB.add);
 
       // A sends to B
-      channelA.send('hello from A');
+      channelA.send('test', 'hello from A');
       await Future.delayed(Duration.zero);
       expect(messagesFromB, ['hello from A']);
 
       // B sends to A
-      channelB.send('reply from B');
+      channelB.send('test', 'reply from B');
       await Future.delayed(Duration.zero);
       expect(messagesFromA, ['reply from B']);
     });
@@ -99,7 +99,7 @@ void main() {
         onDone: () => streamDone = true,
       );
 
-      channel.deliver('before close');
+      channel.deliver('test', 'before close');
       await Future.delayed(Duration.zero);
 
       await channel.close();
@@ -114,7 +114,7 @@ void main() {
 
     test('handles JSON-serializable types', () async {
       final sentMessages = <Object?>[];
-      final channel = WorkerChannel((msg) => sentMessages.add(msg));
+      final channel = testChannel((msg) => sentMessages.add(msg));
 
       // Common JSON-serializable types
       channel.send('string');
@@ -148,10 +148,10 @@ void main() {
       channel.messages.listen(receivedMessages.add);
 
       // Interleaved sends and delivers
-      channel.send('send 1');
-      channel.deliver('receive 1');
-      channel.send('send 2');
-      channel.deliver('receive 2');
+      channel.send('test', 'send 1');
+      channel.deliver('test', 'receive 1');
+      channel.send('test', 'send 2');
+      channel.deliver('test', 'receive 2');
 
       await Future.delayed(Duration.zero);
 
@@ -159,4 +159,9 @@ void main() {
       expect(receivedMessages, ['receive 1', 'receive 2']);
     });
   });
+}
+
+WorkerHandlerChannel testChannel(void Function(Object?) messageSender) {
+  return WorkerHandlerChannel(
+      "test", WorkerChannel((msg) => messageSender(msg.data)));
 }

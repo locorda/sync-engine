@@ -14,28 +14,52 @@ library;
 
 import 'dart:async';
 
+class WorkerChannelMessage {
+  final String channel;
+  final Object? data;
+
+  WorkerChannelMessage(this.channel, this.data);
+}
+
+class WorkerHandlerChannel {
+  final String channel;
+  final WorkerChannel _workerChannel;
+
+  WorkerHandlerChannel(this.channel, this._workerChannel);
+
+  /// Send a message on this plugin channel.
+  void send(Object? message) {
+    _workerChannel.send(channel, message);
+  }
+
+  /// Stream of incoming messages on this plugin channel.
+  Stream<Object?> get messages => _workerChannel.messages
+      .where((msg) => msg.channel == channel)
+      .map((msg) => msg.data);
+}
+
 /// Bidirectional communication channel between main thread and worker.
 ///
 /// Framework-agnostic: Apps define their own message types and protocols.
 /// Messages are transmitted as JSON-serializable objects.
 class WorkerChannel {
-  final StreamController<Object?> _incomingController =
+  final StreamController<WorkerChannelMessage> _incomingController =
       StreamController.broadcast();
-  final void Function(Object? message) _sendMessage;
+  final void Function(WorkerChannelMessage message) _sendMessage;
 
   WorkerChannel(this._sendMessage);
 
   /// Send a message to the other side of the channel (main ↔ worker).
-  void send(Object? message) {
-    _sendMessage(message);
+  void send(String channel, Object? message) {
+    _sendMessage(WorkerChannelMessage(channel, message));
   }
 
   /// Stream of incoming messages from the other side.
-  Stream<Object?> get messages => _incomingController.stream;
+  Stream<WorkerChannelMessage> get messages => _incomingController.stream;
 
   /// Internal: Deliver incoming message from transport layer.
-  void deliver(Object? message) {
-    _incomingController.add(message);
+  void deliver(String channel, Object? message) {
+    _incomingController.add(WorkerChannelMessage(channel, message));
   }
 
   /// Close the channel and clean up resources.

@@ -1,6 +1,6 @@
 /// Plugin system for extending worker functionality.
 ///
-/// Plugins run on main thread and can communicate with worker via [LocordaWorker].
+/// Plugins run on main thread and can communicate with worker via [MainHandlerContext].
 /// Common use cases: authentication bridges, custom sync strategies, monitoring.
 library;
 
@@ -10,7 +10,8 @@ import 'locorda_worker.dart';
 ///
 /// The framework calls this factory after worker creation, passing the handle
 /// for communication with the worker thread.
-typedef WorkerPluginFactory = WorkerPlugin Function(LocordaWorker workerHandle);
+typedef MainHandlerFactory = MainHandler Function(
+    MainHandlerContext workerHandle);
 
 /// Plugin interface for main-thread components that interact with worker.
 ///
@@ -38,7 +39,7 @@ typedef WorkerPluginFactory = WorkerPlugin Function(LocordaWorker workerHandle);
 ///   }
 /// }
 /// ```
-abstract interface class WorkerPlugin {
+abstract interface class MainHandler {
   /// Initialize plugin after worker is ready.
   ///
   /// Called once during worker setup. Perform subscriptions, send initial

@@ -42,3 +42,16 @@ abstract interface class GDriveAuthProvider implements Auth {
   /// May throw if refresh fails (e.g., refresh token expired, network error).
   Future<void> refreshToken({String? reason});
 }
+
+/// Indicates that user interaction is required to complete authorization.
+///
+/// On web, the GIS SDK requires a user gesture via the official button
+/// to refresh authorization once the token expires.
+class GDriveUserInteractionRequired implements Exception {
+  final String message;
+
+  GDriveUserInteractionRequired(this.message);
+
+  @override
+  String toString() => message;
+}

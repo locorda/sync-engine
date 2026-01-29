@@ -41,6 +41,25 @@ class IsolateSender implements WorkerMessageSender {
   void send(Object? message) => _sendPort.send(message);
 }
 
+abstract class WorkerHandlerContext {
+  WorkerHandlerChannel createChannel(String name);
+}
+
+class WorkerHandlerContextImpl implements WorkerHandlerContext {
+  final WorkerChannel _channel;
+  final Set<String> _registeredChannels = {};
+
+  WorkerHandlerContextImpl(this._channel);
+
+  WorkerHandlerChannel createChannel(String name) {
+    if (_registeredChannels.contains(name)) {
+      throw StateError('Channel "$name" already registered in this context.');
+    }
+    _registeredChannels.add(name);
+    return WorkerHandlerChannel(name, _channel);
+  }
+}
+
 /// Context for worker execution.
 ///
 /// Manages the SyncEngine instance and message routing within the worker.
@@ -49,7 +68,7 @@ class WorkerContext {
   final RdfGraphCodec _codec = TurtleCodec();
 
   /// Communication channel for cross-thread operations (e.g., auth)
-  final WorkerChannel channel;
+  final WorkerChannel _channel;
 
   SyncEngine? _syncSystem;
 
@@ -59,7 +78,10 @@ class WorkerContext {
   /// Subscription to sync status stream
   StreamSubscription<SyncState>? _syncStatusSubscription;
 
-  WorkerContext(this._sender, this.channel);
+  WorkerContext(this._sender, this._channel);
+
+  late WorkerHandlerContext workerHandlerContext =
+      WorkerHandlerContextImpl(_channel);
 
   /// Send a message back to the main thread (package-visible for web worker).
   void sendMessage(WorkerMessage message) {
@@ -472,7 +494,7 @@ void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
   // 2. Create WorkerChannel for app-specific messages
   final channel = WorkerChannel((message) {
     // Send app-specific messages with special marker
-    mainSendPort.send({'__channel': true, 'data': message});
+    mainSendPort.send({'__channel': message.channel, 'data': message.data});
   });
 
   // 3. Create WorkerContext
@@ -499,8 +521,8 @@ void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
     // After config received, handle normal messages
     if (config != null && message is Map<String, dynamic>) {
       // Check if it's a channel message
-      if (message['__channel'] == true) {
-        channel.deliver(message['data']);
+      if (message['__channel'] is String && message['data'] != null) {
+        channel.deliver(message['__channel'] as String, message['data']);
         return;
       }
 
