@@ -1,4 +1,5 @@
 # locorda_worker
+**!!! WARNING: OUTDATED!!!**
 
 Worker infrastructure for Locorda - Platform-agnostic architecture for running heavy operations in separate isolate/worker thread.
 
