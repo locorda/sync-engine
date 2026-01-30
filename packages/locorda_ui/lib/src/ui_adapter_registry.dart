@@ -24,8 +24,8 @@ import 'remote_ui_adapter.dart';
 /// // 2. Create Locorda with remote handlers
 /// final locorda = await Locorda.create(
 ///   remotes: [
-///     SolidMainHandler(solidAuth: solidAuth),
-///     GDriveMainHandler(gdriveAuth: gdriveAuth),
+///     SolidMainIntegration(solidAuth: solidAuth),
+///     GDriveMainIntegration(gdriveAuth: gdriveAuth),
 ///   ],
 ///   storage: DriftMainHandler(),
 ///   config: locordaConfig,
@@ -52,8 +52,8 @@ import 'remote_ui_adapter.dart';
 ///
 /// ```dart
 /// final registry = UiAdapterRegistry.withRemotes([
-///   SolidMainHandler(solidAuth: solidAuth),
-///   GDriveMainHandler(gdriveAuth: gdriveAuth),
+///   SolidMainIntegration(solidAuth: solidAuth),
+///   GDriveMainIntegration(gdriveAuth: gdriveAuth),
 /// ]);
 /// ```
 class UiAdapterRegistry {

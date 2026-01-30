@@ -49,16 +49,19 @@ class GDriveClient {
   /// Parameters:
   /// - [folderName]: Name of folder to find or create
   /// - [parentId]: Parent folder ID, or null for root ('root' is Drive's root folder ID)
+  /// - [spaces]: Search space ('drive' for My Drive, 'appDataFolder' for app-specific folder)
   ///
   /// Throws [GDriveClientException] if user not authenticated or API error occurs.
   Future<String> getOrCreateFolder({
     required String folderName,
     String? parentId,
+    String spaces = 'drive',
   }) async {
     final parent = parentId ?? 'root';
 
     try {
-      _clientLog.fine('Searching for folder "$folderName" in parent=$parent');
+      _clientLog.fine(
+          'Searching for folder "$folderName" in parent=$parent (spaces=$spaces)');
 
       // Search for existing folder
       // Query: name matches AND mimeType is folder AND parent is specified
@@ -68,7 +71,7 @@ class GDriveClient {
 
       final fileList = await _driveApi.files.list(
         q: query,
-        spaces: 'drive',
+        spaces: spaces,
         $fields: 'files(id, name)',
       );
 
@@ -109,7 +112,8 @@ class GDriveClient {
   Future<({String fileId, String etag})> createFile(
       String filename, RdfGraph graph,
       {required String folderId,
-      bool fileNameMayBeRelativePath = false}) async {
+      bool fileNameMayBeRelativePath = false,
+      String spaces = 'drive'}) async {
     try {
       // 1. Handle relative paths (create folder hierarchy if needed)
       String parentId = folderId;
@@ -120,7 +124,7 @@ class GDriveClient {
         // Navigate/create folder hierarchy
         for (final folderName in parts.sublist(0, parts.length - 1)) {
           parentId = await getOrCreateFolder(
-              folderName: folderName, parentId: parentId);
+              folderName: folderName, parentId: parentId, spaces: spaces);
         }
       }
 
@@ -174,12 +178,14 @@ class GDriveClient {
   /// - [fileName]: File name (with optional path if [fileNameMayBeRelativePath] is true)
   /// - [parentId]: Parent folder ID to search in
   /// - [fileNameMayBeRelativePath]: Whether to interpret slashes as folder separators
+  /// - [spaces]: Search space ('drive' for My Drive, 'appDataFolder' for app-specific folder)
   ///
   /// Returns file ID if found, null if not found.
   Future<String?> findFile({
     required String fileName,
     required String parentId,
     bool fileNameMayBeRelativePath = false,
+    String spaces = 'drive',
   }) async {
     try {
       // Handle relative paths by traversing folder hierarchy
@@ -192,16 +198,21 @@ class GDriveClient {
         String currentParentId = parentId;
         for (final folderName in folderPath) {
           currentParentId = await getOrCreateFolder(
-              folderName: folderName, parentId: currentParentId);
+              folderName: folderName,
+              parentId: currentParentId,
+              spaces: spaces);
         }
 
         // Search for file in final folder
         return await _findFileInFolder(
-            fileName: actualFileName, parentId: currentParentId);
+            fileName: actualFileName,
+            parentId: currentParentId,
+            spaces: spaces);
       }
 
       // Direct search in parent folder
-      return await _findFileInFolder(fileName: fileName, parentId: parentId);
+      return await _findFileInFolder(
+          fileName: fileName, parentId: parentId, spaces: spaces);
     } catch (e, stackTrace) {
       _clientLog.severe('Failed to find file "$fileName"', e, stackTrace);
       throw GDriveClientException('Failed to find file "$fileName": $e');
@@ -212,8 +223,10 @@ class GDriveClient {
   Future<String?> _findFileInFolder({
     required String fileName,
     required String parentId,
+    String spaces = 'drive',
   }) async {
-    _clientLog.fine('Searching for file "$fileName" in folder=$parentId');
+    _clientLog.fine(
+        'Searching for file "$fileName" in folder=$parentId (spaces=$spaces)');
 
     final escapedName = _escapeQueryValue(fileName);
     final query =
@@ -221,7 +234,7 @@ class GDriveClient {
 
     final fileList = await _driveApi.files.list(
       q: query,
-      spaces: 'drive',
+      spaces: spaces,
       $fields: 'files(id, name)',
     );
 
@@ -474,14 +487,17 @@ class GDriveSyncStorage extends RemoteSyncStorage {
 
   final TypeIndexMappings _typeIndexMappings;
   final ResourceLocator _resourceLocator;
+  final String _spaces;
 
   GDriveSyncStorage({
     required GDriveClient client,
     required TypeIndexMappings typeIndexMappings,
     required ResourceLocator resourceLocator,
+    required String spaces,
   })  : _client = client,
         _typeIndexMappings = typeIndexMappings,
-        _resourceLocator = resourceLocator;
+        _resourceLocator = resourceLocator,
+        _spaces = spaces;
 
   @override
   Future<RemoteDownloadResult> download(IriTerm documentIri,
@@ -492,7 +508,8 @@ class GDriveSyncStorage extends RemoteSyncStorage {
     final fileId = await _client.findFile(
         parentId: folderId,
         fileName: filePath,
-        fileNameMayBeRelativePath: true);
+        fileNameMayBeRelativePath: true,
+        spaces: _spaces);
     if (fileId == null) {
       return RemoteDownloadResult(
         graph: null,
@@ -527,12 +544,13 @@ class GDriveSyncStorage extends RemoteSyncStorage {
     final fileId = await _client.findFile(
         parentId: folderId,
         fileName: filePath,
-        fileNameMayBeRelativePath: true);
+        fileNameMayBeRelativePath: true,
+        spaces: _spaces);
 
     if (fileId == null) {
       // Create new file
       final created = await _client.createFile(filePath, graph,
-          folderId: folderId, fileNameMayBeRelativePath: true);
+          folderId: folderId, fileNameMayBeRelativePath: true, spaces: _spaces);
       return SuccessUploadResult(created.etag);
     } else {
       // Update existing file
@@ -548,21 +566,24 @@ class GDriveSyncStorage extends RemoteSyncStorage {
 
 class GDriveRemoteStorage implements RemoteStorage {
   final RemoteId _remoteId;
-  final String _userEmail;
+  final String _userId;
   final GDriveClient _client;
   final GDriveTypeIndexManager _typeIndexManager;
   final ResourceLocator _resourceLocator;
+  final String _spaces;
 
   GDriveRemoteStorage({
     required GDriveClient client,
-    required String userEmail,
+    required String userId,
     required GDriveTypeIndexManager typeIndexManager,
     required ResourceLocator resourceLocator,
+    required String spaces,
   })  : _client = client,
-        _userEmail = userEmail,
+        _userId = userId,
         _typeIndexManager = typeIndexManager,
         _resourceLocator = resourceLocator,
-        _remoteId = RemoteId("google", userEmail);
+        _spaces = spaces,
+        _remoteId = RemoteId("google", userId);
 
   RemoteId get remoteId => _remoteId;
 
@@ -575,6 +596,7 @@ class GDriveRemoteStorage implements RemoteStorage {
       client: _client,
       resourceLocator: _resourceLocator,
       typeIndexMappings: typeIndexMappings,
+      spaces: _spaces,
     );
   }
 
@@ -593,6 +615,7 @@ class GDriveBackend implements Backend {
   final GDriveClient _client;
   final GDriveTypeIndexManager _typeIndexManager;
   final ResourceLocator _resourceLocator;
+  final GDriveConfig _config;
 
   List<RemoteStorage> _remotes = [];
 
@@ -622,6 +645,7 @@ class GDriveBackend implements Backend {
     IriTermFactory? iriTermFactory,
   })  : _auth = auth,
         _client = client,
+        _config = config,
         _typeIndexManager = GDriveTypeIndexManager(
           client: client,
           iriTermFactory: iriTermFactory ?? IriTerm.validated,
@@ -636,30 +660,33 @@ class GDriveBackend implements Backend {
 
   void _authStateChanged() {
     _log.info('Authentication state changed: '
-        'isAuthenticated=${_auth.isAuthenticatedNotifier.isAuthenticated}, userEmail=${_auth.userEmail}');
+        'isAuthenticated=${_auth.isAuthenticatedNotifier.isAuthenticated}, userId=${_auth.userId}');
     if (_auth.isAuthenticatedNotifier.isAuthenticated) {
-      final userEmail = _auth.userEmail;
-      if (userEmail == null) {
+      final userId = _auth.userId;
+      if (userId == null) {
         throw StateError(
-            'User is authenticated but currentWebId is null in SolidBackend');
+            'User is authenticated but userId is null in GDriveBackend');
       }
       if (_remotes.length == 1 &&
           _remotes.first is GDriveRemoteStorage &&
-          (_remotes.first as GDriveRemoteStorage)._userEmail == userEmail) {
+          (_remotes.first as GDriveRemoteStorage)._userId == userId) {
         // No change in authentication state
-        _log.fine(
-            'No change in GDrive remote storage for userEmail=$userEmail');
+        _log.fine('No change in GDrive remote storage for userId=$userId');
         return;
       }
       _log.info(
-          'User logged in: initializing GDrive remote storage for webId=$userEmail');
+          'User logged in: initializing GDrive remote storage for userId=$userId');
       // User logged in: initialize remote storage
+      final spaces = _config.folderMode == GDriveFolderMode.appDataFolder
+          ? 'appDataFolder'
+          : 'drive';
       _remotes = [
         GDriveRemoteStorage(
-          userEmail: userEmail,
+          userId: userId,
           client: _client,
-          resourceLocator: _resourceLocator,
           typeIndexManager: _typeIndexManager,
+          resourceLocator: _resourceLocator,
+          spaces: spaces,
         )
       ];
     } else {

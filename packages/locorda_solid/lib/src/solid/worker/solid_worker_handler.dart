@@ -16,7 +16,7 @@ import 'package:locorda_worker/worker.dart';
 
 /// ## Main Thread Counterpart
 ///
-/// This plugin requires a corresponding [SolidMainHandler] on the main thread.
+/// This plugin requires a corresponding [SolidMainIntegration] on the main thread.
 /// The main thread handles authentication and sends credentials
 /// to the worker via [SolidAuthConnector].
 class SolidWorkerHandler implements RemoteWorkerHandler {

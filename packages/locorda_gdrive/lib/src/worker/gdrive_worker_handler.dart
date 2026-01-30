@@ -16,26 +16,35 @@ import 'gdrive_auth_connector_worker.dart';
 /// - OAuth2 token management
 /// - File operations (list, read, write)
 ///
-
+/// The configuration ([GDriveConfig]) is automatically received from the main thread
+/// via [GDriveAuthConnector.receiveConfig].
 ///
 /// ## Main Thread Counterpart
 ///
-/// This plugin requires a corresponding [GDriveMainHandler] on the main thread.
-/// The main thread handles authentication and sends credentials
-/// to the worker via [GDriveAuthConnector].
+/// This plugin requires a corresponding [GDriveMainIntegration] on the main thread.
+/// The main thread handles authentication and configuration, sending both
+/// to the worker via connectors.
+///
+/// ## Usage
+///
+/// ```dart
+/// Future<WorkerParams> setupWorkerEngine() async => WorkerParams(
+///   remotes: [
+///     GDriveWorkerHandler(), // Config received automatically
+///   ],
+///   // ... storage needs to be configured as well
+/// );
+/// ```
 class GDriveWorkerHandler implements RemoteWorkerHandler {
-  final GDriveConfig config;
-
-  GDriveWorkerHandler({
-    required this.config,
-  });
-
   @override
   String get id => 'gdrive';
 
   @override
   Future<Backend> createBackend(
       WorkerHandlerContext context, SyncEngineConfig syncEngineConfig) async {
+    // Receive config from main thread
+    final config = await GDriveAuthConnector.receiveConfig(context);
+
     return GDriveBackend(
       auth: GDriveAuthConnector.receiver(context),
       config: config,

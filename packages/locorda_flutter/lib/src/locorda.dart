@@ -80,8 +80,8 @@ class Locorda {
   ///
   ///   // Main thread handlers (bridge between UI and worker)
   ///   remotes: [
-  ///     SolidMainHandler(solidAuth: solidAuth),
-  ///     GDriveMainHandler(gdriveAuth: gdriveAuth),
+  ///     SolidMainIntegration(solidAuth: solidAuth),
+  ///     GDriveMainIntegration(gdriveAuth: gdriveAuth),
   ///   ],
   ///   storage: DriftMainHandler(),
   ///

@@ -59,7 +59,7 @@ class GDriveAuth implements GDriveAuthProvider {
       if (event is GoogleSignInAuthenticationEventSignIn) {
         _currentUser = event.user;
         _isAuthenticatedNotifier.value = true;
-        _log.info('User signed in: ${event.user.email}');
+        _log.info('User signed in: ${event.user.id}');
       } else if (event is GoogleSignInAuthenticationEventSignOut) {
         _currentUser = null;
         _isAuthenticatedNotifier.value = false;
@@ -103,7 +103,7 @@ class GDriveAuth implements GDriveAuthProvider {
   /// - [clientId]: Optional OAuth2 client ID. If not provided, will be read from
   ///   platform-specific configuration files (Info.plist on iOS, google-services.json
   ///   on Android, meta tag on Web).
-  /// - [scopes]: OAuth2 scopes to request. Defaults to Drive file access + user email.
+  /// - [scopes]: OAuth2 scopes to request. Defaults to Drive file access + OpenID.
   static Future<GDriveAuth> create({
     String? clientId,
     List<String>? scopes,
@@ -113,7 +113,7 @@ class GDriveAuth implements GDriveAuthProvider {
       scopes: scopes ??
           [
             'https://www.googleapis.com/auth/drive.file',
-            'https://www.googleapis.com/auth/userinfo.email',
+            'openid',
           ],
     );
 
@@ -128,7 +128,7 @@ class GDriveAuth implements GDriveAuthProvider {
       final account =
           await auth._googleSignIn.attemptLightweightAuthentication();
       if (account != null) {
-        _log.info('Silent sign-in successful: ${account.email}');
+        _log.info('Silent sign-in successful: ${account.id}');
       }
     } catch (e, stackTrace) {
       _log.warning('Silent sign-in failed', e, stackTrace);
@@ -152,7 +152,7 @@ class GDriveAuth implements GDriveAuthProvider {
 
       // Trigger interactive sign-in
       final account = await _googleSignIn.authenticate(scopeHint: scopes);
-      _log.info('Authentication successful for user: ${account.email}');
+      _log.info('Authentication successful for user: ${account.id}');
       return true;
     } on PlatformException catch (e) {
       _log.severe(
@@ -174,7 +174,7 @@ class GDriveAuth implements GDriveAuthProvider {
   String? get userDisplayName => _currentUser?.displayName;
 
   @override
-  String? get userEmail => _currentUser?.email;
+  String? get userId => _currentUser?.id;
 
   @override
   Future<String> getAccessToken() async {
@@ -215,7 +215,7 @@ class GDriveAuth implements GDriveAuthProvider {
 
   @override
   Future<void> logout() async {
-    _log.info('Logging out user: ${_currentUser?.email}');
+    _log.info('Logging out user: ${_currentUser?.id}');
     await _googleSignIn.signOut();
   }
 

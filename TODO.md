@@ -116,8 +116,12 @@
 - [x] UI: User is stuck with refresh button
 - [x] Remove extraOidcScopes from notes_list_screen (and client profile jsonld) again and verify it still works correctly
 - [x] Example App Responsiveness: offload syncing from ui thread to web worker on web
-- [ ] Implement GDrive Backend
-- [ ] GDrive Backend: we have to search by name all the time - this seems very inefficient, especially for group indices and shards where the id is a relative path. Is there some better solution?
+- [x] Implement basic GDrive Backend
+- [ ] GDrive Backend: proper e-tag support (with custom http.Client wrapper)
+- [ ] GDrive Backend: is there a way to get the token expiry time so we can make use of it e.g. in UpdateAuthMessage?
+- [ ] GDrive Backend: we have to search by name all the time - this seems very inefficient, especially for group indices and shards where the id is a relative path. Is there some better solution? Can/Should we store the path/id relationships in our DB?
+- [ ] GDrive: behaviour regarding oauth scopes - explain the user before calling google what we need and why, and if we did not get it, then tell the user that we cannot store to GDrive due to missing permissions and log the user out again.
+- [ ] Sync: implement support for "change streams" or  such for faster continuous synchronization, implement at least for gdrive.
 - [ ] AutoSync - throttle sync after authorization (login)
 - [ ] AutoSync - throttled sync after changes (save)
 - [ ] Optimize: check after merge if merged result differs from remote and upload only if it does

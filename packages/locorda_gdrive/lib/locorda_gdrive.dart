@@ -3,46 +3,72 @@
 /// This library provides Google Drive integration for offline-first applications
 /// using the locorda CRDT synchronization framework.
 ///
-/// ## Main Thread Usage
+/// ## Quick Start
 ///
 /// ```dart
 /// import 'package:locorda_gdrive/locorda_gdrive.dart';
 ///
-/// // Initialize Google Drive auth (silent sign-in automatic)
-/// final gdriveAuth = await GDriveAuth.create(
-///   clientId: 'your-client-id.apps.googleusercontent.com', // Optional
-///   scopes: [
-///     'https://www.googleapis.com/auth/drive.file',
-///     'https://www.googleapis.com/auth/userinfo.email',
-///   ],
-/// );
+/// // Create GDrive handler (uses recommended defaults)
+/// final gdriveHandler = await GDriveMainIntegration.create();
 ///
-/// // Create sync system with worker
-/// final locorda = await Locorda.createWithWorker(
-///   engineParamsFactory: createEngineParams,
-///   jsScript: 'worker.dart.js',
-///   plugins: [
-///     GDriveAuthConnector.sender(gdriveAuth),
-///   ],
-///   // ... other config
+/// // Create Locorda with handler
+/// final locorda = await Locorda.create(
+///   remotes: [gdriveHandler],
+///   config: LocordaConfig(
+///     resources: [/* your resources */],
+///   ),
 /// );
 ///
 /// // Use in UI
 /// AppBar(
 ///   actions: [
-///     GDriveStatusWidget(
-///       gdriveAuth: gdriveAuth,
+///     MultiBackendStatusWidget(
+///       registry: locorda.uiAdapterRegistry,
 ///       syncManager: locorda.syncManager,
 ///     ),
 ///   ],
 /// )
 /// ```
+///
+/// ## Worker Thread
+///
+/// ```dart
+/// // worker.dart
+/// import 'package:locorda_gdrive/worker.dart';
+///
+/// Future<WorkerParams> setupWorkerEngine() async => WorkerParams(
+///   remotes: [
+///     GDriveWorkerHandler(), // Config received automatically
+///   ],
+/// );
+/// ```
+///
+/// ## Storage Modes
+///
+/// - **App Data Folder** (default): Private, invisible to user, better performance
+/// - **Visible Folder**: User can see and manage files in My Drive
+///
+/// Configuration is defined once in main thread and automatically synchronized:
+///
+/// ```dart
+/// // App Data Folder (default) - simplest setup
+/// await GDriveMainIntegration.create()
+///
+/// // Visible Folder
+/// await GDriveMainIntegration.create(
+///   config: GDriveConfig.visibleFolder(appFolderName: 'MyApp'),
+/// )
+/// ```
+///
+/// OAuth client IDs are configured per-platform (Info.plist, google-services.json, etc).
+/// Scopes are set automatically based on configuration.
 library locorda_gdrive;
 
 // Core backend
 export 'src/gdrive_backend.dart' show /*GDriveBackend,*/ GDriveClientException;
+export 'src/gdrive_type_index_manager.dart' show GDriveConfig, GDriveFolderMode;
 
-// Authentication
+// Authentication (internal use only, managed by GDriveMainIntegration)
 export 'src/auth/gdrive_auth_provider.dart' show GDriveAuthProvider;
 export 'src/gdrive_auth.dart' show GDriveAuth;
 
@@ -55,7 +81,7 @@ export 'src/ui/gdrive_status_widget.dart' show GDriveStatusWidget;
 export 'src/ui/gdrive_status_defaults.dart' show GDriveStatusDefaults;
 
 // Plugin integration
-export 'src/main/gdrive_main_remote.dart' show GDriveMainHandler;
+export 'src/main/gdrive_main_integration.dart' show GDriveMainIntegration;
 
 // Localizations
 export 'l10n/gdrive_localizations.dart';

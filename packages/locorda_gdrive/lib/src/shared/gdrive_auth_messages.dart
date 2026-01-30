@@ -31,13 +31,13 @@ sealed class GDriveAuthMessage {
 class UpdateAuthMessage extends GDriveAuthMessage {
   final String? accessToken;
   final String? refreshToken;
-  final String? userEmail;
+  final String? userId;
   final DateTime? expiresAt;
 
   UpdateAuthMessage({
     this.accessToken,
     this.refreshToken,
-    this.userEmail,
+    this.userId,
     this.expiresAt,
   });
 
@@ -46,7 +46,7 @@ class UpdateAuthMessage extends GDriveAuthMessage {
         'type': 'UpdateAuthMessage',
         'accessToken': accessToken,
         'refreshToken': refreshToken,
-        'userEmail': userEmail,
+        'userId': userId,
         'expiresAt': expiresAt?.toIso8601String(),
       };
 
@@ -54,7 +54,7 @@ class UpdateAuthMessage extends GDriveAuthMessage {
     return UpdateAuthMessage(
       accessToken: json['accessToken'] as String?,
       refreshToken: json['refreshToken'] as String?,
-      userEmail: json['userEmail'] as String?,
+      userId: json['userId'] as String?,
       expiresAt: json['expiresAt'] != null
           ? DateTime.parse(json['expiresAt'] as String)
           : null,

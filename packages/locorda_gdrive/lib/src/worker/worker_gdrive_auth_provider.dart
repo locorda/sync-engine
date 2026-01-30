@@ -59,7 +59,7 @@ class _WorkerAuthNotifier implements AuthValueListenable {
 ///
 /// 1. Created via [GDriveAuthConnector.receiver] in worker entry point
 /// 2. Listens to [WorkerChannel] for [UpdateAuthMessage]
-/// 3. Updates internal credentials and user email
+/// 3. Updates internal credentials and user ID
 /// 4. Notifies listeners via [isAuthenticatedNotifier]
 /// 5. [GDriveBackend] reacts by initializing remote storage
 class WorkerGDriveAuthProvider implements GDriveAuthProvider {
@@ -67,7 +67,7 @@ class WorkerGDriveAuthProvider implements GDriveAuthProvider {
   final _WorkerAuthNotifier _notifier = _WorkerAuthNotifier();
 
   String? _accessToken;
-  String? _userEmail;
+  String? _userId;
   DateTime? _expiresAt;
 
   /// Pending token refresh requests waiting for response from main thread.
@@ -93,13 +93,13 @@ class WorkerGDriveAuthProvider implements GDriveAuthProvider {
   }
 
   void _handleAuthUpdate(UpdateAuthMessage message) {
-    _log.fine('Received auth update: userEmail=${message.userEmail}');
+    _log.fine('Received auth update: userId=${message.userId}');
 
     _accessToken = message.accessToken;
-    _userEmail = message.userEmail;
+    _userId = message.userId;
     _expiresAt = message.expiresAt;
 
-    _notifier.isAuthenticated = _accessToken != null && _userEmail != null;
+    _notifier.isAuthenticated = _accessToken != null && _userId != null;
 
     // Complete pending refresh requests
     for (final completer in _pendingRefreshRequests.values) {
@@ -134,10 +134,10 @@ class WorkerGDriveAuthProvider implements GDriveAuthProvider {
   AuthValueListenable get isAuthenticatedNotifier => _notifier;
 
   @override
-  String? get userDisplayName => _userEmail;
+  String? get userDisplayName => _userId;
 
   @override
-  String? get userEmail => _userEmail;
+  String? get userId => _userId;
 
   @override
   Future<String> getAccessToken() async {

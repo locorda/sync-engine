@@ -250,7 +250,7 @@ class ObjectSyncEngine {
   ///   config: locordaConfig,
   ///   mapperInitializer: myMapperInitializer,
   ///   workerSetup: setupWorkerEngine,  // Creates SyncEngine in worker
-  ///   remotes: [SolidMainHandler(...)],
+  ///   remotes: [SolidMainIntegration(...)],
   ///   storage: DriftMainHandler(),
   /// );
   /// ```

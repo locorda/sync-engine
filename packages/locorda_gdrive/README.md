@@ -31,25 +31,17 @@ import 'package:locorda_flutter/locorda_flutter.dart';
 import 'package:locorda_ui/locorda_ui.dart';
 import 'package:locorda_gdrive/locorda_gdrive.dart';
 
-// 1. Initialize Google Drive authentication
-final gdriveAuth = await GDriveAuth.create(
-  // Optional: Platform-specific OAuth2 client ID
-  // If omitted, reads from Info.plist (iOS), google-services.json (Android), or meta tag (Web)
-  clientId: 'your-client-id.apps.googleusercontent.com',
-  scopes: [
-    'https://www.googleapis.com/auth/drive.file',
-    'https://www.googleapis.com/auth/userinfo.email',
-  ],
-);
-// Silent sign-in happens automatically during create()
+// 1. Create GDrive handler (uses recommended defaults)
+final gdrive = await GDriveMainIntegration.create();
+// This uses:
+// - Private app data folder (invisible to user, better performance)
+// - OAuth client ID from platform config (Info.plist/google-services.json/meta tag)
 
-// 2. Create Locorda with worker
+// 2. Create Locorda with handler
 final locorda = await Locorda.create(
   workerSetup: createEngineParams,
   jsScript: 'worker.dart.js',
-  remotes: [
-    GDriveMainHandler(gdriveAuth: gdriveAuth),
-  ],
+  remotes: [gdrive],
   config: LocordaConfig(
     resources: [/* your resources */],
   ),
@@ -79,20 +71,86 @@ void main() {
 }
 
 Future<WorkerParams> setupWorkerEngine() async => WorkerParams(
-      // in main, we configured GDrive as remote
+      // Config is automatically received from main thread
       remotes: [
-        GDriveWorkerHandler(
-          config: GDriveConfig(
-            appFolderName: 'LocordaPersonalNotes',
-          ),
-        )
+        GDriveWorkerHandler(),
       ],
 
       // ... storage needs to be configured as well
     );
 ```
 
+### Storage Modes
+
+The default configuration (no parameters) uses the **App Data Folder** - a private, high-performance storage area that's invisible to users.
+
+#### App Data Folder (Default, Recommended)
+
+```dart
+// Simplest setup - uses all defaults
+final gdriveHandler = await GDriveMainIntegration.create();
+
+// Equivalent to:
+// final gdriveHandler = await GDriveMainIntegration.create(
+//   config: GDriveConfig(), 
+// );
+```
+
+**Advantages:**
+- ✅ **Private**: Invisible to user in Google Drive UI
+- ✅ **Performance**: Faster search in smaller, isolated space
+- ✅ **Clean**: Doesn't clutter user's My Drive
+- ✅ **Secure**: Only your app can access
+- ✅ **Automatic Scopes**: Uses `drive.appdata` automatically
+
+#### Visible Folder Mode
+
+```dart
+final gdriveHandler = await GDriveMainIntegration.create(
+  config: GDriveConfig.visibleFolder(
+    appFolderName: 'MyAppFolder',
+  ),
+);
+```
+
+**Use when:**
+- User needs direct access to files
+- Manual file inspection/editing required
+- Debugging or development
+
+**Automatic Scopes**: Uses `drive.file` automatically
+
+**Note**: OAuth client ID is read from platform-specific configuration files.
+See [OAuth2 Setup](#oauth2-setup) below for configuration details.
+
+### Advanced Configuration
+
+```dart
+final gdriveHandler = await GDriveMainIntegration.create(
+  config: GDriveConfig(
+    // Custom folder names for specific resource types
+    typeFolderNames: {
+      IriTerm('https://schema.org/Note'): 'notes',
+      IriTerm('https://schema.org/Person'): 'contacts',
+    },
+  ),
+);
+
+// Or with visible folder:
+final gdriveHandler = await GDriveMainIntegration.create(
+  config: GDriveConfig.visibleFolder(
+    appFolderName: 'MyApp',
+    typeFolderNames: {
+      IriTerm('https://schema.org/Note'): 'notes',
+    },
+  ),
+);
+```
+
 ## OAuth2 Setup
+
+**Important**: OAuth client IDs are configured **per platform** in configuration files,
+not in code. The `GDriveMainIntegration` automatically reads these platform-specific configurations.
 
 ### 1. Create Google Cloud Project
 
@@ -122,9 +180,12 @@ Type: iOS / Android / Desktop app
 
 ### 3. Configure Scopes
 
-Required scopes:
-- `https://www.googleapis.com/auth/drive.file` - Access app-created files
-- `https://www.googleapis.com/auth/userinfo.email` - Get user email
+The required scopes are **automatically set** based on your configuration:
+- `GDriveConfig()` → Uses `drive.appdata` (app data folder)
+- `GDriveConfig.visibleFolder(...)` → Uses `drive.file` (visible files)
+- Always includes `openid` for stable user identification
+
+Enable these scopes in your Google Cloud Console OAuth consent screen.
 
 ### 4. Platform-Specific Setup
 

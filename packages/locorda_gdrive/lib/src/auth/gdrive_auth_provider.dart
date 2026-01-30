@@ -17,10 +17,11 @@ abstract interface class GDriveAuthProvider implements Auth {
   /// Throws if user is not authenticated.
   Future<String> getAccessToken();
 
-  /// The email address of the authenticated Google user.
+  /// The Google user ID (subject identifier) of the authenticated user.
   ///
+  /// This is a stable, unique identifier that never changes for a user.
   /// Returns null if not authenticated.
-  String? get userEmail;
+  String? get userId;
 
   /// Refreshes the OAuth2 access token.
   ///

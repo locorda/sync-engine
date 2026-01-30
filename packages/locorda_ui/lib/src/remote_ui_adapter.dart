@@ -17,7 +17,7 @@
 /// Example:
 /// ```dart
 /// // Main thread (implements RemoteIntegration)
-/// class SolidMainHandler implements RemoteIntegration {
+/// class SolidMainIntegration implements RemoteIntegration {
 ///   final SolidAuth solidAuth;
 ///
 ///   // RemoteUiAdapter properties (UI)

@@ -13,7 +13,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:locorda/locorda.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
-
 import 'package:personal_notes_app/init_rdf_mapper.g.dart';
 import 'package:personal_notes_app/models/category.dart';
 import 'package:personal_notes_app/models/note.dart';
@@ -21,7 +20,6 @@ import 'package:personal_notes_app/models/note_group_key.dart';
 import 'package:personal_notes_app/models/note_index_entry.dart';
 import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
 import 'package:personal_notes_app/worker.dart';
-import 'package:solid_auth/solid_auth.dart';
 
 import 'screens/notes_list_screen.dart';
 import 'services/categories_service.dart';
@@ -49,10 +47,7 @@ void main() async {
 /// - All resources (Note, Category) with their paths, indices, and CRDT mappings
 /// - Auth bridge to sync credentials from main thread to worker
 /// - Returns a fully configured sync system
-Future<Locorda> initializeLocorda({
-  required SolidAuth solidAuth,
-  required GDriveAuth gdriveAuth,
-}) {
+Future<Locorda> initializeLocorda() async {
   // Setup sync system with worker
   return Locorda.create(
     workerSetup: setupWorkerEngine,
@@ -60,8 +55,16 @@ Future<Locorda> initializeLocorda({
 
     // Provide remotes - those must be configured correspondingly in setupWorkerEngine as well
     remotes: [
-      SolidMainHandler(solidAuth: solidAuth),
-      GDriveMainHandler(gdriveAuth: gdriveAuth),
+      await SolidMainIntegration.create(
+          // SECURITY: This example demonstrates secure redirect URI configuration.
+          // - appUrlScheme provides secure custom URI scheme for mobile/macOS
+          // - frontendRedirectUrl provides secure HTTPS redirect for web
+          // See spec/docs/SECURITY.md for detailed security considerations
+          oidcClientId: '$appBaseUrl/auth/client-config.json',
+          appUrlScheme: 'dev.locorda.example.personalNotesApp',
+          frontendRedirectUrl: Uri.parse(
+              '${kDebugMode ? 'http://localhost:3815' : appBaseUrl}/redirect.html')),
+      await GDriveMainIntegration.create(),
     ],
 
     // Provide storage - we have configured drift in setupWorkerEngine
@@ -195,24 +198,9 @@ class _AppInitializerState extends State<AppInitializer>
         driftWorker: Uri.parse('drift_worker.js'),
       );
 
-      // Initialize Solid Auth
-      // SECURITY: This example demonstrates secure redirect URI configuration.
-      // - appUrlScheme provides secure custom URI scheme for mobile/macOS
-      // - frontendRedirectUrl provides secure HTTPS redirect for web
-      // See spec/docs/SECURITY.md for detailed security considerations
-      final solidAuth = SolidAuth(
-          oidcClientId: '$appBaseUrl/auth/client-config.json',
-          appUrlScheme: 'dev.locorda.example.personalNotesApp',
-          frontendRedirectUrl: Uri.parse(
-              '${kDebugMode ? 'http://localhost:3815' : appBaseUrl}/redirect.html'));
-      await solidAuth.init();
-
-      final gdriveAuth = await GDriveAuth.create();
-
       // Initialize the CRDT sync system with worker architecture
       // This runs heavy operations (CRDT, DB, HTTP, DPoP) in separate isolate/worker
-      final locorda =
-          await initializeLocorda(solidAuth: solidAuth, gdriveAuth: gdriveAuth);
+      final locorda = await initializeLocorda();
 
       // Initialize app database (Drift)
       final appDb = AppDatabase(web: webOptions);

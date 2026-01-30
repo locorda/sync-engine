@@ -6,7 +6,9 @@ library;
 import 'package:locorda_worker/worker.dart';
 
 import '../auth/gdrive_auth_provider.dart';
+import '../gdrive_type_index_manager.dart';
 import 'worker_gdrive_auth_provider.dart';
+import 'worker_gdrive_config_receiver.dart';
 
 /// Worker plugin that bridges Google Drive authentication from main thread to worker.
 ///
@@ -70,5 +72,25 @@ class GDriveAuthConnector {
   static GDriveAuthProvider receiver(WorkerHandlerContext context) {
     return WorkerGDriveAuthProvider(
         context.createChannel('locorda_gdrive/gdrive_auth'));
+  }
+
+  /// Creates config receiver for worker context.
+  ///
+  /// Call this in the worker entry point to receive [GDriveConfig]
+  /// from the main thread.
+  ///
+  /// Example:
+  /// ```dart
+  /// void workerEntryPoint() {
+  ///   startWorkerIsolate((context) async {
+  ///     final config = await GDriveAuthConnector.receiveConfig(context);
+  ///     final backend = GDriveBackend(config: config);
+  ///   });
+  /// }
+  /// ```
+  static Future<GDriveConfig> receiveConfig(WorkerHandlerContext context) {
+    final receiver = WorkerGDriveConfigReceiver(
+        context.createChannel('locorda_gdrive/gdrive_config'));
+    return receiver.getConfig();
   }
 }

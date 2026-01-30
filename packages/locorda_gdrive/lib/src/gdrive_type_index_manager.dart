@@ -10,6 +10,19 @@ import 'rdf/rdf_extensions.dart';
 
 final _log = Logger('GDriveTypeIndexManager');
 
+/// Google Drive folder storage mode.
+enum GDriveFolderMode {
+  /// Private app-specific folder (invisible to user in Drive UI).
+  /// Better performance due to smaller search space.
+  /// Requires 'drive.appdata' OAuth scope.
+  appDataFolder,
+
+  /// Visible folder in user's My Drive.
+  /// User can see and manage files directly.
+  /// Requires 'drive.file' or 'drive' OAuth scope.
+  visibleFolder,
+}
+
 /// Configuration for Google Drive folder mappings.
 ///
 /// Allows explicit control over which folder names are used for specific
@@ -17,21 +30,73 @@ final _log = Logger('GDriveTypeIndexManager');
 class GDriveConfig {
   /// Explicit mapping: resource type IRI → folder name
   final Map<IriTerm, String> typeFolderNames;
-  final String appFolderName;
 
+  /// App folder name (only used when folderMode == visibleFolder)
+  final String? appFolderName;
+
+  /// Storage mode: appDataFolder (private, default) or visibleFolder
+  final GDriveFolderMode folderMode;
+
+  /// Additional OAuth scopes beyond the default drive scope.
+  /// Use this to request access to other Google APIs (e.g., Calendar, Contacts).
+  final List<String> extraScopes;
+
+  /// Default constructor: uses appDataFolder mode (private, no visible folder name needed)
   const GDriveConfig({
     this.typeFolderNames = const {},
+    this.extraScopes = const [],
+  })  : appFolderName = null,
+        folderMode = GDriveFolderMode.appDataFolder;
+
+  /// Named constructor: uses visibleFolder mode with required folder name
+  const GDriveConfig.visibleFolder({
+    this.typeFolderNames = const {},
+    this.extraScopes = const [],
     required this.appFolderName,
-  });
+  }) : folderMode = GDriveFolderMode.visibleFolder;
+
+  /// Returns the OAuth scopes required for this configuration.
+  ///
+  /// Automatically determines the correct Google Drive scope based on [folderMode]:
+  /// - `appDataFolder`: Requires `drive.appdata` (private app storage)
+  /// - `visibleFolder`: Requires `drive.file` (user-visible files)
+  ///
+  /// Always includes `openid` for stable user identification via Google's subject identifier.
+  /// Appends any [extraScopes] specified by the application.
+  List<String> get requiredScopes => [
+        folderMode == GDriveFolderMode.appDataFolder
+            ? 'https://www.googleapis.com/auth/drive.appdata'
+            : 'https://www.googleapis.com/auth/drive.file',
+        'openid',
+        ...extraScopes,
+      ];
 
   GDriveConfig copyWith({
     Map<IriTerm, String>? typeFolderNames,
     String? appFolderName,
+    GDriveFolderMode? folderMode,
+    List<String>? extraScopes,
   }) {
-    return GDriveConfig(
-      typeFolderNames: typeFolderNames ?? this.typeFolderNames,
-      appFolderName: appFolderName ?? this.appFolderName,
-    );
+    // Validate: appFolderName must be set for visibleFolder mode
+    final newMode = folderMode ?? this.folderMode;
+    final newName = appFolderName ?? this.appFolderName;
+
+    if (newMode == GDriveFolderMode.visibleFolder && newName == null) {
+      throw ArgumentError(
+        'appFolderName is required when folderMode is visibleFolder',
+      );
+    }
+
+    return newMode == GDriveFolderMode.appDataFolder
+        ? GDriveConfig(
+            typeFolderNames: typeFolderNames ?? this.typeFolderNames,
+            extraScopes: extraScopes ?? this.extraScopes,
+          )
+        : GDriveConfig.visibleFolder(
+            typeFolderNames: typeFolderNames ?? this.typeFolderNames,
+            extraScopes: extraScopes ?? this.extraScopes,
+            appFolderName: newName!,
+          );
   }
 }
 
@@ -55,6 +120,10 @@ class GDriveTypeIndexManager {
   final GDriveClient _client;
   final ResourceLocator _localResourceLocator;
   final GDriveConfig _config;
+  late final String _spaces =
+      _config.folderMode == GDriveFolderMode.appDataFolder
+          ? 'appDataFolder'
+          : 'drive';
 
   static final _indexTypes = {
     IdxFullIndex.classIri,
@@ -141,9 +210,24 @@ class GDriveTypeIndexManager {
   }
 
   /// Get or create the app root folder in Google Drive.
+  ///
+  /// Returns:
+  /// - 'appDataFolder' (reserved alias) for appDataFolder mode
+  /// - Actual folder ID for visibleFolder mode
   Future<String> _getOrCreateAppFolder() async {
-    _log.fine('Getting or creating app folder: ${_config.appFolderName}');
-    return await _client.getOrCreateFolder(folderName: _config.appFolderName);
+    switch (_config.folderMode) {
+      case GDriveFolderMode.appDataFolder:
+        _log.fine('Using appDataFolder (private app-specific space)');
+        return 'appDataFolder'; // Reserved Google Drive alias
+
+      case GDriveFolderMode.visibleFolder:
+        _log.fine(
+            'Getting or creating visible folder: ${_config.appFolderName}');
+        return await _client.getOrCreateFolder(
+          folderName: _config.appFolderName!,
+          spaces: 'drive',
+        );
+    }
   }
 
   /// Load or create the gdrive-index.ttl file.
@@ -163,6 +247,7 @@ class GDriveTypeIndexManager {
       'gdrive-index.ttl',
       emptyGraph,
       folderId: appFolderId,
+      spaces: _spaces,
     );
 
     _log.info(
@@ -180,6 +265,7 @@ class GDriveTypeIndexManager {
     final fileId = await _client.findFile(
       fileName: 'gdrive-index.ttl',
       parentId: appFolderId,
+      spaces: _spaces,
     );
 
     if (fileId == null) {
@@ -312,6 +398,7 @@ class GDriveTypeIndexManager {
     final fileId = await _client.findFile(
       fileName: 'gdrive-index.ttl',
       parentId: appFolderId,
+      spaces: _spaces,
     );
 
     if (fileId == null) {
@@ -399,6 +486,7 @@ class GDriveTypeIndexManager {
       final folderId = await _client.getOrCreateFolder(
         folderName: folderName,
         parentId: appFolderId,
+        spaces: _spaces,
       );
 
       result[type] = (folderId: folderId, folderName: folderName);

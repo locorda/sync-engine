@@ -16,7 +16,7 @@
 ///
 /// ```dart
 /// // Main thread - provides auth connector
-/// class SolidMainHandler implements RemoteIntegration {
+/// class SolidMainIntegration implements RemoteIntegration {
 ///   final SolidAuth solidAuth;
 ///
 ///   @override

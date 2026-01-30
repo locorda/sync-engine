@@ -8,39 +8,60 @@ import 'package:locorda_gdrive/locorda_gdrive.dart';
 import 'package:locorda_worker/worker_main.dart';
 
 import 'gdrive_auth_connector.dart';
+import 'gdrive_config_connector.dart';
 
 /// Main-thread [RemoteMainHandler] implementation for Google Drive backend.
 ///
 /// Encapsulates all Google Drive integration:
-/// - Authentication via [GDriveAuth]
+/// - Authentication via [GDriveAuth] (created internally)
+/// - Configuration via [GDriveConfig]
 /// - Login UI with Google OAuth2 flow
 /// - Worker thread communication bridge
 ///
 /// ## Usage
 ///
 /// ```dart
-/// final gdriveAuth = await GDriveAuth.create(
-///   clientId: 'your-client-id.apps.googleusercontent.com',
+/// final gdriveHandler = await GDriveMainIntegration.create(
+///   config: GDriveConfig(), // Default: appDataFolder
 /// );
 ///
-/// final gdrivePlugin = GDrivePlugin(
-///   gdriveAuth: gdriveAuth,
+/// final locorda = await Locorda.create(
+///   remotes: [gdriveHandler],
+///   // ... other config
 /// );
-///
-/// // Register in plugin registry
-/// final registry = StoragePluginRegistry([gdrivePlugin]);
 /// ```
 ///
 /// ## Lifecycle
 ///
-/// The caller is responsible for disposing [gdriveAuth] when done.
-/// The plugin does not take ownership of the auth instance.
-class GDriveMainHandler implements RemoteIntegration {
+/// The handler creates and manages [GDriveAuth] internally.
+/// Call [dispose] when done to clean up resources.
+class GDriveMainIntegration implements RemoteIntegration {
+  final GDriveConfig _config;
   final GDriveAuth _gdriveAuth;
 
-  GDriveMainHandler({
+  GDriveMainIntegration._({
+    required GDriveConfig config,
     required GDriveAuth gdriveAuth,
-  }) : _gdriveAuth = gdriveAuth;
+  })  : _config = config,
+        _gdriveAuth = gdriveAuth;
+
+  /// Creates a new [GDriveMainIntegration] with the given configuration.
+  ///
+  /// Initializes [GDriveAuth] with the correct OAuth scopes based on [config].
+  static Future<GDriveMainIntegration> create({
+    GDriveConfig config = const GDriveConfig(),
+    String? clientId,
+  }) async {
+    final auth = await GDriveAuth.create(
+      clientId: clientId,
+      scopes: config.requiredScopes,
+    );
+
+    return GDriveMainIntegration._(
+      config: config,
+      gdriveAuth: auth,
+    );
+  }
 
   @override
   String get id => 'gdrive';
@@ -57,6 +78,7 @@ class GDriveMainHandler implements RemoteIntegration {
   @override
   List<MainHandlerFactory> get workerConnectors => [
         GDriveAuthConnector.sender(_gdriveAuth),
+        GDriveConfigConnector.sender(_config),
       ];
 
   @override
@@ -69,5 +91,10 @@ class GDriveMainHandler implements RemoteIntegration {
       ),
     );
     return result ?? false;
+  }
+
+  /// Clean up resources.
+  Future<void> dispose() async {
+    _gdriveAuth.dispose();
   }
 }

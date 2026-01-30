@@ -53,13 +53,13 @@ class GDriveAuthSender implements MainHandler {
         final accessToken = await _authBridge.getAccessToken();
         _workerHandle.send(UpdateAuthMessage(
           accessToken: accessToken,
-          userEmail: _authBridge.userEmail,
+          userId: _authBridge.userId,
           // TODO: Add token expiry time if available
         ).toJson());
       } else {
         _workerHandle.send(UpdateAuthMessage(
           accessToken: null,
-          userEmail: null,
+          userId: null,
         ).toJson());
       }
     } catch (e, stackTrace) {

@@ -93,7 +93,7 @@ class LocordaGraph {
   ///   onWorkerSpawn: setupWorkerLogging,
   ///
   ///   // Main thread handlers
-  ///   remotes: [SolidMainHandler(solidAuth: solidAuth)],
+  ///   remotes: [SolidMainIntegration(solidAuth: solidAuth)],
   ///   storage: DriftMainHandler(),
   ///
   ///   // Low-level configuration with RDF IRIs

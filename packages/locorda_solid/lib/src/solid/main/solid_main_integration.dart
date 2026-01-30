@@ -8,20 +8,21 @@ import 'package:locorda_solid_auth/locorda_solid_auth.dart';
 import 'package:locorda_solid_auth_worker/locorda_solid_auth_worker.dart';
 import 'package:locorda_worker/worker_main.dart';
 import 'package:solid_auth/solid_auth.dart';
+import 'package:oidc_core/oidc_core.dart' show OidcStore;
 
-/// Main-thread [RemoteMainHandler] implementation for Solid Pod backend.
+/// Main-thread [RemoteIntegration] implementation for Solid Pod backend.
 ///
 /// Encapsulates all Solid Pod integration:
 /// - Authentication via [SolidAuth]
 /// - Login UI with provider selection
-/// - Worker thread communication bridge
+/// - Worker thread communication bridge [RemoteMainHandler]
 ///
 /// ## Usage
 ///
 /// ```dart
 /// final solidAuth = await SolidAuth.create();
 ///
-/// final solidPlugin = SolidMainHandler(
+/// final solidPlugin = SolidMainIntegration(
 ///   solidAuth: solidAuth,
 ///   // Optional: custom provider service
 ///   providerService: SolidProviderService(),
@@ -35,18 +36,41 @@ import 'package:solid_auth/solid_auth.dart';
 ///
 /// The caller is responsible for disposing [solidAuth] when done.
 /// The plugin does not take ownership of the auth instance.
-class SolidMainHandler implements RemoteIntegration {
+class SolidMainIntegration implements RemoteIntegration {
   final SolidAuth _solidAuth;
   final SolidProviderService _providerService;
   late final SolidAuthBridge _authBridge;
 
-  SolidMainHandler({
+  SolidMainIntegration._({
     required SolidAuth solidAuth,
     SolidProviderService? providerService,
   })  : _solidAuth = solidAuth,
         _providerService =
             providerService ?? const DefaultSolidProviderService(),
         _authBridge = SolidAuthBridge(solidAuth);
+
+  static Future<SolidMainIntegration> create({
+    required String oidcClientId,
+    required String appUrlScheme,
+    required Uri frontendRedirectUrl,
+    SolidAuthSettings? settings,
+    SolidProviderService? providerService,
+    OidcStore? store,
+  }) async {
+    final solidAuth = SolidAuth(
+      oidcClientId: oidcClientId,
+      appUrlScheme: appUrlScheme,
+      frontendRedirectUrl: frontendRedirectUrl,
+      settings: settings,
+      store: store,
+    );
+    await solidAuth.init();
+
+    return SolidMainIntegration._(
+      solidAuth: solidAuth,
+      providerService: providerService,
+    );
+  }
 
   @override
   String get id => 'solid';
@@ -59,6 +83,8 @@ class SolidMainHandler implements RemoteIntegration {
 
   @override
   Auth get auth => _authBridge;
+
+  SolidAuth get solidAuth => _solidAuth;
 
   @override
   List<MainHandlerFactory> get workerConnectors => [

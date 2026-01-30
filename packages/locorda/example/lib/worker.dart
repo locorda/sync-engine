@@ -35,14 +35,7 @@ void main() {
 /// Returns parameters for SyncEngine creation in the worker.
 Future<WorkerParams> setupWorkerEngine() async => WorkerParams(
       // in main, we configured Solid and GDrive as remotes
-      remotes: [
-        SolidWorkerHandler(),
-        GDriveWorkerHandler(
-          config: GDriveConfig(
-            appFolderName: 'LocordaPersonalNotes',
-          ),
-        )
-      ],
+      remotes: [SolidWorkerHandler(), GDriveWorkerHandler()],
 
       // in main, we also configured DriftStorage as the storage
       storage: DriftWorkerHandler(

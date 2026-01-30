@@ -26,7 +26,7 @@ import 'main_handler.dart';
 /// interface with [RemoteUiAdapter]:
 ///
 /// ```dart
-/// class SolidMainHandler implements RemoteIntegration {
+/// class SolidMainIntegration implements RemoteIntegration {
 ///   final SolidAuth _solidAuth;
 ///
 ///   // RemoteMainHandler implementation

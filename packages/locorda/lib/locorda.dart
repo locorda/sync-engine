@@ -44,8 +44,12 @@ export 'package:locorda_flutter_core/locorda_flutter_core.dart'
 export 'package:locorda_flutter/locorda_flutter.dart' show Locorda;
 export 'package:locorda_drift/locorda_drift.dart' show DriftMainHandler;
 export 'package:locorda_gdrive/locorda_gdrive.dart'
-    show GDriveMainHandler, GDriveAuth, GDriveAuthProvider, GDriveLocalizations;
-export 'package:locorda_solid/locorda_solid.dart' show SolidMainHandler;
+    show
+        GDriveMainIntegration,
+        GDriveAuth,
+        GDriveAuthProvider,
+        GDriveLocalizations;
+export 'package:locorda_solid/locorda_solid.dart' show SolidMainIntegration;
 export 'package:locorda_solid_auth/locorda_solid_auth.dart'
     show SolidAuthLocalizations;
 export 'package:locorda_objects/locorda_objects.dart'
