@@ -20,9 +20,11 @@ final _log = Logger('WorkerGDriveConfigReceiver');
 class WorkerGDriveConfigReceiver {
   final WorkerHandlerChannel _channel;
   final Completer<GDriveConfig> _configCompleter = Completer();
+  late final StreamSubscription _subscription;
 
   WorkerGDriveConfigReceiver(this._channel) {
-    _channel.messages
+    // Start listening IMMEDIATELY in constructor to catch early messages
+    _subscription = _channel.messages
         .where((msg) => msg is Map<String, dynamic>)
         .cast<Map<String, dynamic>>()
         .listen(_handleMessage);
@@ -43,4 +45,8 @@ class WorkerGDriveConfigReceiver {
   ///
   /// Waits for the initial config message if not yet received.
   Future<GDriveConfig> getConfig() => _configCompleter.future;
+
+  void dispose() {
+    _subscription.cancel();
+  }
 }

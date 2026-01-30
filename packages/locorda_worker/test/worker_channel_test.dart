@@ -162,6 +162,5 @@ void main() {
 }
 
 WorkerHandlerChannel testChannel(void Function(Object?) messageSender) {
-  return WorkerHandlerChannel(
-      "test", WorkerChannel((msg) => messageSender(msg.data)));
+  return WorkerChannel((msg) => messageSender(msg.data)).createChannel("test");
 }

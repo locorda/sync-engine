@@ -56,7 +56,8 @@ class WorkerHandlerContextImpl implements WorkerHandlerContext {
       throw StateError('Channel "$name" already registered in this context.');
     }
     _registeredChannels.add(name);
-    return WorkerHandlerChannel(name, _channel);
+
+    return _channel.createChannel(name);
   }
 }
 
@@ -487,9 +488,9 @@ void workerMain(WorkerSetup setupFn, {void onWorkerSpawn()?}) {
 /// This is called by NativeWorkerHandle after Isolate.spawn().
 /// The factory function is passed in spawn, config arrives via first message.
 void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
+  _log.info('Starting native worker isolate');
   // 1. Establish bidirectional communication
   final receivePort = ReceivePort();
-  mainSendPort.send(receivePort.sendPort);
 
   // 2. Create WorkerChannel for app-specific messages
   final channel = WorkerChannel((message) {
@@ -508,28 +509,36 @@ void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
   final configCompleter = Completer<SyncEngineConfig>();
 
   receivePort.listen((message) async {
-    // First message must be InitConfig
-    if (config == null && message is Map<String, dynamic>) {
-      if (message['type'] == 'InitConfig') {
-        config = SyncEngineConfig.fromJson(
-            message['config'] as Map<String, dynamic>);
-        configCompleter.complete(config);
-        return;
-      }
-    }
-
     // After config received, handle normal messages
-    if (config != null && message is Map<String, dynamic>) {
+    if (message is Map<String, dynamic>) {
       // Check if it's a channel message
       if (message['__channel'] is String) {
         channel.deliver(message['__channel'] as String, message['data']);
         return;
       }
 
-      // Framework message - handle normally
-      await context.handleMessage(message);
+      // First non-channel message must be InitConfig
+      if (config == null) {
+        if (message['type'] == 'InitConfig') {
+          config = SyncEngineConfig.fromJson(
+              message['config'] as Map<String, dynamic>);
+          configCompleter.complete(config);
+          return;
+        } else {
+          _log.warning(
+              'Expected InitConfig message but received: $message. Ignoring.');
+          return;
+        }
+      } else {
+        // Framework message - handle normally
+        await context.handleMessage(message);
+      }
     }
   });
+
+  // VERY IMPORTANT: Send our SendPort to main isolate **after** we started listening
+  // else we might miss messages
+  mainSendPort.send(receivePort.sendPort);
 
   // Wait for config
   final receivedConfig = await configCompleter.future;

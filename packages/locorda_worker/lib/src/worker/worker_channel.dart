@@ -24,8 +24,28 @@ class WorkerChannelMessage {
 class WorkerHandlerChannel {
   final String channel;
   final WorkerChannel _workerChannel;
+  final List<Object?> _buffer = [];
+  StreamController<Object?>? _controller;
+  late final StreamSubscription _subscription;
+  bool _hasListener = false;
 
-  WorkerHandlerChannel(this.channel, this._workerChannel);
+  WorkerHandlerChannel._(this.channel, this._workerChannel) {
+    // Subscribe immediately to start buffering messages
+    _subscription = _workerChannel.messages
+        .where((msg) => msg.channel == channel)
+        .map((msg) => msg.data)
+        .listen(_onMessage);
+  }
+
+  void _onMessage(Object? data) {
+    if (_controller != null) {
+      // Controller exists - deliver directly
+      _controller!.add(data);
+    } else {
+      // No listener yet - buffer message
+      _buffer.add(data);
+    }
+  }
 
   /// Send a message on this plugin channel.
   void send(Object? message) {
@@ -33,9 +53,32 @@ class WorkerHandlerChannel {
   }
 
   /// Stream of incoming messages on this plugin channel.
-  Stream<Object?> get messages => _workerChannel.messages
-      .where((msg) => msg.channel == channel)
-      .map((msg) => msg.data);
+  /// First listener triggers replay of buffered messages.
+  Stream<Object?> get messages {
+    if (_controller == null) {
+      _controller = StreamController<Object?>.broadcast(
+        onListen: _onFirstListen,
+      );
+    }
+    return _controller!.stream;
+  }
+
+  void _onFirstListen() {
+    if (_hasListener) return;
+    _hasListener = true;
+
+    // Replay all buffered messages
+    for (final msg in _buffer) {
+      _controller!.add(msg);
+    }
+    _buffer.clear();
+  }
+
+  void dispose() {
+    _subscription.cancel();
+    _controller?.close();
+    _buffer.clear();
+  }
 }
 
 /// Bidirectional communication channel between main thread and worker.
@@ -46,6 +89,7 @@ class WorkerChannel {
   final StreamController<WorkerChannelMessage> _incomingController =
       StreamController.broadcast();
   final void Function(WorkerChannelMessage message) _sendMessage;
+  final Map<String, WorkerHandlerChannel> _cachedChannels = {};
 
   WorkerChannel(this._sendMessage);
 
@@ -58,12 +102,31 @@ class WorkerChannel {
   Stream<WorkerChannelMessage> get messages => _incomingController.stream;
 
   /// Internal: Deliver incoming message from transport layer.
+  /// Lazily creates and caches channel to buffer messages before first subscription.
   void deliver(String channel, Object? message) {
+    // Ensure channel exists to start buffering immediately
+    _getOrCreateChannel(channel);
     _incomingController.add(WorkerChannelMessage(channel, message));
+  }
+
+  /// Creates or retrieves a buffering channel for the plugin with the given [name].
+  WorkerHandlerChannel createChannel(String name) {
+    return _getOrCreateChannel(name);
+  }
+
+  WorkerHandlerChannel _getOrCreateChannel(String name) {
+    return _cachedChannels.putIfAbsent(
+      name,
+      () => WorkerHandlerChannel._(name, this),
+    );
   }
 
   /// Close the channel and clean up resources.
   Future<void> close() async {
+    for (final channel in _cachedChannels.values) {
+      channel.dispose();
+    }
+    _cachedChannels.clear();
     await _incomingController.close();
   }
 }

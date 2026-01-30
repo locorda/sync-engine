@@ -50,12 +50,21 @@ class GDriveAuthSender implements MainHandler {
       final isAuth = await _authBridge.isAuthenticated();
 
       if (isAuth) {
-        final accessToken = await _authBridge.getAccessToken();
-        _workerHandle.send(UpdateAuthMessage(
-          accessToken: accessToken,
-          userId: _authBridge.userId,
-          // TODO: Add token expiry time if available
-        ).toJson());
+        try {
+          final accessToken = await _authBridge.getAccessToken();
+          _workerHandle.send(UpdateAuthMessage(
+            accessToken: accessToken,
+            userId: _authBridge.userId,
+            // TODO: Add token expiry time if available
+          ).toJson());
+        } catch (e) {
+          // Scopes not authorized yet (e.g., after scope change) - send unauthenticated state
+          _log.warning('Failed to get access token (scopes not authorized?), sending unauthenticated state: $e');
+          _workerHandle.send(UpdateAuthMessage(
+            accessToken: null,
+            userId: null,
+          ).toJson());
+        }
       } else {
         _workerHandle.send(UpdateAuthMessage(
           accessToken: null,
@@ -64,6 +73,11 @@ class GDriveAuthSender implements MainHandler {
       }
     } catch (e, stackTrace) {
       _log.severe('Error sending auth update to worker', e, stackTrace);
+      // Always send a message to prevent worker from hanging
+      _workerHandle.send(UpdateAuthMessage(
+        accessToken: null,
+        userId: null,
+      ).toJson());
     }
   }
 

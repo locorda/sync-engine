@@ -106,15 +106,11 @@ class GDriveAuth implements GDriveAuthProvider {
   /// - [scopes]: OAuth2 scopes to request. Defaults to Drive file access + OpenID.
   static Future<GDriveAuth> create({
     String? clientId,
-    List<String>? scopes,
+    required List<String> scopes,
   }) async {
     final auth = GDriveAuth._(
       clientId: clientId,
-      scopes: scopes ??
-          [
-            'https://www.googleapis.com/auth/drive.file',
-            'openid',
-          ],
+      scopes: scopes,
     );
 
     _log.info('Initializing Google Drive authentication');
