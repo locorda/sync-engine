@@ -94,11 +94,22 @@ class SolidBackend implements Backend {
       _log.info(
           'User logged in: initializing Solid remote storage for webId=$webId');
       // User logged in: initialize remote storage
+      final baseRemote = SolidRemoteStorage(
+        webId: webId,
+        client: _solidClient,
+        iriTermFactory: _iriTermFactory,
+      );
+
+      // Wrap with auth-aware retry logic
       _remotes = [
-        SolidRemoteStorage(
-          webId: webId,
-          client: _solidClient,
-          iriTermFactory: _iriTermFactory,
+        AuthAwareRemoteStorage(
+          inner: baseRemote,
+          onAuthFailure: () async {
+            _log.info('Auth failure detected, requesting token refresh');
+            await _authProvider.refreshToken(
+                reason: 'Authentication failed during sync operation');
+          },
+          config: const AuthRetryConfig.retryOnce(),
         )
       ];
     } else {
@@ -147,15 +158,12 @@ class SolidClient {
         _rdfCore = rdfCore;
 
   Future<RemoteDownloadResult> download(String url,
-      {bool requiresAuth = true,
-      String? ifNoneMatch,
-      bool isRetry = false}) async {
+      {bool requiresAuth = true, String? ifNoneMatch}) async {
     final dpop = requiresAuth
         ? await _authProvider.getDpopToken(_prepareUrlForDpopToken(url), 'GET')
         : null;
 
-    _log.fine(
-        'GET $url with auth=${requiresAuth}${isRetry ? ' (retry after refresh)' : ''}');
+    _log.fine('GET $url with auth=${requiresAuth}');
     if (dpop != null) {
       _log.finer('Authorization: DPoP ${dpop.accessToken.substring(0, 20)}...');
       _log.finer('DPoP token length: ${dpop.dPoP.length}');
@@ -174,38 +182,11 @@ class SolidClient {
     _log.fine('Response status: ${response.statusCode}');
 
     if (response.statusCode == 401) {
-      if (isRetry) {
-        // Already retried once after token refresh - give up
-        _log.severe(
-          '401 Unauthorized for $url even after token refresh - authentication failed',
-        );
-        throw SolidClientException(
-          'Unauthorized (401) for $url - token refresh did not resolve the issue',
-        );
-      }
-
-      _log.warning('401 Unauthorized for $url - attempting token refresh');
-
-      // Token expired - request refresh and retry once
-      try {
-        await _authProvider.refreshToken(reason: '401 on GET $url');
-        _log.info('Token refreshed - retrying GET request');
-
-        // Retry with fresh token (isRetry=true prevents infinite loop)
-        return await download(url,
-            requiresAuth: requiresAuth,
-            ifNoneMatch: ifNoneMatch,
-            isRetry: true);
-      } on SolidClientException {
-        // Already a SolidClientException (e.g., from retry 401) - rethrow as-is
-        rethrow;
-      } catch (e) {
-        // Other exceptions during refresh - add context
-        _log.severe('Token refresh failed: $e');
-        throw SolidClientException(
-          'Unauthorized (401) for $url - refresh failed: $e',
-        );
-      }
+      _log.warning('401 Unauthorized for $url - authentication required');
+      throw AuthException(
+        'Solid Pod authentication failed for $url',
+        cause: 'HTTP 401 Unauthorized',
+      );
     }
 
     if (response.statusCode == 404) {
@@ -268,13 +249,13 @@ class SolidClient {
   }
 
   Future<RemoteUploadResult> upload(String url, RdfGraph graph,
-      {bool requiresAuth = true, String? ifMatch, bool isRetry = false}) async {
+      {bool requiresAuth = true, String? ifMatch}) async {
+    final turtle = _rdfCore.encode(graph, contentType: 'text/turtle');
     final dpop = requiresAuth
         ? await _authProvider.getDpopToken(_prepareUrlForDpopToken(url), 'PUT')
         : null;
 
-    _log.fine(
-        'PUT $url with auth=${requiresAuth}${isRetry ? ' (retry after refresh)' : ''}');
+    _log.fine('PUT $url with auth=${requiresAuth}');
     if (dpop != null) {
       _log.finer('Authorization: DPoP ${dpop.accessToken.substring(0, 20)}...');
       _log.finer('DPoP token length: ${dpop.dPoP.length}');
@@ -282,6 +263,7 @@ class SolidClient {
 
     final response = await _client.put(
       Uri.parse(url),
+      body: turtle,
       headers: {
         'Content-Type': 'text/turtle',
         'Accept': 'text/turtle, application/ld+json;q=0.9, */*;q=0.8',
@@ -290,42 +272,16 @@ class SolidClient {
         if (ifMatch != null) 'If-Match': ifMatch,
         if (ifMatch == null) 'If-None-Match': '*',
       },
-      body: _rdfCore.encode(graph),
     );
 
     _log.fine('Response status: ${response.statusCode}');
 
     if (response.statusCode == 401) {
-      if (isRetry) {
-        // Already retried once after token refresh - give up
-        _log.severe(
-          '401 Unauthorized for $url even after token refresh - authentication failed',
-        );
-        throw SolidClientException(
-          'Unauthorized (401) for $url - token refresh did not resolve the issue',
-        );
-      }
-
-      _log.warning('401 Unauthorized for $url - attempting token refresh');
-
-      // Token expired - request refresh and retry once
-      try {
-        await _authProvider.refreshToken(reason: '401 on PUT $url');
-        _log.info('Token refreshed - retrying PUT request');
-
-        // Retry with fresh token (isRetry=true prevents infinite loop)
-        return await upload(url, graph,
-            requiresAuth: requiresAuth, ifMatch: ifMatch, isRetry: true);
-      } on SolidClientException {
-        // Already a SolidClientException (e.g., from retry 401) - rethrow as-is
-        rethrow;
-      } catch (e) {
-        // Other exceptions during refresh - add context
-        _log.severe('Token refresh failed: $e');
-        throw SolidClientException(
-          'Unauthorized (401) for $url - refresh failed: $e',
-        );
-      }
+      _log.warning('401 Unauthorized for $url - authentication required');
+      throw AuthException(
+        'Solid Pod authentication failed for $url',
+        cause: 'HTTP 401 Unauthorized',
+      );
     }
 
     if (response.statusCode == 404) {

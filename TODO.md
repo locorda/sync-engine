@@ -120,7 +120,7 @@
 - [ ] GDrive Backend: proper e-tag support (with custom http.Client wrapper)
 - [ ] GDrive Backend: is there a way to get the token expiry time so we can make use of it e.g. in UpdateAuthMessage?
 - [ ] GDrive Backend: we have to search by name all the time - this seems very inefficient, especially for group indices and shards where the id is a relative path. Is there some better solution? Can/Should we store the path/id relationships in our DB?
-- [ ] GDrive: behaviour regarding oauth scopes - explain the user before calling google what we need and why, and if we did not get it, then tell the user that we cannot store to GDrive due to missing permissions and log the user out again.
+- [ ] GDrive: behaviour regarding oauth scopes - explain the user before calling google what we need and why, and if we did not get it, then tell the user that we cannot store to GDrive due to missing permissions and log the user out again. Plus: can we get rid of the automatic email/profile scopes which seem to be added by google for openid? Maybe we can do without openid scope?
 - [ ] Sync: implement support for "change streams" or  such for faster continuous synchronization, implement at least for gdrive.
 - [ ] AutoSync - throttle sync after authorization (login)
 - [ ] AutoSync - throttled sync after changes (save)

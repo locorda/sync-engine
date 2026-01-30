@@ -19,15 +19,12 @@ final _clientLog = Logger('GDriveClient');
 class GDriveClient {
   final RdfCore _rdfCore;
   final drive.DriveApi _driveApi;
-  final GDriveAuthProvider _authProvider;
 
   GDriveClient._({
     required RdfCore rdfCore,
     required drive.DriveApi driveApi,
-    required GDriveAuthProvider authProvider,
   })  : _rdfCore = rdfCore,
-        _driveApi = driveApi,
-        _authProvider = authProvider;
+        _driveApi = driveApi;
 
   factory GDriveClient(
       {required GDriveAuthProvider authProvider, RdfCore? rdfCore}) {
@@ -37,7 +34,6 @@ class GDriveClient {
       rdfCore: rdfCore ??
           RdfCore.withStandardCodecs(iriTermFactory: IriTerm.validated),
       driveApi: driveApi,
-      authProvider: authProvider,
     );
   }
 
@@ -102,10 +98,22 @@ class GDriveClient {
       _clientLog.info('Created folder "$folderName" with ID: $folderId');
       return folderId;
     } catch (e, stackTrace) {
+      handleGDriveAuthError(e);
       _clientLog.severe(
           'Failed to get or create folder "$folderName"', e, stackTrace);
       throw GDriveClientException(
           'Failed to get or create folder "$folderName": $e');
+    }
+  }
+
+  void handleGDriveAuthError(Object e) {
+    if (e is drive.DetailedApiRequestError && e.status == 401) {
+      _clientLog.warning(
+          'Authentication failed (401) - OAuth authorization may have been revoked');
+      throw AuthException(
+        'Google Drive authentication failed. Please sign in again.',
+        cause: e,
+      );
     }
   }
 
@@ -155,6 +163,7 @@ class GDriveClient {
 
       return (fileId: fileId, etag: etag);
     } catch (e, stackTrace) {
+      handleGDriveAuthError(e);
       _clientLog.severe('Failed to create file "$filename"', e, stackTrace);
       throw GDriveClientException('Failed to create file "$filename": $e');
     }
@@ -228,32 +237,35 @@ class GDriveClient {
     _clientLog.fine(
         'Searching for file "$fileName" in folder=$parentId (spaces=$spaces)');
 
-    final escapedName = _escapeQueryValue(fileName);
-    final query =
-        "name='$escapedName' and '$parentId' in parents and trashed=false";
+    try {
+      final escapedName = _escapeQueryValue(fileName);
+      final query =
+          "name='$escapedName' and '$parentId' in parents and trashed=false";
 
-    final fileList = await _driveApi.files.list(
-      q: query,
-      spaces: spaces,
-      $fields: 'files(id, name)',
-    );
+      final fileList = await _driveApi.files.list(
+        q: query,
+        spaces: spaces,
+        $fields: 'files(id, name)',
+      );
 
-    if (fileList.files != null && fileList.files!.isNotEmpty) {
-      final fileId = fileList.files!.first.id!;
-      _clientLog.fine('Found file: $fileId');
-      return fileId;
+      if (fileList.files != null && fileList.files!.isNotEmpty) {
+        final fileId = fileList.files!.first.id!;
+        _clientLog.fine('Found file: $fileId');
+        return fileId;
+      }
+
+      _clientLog.fine('File not found');
+      return null;
+    } on drive.DetailedApiRequestError catch (e) {
+      handleGDriveAuthError(e);
+      rethrow;
     }
-
-    _clientLog.fine('File not found');
-    return null;
   }
 
   Future<({RdfGraph? graph, String? etag, bool notModified})> download(
       String fileId,
-      {String? ifNoneMatch,
-      bool isRetry = false}) async {
-    _clientLog.fine(
-        'Downloading file $fileId${isRetry ? ' (retry after refresh)' : ''}');
+      {String? ifNoneMatch}) async {
+    _clientLog.fine('Downloading file $fileId');
 
     try {
       // 1. Get file metadata (for ETag check)
@@ -288,46 +300,7 @@ class GDriveClient {
       return (graph: graph, etag: currentEtag, notModified: false);
     } on drive.DetailedApiRequestError catch (e, stackTrace) {
       // Handle API-specific errors
-      final status = e.status;
-      if (status == 401 || status == 403) {
-        if (isRetry) {
-          // Already retried once after token refresh - give up
-          _clientLog.severe(
-            'Auth error ($status) for file $fileId even after token refresh - authentication failed',
-          );
-          throw GDriveClientException(
-            'Unauthorized ($status) for file $fileId - token refresh did not resolve the issue',
-          );
-        }
-
-        _clientLog.warning(
-            'Auth error ($status) for file $fileId - attempting token refresh');
-
-        // Token expired - request refresh and retry once
-        try {
-          await _authProvider.refreshToken(
-              reason: '$status on download file $fileId');
-          _clientLog.info('Token refreshed - retrying download');
-
-          // Retry with fresh token (isRetry=true prevents infinite loop)
-          return await download(fileId,
-              ifNoneMatch: ifNoneMatch, isRetry: true);
-        } on GDriveClientException {
-          // Already a GDriveClientException - rethrow as-is
-          rethrow;
-        } catch (e) {
-          // Other exceptions during refresh - add context
-          _clientLog.severe('Token refresh failed: $e');
-          if (e is GDriveUserInteractionRequired) {
-            throw GDriveClientException(
-              'Re-authorization required. Show the Google sign-in button and try again.',
-            );
-          }
-          throw GDriveClientException(
-            'Unauthorized ($status) for file $fileId - refresh failed: $e',
-          );
-        }
-      }
+      handleGDriveAuthError(e);
 
       if (e.status == 404) {
         // File not found - return null (same as Solid backend)
@@ -345,9 +318,8 @@ class GDriveClient {
   }
 
   Future<RemoteUploadResult> upload(String fileId, RdfGraph updatedGraph,
-      {required String ifMatch, bool isRetry = false}) async {
-    _clientLog.fine(
-        'Uploading file $fileId${isRetry ? ' (retry after refresh)' : ''}');
+      {required String ifMatch}) async {
+    _clientLog.fine('Uploading file $fileId');
 
     try {
       // 1. Fetch current ETag for conflict detection
@@ -383,46 +355,7 @@ class GDriveClient {
       return RemoteUploadResult.success(newEtag);
     } on drive.DetailedApiRequestError catch (e, stackTrace) {
       // Handle API-specific errors
-      final status = e.status;
-      if (status == 401 || status == 403) {
-        if (isRetry) {
-          // Already retried once after token refresh - give up
-          _clientLog.severe(
-            'Auth error ($status) for file $fileId even after token refresh - authentication failed',
-          );
-          throw GDriveClientException(
-            'Unauthorized ($status) for file $fileId - token refresh did not resolve the issue',
-          );
-        }
-
-        _clientLog.warning(
-            'Auth error ($status) for file $fileId - attempting token refresh');
-
-        // Token expired - request refresh and retry once
-        try {
-          await _authProvider.refreshToken(
-              reason: '$status on upload file $fileId');
-          _clientLog.info('Token refreshed - retrying upload');
-
-          // Retry with fresh token (isRetry=true prevents infinite loop)
-          return await upload(fileId, updatedGraph,
-              ifMatch: ifMatch, isRetry: true);
-        } on GDriveClientException {
-          // Already a GDriveClientException - rethrow as-is
-          rethrow;
-        } catch (e) {
-          // Other exceptions during refresh - add context
-          _clientLog.severe('Token refresh failed: $e');
-          if (e is GDriveUserInteractionRequired) {
-            throw GDriveClientException(
-              'Re-authorization required. Show the Google sign-in button and try again.',
-            );
-          }
-          throw GDriveClientException(
-            'Unauthorized ($status) for file $fileId - refresh failed: $e',
-          );
-        }
-      }
+      handleGDriveAuthError(e);
 
       if (e.status == 404) {
         // File not found - throw exception (same as Solid backend)
@@ -480,6 +413,9 @@ class _GoogleAuthClient extends http.BaseClient {
 class GDriveClientException implements Exception {
   final String message;
   GDriveClientException(this.message);
+
+  @override
+  String toString() => 'GDriveClientException: $message';
 }
 
 class GDriveSyncStorage extends RemoteSyncStorage {
@@ -680,13 +616,25 @@ class GDriveBackend implements Backend {
       final spaces = _config.folderMode == GDriveFolderMode.appDataFolder
           ? 'appDataFolder'
           : 'drive';
+
+      final baseRemote = GDriveRemoteStorage(
+        userId: userId,
+        client: _client,
+        typeIndexManager: _typeIndexManager,
+        resourceLocator: _resourceLocator,
+        spaces: spaces,
+      );
+
+      // Wrap with auth-aware retry logic
       _remotes = [
-        GDriveRemoteStorage(
-          userId: userId,
-          client: _client,
-          typeIndexManager: _typeIndexManager,
-          resourceLocator: _resourceLocator,
-          spaces: spaces,
+        AuthAwareRemoteStorage(
+          inner: baseRemote,
+          onAuthFailure: () async {
+            _log.info('Auth failure detected, requesting token refresh');
+            await _auth.refreshToken(
+                reason: 'Authentication failed during sync operation');
+          },
+          config: const AuthRetryConfig.retryOnce(),
         )
       ];
     } else {

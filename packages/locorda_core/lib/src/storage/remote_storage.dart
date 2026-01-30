@@ -157,3 +157,171 @@ abstract interface class RemoteStorage {
   /// Throws if backend cannot be initialized (e.g., auth failure, missing config).
   Future<RemoteSyncStorage> createSyncStorage(SyncEngineConfig config);
 }
+
+/// Exception thrown when remote storage operations fail due to authentication or authorization issues.
+///
+/// This exception signals that credentials are invalid, expired, or revoked,
+/// and the application should attempt to refresh tokens or re-authenticate.
+///
+/// Used by backends (GDrive, Solid, etc.) to indicate 401 Unauthorized or
+/// similar authentication failures.
+class AuthException implements Exception {
+  final String message;
+  final Object? cause;
+
+  AuthException(this.message, {this.cause});
+
+  @override
+  String toString() =>
+      'AuthenticationException: $message${cause != null ? ' (cause: $cause)' : ''}';
+}
+
+/// Configuration for authentication-aware retry behavior.
+class AuthRetryConfig {
+  /// Maximum number of retry attempts after token refresh
+  final int maxRetries;
+
+  /// Whether to rethrow authentication exceptions after all retries failed
+  final bool rethrowOnFailure;
+
+  const AuthRetryConfig({
+    this.maxRetries = 1,
+    this.rethrowOnFailure = true,
+  });
+
+  const AuthRetryConfig.noRetry()
+      : maxRetries = 0,
+        rethrowOnFailure = true;
+
+  const AuthRetryConfig.retryOnce()
+      : maxRetries = 1,
+        rethrowOnFailure = true;
+}
+
+/// Wraps a [RemoteStorage] to automatically handle authentication failures.
+///
+/// Intercepts [AuthException]s thrown by the underlying storage,
+/// triggers token refresh via [onAuthFailure], and retries the operation.
+///
+/// **Usage:**
+/// ```dart
+/// final authAwareRemote = AuthAwareRemoteStorage(
+///   inner: gdriveRemote,
+///   onAuthFailure: () async {
+///     await authProvider.refreshToken();
+///   },
+///   config: AuthRetryConfig.retryOnce(),
+/// );
+/// ```
+class AuthAwareRemoteStorage implements RemoteStorage {
+  final RemoteStorage _inner;
+  final Future<void> Function() _onAuthFailure;
+  final AuthRetryConfig _config;
+
+  AuthAwareRemoteStorage({
+    required RemoteStorage inner,
+    required Future<void> Function() onAuthFailure,
+    AuthRetryConfig config = const AuthRetryConfig.retryOnce(),
+  })  : _inner = inner,
+        _onAuthFailure = onAuthFailure,
+        _config = config;
+
+  @override
+  RemoteId get remoteId => _inner.remoteId;
+
+  @override
+  Future<bool> isAvailable() => _retryOnAuthFailure(
+      config: _config,
+      onAuthFailure: _onAuthFailure,
+      operation: _inner.isAvailable);
+
+  @override
+  Future<RemoteSyncStorage> createSyncStorage(SyncEngineConfig config) async {
+    final syncStorage = await _retryOnAuthFailure(
+      config: _config,
+      onAuthFailure: _onAuthFailure,
+      operation: () => _inner.createSyncStorage(config),
+    );
+    return AuthAwareSyncStorage(
+      inner: syncStorage,
+      onAuthFailure: _onAuthFailure,
+      config: _config,
+    );
+  }
+}
+
+/// Wraps a [RemoteSyncStorage] to automatically handle authentication failures.
+///
+/// Used internally by [AuthAwareRemoteStorage] to wrap the sync storage session.
+class AuthAwareSyncStorage implements RemoteSyncStorage {
+  final RemoteSyncStorage _inner;
+  final Future<void> Function() _onAuthFailure;
+  final AuthRetryConfig _config;
+
+  AuthAwareSyncStorage({
+    required RemoteSyncStorage inner,
+    required Future<void> Function() onAuthFailure,
+    required AuthRetryConfig config,
+  })  : _inner = inner,
+        _onAuthFailure = onAuthFailure,
+        _config = config;
+
+  @override
+  Future<RemoteUploadResult> upload(
+    IriTerm documentIri,
+    RdfGraph graph, {
+    String? ifMatch,
+  }) =>
+      _retryOnAuthFailure(
+          config: _config,
+          onAuthFailure: _onAuthFailure,
+          operation: () => _inner.upload(documentIri, graph, ifMatch: ifMatch));
+
+  @override
+  Future<RemoteDownloadResult> download(
+    IriTerm documentIri, {
+    String? ifNoneMatch,
+  }) =>
+      _retryOnAuthFailure(
+          config: _config,
+          onAuthFailure: _onAuthFailure,
+          operation: () =>
+              _inner.download(documentIri, ifNoneMatch: ifNoneMatch));
+
+  @override
+  Future<void> finalizeSync() => _inner.finalizeSync();
+
+  @override
+  int get maxConcurrentDocumentSyncs => _inner.maxConcurrentDocumentSyncs;
+
+  @override
+  int get maxConcurrentShardSyncs => _inner.maxConcurrentShardSyncs;
+
+  @override
+  int get maxConcurrentIndexSyncs => _inner.maxConcurrentIndexSyncs;
+}
+
+Future<T> _retryOnAuthFailure<T>(
+    {required AuthRetryConfig config,
+    required Future<void> Function() onAuthFailure,
+    required Future<T> Function() operation}) async {
+  int attempts = 0;
+  while (true) {
+    try {
+      return await operation();
+    } on AuthException catch (e) {
+      if (attempts >= config.maxRetries) {
+        if (config.rethrowOnFailure) {
+          rethrow;
+        } else {
+          throw Exception(
+              'Authentication failed after ${attempts} retries: $e');
+        }
+      }
+
+      attempts++;
+      await onAuthFailure();
+      // Retry after token refresh
+    }
+  }
+}

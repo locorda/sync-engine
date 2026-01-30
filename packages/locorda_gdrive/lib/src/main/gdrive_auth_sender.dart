@@ -59,7 +59,8 @@ class GDriveAuthSender implements MainHandler {
           ).toJson());
         } catch (e) {
           // Scopes not authorized yet (e.g., after scope change) - send unauthenticated state
-          _log.warning('Failed to get access token (scopes not authorized?), sending unauthenticated state: $e');
+          _log.warning(
+              'Failed to get access token (scopes not authorized?), sending unauthenticated state: $e');
           _workerHandle.send(UpdateAuthMessage(
             accessToken: null,
             userId: null,

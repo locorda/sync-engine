@@ -108,7 +108,10 @@ export 'src/storage/remote_storage.dart'
         RemoteUploadResult,
         SuccessUploadResult,
         ConflictUploadResult,
-        RemoteDownloadResult;
+        RemoteDownloadResult,
+        AuthAwareRemoteStorage,
+        AuthException,
+        AuthRetryConfig;
 export 'src/storage/storage_interface.dart'
     show
         Storage,
