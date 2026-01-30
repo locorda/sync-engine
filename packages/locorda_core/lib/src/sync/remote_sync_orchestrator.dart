@@ -797,9 +797,10 @@ class RemoteSyncOrchestrator {
         await _syncIndexDocuments(resourceType, lastSyncTimestamp, syncTime);
 
     // Step 2: For each index, sync its shards and documents
-    for (final index in allIndices) {
-      await _syncIndex(resourceType, index, lastSyncTimestamp, syncTime);
-    }
+    await _executeInChunks(
+        allIndices.map((index) =>
+            () => _syncIndex(resourceType, index, lastSyncTimestamp, syncTime)),
+        maxConcurrent: _remoteSyncStorage.maxConcurrentIndexSyncs);
 
     _log.info('Completed sync for resource type: ${resourceType.debug}');
   }
@@ -810,9 +811,10 @@ class RemoteSyncOrchestrator {
 
     final allShards = await _buildShardSyncSpecs(index);
 
-    for (final shard in allShards) {
-      await _syncShard(resourceType, index, shard, lastSyncTimestamp, syncTime);
-    }
+    await _executeInChunks(
+        allShards.map((shard) => () => _syncShard(
+            resourceType, index, shard, lastSyncTimestamp, syncTime)),
+        maxConcurrent: _remoteSyncStorage.maxConcurrentShardSyncs);
 
     _log.info('Completed sync for index: ${index.indexIri.debug}');
   }
@@ -844,40 +846,10 @@ class RemoteSyncOrchestrator {
       //_log.fine(
       //    'Document queue for ${shardIri.debug}: ${documentQueue.map((e) => e.resourceIri.debug).join(', ')}');
       // Sync documents based on clock hash differences and fetch policy
-      for (final queueEntry in documentQueue) {
-        // Determine if this document should be synced:
-        // 1. Local exists, remote doesn't (upload new)
-        // 2. Both exist with different clockHashes (merge & sync)
-        // 3. Remote exists, local doesn't + Prefetch policy (download)
-        // 4. Remote exists, local doesn't + PrefetchFiltered with matching filter (download)
-
-        final needsUpload =
-            queueEntry.existsLocally && !queueEntry.existsRemotely;
-        final needsMerge = queueEntry.existsLocally &&
-            queueEntry.existsRemotely &&
-            queueEntry.needsSync;
-
-        final bool needsDownload;
-        if (!queueEntry.existsLocally &&
-            queueEntry.existsRemotely &&
-            shard is FullShardSync) {
-          final policy = shard.fetchPolicy;
-          needsDownload = policy is Prefetch ||
-              (policy is PrefetchFiltered &&
-                  _matchesFilter(queueEntry, policy));
-        } else {
-          needsDownload = false;
-        }
-
-        final shouldSync = needsUpload || needsMerge || needsDownload;
-
-        if (shouldSync) {
-          final documentIri = queueEntry.resourceIri.getDocumentIri();
-          await _syncDocument(documentIri, lastSyncTimestamp, syncTime,
-              debugName:
-                  'Document ${documentIri.debug} (as part of ${debugName})');
-        }
-      }
+      await _executeInChunks(
+          createSyncDocumentQueueTasks(
+              documentQueue, shard, lastSyncTimestamp, syncTime, debugName),
+          maxConcurrent: _remoteSyncStorage.maxConcurrentDocumentSyncs);
 
       // Phase B: Document & Shard Finalization for this type
       // 1. Determine final_entry_set from index items table
@@ -984,6 +956,53 @@ class RemoteSyncOrchestrator {
     }, debugOperationName: 'syncing ${debugName}');
   }
 
+  Iterable<Future<void> Function()> createSyncDocumentQueueTasks(
+      Set<_DocumentQueueEntry> documentQueue,
+      ShardSyncSpec shard,
+      int lastSyncTimestamp,
+      DateTime syncTime,
+      String debugName) {
+    return documentQueue
+        .map((queueEntry) {
+          // Determine if this document should be synced:
+          // 1. Local exists, remote doesn't (upload new)
+          // 2. Both exist with different clockHashes (merge & sync)
+          // 3. Remote exists, local doesn't + Prefetch policy (download)
+          // 4. Remote exists, local doesn't + PrefetchFiltered with matching filter (download)
+
+          final needsUpload =
+              queueEntry.existsLocally && !queueEntry.existsRemotely;
+          final needsMerge = queueEntry.existsLocally &&
+              queueEntry.existsRemotely &&
+              queueEntry.needsSync;
+
+          final bool needsDownload;
+          if (!queueEntry.existsLocally &&
+              queueEntry.existsRemotely &&
+              shard is FullShardSync) {
+            final policy = shard.fetchPolicy;
+            needsDownload = policy is Prefetch ||
+                (policy is PrefetchFiltered &&
+                    _matchesFilter(queueEntry, policy));
+          } else {
+            needsDownload = false;
+          }
+
+          final shouldSync = needsUpload || needsMerge || needsDownload;
+          return (
+            shouldSync: shouldSync,
+            documentIri: queueEntry.resourceIri.getDocumentIri(),
+            lastSyncTimestamp: lastSyncTimestamp,
+            syncTime: syncTime,
+          );
+        })
+        .where((params) => params.shouldSync)
+        .map<Future<void> Function()>((params) => () => _syncDocument(
+            params.documentIri, params.lastSyncTimestamp, params.syncTime,
+            debugName:
+                'Document ${params.documentIri.debug} (as part of ${debugName})'));
+  }
+
   Set<IriTerm>? _computeEntriesToKeep(
       Set<IriTerm>? limitToResources, RdfGraph document, IriTerm shardIri) {
     if (limitToResources != null) {
@@ -1020,5 +1039,24 @@ class RemoteSyncOrchestrator {
         SyncManagedDocument.hasStatement, metadata.statements);
     final finalShardDocument = RdfGraph.fromTriples(finalShardDocumentTriples);
     return finalShardDocument;
+  }
+}
+
+/// Execute tasks in parallel chunks with concurrency limit
+Future<void> _executeInChunks<T>(
+  Iterable<Future<T> Function()> tasks, {
+  int maxConcurrent = 10,
+}) async {
+  final iterator = tasks.iterator;
+  while (iterator.moveNext()) {
+    final chunk = <Future<T> Function()>[iterator.current];
+
+    // Collect up to maxConcurrent tasks
+    for (var i = 1; i < maxConcurrent && iterator.moveNext(); i++) {
+      chunk.add(iterator.current);
+    }
+
+    // Execute chunk in parallel
+    await Future.wait(chunk.map((task) => task()), eagerError: false);
   }
 }

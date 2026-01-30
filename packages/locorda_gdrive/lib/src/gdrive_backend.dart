@@ -138,6 +138,7 @@ class GDriveClient {
 
       // 4. Upload with media
       final media = drive.Media(Stream.value(bytes), bytes.length);
+
       final createdFile = await _driveApi.files.create(
         fileMetadata,
         uploadMedia: media,
@@ -468,7 +469,7 @@ class GDriveClientException implements Exception {
   GDriveClientException(this.message);
 }
 
-class GDriveSyncStorage implements RemoteSyncStorage {
+class GDriveSyncStorage extends RemoteSyncStorage {
   final GDriveClient _client;
 
   final TypeIndexMappings _typeIndexMappings;

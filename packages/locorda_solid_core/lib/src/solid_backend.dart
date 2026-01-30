@@ -491,7 +491,7 @@ class SolidRemoteStorage implements RemoteStorage {
 /// Per-sync-session storage for Solid backend.
 ///
 /// Caches the IRI translator to avoid rebuilding it on every upload/download.
-class SolidSyncStorage implements RemoteSyncStorage {
+class SolidSyncStorage extends RemoteSyncStorage {
   final SolidClient _client;
   final IriTranslator _iriTranslator;
 

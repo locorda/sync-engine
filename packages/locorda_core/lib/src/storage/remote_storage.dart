@@ -72,7 +72,7 @@ final class SuccessUploadResult extends RemoteUploadResult {
 /// - Conditional GET (If-None-Match header for ETags)
 /// - Conditional PUT (If-Match header for ETags)
 /// - HTTP status codes: 200, 304 Not Modified, 412 Precondition Failed
-abstract interface class RemoteSyncStorage {
+abstract class RemoteSyncStorage {
   /// Upload a document to remote storage.
   ///
   /// The implementation may transform the internal document IRI and RDF graph
@@ -113,6 +113,12 @@ abstract interface class RemoteSyncStorage {
   ///
   /// This is optional - default implementation does nothing.
   Future<void> finalizeSync() async {}
+
+  int get maxConcurrentDocumentSyncs => 10;
+
+  int get maxConcurrentShardSyncs => 5;
+
+  int get maxConcurrentIndexSyncs => 3;
 }
 
 /// Abstract interface for remote storage backend setup.

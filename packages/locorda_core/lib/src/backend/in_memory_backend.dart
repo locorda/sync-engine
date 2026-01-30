@@ -105,7 +105,7 @@ class InMemoryRemoteStorage implements RemoteStorage {
 ///
 /// Lightweight wrapper around [InMemoryRemoteStorage] providing upload/download
 /// access during sync operations.
-class InMemorySyncStorage implements RemoteSyncStorage {
+class InMemorySyncStorage extends RemoteSyncStorage {
   final InMemoryRemoteStorage _storage;
 
   InMemorySyncStorage(this._storage);
