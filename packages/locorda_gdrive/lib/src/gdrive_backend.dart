@@ -5,12 +5,233 @@ import 'package:http/http.dart' as http;
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
-
 import 'auth/gdrive_auth_provider.dart';
 import 'gdrive_type_index_manager.dart';
 
 final _log = Logger('GDriveBackend');
 final _clientLog = Logger('GDriveClient');
+
+/**
+ * Wrapper around Google Drive Files API so we can extend it with etag handling.
+ */
+class FilesApi {
+  final http.Client _client;
+  final drive.DriveApi _driveApi;
+
+  FilesApi(this._client) : _driveApi = drive.DriveApi(_client);
+
+  // Ensure etag is always included in fields, to make it more likely
+  // to be computed and returned as http header too.
+  String? _fixFields(String? fields) {
+    return '*';
+    if (fields == null) return 'etag';
+    // Vermeiden Sie Teil-Matches (z.B. "metadatag" würde etag enthalten)
+    final regExp = RegExp(r'\betag\b');
+    if (regExp.hasMatch(fields)) return fields;
+    return 'etag,$fields';
+  }
+
+  /// Don't forget to check for not modified - will be trhown as DetailedApiRequestError with status 304
+  Future<({T response, String? etag})> get<T>(
+    String fileId, {
+    String? ifNoneMatch,
+    bool? acknowledgeAbuse,
+    String? includeLabels,
+    String? includePermissionsForView,
+    bool? supportsAllDrives,
+    bool? supportsTeamDrives,
+    String? $fields,
+    drive.DownloadOptions downloadOptions = drive.DownloadOptions.metadata,
+  }) async {
+    final ETagClient etagClient = ETagClient(_client, ifNoneMatch: ifNoneMatch);
+
+    final res = await drive.DriveApi(etagClient).files.get(
+          fileId,
+          acknowledgeAbuse: acknowledgeAbuse,
+          includeLabels: includeLabels,
+          includePermissionsForView: includePermissionsForView,
+          supportsAllDrives: supportsAllDrives,
+          supportsTeamDrives: supportsTeamDrives,
+          $fields: _fixFields($fields),
+          downloadOptions: downloadOptions,
+        );
+    if (downloadOptions == drive.DownloadOptions.metadata &&
+        etagClient.etag == null) {
+      throw GDriveClientException(
+          'ETag not found in response for file $fileId');
+    }
+    return (response: res as T, etag: etagClient.etag);
+  }
+
+  /// don't forget to check for conflicts when using ifMatch! - status code 412 (and to be sure maybe also 409)
+  Future<({drive.File response, String? etag})> update(
+    drive.File request,
+    String fileId, {
+    String? ifMatch,
+    String? addParents,
+    bool? enforceSingleParent,
+    String? includeLabels,
+    String? includePermissionsForView,
+    bool? keepRevisionForever,
+    String? ocrLanguage,
+    String? removeParents,
+    bool? supportsAllDrives,
+    bool? supportsTeamDrives,
+    bool? useContentAsIndexableText,
+    String? $fields,
+    drive.UploadOptions uploadOptions = drive.UploadOptions.defaultOptions,
+    drive.Media? uploadMedia,
+  }) async {
+    final ETagClient etagClient = ETagClient(_client, ifMatch: ifMatch);
+    final res = await drive.DriveApi(etagClient).files.update(
+          request,
+          fileId,
+          addParents: addParents,
+          enforceSingleParent: enforceSingleParent,
+          includeLabels: includeLabels,
+          includePermissionsForView: includePermissionsForView,
+          keepRevisionForever: keepRevisionForever,
+          ocrLanguage: ocrLanguage,
+          removeParents: removeParents,
+          supportsAllDrives: supportsAllDrives,
+          supportsTeamDrives: supportsTeamDrives,
+          useContentAsIndexableText: useContentAsIndexableText,
+          $fields: _fixFields($fields),
+          uploadOptions: uploadOptions,
+          uploadMedia: uploadMedia,
+        );
+    if (etagClient.etag == null) {
+      throw GDriveClientException(
+          'ETag not found in response for updated file $fileId');
+    }
+    return (response: res, etag: etagClient.etag);
+  }
+
+  Future<({drive.File response, String? etag})> create(
+    drive.File request, {
+    bool? enforceSingleParent,
+    bool? ignoreDefaultVisibility,
+    String? includeLabels,
+    String? includePermissionsForView,
+    bool? keepRevisionForever,
+    String? ocrLanguage,
+    bool? supportsAllDrives,
+    bool? supportsTeamDrives,
+    bool? useContentAsIndexableText,
+    String? $fields,
+    drive.UploadOptions uploadOptions = drive.UploadOptions.defaultOptions,
+    drive.Media? uploadMedia,
+  }) async {
+    final ETagClient etagClient = ETagClient(_client);
+    final res = await drive.DriveApi(etagClient).files.create(
+          request,
+          enforceSingleParent: enforceSingleParent,
+          ignoreDefaultVisibility: ignoreDefaultVisibility,
+          includeLabels: includeLabels,
+          includePermissionsForView: includePermissionsForView,
+          keepRevisionForever: keepRevisionForever,
+          ocrLanguage: ocrLanguage,
+          supportsAllDrives: supportsAllDrives,
+          supportsTeamDrives: supportsTeamDrives,
+          useContentAsIndexableText: useContentAsIndexableText,
+          $fields: _fixFields($fields),
+          uploadOptions: uploadOptions,
+          uploadMedia: uploadMedia,
+        );
+    if (etagClient.etag == null) {
+      throw GDriveClientException(
+          'ETag not found in response for created file');
+    }
+    return (response: res, etag: etagClient.etag);
+  }
+
+  Future<drive.FileList> list({
+    String? corpora,
+    String? corpus,
+    String? driveId,
+    bool? includeItemsFromAllDrives,
+    String? includeLabels,
+    String? includePermissionsForView,
+    bool? includeTeamDriveItems,
+    String? orderBy,
+    int? pageSize,
+    String? pageToken,
+    String? q,
+    String? spaces,
+    bool? supportsAllDrives,
+    bool? supportsTeamDrives,
+    String? teamDriveId,
+    String? $fields,
+  }) =>
+      _driveApi.files.list(
+        corpora: corpora,
+        corpus: corpus,
+        driveId: driveId,
+        includeItemsFromAllDrives: includeItemsFromAllDrives,
+        includeLabels: includeLabels,
+        includePermissionsForView: includePermissionsForView,
+        includeTeamDriveItems: includeTeamDriveItems,
+        orderBy: orderBy,
+        pageSize: pageSize,
+        pageToken: pageToken,
+        q: q,
+        spaces: spaces,
+        supportsAllDrives: supportsAllDrives,
+        supportsTeamDrives: supportsTeamDrives,
+        teamDriveId: teamDriveId,
+        $fields: $fields,
+      );
+}
+
+class ETagClient extends http.BaseClient {
+  final http.Client _inner;
+  final String? _ifMatch;
+  final String? _ifNoneMatch;
+  String? _etag;
+
+  String? get etag => _etag;
+
+  ETagClient(this._inner, {String? ifMatch, String? ifNoneMatch})
+      : _ifMatch = ifMatch,
+        _ifNoneMatch = ifNoneMatch;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final _extraHeaders = <String, String>{
+      if (_ifMatch != null) 'If-Match': _ifMatch,
+      if (_ifNoneMatch != null) 'If-None-Match': _ifNoneMatch,
+    };
+    if (_extraHeaders.isNotEmpty) {
+      request.headers.addAll(_extraHeaders);
+    }
+    final response = await _inner.send(request);
+    if (response.headers.containsKey('etag')) {
+      _etag = response.headers['etag'];
+    }
+    if (_etag == null &&
+        response.headers['content-type']?.contains('application/json') ==
+            true) {
+      // ACHTUNG: Das Buffern des Streams ist bei großen Downloads gefährlich.
+      // Aber bei METADATEN (JSON) ist es völlig okay.
+      final bytes = await response.stream.toBytes();
+      final jsonMap = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+      _etag = jsonMap['etag'] as String?;
+
+      // Da wir den Stream konsumiert haben, müssen wir einen neuen für die Library bauen
+      return http.StreamedResponse(
+        Stream.value(bytes),
+        response.statusCode,
+        headers: response.headers,
+        request: response.request,
+        isRedirect: response.isRedirect,
+        reasonPhrase: response.reasonPhrase,
+      );
+    }
+    _log.fine('ETagClient: Received ETag: $_etag');
+    _log.fine('Headers: ${response.headers}');
+    return response;
+  }
+}
 
 /// Google Drive API client for RDF document storage.
 ///
@@ -18,18 +239,18 @@ final _clientLog = Logger('GDriveClient');
 /// ETag-based concurrency control, and automatic token refresh on 401 errors.
 class GDriveClient {
   final RdfCore _rdfCore;
-  final drive.DriveApi _driveApi;
+  final FilesApi _driveApi;
 
   GDriveClient._({
     required RdfCore rdfCore,
-    required drive.DriveApi driveApi,
+    required FilesApi driveApi,
   })  : _rdfCore = rdfCore,
         _driveApi = driveApi;
 
   factory GDriveClient(
       {required GDriveAuthProvider authProvider, RdfCore? rdfCore}) {
-    final client = _GoogleAuthClient(authProvider);
-    final driveApi = drive.DriveApi(client);
+    final client = _AutoRefreshingAuthClient(authProvider);
+    final driveApi = FilesApi(client);
     return GDriveClient._(
       rdfCore: rdfCore ??
           RdfCore.withStandardCodecs(iriTermFactory: IriTerm.validated),
@@ -65,7 +286,7 @@ class GDriveClient {
       final query =
           "name='$escapedName' and mimeType='application/vnd.google-apps.folder' and '$parent' in parents and trashed=false";
 
-      final fileList = await _driveApi.files.list(
+      final fileList = await _driveApi.list(
         q: query,
         spaces: spaces,
         $fields: 'files(id, name)',
@@ -89,7 +310,7 @@ class GDriveClient {
         folderMetadata.parents = [parent];
       }
 
-      final createdFolder = await _driveApi.files.create(
+      final (response: createdFolder, etag: _) = await _driveApi.create(
         folderMetadata,
         $fields: 'id',
       );
@@ -151,17 +372,22 @@ class GDriveClient {
       // 4. Upload with media
       final media = drive.Media(Stream.value(bytes), bytes.length);
 
-      final createdFile = await _driveApi.files.create(
+      final (response: createdFile, etag: etag) = await _driveApi.create(
         fileMetadata,
         uploadMedia: media,
-        $fields: 'id, md5Checksum',
+        $fields: 'id, etag',
       );
 
       final fileId = createdFile.id!;
-      final etag = createdFile.md5Checksum!;
+      if (etag == null) {
+        throw GDriveClientException(
+            'Failed to retrieve ETag for created file "$filename"');
+      }
       _clientLog.info('Created file: $fileId with ETag: $etag');
 
       return (fileId: fileId, etag: etag);
+    } on GDriveClientException {
+      rethrow;
     } catch (e, stackTrace) {
       handleGDriveAuthError(e);
       _clientLog.severe('Failed to create file "$filename"', e, stackTrace);
@@ -242,7 +468,7 @@ class GDriveClient {
       final query =
           "name='$escapedName' and '$parentId' in parents and trashed=false";
 
-      final fileList = await _driveApi.files.list(
+      final fileList = await _driveApi.list(
         q: query,
         spaces: spaces,
         $fields: 'files(id, name)',
@@ -268,25 +494,18 @@ class GDriveClient {
     _clientLog.fine('Downloading file $fileId');
 
     try {
-      // 1. Get file metadata (for ETag check)
-      final metadata = await _driveApi.files.get(
+      // 1. Do the etag check on metadata only - google will not return etag on full download
+      final (response: _, etag: currentEtag) = await _driveApi.get<drive.Media>(
         fileId,
-        $fields: 'md5Checksum',
-      ) as drive.File;
-
-      final currentEtag = metadata.md5Checksum;
-
-      // 2. Check if modified (ETag comparison)
-      if (ifNoneMatch != null && currentEtag == ifNoneMatch) {
-        _clientLog.fine('File not modified (ETag match): $fileId');
-        return (graph: null, etag: ifNoneMatch, notModified: true);
-      }
-
-      // 3. Download file content
-      final media = await _driveApi.files.get(
+        ifNoneMatch: ifNoneMatch,
+        downloadOptions: drive.DownloadOptions.metadata,
+      );
+      // 2. Download file content
+      final (response: media, etag: _) = await _driveApi.get<drive.Media>(
         fileId,
+        ifNoneMatch: ifNoneMatch,
         downloadOptions: drive.DownloadOptions.fullMedia,
-      ) as drive.Media;
+      );
 
       // 4. Read stream and decode RDF
       final completer = <int>[];
@@ -301,7 +520,11 @@ class GDriveClient {
     } on drive.DetailedApiRequestError catch (e, stackTrace) {
       // Handle API-specific errors
       handleGDriveAuthError(e);
-
+      if (e.status == 304) {
+        // Not modified
+        _clientLog.fine('File not modified: $fileId');
+        return (graph: null, etag: ifNoneMatch, notModified: true);
+      }
       if (e.status == 404) {
         // File not found - return null (same as Solid backend)
         _clientLog.fine('File not found: $fileId');
@@ -322,41 +545,36 @@ class GDriveClient {
     _clientLog.fine('Uploading file $fileId');
 
     try {
-      // 1. Fetch current ETag for conflict detection
-      final metadata = await _driveApi.files.get(
-        fileId,
-        $fields: 'md5Checksum',
-      ) as drive.File;
-
-      final currentEtag = metadata.md5Checksum;
-
-      // 2. Check for conflict
-      if (currentEtag != ifMatch) {
-        _clientLog.warning(
-            'ETag mismatch for file $fileId: expected=$ifMatch, actual=$currentEtag');
-        return RemoteUploadResult.conflict();
-      }
-
       // 3. Serialize RDF graph to Turtle format
       final content = _rdfCore.encode(updatedGraph);
       final bytes = utf8.encode(content);
 
       // 4. Upload updated content
       final media = drive.Media(Stream.value(bytes), bytes.length);
-      final updated = await _driveApi.files.update(
+      final (response: updated, etag: etag) = await _driveApi.update(
         drive.File(), // Empty metadata (no property changes)
+        ifMatch: ifMatch,
         fileId,
         uploadMedia: media,
         $fields: 'md5Checksum',
       );
 
-      final newEtag = updated.md5Checksum!;
-      _clientLog.info('Updated file: $fileId (new ETag: $newEtag)');
-      return RemoteUploadResult.success(newEtag);
+      if (etag == null) {
+        throw GDriveClientException(
+            'Failed to retrieve ETag for updated file $fileId');
+      }
+      _clientLog.info('Updated file: $fileId (new ETag: $etag)');
+      return RemoteUploadResult.success(etag);
+    } on GDriveClientException {
+      rethrow;
     } on drive.DetailedApiRequestError catch (e, stackTrace) {
       // Handle API-specific errors
       handleGDriveAuthError(e);
-
+      if (e.status == 412 || e.status == 409) {
+        // Conflict
+        _clientLog.warning('Conflict detected when uploading file $fileId');
+        return RemoteUploadResult.conflict();
+      }
       if (e.status == 404) {
         // File not found - throw exception (same as Solid backend)
         _clientLog.warning('File not found during upload: $fileId');
@@ -391,17 +609,26 @@ class GDriveClient {
 /// The googleapis package requires an authenticated http.Client.
 /// This implementation adds the OAuth2 access token to all requests.
 /// Token refresh logic is handled at the method level (download/upload).
-class _GoogleAuthClient extends http.BaseClient {
+class _AutoRefreshingAuthClient extends http.BaseClient {
   final GDriveAuthProvider _authProvider;
   final http.Client _inner = http.Client();
 
-  _GoogleAuthClient(this._authProvider);
+  _AutoRefreshingAuthClient(this._authProvider);
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final accessToken = await _authProvider.getAccessToken();
     request.headers['Authorization'] = 'Bearer $accessToken';
-    return _inner.send(request);
+    final resp = await _inner.send(request);
+    if (resp.statusCode == 401 || resp.statusCode == 403) {
+      // Token may be expired or invalid - trigger refresh
+      _log.warning(
+          'Received ${resp.statusCode} Unauthorized - refreshing access token');
+      await _authProvider.refreshToken(
+          reason:
+              'Received ${resp.statusCode} Unauthorized from Google Drive API');
+    }
+    return resp;
   }
 
   @override
