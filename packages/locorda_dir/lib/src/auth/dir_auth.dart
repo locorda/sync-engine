@@ -1,6 +1,8 @@
 /// Simple authentication for local directory backend.
 library;
 
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:logging/logging.dart';
@@ -59,6 +61,9 @@ class DirAuth implements DirAuthProvider {
   /// [initiallyEnabled] determines if sync is enabled on startup (default: false).
   ///
   /// State is persisted to SharedPreferences and restored on subsequent launches.
+  ///
+  /// Automatically tests directory access if sync is enabled and disables it
+  /// if access is denied (e.g., macOS sandbox permission issues).
   static Future<DirAuth> create({
     required String syncDirectoryPath,
     bool initiallyEnabled = false,
@@ -69,10 +74,22 @@ class DirAuth implements DirAuthProvider {
     final savedPath = prefs.getString(_kPathKey) ?? syncDirectoryPath;
     final savedEnabled = prefs.getBool(_kEnabledKey) ?? initiallyEnabled;
 
-    return DirAuth._(
+    final auth = DirAuth._(
       initiallyEnabled: savedEnabled,
       syncDirectoryPath: savedPath,
     );
+
+    // Test directory access if sync is supposed to be enabled
+    if (savedEnabled) {
+      final hasAccess = await auth.testDirectoryAccess();
+      if (!hasAccess) {
+        _log.warning('Directory access test failed on startup, disabling sync. '
+            'User will need to re-enable and grant permission via file picker.');
+        await auth.disable();
+      }
+    }
+
+    return auth;
   }
 
   /// Directory path where sync files are stored.
@@ -91,6 +108,47 @@ class DirAuth implements DirAuthProvider {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kPathKey, newPath);
+  }
+
+  /// Test if the app has access to the sync directory.
+  ///
+  /// Returns true if directory is accessible, false otherwise.
+  /// This tests both read and write permissions by attempting to:
+  /// 1. Create the directory if it doesn't exist
+  /// 2. Create and delete a temporary test file
+  ///
+  /// Times out after 5 seconds to prevent blocking the app startup.
+  Future<bool> testDirectoryAccess() async {
+    try {
+      // Add timeout to prevent hanging on permission dialogs
+      return await Future.any([
+        _performAccessTest(),
+        Future.delayed(const Duration(seconds: 5), () => false),
+      ]);
+    } catch (e, stackTrace) {
+      _log.warning(
+          'Directory access test failed: $_syncDirectoryPath', e, stackTrace);
+      return false;
+    }
+  }
+
+  Future<bool> _performAccessTest() async {
+    final dir = Directory(_syncDirectoryPath);
+
+    // Try to create directory
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+      _log.fine('Created sync directory: $_syncDirectoryPath');
+    }
+
+    // Try to write and read a test file
+    final testFile = File('${_syncDirectoryPath}/.locorda_access_test');
+    await testFile.writeAsString('test');
+    await testFile.readAsString();
+    await testFile.delete();
+
+    _log.fine('Directory access test passed: $_syncDirectoryPath');
+    return true;
   }
 
   /// Enable local directory sync.

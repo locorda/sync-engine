@@ -55,6 +55,61 @@ class _DirLoginScreenState extends State<DirLoginScreen> {
       if (_isEnabled) {
         await widget.dirAuth.disable();
       } else {
+        // Before enabling, test directory access
+        final hasAccess = await widget.dirAuth.testDirectoryAccess();
+
+        if (!hasAccess) {
+          _log.warning(
+              'Directory access denied, prompting user to select directory');
+
+          if (!mounted) return;
+
+          // Show dialog explaining the issue
+          final shouldChoose = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Directory Access Required'),
+              content: const Text(
+                'The app does not have permission to access the sync directory.\n\n'
+                'On macOS, you need to grant explicit permission by selecting the directory through the file picker.\n\n'
+                'Would you like to select the directory now?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Select Directory'),
+                ),
+              ],
+            ),
+          );
+
+          if (shouldChoose == true && mounted) {
+            await _chooseDirectory();
+
+            // Test again after selection
+            final hasAccessNow = await widget.dirAuth.testDirectoryAccess();
+            if (!hasAccessNow) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        'Still no access to directory. Please try a different location.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+              return;
+            }
+          } else {
+            // User cancelled
+            return;
+          }
+        }
+
         await widget.dirAuth.enable();
       }
 

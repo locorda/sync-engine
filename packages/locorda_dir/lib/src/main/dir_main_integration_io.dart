@@ -37,6 +37,9 @@ class DirMainIntegration implements RemoteIntegration {
   ///
   /// [appName] is used for the subdirectory (defaults to 'locorda').
   /// [initiallyEnabled] determines if sync is enabled on startup (default: false).
+  ///
+  /// Note: DirAuth.create() automatically tests directory access on startup
+  /// and disables sync if permission is denied.
   static Future<DirMainIntegration> create({
     String appName = 'locorda',
     bool initiallyEnabled = false,
