@@ -638,7 +638,7 @@ class GDriveBackend implements Backend {
         )
       ];
     } else {
-      _log.info('User logged out: clearing Solid remote storage');
+      _log.info('User logged out: clearing GDrive remote storage');
       // User logged out: clear remote storage
       _remotes = [];
     }

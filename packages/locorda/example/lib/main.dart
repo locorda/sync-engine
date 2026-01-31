@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:locorda/locorda.dart';
+import 'package:locorda_dir/locorda_dir.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:personal_notes_app/init_rdf_mapper.g.dart';
 import 'package:personal_notes_app/models/category.dart';
@@ -55,6 +56,8 @@ Future<Locorda> initializeLocorda() async {
 
     // Provide remotes - those must be configured correspondingly in setupWorkerEngine as well
     remotes: [
+      if (DirMainIntegration.isPlatformSupported)
+        await DirMainIntegration.create(),
       await SolidMainIntegration.create(
           // SECURITY: This example demonstrates secure redirect URI configuration.
           // - appUrlScheme provides secure custom URI scheme for mobile/macOS

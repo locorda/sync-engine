@@ -17,6 +17,7 @@ workspace:
   - packages/locorda_builder
   - packages/locorda_core
   - packages/locorda_objects
+  - packages/locorda_dir
   - packages/locorda_drift
   - packages/locorda_solid
   - packages/locorda_solid_core

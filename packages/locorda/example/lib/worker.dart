@@ -10,6 +10,7 @@
 library;
 
 import 'package:locorda/worker.dart';
+import 'package:locorda_dir/worker.dart';
 import 'package:personal_notes_app/utils/logging_setup.dart';
 
 /// Worker entry point for web workers.
@@ -35,7 +36,11 @@ void main() {
 /// Returns parameters for SyncEngine creation in the worker.
 Future<WorkerParams> setupWorkerEngine() async => WorkerParams(
       // in main, we configured Solid and GDrive as remotes
-      remotes: [SolidWorkerHandler(), GDriveWorkerHandler()],
+      remotes: [
+        if (DirWorkerHandler.isPlatformSupported) DirWorkerHandler(),
+        SolidWorkerHandler(),
+        GDriveWorkerHandler()
+      ],
 
       // in main, we also configured DriftStorage as the storage
       storage: DriftWorkerHandler(

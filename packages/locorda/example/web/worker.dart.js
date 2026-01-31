@@ -996,6 +996,17 @@
       } else
         A.Sort__doSort(a, less, great, compare, $E);
     },
+    CastStream: function CastStream(t0, t1) {
+      this._source = t0;
+      this.$ti = t1;
+    },
+    CastStreamSubscription: function CastStreamSubscription(t0, t1, t2) {
+      var _ = this;
+      _._source = t0;
+      _.__internal$_zone = t1;
+      _.__internal$_handleError = _.__internal$_handleData = null;
+      _.$ti = t2;
+    },
     _CopyingBytesBuilder: function _CopyingBytesBuilder(t0) {
       this.__internal$_length = 0;
       this.__internal$_buffer = t0;
@@ -2411,6 +2422,9 @@
       this._2 = t2;
     },
     _Record_4: function _Record_4(t0) {
+      this._values = t0;
+    },
+    _Record_4_documentIri_lastSyncTimestamp_shouldSync_syncTime: function _Record_4_documentIri_lastSyncTimestamp_shouldSync_syncTime(t0) {
       this._values = t0;
     },
     _Record_4_fullClock_hash_logicalTime_physicalTime: function _Record_4_fullClock_hash_logicalTime_physicalTime(t0) {
@@ -4510,19 +4524,18 @@
       A.Timer_Timer(duration, new A.Future_Future$delayed_closure(null, result, $T));
       return result;
     },
-    Future_wait(futures, $T) {
+    Future_wait(futures, eagerError, $T) {
       var handleError, future, pos, e, s, t1, t2, exception, t3, t4, _box_0 = {}, cleanUp = null,
-        eagerError = false,
         _future = new A._Future($.Zone__current, $T._eval$1("_Future<List<0>>"));
       _box_0.values = null;
       _box_0.remaining = 0;
       _box_0.stackTrace = _box_0.error = null;
-      handleError = new A.Future_wait_handleError(_box_0, cleanUp, eagerError, _future);
+      handleError = new A.Future_wait_handleError(_box_0, cleanUp, false, _future);
       try {
         for (t1 = J.get$iterator$ax(futures), t2 = type$.Null; t1.moveNext$0();) {
           future = t1.get$current();
           pos = _box_0.remaining;
-          future.then$1$2$onError(new A.Future_wait_closure(_box_0, pos, _future, $T, cleanUp, eagerError), handleError, t2);
+          future.then$1$2$onError(new A.Future_wait_closure(_box_0, pos, _future, $T, cleanUp, false), handleError, t2);
           ++_box_0.remaining;
         }
         t1 = _box_0.remaining;
@@ -4535,7 +4548,8 @@
       } catch (exception) {
         e = A.unwrapException(exception);
         s = A.getTraceFromException(exception);
-        if (_box_0.remaining === 0 || eagerError) {
+        t1 = _box_0.remaining;
+        if (t1 === 0) {
           t1 = _future;
           t2 = e;
           t3 = s;
@@ -4844,9 +4858,8 @@
     StreamController_StreamController(onCancel, onListen, onPause, onResume, sync, $T) {
       return sync ? new A._SyncStreamController(onListen, onPause, onResume, onCancel, $T._eval$1("_SyncStreamController<0>")) : new A._AsyncStreamController(onListen, onPause, onResume, onCancel, $T._eval$1("_AsyncStreamController<0>"));
     },
-    StreamController_StreamController$broadcast(sync, $T) {
-      var _null = null;
-      return sync ? new A._SyncBroadcastStreamController(_null, _null, $T._eval$1("_SyncBroadcastStreamController<0>")) : new A._AsyncBroadcastStreamController(_null, _null, $T._eval$1("_AsyncBroadcastStreamController<0>"));
+    StreamController_StreamController$broadcast(onListen, sync, $T) {
+      return sync ? new A._SyncBroadcastStreamController(onListen, null, $T._eval$1("_SyncBroadcastStreamController<0>")) : new A._AsyncBroadcastStreamController(onListen, null, $T._eval$1("_AsyncBroadcastStreamController<0>"));
     },
     _runGuarded(notificationHandler) {
       var e, s, exception;
@@ -4880,7 +4893,7 @@
         return zone.registerBinaryCallback$3$1(handleError, type$.dynamic, type$.Object, type$.StackTrace);
       if (type$.void_Function_Object._is(handleError))
         return zone.registerUnaryCallback$2$1(handleError, type$.dynamic, type$.Object);
-      throw A.wrapException(A.ArgumentError$("handleError callback must take either an Object (the error), or both an Object (the error) and a StackTrace.", null));
+      throw A.wrapException(A.ArgumentError$(string$.handle, null));
     },
     _BufferingStreamSubscription__registerDoneHandler(zone, handleDone) {
       var t1 = handleDone == null ? A.async___nullDoneHandler$closure() : handleDone;
@@ -5856,7 +5869,7 @@
     _HashMap: function _HashMap(t0) {
       var _ = this;
       _._collection$_length = 0;
-      _._collection$_keys = _._collection$_rest = _._collection$_nums = _._collection$_strings = null;
+      _._keys = _._collection$_rest = _._collection$_nums = _._collection$_strings = null;
       _.$ti = t0;
     },
     _HashMap_values_closure: function _HashMap_values_closure(t0) {
@@ -5865,7 +5878,7 @@
     _IdentityHashMap: function _IdentityHashMap(t0) {
       var _ = this;
       _._collection$_length = 0;
-      _._collection$_keys = _._collection$_rest = _._collection$_nums = _._collection$_strings = null;
+      _._keys = _._collection$_rest = _._collection$_nums = _._collection$_strings = null;
       _.$ti = t0;
     },
     _CustomHashMap: function _CustomHashMap(t0, t1, t2, t3) {
@@ -5874,7 +5887,7 @@
       _._hashCode = t1;
       _._validKey = t2;
       _._collection$_length = 0;
-      _._collection$_keys = _._collection$_rest = _._collection$_nums = _._collection$_strings = null;
+      _._keys = _._collection$_rest = _._collection$_nums = _._collection$_strings = null;
       _.$ti = t3;
     },
     _CustomHashMap_closure: function _CustomHashMap_closure(t0) {
@@ -5887,7 +5900,7 @@
     _HashMapKeyIterator: function _HashMapKeyIterator(t0, t1, t2) {
       var _ = this;
       _._collection$_map = t0;
-      _._collection$_keys = t1;
+      _._keys = t1;
       _._offset = 0;
       _._collection$_current = null;
       _.$ti = t2;
@@ -5983,7 +5996,7 @@
     },
     _MapBaseValueIterator: function _MapBaseValueIterator(t0, t1, t2) {
       var _ = this;
-      _._collection$_keys = t0;
+      _._keys = t0;
       _._collection$_map = t1;
       _._collection$_current = null;
       _.$ti = t2;
@@ -10953,7 +10966,7 @@
       this._interceptor$_interceptor = t1;
     },
     StreamQueryStore$(closeStreamsSynchronously) {
-      return new A.StreamQueryStore(A.LinkedHashMap_LinkedHashMap$_empty(type$.StreamKey, type$.QueryStream_Object), A.HashSet_HashSet(type$.nullable_StreamKey), false, A.LinkedHashSet_LinkedHashSet$_empty(type$.Completer_dynamic), A.StreamController_StreamController$broadcast(true, type$.Set_TableUpdate));
+      return new A.StreamQueryStore(A.LinkedHashMap_LinkedHashMap$_empty(type$.StreamKey, type$.QueryStream_Object), A.HashSet_HashSet(type$.nullable_StreamKey), false, A.LinkedHashSet_LinkedHashSet$_empty(type$.Completer_dynamic), A.StreamController_StreamController$broadcast(null, true, type$.Set_TableUpdate));
     },
     QueryStreamFetcher: function QueryStreamFetcher(t0, t1, t2, t3) {
       var _ = this;
@@ -11558,7 +11571,7 @@
         t1 = A.List_List$_of(t1, t1.$ti._eval$1("ListIterable.E"));
         return t1;
       }
-      return A.Future_wait(J.map$1$1$ax(_this, new A.MapAndAwait_mapAsyncAndAwait_closure(mapper, $T, $R), $R._eval$1("Future<0>")), $R);
+      return A.Future_wait(J.map$1$1$ax(_this, new A.MapAndAwait_mapAsyncAndAwait_closure(mapper, $T, $R), $R._eval$1("Future<0>")), false, $R);
     },
     MapAndAwait_mapAsyncAndAwait_closure: function MapAndAwait_mapAsyncAndAwait_closure(t0, t1, t2) {
       this.mapper = t0;
@@ -14561,7 +14574,7 @@
       t1 = A.IterableExtensions_get_firstOrNull(predicateMappings, type$.PredicateMapping);
       predicateRules = t1 == null ? null : A.ConstantMap_ConstantMap$from(t1._predicateRules, type$.RdfPredicate, type$.PredicateRule);
       if (predicateRules == null)
-        predicateRules = B.Map_empty0;
+        predicateRules = B.Map_empty;
       t1 = A.LinkedHashMap_LinkedHashMap$_empty(type$.IriTerm, type$.ClassMergeRules);
       for (t2 = new A.LinkedHashMapEntriesIterable(mergedClassMappings, A._instanceType(mergedClassMappings)._eval$1("LinkedHashMapEntriesIterable<1,2>")).get$iterator(0); t2.moveNext$0();) {
         e = t2.__js_helper$_current;
@@ -15568,7 +15581,7 @@
             case 5:
               // returning from await.
               shardDocumentGenerator = new A.ShardDocumentGenerator(storage, crdtDocumentManager, indexManager);
-              syncManager = new A.StandardSyncManager(new A.SyncFunction(shardDocumentGenerator, storage, backends, config, new A.StandardSyncEngine_create_closure(t1, storage, new A.RemoteDocumentMerger(hlcService, crdtTypeRegistry, frameworkIriGenerator), indexRdfGenerator, indexManager, shardDeterminer, hlcService, mergeContractLoader, localDocumentMerger, shardDocumentGenerator, A.hlc_service__defaultPhysicalTimestampFactory$closure())).get$$call(), config.autoSyncConfig, A.StreamController_StreamController$broadcast(false, type$.SyncState), B.SyncState_3yu, A.hlc_service__defaultPhysicalTimestampFactory$closure());
+              syncManager = new A.StandardSyncManager(new A.SyncFunction(shardDocumentGenerator, storage, backends, config, new A.StandardSyncEngine_create_closure(t1, storage, new A.RemoteDocumentMerger(hlcService, crdtTypeRegistry, frameworkIriGenerator), indexRdfGenerator, indexManager, shardDeterminer, hlcService, mergeContractLoader, localDocumentMerger, shardDocumentGenerator, A.hlc_service__defaultPhysicalTimestampFactory$closure())).get$$call(), config.autoSyncConfig, A.StreamController_StreamController$broadcast(null, false, type$.SyncState), B.SyncState_3yu, A.hlc_service__defaultPhysicalTimestampFactory$closure());
               syncManager._initialize$0();
               t1 = t1.config;
               t2 = J.map$1$1$ax(backends, new A.StandardSyncEngine_create_closure0(), type$.Future_void_Function);
@@ -15675,6 +15688,107 @@
       this.backend = t0;
       this.id = t1;
     },
+    AuthException$(message, cause) {
+      return new A.AuthException(message, cause);
+    },
+    _retryOnAuthFailure(config, onAuthFailure, operation, $T) {
+      return A._retryOnAuthFailure$body(config, onAuthFailure, operation, $T, $T);
+    },
+    _retryOnAuthFailure$body(config, onAuthFailure, operation, $T, $async$type) {
+      var $async$goto = 0,
+        $async$completer = A._makeAsyncAwaitCompleter($async$type),
+        $async$returnValue, $async$handler = 2, $async$errorStack = [], e, t1, exception, attempts, $async$exception;
+      var $async$_retryOnAuthFailure = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
+        if ($async$errorCode === 1) {
+          $async$errorStack.push($async$result);
+          $async$goto = $async$handler;
+        }
+        for (;;)
+          switch ($async$goto) {
+            case 0:
+              // Function start
+              attempts = 0;
+            case 3:
+              // for condition
+              // trivial condition
+              $async$handler = 6;
+              $async$goto = 9;
+              return A._asyncAwait(operation.call$0(), $async$_retryOnAuthFailure);
+            case 9:
+              // returning from await.
+              t1 = $async$result;
+              $async$returnValue = t1;
+              // goto return
+              $async$goto = 1;
+              break;
+              $async$handler = 2;
+              // goto after finally
+              $async$goto = 8;
+              break;
+            case 6:
+              // catch
+              $async$handler = 5;
+              $async$exception = $async$errorStack.pop();
+              t1 = A.unwrapException($async$exception);
+              $async$goto = t1 instanceof A.AuthException ? 10 : 12;
+              break;
+            case 10:
+              // then
+              e = t1;
+              t1 = attempts;
+              if (typeof t1 !== "number") {
+                $async$returnValue = t1.$ge();
+                // goto return
+                $async$goto = 1;
+                break;
+              }
+              if (t1 >= 1)
+                throw $async$exception;
+              t1 = attempts;
+              if (typeof t1 !== "number") {
+                $async$returnValue = t1.$add();
+                // goto return
+                $async$goto = 1;
+                break;
+              }
+              attempts = t1 + 1;
+              $async$goto = 13;
+              return A._asyncAwait(onAuthFailure.call$0(), $async$_retryOnAuthFailure);
+            case 13:
+              // returning from await.
+              // goto join
+              $async$goto = 11;
+              break;
+            case 12:
+              // else
+              throw $async$exception;
+            case 11:
+              // join
+              // goto after finally
+              $async$goto = 8;
+              break;
+            case 5:
+              // uncaught
+              // goto rethrow
+              $async$goto = 2;
+              break;
+            case 8:
+              // after finally
+              // goto for condition
+              $async$goto = 3;
+              break;
+            case 4:
+              // after for
+            case 1:
+              // return
+              return A._asyncReturn($async$returnValue, $async$completer);
+            case 2:
+              // rethrow
+              return A._asyncRethrow($async$errorStack.at(-1), $async$completer);
+          }
+      });
+      return A._asyncStartSync($async$_retryOnAuthFailure, $async$completer);
+    },
     RemoteDownloadResult: function RemoteDownloadResult(t0, t1, t2) {
       this.graph = t0;
       this.etag = t1;
@@ -15686,6 +15800,40 @@
     },
     SuccessUploadResult: function SuccessUploadResult(t0) {
       this.etag = t0;
+    },
+    RemoteSyncStorage: function RemoteSyncStorage() {
+    },
+    AuthException: function AuthException(t0, t1) {
+      this.message = t0;
+      this.cause = t1;
+    },
+    AuthRetryConfig: function AuthRetryConfig() {
+    },
+    AuthAwareRemoteStorage: function AuthAwareRemoteStorage(t0, t1, t2) {
+      this._remote_storage$_inner = t0;
+      this._onAuthFailure = t1;
+      this._remote_storage$_config = t2;
+    },
+    AuthAwareRemoteStorage_createSyncStorage_closure: function AuthAwareRemoteStorage_createSyncStorage_closure(t0, t1) {
+      this.$this = t0;
+      this.config = t1;
+    },
+    AuthAwareSyncStorage: function AuthAwareSyncStorage(t0, t1, t2) {
+      this._remote_storage$_inner = t0;
+      this._onAuthFailure = t1;
+      this._remote_storage$_config = t2;
+    },
+    AuthAwareSyncStorage_upload_closure: function AuthAwareSyncStorage_upload_closure(t0, t1, t2, t3) {
+      var _ = this;
+      _.$this = t0;
+      _.documentIri = t1;
+      _.graph = t2;
+      _.ifMatch = t3;
+    },
+    AuthAwareSyncStorage_download_closure: function AuthAwareSyncStorage_download_closure(t0, t1, t2) {
+      this.$this = t0;
+      this.documentIri = t1;
+      this.ifNoneMatch = t2;
     },
     IndexEntryWithIri: function IndexEntryWithIri(t0, t1, t2, t3, t4, t5) {
       var _ = this;
@@ -16140,6 +16288,49 @@
       this.subject = t0;
       this.e = t1;
     },
+    _executeInChunks(tasks, maxConcurrent, $T) {
+      var $async$goto = 0,
+        $async$completer = A._makeAsyncAwaitCompleter(type$.void),
+        t1, t2, t3, chunk, i, iterator;
+      var $async$_executeInChunks = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
+        if ($async$errorCode === 1)
+          return A._asyncRethrow($async$result, $async$completer);
+        for (;;)
+          switch ($async$goto) {
+            case 0:
+              // Function start
+              iterator = tasks.get$iterator(tasks);
+              t1 = $T._eval$1("Future<0>"), t2 = $T._eval$1("MappedListIterable<Future<0>(),Future<0>>"), t3 = $T._eval$1("JSArray<Future<0>()>");
+            case 2:
+              // for condition
+              if (!iterator.moveNext$0()) {
+                // goto after for
+                $async$goto = 3;
+                break;
+              }
+              chunk = A._setArrayType([iterator.get$current()], t3);
+              i = 1;
+              for (;;) {
+                if (!(i < maxConcurrent && iterator.moveNext$0()))
+                  break;
+                B.JSArray_methods.add$1(chunk, iterator.get$current());
+                ++i;
+              }
+              $async$goto = 4;
+              return A._asyncAwait(A.Future_wait(new A.MappedListIterable(chunk, t3._bind$1(t1)._eval$1("1(2)")._as(new A._executeInChunks_closure($T)), t2), false, $T), $async$_executeInChunks);
+            case 4:
+              // returning from await.
+              // goto for condition
+              $async$goto = 2;
+              break;
+            case 3:
+              // after for
+              // implicit return
+              return A._asyncReturn(null, $async$completer);
+          }
+      });
+      return A._asyncStartSync($async$_executeInChunks, $async$completer);
+    },
     IndexSyncSpec: function IndexSyncSpec() {
     },
     FullIndexSync: function FullIndexSync(t0, t1) {
@@ -16240,6 +16431,38 @@
     },
     RemoteSyncOrchestrator__findForeignIndices_closure1: function RemoteSyncOrchestrator__findForeignIndices_closure1() {
     },
+    RemoteSyncOrchestrator__syncResourceType_closure: function RemoteSyncOrchestrator__syncResourceType_closure(t0, t1, t2, t3) {
+      var _ = this;
+      _.$this = t0;
+      _.resourceType = t1;
+      _.lastSyncTimestamp = t2;
+      _.syncTime = t3;
+    },
+    RemoteSyncOrchestrator__syncResourceType__closure: function RemoteSyncOrchestrator__syncResourceType__closure(t0, t1, t2, t3, t4) {
+      var _ = this;
+      _.$this = t0;
+      _.resourceType = t1;
+      _.index = t2;
+      _.lastSyncTimestamp = t3;
+      _.syncTime = t4;
+    },
+    RemoteSyncOrchestrator__syncIndex_closure: function RemoteSyncOrchestrator__syncIndex_closure(t0, t1, t2, t3, t4) {
+      var _ = this;
+      _.$this = t0;
+      _.resourceType = t1;
+      _.index = t2;
+      _.lastSyncTimestamp = t3;
+      _.syncTime = t4;
+    },
+    RemoteSyncOrchestrator__syncIndex__closure: function RemoteSyncOrchestrator__syncIndex__closure(t0, t1, t2, t3, t4, t5) {
+      var _ = this;
+      _.$this = t0;
+      _.resourceType = t1;
+      _.index = t2;
+      _.shard = t3;
+      _.lastSyncTimestamp = t4;
+      _.syncTime = t5;
+    },
     RemoteSyncOrchestrator__syncShard_closure: function RemoteSyncOrchestrator__syncShard_closure(t0, t1, t2, t3, t4, t5) {
       var _ = this;
       _.$this = t0;
@@ -16258,6 +16481,27 @@
     },
     RemoteSyncOrchestrator__syncShard__closure2: function RemoteSyncOrchestrator__syncShard__closure2(t0) {
       this.ourCurrentShardClock = t0;
+    },
+    RemoteSyncOrchestrator_createSyncDocumentQueueTasks_closure: function RemoteSyncOrchestrator_createSyncDocumentQueueTasks_closure(t0, t1, t2, t3) {
+      var _ = this;
+      _.$this = t0;
+      _.shard = t1;
+      _.lastSyncTimestamp = t2;
+      _.syncTime = t3;
+    },
+    RemoteSyncOrchestrator_createSyncDocumentQueueTasks_closure0: function RemoteSyncOrchestrator_createSyncDocumentQueueTasks_closure0() {
+    },
+    RemoteSyncOrchestrator_createSyncDocumentQueueTasks_closure1: function RemoteSyncOrchestrator_createSyncDocumentQueueTasks_closure1(t0, t1) {
+      this.$this = t0;
+      this.debugName = t1;
+    },
+    RemoteSyncOrchestrator_createSyncDocumentQueueTasks__closure: function RemoteSyncOrchestrator_createSyncDocumentQueueTasks__closure(t0, t1, t2) {
+      this.$this = t0;
+      this.params = t1;
+      this.debugName = t2;
+    },
+    _executeInChunks_closure: function _executeInChunks_closure(t0) {
+      this.T = t0;
     },
     buildShardAppData(oldAppData, shardIri, indexIri, newTriples) {
       var hasIsShardOf = oldAppData.hasTriples$2$predicate$subject(B.IriTerm_YK7, shardIri),
@@ -17002,10 +17246,9 @@
     GDriveClientException$(message) {
       return new A.GDriveClientException(message);
     },
-    GDriveClient: function GDriveClient(t0, t1, t2) {
+    GDriveClient: function GDriveClient(t0, t1) {
       this._rdfCore = t0;
       this._driveApi = t1;
-      this._authProvider = t2;
     },
     _GoogleAuthClient: function _GoogleAuthClient(t0, t1) {
       this._authProvider = t0;
@@ -17014,29 +17257,36 @@
     GDriveClientException: function GDriveClientException(t0) {
       this.message = t0;
     },
-    GDriveSyncStorage: function GDriveSyncStorage(t0, t1, t2) {
-      this._gdrive_backend$_client = t0;
-      this._typeIndexMappings = t1;
-      this._gdrive_backend$_resourceLocator = t2;
+    GDriveSyncStorage: function GDriveSyncStorage(t0, t1, t2, t3) {
+      var _ = this;
+      _._gdrive_backend$_client = t0;
+      _._typeIndexMappings = t1;
+      _._gdrive_backend$_resourceLocator = t2;
+      _._spaces = t3;
     },
-    GDriveRemoteStorage: function GDriveRemoteStorage(t0, t1, t2, t3, t4) {
+    GDriveRemoteStorage: function GDriveRemoteStorage(t0, t1, t2, t3, t4, t5) {
       var _ = this;
       _._gdrive_backend$_remoteId = t0;
-      _._gdrive_backend$_userEmail = t1;
+      _._gdrive_backend$_userId = t1;
       _._gdrive_backend$_client = t2;
       _._typeIndexManager = t3;
       _._gdrive_backend$_resourceLocator = t4;
+      _._spaces = t5;
     },
-    GDriveBackend: function GDriveBackend(t0, t1, t2, t3, t4) {
+    GDriveBackend: function GDriveBackend(t0, t1, t2, t3, t4, t5) {
       var _ = this;
       _._auth = t0;
       _._gdrive_backend$_client = t1;
       _._typeIndexManager = t2;
       _._gdrive_backend$_resourceLocator = t3;
-      _._remotes = t4;
+      _._gdrive_backend$_config = t4;
+      _._remotes = t5;
+    },
+    GDriveBackend__authStateChanged_closure: function GDriveBackend__authStateChanged_closure(t0) {
+      this.$this = t0;
     },
     GDriveTypeIndexManager__fillInDefaults(config) {
-      var t2, t3, t4, t5,
+      var t2, t3, t4, t5, newMode, newName,
         t1 = $.$get$GDriveTypeIndexManager__indexTypes();
       if (t1.every$1(0, new A.GDriveTypeIndexManager__fillInDefaults_closure(config)))
         return config;
@@ -17050,16 +17300,35 @@
           t3.$indexSet(0, t5, "indices");
       }
       type$.nullable_Map_IriTerm_String._as(t3);
-      return new A.GDriveConfig(t3, config.appFolderName);
+      newMode = config.folderMode;
+      newName = config.appFolderName;
+      if (newMode === B.GDriveFolderMode_1 && newName == null)
+        A.throwExpression(A.ArgumentError$("appFolderName is required when folderMode is visibleFolder", null));
+      if (newMode === B.GDriveFolderMode_0)
+        t1 = new A.GDriveConfig(t3, null, B.GDriveFolderMode_0, config.extraScopes);
+      else {
+        newName.toString;
+        t1 = new A.GDriveConfig(t3, newName, B.GDriveFolderMode_1, config.extraScopes);
+      }
+      return t1;
     },
-    GDriveConfig: function GDriveConfig(t0, t1) {
-      this.typeFolderNames = t0;
-      this.appFolderName = t1;
+    GDriveFolderMode: function GDriveFolderMode(t0, t1) {
+      this.index = t0;
+      this._name = t1;
+    },
+    GDriveConfig: function GDriveConfig(t0, t1, t2, t3) {
+      var _ = this;
+      _.typeFolderNames = t0;
+      _.appFolderName = t1;
+      _.folderMode = t2;
+      _.extraScopes = t3;
     },
     GDriveTypeIndexManager: function GDriveTypeIndexManager(t0, t1, t2) {
-      this._client = t0;
-      this._localResourceLocator = t1;
-      this._gdrive_type_index_manager$_config = t2;
+      var _ = this;
+      _._client = t0;
+      _._localResourceLocator = t1;
+      _._gdrive_type_index_manager$_config = t2;
+      _.__GDriveTypeIndexManager__spaces_FI = $;
     },
     GDriveTypeIndexManager_loadOrCreateTypeIndex_closure: function GDriveTypeIndexManager_loadOrCreateTypeIndex_closure(t0) {
       this.existingMappings = t0;
@@ -17147,7 +17416,7 @@
       var _ = this;
       _.accessToken = t0;
       _.refreshToken = t1;
-      _.userEmail = t2;
+      _.userId = t2;
       _.expiresAt = t3;
     },
     TokenRefreshRequest: function TokenRefreshRequest(t0, t1) {
@@ -17161,8 +17430,37 @@
       _.expiresAt = t2;
       _.error = t3;
     },
-    GDriveWorkerHandler: function GDriveWorkerHandler(t0) {
+    GDriveConfigMessage_fromJson(json) {
+      var extraScopesRaw, extraScopes, t1,
+        folderMode = B.JSArray_methods.firstWhere$1(B.List_Osh, new A.GDriveConfigMessage_fromJson_closure(A._asString(json.$index(0, "folderMode")))),
+        appFolderName = A._asStringQ(json.$index(0, "appFolderName")),
+        typeFolderNamesRaw = type$.nullable_Map_String_dynamic._as(json.$index(0, "typeFolderNames")),
+        typeFolderNames = typeFolderNamesRaw == null ? null : typeFolderNamesRaw.map$2$1(0, new A.GDriveConfigMessage_fromJson_closure0(), type$.IriTerm, type$.String);
+      if (typeFolderNames == null)
+        typeFolderNames = A.LinkedHashMap_LinkedHashMap$_empty(type$.IriTerm, type$.String);
+      extraScopesRaw = type$.nullable_List_dynamic._as(json.$index(0, "extraScopes"));
+      extraScopes = extraScopesRaw == null ? null : J.cast$1$0$ax(extraScopesRaw, type$.String);
+      if (extraScopes == null)
+        extraScopes = A._setArrayType([], type$.JSArray_String);
+      if (folderMode === B.GDriveFolderMode_0)
+        t1 = new A.GDriveConfig(typeFolderNames, null, B.GDriveFolderMode_0, extraScopes);
+      else {
+        appFolderName.toString;
+        t1 = new A.GDriveConfig(typeFolderNames, appFolderName, B.GDriveFolderMode_1, extraScopes);
+      }
+      return new A.GDriveConfigMessage(t1);
+    },
+    GDriveConfigMessage: function GDriveConfigMessage(t0) {
       this.config = t0;
+    },
+    GDriveConfigMessage_toJson_closure: function GDriveConfigMessage_toJson_closure() {
+    },
+    GDriveConfigMessage_fromJson_closure: function GDriveConfigMessage_fromJson_closure(t0) {
+      this.folderModeName = t0;
+    },
+    GDriveConfigMessage_fromJson_closure0: function GDriveConfigMessage_fromJson_closure0() {
+    },
+    GDriveWorkerHandler: function GDriveWorkerHandler() {
     },
     WorkerGDriveAuthProvider$(_channel) {
       var t1 = new A.WorkerGDriveAuthProvider(_channel, new A._WorkerAuthNotifier(A._setArrayType([], type$.JSArray_of_void_Function)), A.LinkedHashMap_LinkedHashMap$_empty(type$.int, type$.Completer_void));
@@ -17177,7 +17475,7 @@
       var _ = this;
       _._worker_gdrive_auth_provider$_channel = t0;
       _._notifier = t1;
-      _._expiresAt = _._userEmail = _._accessToken = null;
+      _._expiresAt = _._userId = _._accessToken = null;
       _._pendingRefreshRequests = t2;
       _._nextRequestId = 0;
     },
@@ -17187,6 +17485,18 @@
     WorkerGDriveAuthProvider_refreshToken_closure: function WorkerGDriveAuthProvider_refreshToken_closure(t0, t1) {
       this.$this = t0;
       this.requestId = t1;
+    },
+    WorkerGDriveConfigReceiver$(_channel) {
+      var t1 = new A.WorkerGDriveConfigReceiver(_channel, new A._AsyncCompleter(new A._Future($.Zone__current, type$._Future_GDriveConfig), type$._AsyncCompleter_GDriveConfig));
+      t1.WorkerGDriveConfigReceiver$1(_channel);
+      return t1;
+    },
+    WorkerGDriveConfigReceiver: function WorkerGDriveConfigReceiver(t0, t1) {
+      this._worker_gdrive_config_receiver$_channel = t0;
+      this._configCompleter = t1;
+      this.__WorkerGDriveConfigReceiver__subscription_F = $;
+    },
+    WorkerGDriveConfigReceiver_closure: function WorkerGDriveConfigReceiver_closure() {
     },
     RdfCore_RdfCore$withStandardCodecs(iriTermFactory) {
       var registry,
@@ -18173,6 +18483,9 @@
       _._solidClient = t2;
       _._solid_backend$_remotes = t3;
     },
+    SolidBackend__authStateChanged_closure: function SolidBackend__authStateChanged_closure(t0) {
+      this.$this = t0;
+    },
     SolidClientException: function SolidClientException(t0) {
       this.message = t0;
     },
@@ -18488,10 +18801,10 @@
     startWebWorkerLoop(workerSetup) {
       var t2, t1 = {};
       $.$get$_log().log$4(B.Level_INFO_800, "Starting web worker", null, null);
-      t2 = A.StreamController_StreamController$broadcast(false, type$.WorkerChannelMessage);
+      t2 = A.StreamController_StreamController$broadcast(null, false, type$.WorkerChannelMessage);
       t1.context = null;
       t1.isInitializing = false;
-      A._asJSObject(init.G.self).addEventListener("message", A._functionToJS1(new A.startWebWorkerLoop_closure(t1, new A.WorkerChannel(t2, new A.startWebWorkerLoop_closure0()), workerSetup, new A.startWebWorkerLoop_markAsInitializing(t1), new A.startWebWorkerLoop_resetInitializing(t1))));
+      A._asJSObject(init.G.self).addEventListener("message", A._functionToJS1(new A.startWebWorkerLoop_closure(t1, new A.WorkerChannel(t2, new A.startWebWorkerLoop_closure0(), A.LinkedHashMap_LinkedHashMap$_empty(type$.String, type$.WorkerHandlerChannel)), workerSetup, new A.startWebWorkerLoop_markAsInitializing(t1), new A.startWebWorkerLoop_resetInitializing(t1))));
     },
     _handleWorkerMessage(data, getContext, setContext, workerSetup, channel, isInitializing, markInitializing, resetInitializing) {
       return A._handleWorkerMessage$body(data, getContext, setContext, workerSetup, channel, isInitializing, markInitializing, resetInitializing);
@@ -18649,22 +18962,37 @@
     },
     startWebWorkerLoop__closure2: function startWebWorkerLoop__closure2() {
     },
+    WorkerHandlerChannel$_(channel, _workerChannel) {
+      var t1 = new A.WorkerHandlerChannel(channel, _workerChannel, []);
+      t1.WorkerHandlerChannel$_$2(channel, _workerChannel);
+      return t1;
+    },
     WorkerChannelMessage: function WorkerChannelMessage(t0, t1) {
       this.channel = t0;
       this.data = t1;
     },
-    WorkerHandlerChannel: function WorkerHandlerChannel(t0, t1) {
-      this.channel = t0;
-      this._workerChannel = t1;
+    WorkerHandlerChannel: function WorkerHandlerChannel(t0, t1, t2) {
+      var _ = this;
+      _.channel = t0;
+      _._workerChannel = t1;
+      _._worker_channel$_buffer = t2;
+      _._worker_channel$_controller = null;
+      _.__WorkerHandlerChannel__subscription_F = $;
+      _._hasListener = false;
     },
-    WorkerHandlerChannel_messages_closure: function WorkerHandlerChannel_messages_closure(t0) {
+    WorkerHandlerChannel$__closure: function WorkerHandlerChannel$__closure(t0) {
       this.$this = t0;
     },
-    WorkerHandlerChannel_messages_closure0: function WorkerHandlerChannel_messages_closure0() {
+    WorkerHandlerChannel$__closure0: function WorkerHandlerChannel$__closure0() {
     },
-    WorkerChannel: function WorkerChannel(t0, t1) {
+    WorkerChannel: function WorkerChannel(t0, t1, t2) {
       this._incomingController = t0;
       this._sendMessage = t1;
+      this._cachedChannels = t2;
+    },
+    WorkerChannel__getOrCreateChannel_closure: function WorkerChannel__getOrCreateChannel_closure(t0, t1) {
+      this.$this = t0;
+      this.name = t1;
     },
     workerMain(setupFn, onWorkerSpawn) {
       var e, st, exception;
@@ -18735,7 +19063,7 @@
               // returning from await.
               $async$temp2 = $async$result;
               $async$goto = 4;
-              return A._asyncAwait(A.Future_wait(new A.MappedListIterable(t1, t2._eval$1("Future<Backend>(1)")._as(new A.toEngineParams_closure(value, config)), t2._eval$1("MappedListIterable<1,Future<Backend>>")), type$.Backend), $async$toEngineParams);
+              return A._asyncAwait(A.Future_wait(new A.MappedListIterable(t1, t2._eval$1("Future<Backend>(1)")._as(new A.toEngineParams_closure(value, config)), t2._eval$1("MappedListIterable<1,Future<Backend>>")), false, type$.Backend), $async$toEngineParams);
             case 4:
               // returning from await.
               $async$returnValue = new $async$temp1.EngineParams($async$temp2, $async$result, null, null, null, null, null, null);
@@ -23583,7 +23911,9 @@
           switch ($async$goto) {
             case 0:
               // Function start
-              t1 = A._setArrayType([new A.SolidWorkerHandler(), new A.GDriveWorkerHandler(new A.GDriveConfig(B.Map_empty, "LocordaPersonalNotes"))], type$.JSArray_RemoteWorkerHandler);
+              t1 = A._setArrayType([], type$.JSArray_RemoteWorkerHandler);
+              t1.push(new A.SolidWorkerHandler());
+              t1.push(new A.GDriveWorkerHandler());
               $async$returnValue = new A.WorkerParams(new A.DriftWorkerHandler(new A.LocordaDriftWebOptions(A.Uri_parse("sqlite3.wasm"), A.Uri_parse("drift_worker.js"))), t1);
               // goto return
               $async$goto = 1;
@@ -23797,7 +24127,7 @@
         t1 = f2;
       else if (f2 instanceof A._Future) {
         t1 = type$.void;
-        t1 = A.Future_wait(A._setArrayType([f1, f2], type$.JSArray_Future_void), t1).then$1$1(A.future___ignore$closure(), t1);
+        t1 = A.Future_wait(A._setArrayType([f1, f2], type$.JSArray_Future_void), false, t1).then$1$1(A.future___ignore$closure(), t1);
       } else
         t1 = f1;
       return t1;
@@ -25063,6 +25393,91 @@
     $isPattern: 1,
     $isString: 1
   };
+  A.CastStream.prototype = {
+    get$isBroadcast() {
+      return this._source.get$isBroadcast();
+    },
+    listen$4$cancelOnError$onDone$onError(onData, cancelOnError, onDone, onError) {
+      var t2,
+        t1 = this.$ti;
+      t1._eval$1("~(2)?")._as(onData);
+      t2 = this._source.listen$3$cancelOnError$onDone(null, cancelOnError, type$.nullable_void_Function._as(onDone));
+      t1 = new A.CastStreamSubscription(t2, $.Zone__current, t1._eval$1("CastStreamSubscription<1,2>"));
+      t2.onData$1(t1.get$__internal$_onData());
+      t1.onData$1(onData);
+      t1.onError$1(onError);
+      return t1;
+    },
+    listen$1(onData) {
+      return this.listen$4$cancelOnError$onDone$onError(onData, null, null, null);
+    },
+    listen$3$onDone$onError(onData, onDone, onError) {
+      return this.listen$4$cancelOnError$onDone$onError(onData, null, onDone, onError);
+    },
+    listen$3$cancelOnError$onDone(onData, cancelOnError, onDone) {
+      return this.listen$4$cancelOnError$onDone$onError(onData, cancelOnError, onDone, null);
+    }
+  };
+  A.CastStreamSubscription.prototype = {
+    cancel$0() {
+      return this._source.cancel$0();
+    },
+    onData$1(handleData) {
+      var t1 = this.$ti;
+      t1._eval$1("~(2)?")._as(handleData);
+      this.__internal$_handleData = handleData == null ? null : this.__internal$_zone.registerUnaryCallback$2$1(handleData, type$.dynamic, t1._rest[1]);
+    },
+    onError$1(handleError) {
+      var _this = this;
+      _this._source.onError$1(handleError);
+      if (handleError == null)
+        _this.__internal$_handleError = null;
+      else if (type$.void_Function_Object_StackTrace._is(handleError))
+        _this.__internal$_handleError = _this.__internal$_zone.registerBinaryCallback$3$1(handleError, type$.dynamic, type$.Object, type$.StackTrace);
+      else if (type$.void_Function_Object._is(handleError))
+        _this.__internal$_handleError = _this.__internal$_zone.registerUnaryCallback$2$1(handleError, type$.dynamic, type$.Object);
+      else
+        throw A.wrapException(A.ArgumentError$(string$.handle, null));
+    },
+    __internal$_onData$1(data) {
+      var targetData, error, stack, handleError, t2, exception, _this = this,
+        t1 = _this.$ti;
+      t1._precomputed1._as(data);
+      t2 = _this.__internal$_handleData;
+      if (t2 == null)
+        return;
+      targetData = null;
+      try {
+        targetData = t1._rest[1]._as(data);
+      } catch (exception) {
+        error = A.unwrapException(exception);
+        stack = A.getTraceFromException(exception);
+        handleError = _this.__internal$_handleError;
+        if (handleError == null)
+          _this.__internal$_zone.handleUncaughtError$2(error, stack);
+        else {
+          t1 = type$.Object;
+          t2 = _this.__internal$_zone;
+          if (type$.void_Function_Object_StackTrace._is(handleError))
+            t2.runBinaryGuarded$2$3(handleError, error, stack, t1, type$.StackTrace);
+          else
+            t2.runUnaryGuarded$1$2(type$.void_Function_Object._as(handleError), error, t1);
+        }
+        return;
+      }
+      _this.__internal$_zone.runUnaryGuarded$1$2(t2, targetData, t1._rest[1]);
+    },
+    pause$1(resumeSignal) {
+      this._source.pause$1(type$.nullable_Future_dynamic._as(resumeSignal));
+    },
+    pause$0() {
+      return this.pause$1(null);
+    },
+    resume$0() {
+      this._source.resume$0();
+    },
+    $isStreamSubscription: 1
+  };
   A._CopyingBytesBuilder.prototype = {
     add$1(_, bytes) {
       var byteCount, required, t1, t2, newSize, x, newBuffer, _this = this;
@@ -25345,7 +25760,7 @@
     call$0() {
       return A.Future_Future$value(null, type$.void);
     },
-    $signature: 3
+    $signature: 1
   };
   A.SentinelValue.prototype = {};
   A.EfficientLengthIterable.prototype = {};
@@ -26130,13 +26545,14 @@
   A._Record_3_etag_graph_notModified.prototype = {$recipe: "+etag,graph,notModified(1,2,3)", $shape: 16};
   A._Record_3_metadata_newBlankNodes_oldBlankNodes.prototype = {$recipe: "+metadata,newBlankNodes,oldBlankNodes(1,2,3)", $shape: 17};
   A._Record_4.prototype = {$recipe: "+(1,2,3,4)", $shape: 18};
-  A._Record_4_fullClock_hash_logicalTime_physicalTime.prototype = {$recipe: "+fullClock,hash,logicalTime,physicalTime(1,2,3,4)", $shape: 19};
-  A._Record_4_index78Iri_max78PhysicalClock_resourceTypeIri_shardIri.prototype = {$recipe: "+indexIri,maxPhysicalClock,resourceTypeIri,shardIri(1,2,3,4)", $shape: 20};
-  A._Record_4_newObjects_predicate_subject_subjectTypeIri.prototype = {$recipe: "+newObjects,predicate,subject,subjectTypeIri(1,2,3,4)", $shape: 21};
-  A._Record_5_governedByFiles_mergeContract_oldAppData_oldFrameworkGraph_oldUpdatedAt.prototype = {$recipe: "+governedByFiles,mergeContract,oldAppData,oldFrameworkGraph,oldUpdatedAt(1,2,3,4,5)", $shape: 22};
-  A._Record_6_appData_blankNodes_documentIri_predicate_subject_values.prototype = {$recipe: "+appData,blankNodes,documentIri,predicate,subject,values(1,2,3,4,5,6)", $shape: 23};
-  A._Record_6_etag_localUpdatedAt_mergeContract_mergedDocument_originalLocalDocument_originalRemoteDocument.prototype = {$recipe: "+etag,localUpdatedAt,mergeContract,mergedDocument,originalLocalDocument,originalRemoteDocument(1,2,3,4,5,6)", $shape: 24};
-  A._Record_9_appData_crdtDocument_currentCursor_documentIri_missingGroupIndices_physicalTime_previousCursor_resourceIri_updatedAt.prototype = {$recipe: "+appData,crdtDocument,currentCursor,documentIri,missingGroupIndices,physicalTime,previousCursor,resourceIri,updatedAt(1,2,3,4,5,6,7,8,9)", $shape: 25};
+  A._Record_4_documentIri_lastSyncTimestamp_shouldSync_syncTime.prototype = {$recipe: "+documentIri,lastSyncTimestamp,shouldSync,syncTime(1,2,3,4)", $shape: 19};
+  A._Record_4_fullClock_hash_logicalTime_physicalTime.prototype = {$recipe: "+fullClock,hash,logicalTime,physicalTime(1,2,3,4)", $shape: 20};
+  A._Record_4_index78Iri_max78PhysicalClock_resourceTypeIri_shardIri.prototype = {$recipe: "+indexIri,maxPhysicalClock,resourceTypeIri,shardIri(1,2,3,4)", $shape: 21};
+  A._Record_4_newObjects_predicate_subject_subjectTypeIri.prototype = {$recipe: "+newObjects,predicate,subject,subjectTypeIri(1,2,3,4)", $shape: 22};
+  A._Record_5_governedByFiles_mergeContract_oldAppData_oldFrameworkGraph_oldUpdatedAt.prototype = {$recipe: "+governedByFiles,mergeContract,oldAppData,oldFrameworkGraph,oldUpdatedAt(1,2,3,4,5)", $shape: 23};
+  A._Record_6_appData_blankNodes_documentIri_predicate_subject_values.prototype = {$recipe: "+appData,blankNodes,documentIri,predicate,subject,values(1,2,3,4,5,6)", $shape: 24};
+  A._Record_6_etag_localUpdatedAt_mergeContract_mergedDocument_originalLocalDocument_originalRemoteDocument.prototype = {$recipe: "+etag,localUpdatedAt,mergeContract,mergedDocument,originalLocalDocument,originalRemoteDocument(1,2,3,4,5,6)", $shape: 25};
+  A._Record_9_appData_crdtDocument_currentCursor_documentIri_missingGroupIndices_physicalTime_previousCursor_resourceIri_updatedAt.prototype = {$recipe: "+appData,crdtDocument,currentCursor,documentIri,missingGroupIndices,physicalTime,previousCursor,resourceIri,updatedAt(1,2,3,4,5,6,7,8,9)", $shape: 26};
   A.ConstantMapView.prototype = {};
   A.ConstantMap.prototype = {
     get$isEmpty(_) {
@@ -26235,7 +26651,7 @@
     get$length(_) {
       return this._values.length;
     },
-    get$_keys() {
+    get$__js_helper$_keys() {
       var keys = this.$keys;
       if (keys == null) {
         keys = Object.keys(this._jsIndex);
@@ -26258,13 +26674,13 @@
     forEach$1(_, f) {
       var keys, values, t1, i;
       this.$ti._eval$1("~(1,2)")._as(f);
-      keys = this.get$_keys();
+      keys = this.get$__js_helper$_keys();
       values = this._values;
       for (t1 = keys.length, i = 0; i < t1; ++i)
         f.call$2(keys[i], values[i]);
     },
     get$keys() {
-      return new A._KeysOrValues(this.get$_keys(), this.$ti._eval$1("_KeysOrValues<1>"));
+      return new A._KeysOrValues(this.get$__js_helper$_keys(), this.$ti._eval$1("_KeysOrValues<1>"));
     },
     get$values() {
       return new A._KeysOrValues(this._values, this.$ti._eval$1("_KeysOrValues<2>"));
@@ -26947,19 +27363,19 @@
     call$1(o) {
       return this.getTag(o);
     },
-    $signature: 70
+    $signature: 61
   };
   A.initHooks_closure0.prototype = {
     call$2(o, tag) {
       return this.getUnknownTag(o, tag);
     },
-    $signature: 154
+    $signature: 162
   };
   A.initHooks_closure1.prototype = {
     call$1(tag) {
       return this.prototypeForTag(A._asString(tag));
     },
-    $signature: 75
+    $signature: 98
   };
   A._Record.prototype = {
     get$runtimeType(_) {
@@ -27644,7 +28060,7 @@
       t1.storedCallback = null;
       f.call$0();
     },
-    $signature: 30
+    $signature: 23
   };
   A._AsyncRun__initializeScheduleImmediate_closure.prototype = {
     call$1(callback) {
@@ -27654,19 +28070,19 @@
       t2 = this.span;
       t1.firstChild ? t1.removeChild(t2) : t1.appendChild(t2);
     },
-    $signature: 531
+    $signature: 192
   };
   A._AsyncRun__scheduleImmediateJsOverride_internalCallback.prototype = {
     call$0() {
       this.callback.call$0();
     },
-    $signature: 4
+    $signature: 5
   };
   A._AsyncRun__scheduleImmediateWithSetImmediate_internalCallback.prototype = {
     call$0() {
       this.callback.call$0();
     },
-    $signature: 4
+    $signature: 5
   };
   A._TimerImpl.prototype = {
     _TimerImpl$2(milliseconds, callback) {
@@ -27719,7 +28135,7 @@
       t1._tick = tick;
       _this.callback.call$1(t1);
     },
-    $signature: 4
+    $signature: 5
   };
   A._AsyncAwaitCompleter.prototype = {
     complete$1(value) {
@@ -27766,19 +28182,19 @@
     call$1(result) {
       return this.bodyFunction.call$2(0, result);
     },
-    $signature: 33
+    $signature: 38
   };
   A._awaitOnObject_closure0.prototype = {
     call$2(error, stackTrace) {
       this.bodyFunction.call$2(1, new A.ExceptionAndStackTrace(error, type$.StackTrace._as(stackTrace)));
     },
-    $signature: 158
+    $signature: 248
   };
   A._wrapJsFunctionForAsync_closure.prototype = {
     call$2(errorCode, result) {
       this.$protected(A._asInt(errorCode), result);
     },
-    $signature: 249
+    $signature: 139
   };
   A._asyncStarHelper_closure.prototype = {
     call$0() {
@@ -27801,7 +28217,7 @@
       var errorCode = this.controller.cancelationFuture != null ? 2 : 0;
       this.bodyFunction.call$2(errorCode, null);
     },
-    $signature: 30
+    $signature: 23
   };
   A._AsyncStarStreamController.prototype = {
     _AsyncStarStreamController$1(body, $T) {
@@ -27814,7 +28230,7 @@
     call$0() {
       A.scheduleMicrotask(new A._AsyncStarStreamController__resumeBody_closure(this.body));
     },
-    $signature: 4
+    $signature: 5
   };
   A._AsyncStarStreamController__resumeBody_closure.prototype = {
     call$0() {
@@ -27852,7 +28268,7 @@
         return t1.cancelationFuture;
       }
     },
-    $signature: 308
+    $signature: 156
   };
   A._AsyncStarStreamController__closure.prototype = {
     call$0() {
@@ -28753,7 +29169,7 @@
     call$1(__wc0_formal) {
       this.joinedResult._completeWithResultOf$1(this.originalSource);
     },
-    $signature: 30
+    $signature: 23
   };
   A._Future__propagateToListeners_handleWhenCompleteCallback_closure0.prototype = {
     call$2(e, s) {
@@ -28761,7 +29177,7 @@
       type$.StackTrace._as(s);
       this.joinedResult._completeErrorObject$1(new A.AsyncError(e, s));
     },
-    $signature: 17
+    $signature: 14
   };
   A._Future__propagateToListeners_handleValueCallback.prototype = {
     call$0() {
@@ -28861,7 +29277,7 @@
         this._future._completeErrorObject$1(new A.AsyncError(e, s));
       }
     },
-    $signature: 17
+    $signature: 14
   };
   A._AsyncCallbackEntry.prototype = {};
   A.Stream.prototype = {
@@ -28897,7 +29313,7 @@
     call$1(__wc0_formal) {
       return this.streamConsumer.close$0();
     },
-    $signature: 192
+    $signature: 400
   };
   A.Stream_join_closure.prototype = {
     call$0() {
@@ -28975,6 +29391,9 @@
     },
     listen$3$onDone$onError(onData, onDone, onError) {
       return this.listen$4$cancelOnError$onDone$onError(onData, null, onDone, onError);
+    },
+    listen$3$cancelOnError$onDone(onData, cancelOnError, onDone) {
+      return this.listen$4$cancelOnError$onDone$onError(onData, cancelOnError, onDone, null);
     }
   };
   A.StreamTransformerBase.prototype = {$isStreamTransformer: 1};
@@ -29300,13 +29719,13 @@
       t1._addError$2(A._asObject(e), type$.StackTrace._as(s));
       t1._close$0();
     },
-    $signature: 17
+    $signature: 14
   };
   A._AddStreamState_cancel_closure.prototype = {
     call$0() {
       this.$this.addStreamFuture._asyncComplete$1(null);
     },
-    $signature: 4
+    $signature: 5
   };
   A._StreamControllerAddStreamState.prototype = {};
   A._BufferingStreamSubscription.prototype = {
@@ -29589,6 +30008,9 @@
     listen$2$onError(onData, onError) {
       return this.listen$4$cancelOnError$onDone$onError(onData, null, null, onError);
     },
+    listen$3$cancelOnError$onDone(onData, cancelOnError, onDone) {
+      return this.listen$4$cancelOnError$onDone$onError(onData, cancelOnError, onDone, null);
+    },
     listen$2$onDone(onData, onDone) {
       return this.listen$4$cancelOnError$onDone$onError(onData, null, onDone, null);
     }
@@ -29669,6 +30091,8 @@
   A._DoneStreamSubscription.prototype = {
     onData$1(handleData) {
       this.$ti._eval$1("~(1)?")._as(handleData);
+    },
+    onError$1(handleError) {
     },
     pause$1(resumeSignal) {
       var t1;
@@ -29815,6 +30239,9 @@
     listen$3$onDone$onError(onData, onDone, onError) {
       return this.listen$4$cancelOnError$onDone$onError(onData, null, onDone, onError);
     },
+    listen$3$cancelOnError$onDone(onData, cancelOnError, onDone) {
+      return this.listen$4$cancelOnError$onDone$onError(onData, cancelOnError, onDone, null);
+    },
     get$isBroadcast() {
       return true;
     }
@@ -29834,6 +30261,9 @@
     },
     listen$3$onDone$onError(onData, onDone, onError) {
       return this.listen$4$cancelOnError$onDone$onError(onData, null, onDone, onError);
+    },
+    listen$3$cancelOnError$onDone(onData, cancelOnError, onDone) {
+      return this.listen$4$cancelOnError$onDone$onError(onData, cancelOnError, onDone, null);
     },
     get$isBroadcast() {
       return this.isBroadcast;
@@ -29917,6 +30347,9 @@
     },
     listen$3$onDone$onError(onData, onDone, onError) {
       return this.listen$4$cancelOnError$onDone$onError(onData, null, onDone, onError);
+    },
+    listen$3$cancelOnError$onDone(onData, cancelOnError, onDone) {
+      return this.listen$4$cancelOnError$onDone$onError(onData, cancelOnError, onDone, null);
     }
   };
   A._ForwardingStreamSubscription.prototype = {
@@ -30121,6 +30554,9 @@
     },
     listen$3$onDone$onError(onData, onDone, onError) {
       return this.listen$4$cancelOnError$onDone$onError(onData, null, onDone, onError);
+    },
+    listen$3$cancelOnError$onDone(onData, cancelOnError, onDone) {
+      return this.listen$4$cancelOnError$onDone$onError(onData, cancelOnError, onDone, null);
     }
   };
   A._ZoneFunction.prototype = {};
@@ -30713,7 +31149,7 @@
       if (bucket == null) {
         A._HashMap__setTableEntry(rest, hash, [key, value]);
         ++_this._collection$_length;
-        _this._collection$_keys = null;
+        _this._keys = null;
       } else {
         index = _this._findBucketIndex$2(bucket, key);
         if (index >= 0)
@@ -30721,7 +31157,7 @@
         else {
           bucket.push(key, value);
           ++_this._collection$_length;
-          _this._collection$_keys = null;
+          _this._keys = null;
         }
       }
     },
@@ -30758,7 +31194,7 @@
       if (index < 0)
         return null;
       --_this._collection$_length;
-      _this._collection$_keys = null;
+      _this._keys = null;
       result = bucket.splice(index, 2)[1];
       if (0 === bucket.length)
         delete rest[hash];
@@ -30774,13 +31210,13 @@
         t2._as(key);
         t3 = _this.$index(0, key);
         action.call$2(key, t3 == null ? t1._as(t3) : t3);
-        if (keys !== _this._collection$_keys)
+        if (keys !== _this._keys)
           throw A.wrapException(A.ConcurrentModificationError$(_this));
       }
     },
     _computeKeys$0() {
       var strings, index, names, entries, i, nums, rest, bucket, $length, i0, _this = this,
-        result = _this._collection$_keys;
+        result = _this._keys;
       if (result != null)
         return result;
       result = A.List_List$filled(_this._collection$_length, null, false, type$.dynamic);
@@ -30816,7 +31252,7 @@
           }
         }
       }
-      return _this._collection$_keys = result;
+      return _this._keys = result;
     },
     _collection$_addHashTableEntry$3(table, key, value) {
       var t1 = A._instanceType(this);
@@ -30824,7 +31260,7 @@
       t1._rest[1]._as(value);
       if (table[key] == null) {
         ++this._collection$_length;
-        this._collection$_keys = null;
+        this._keys = null;
       }
       A._HashMap__setTableEntry(table, key, value);
     },
@@ -30834,7 +31270,7 @@
         value = A._instanceType(this)._rest[1]._as(A._HashMap__getTableEntry(table, key));
         delete table[key];
         --this._collection$_length;
-        this._collection$_keys = null;
+        this._keys = null;
         return value;
       } else
         return null;
@@ -30922,7 +31358,7 @@
     call$1(v) {
       return this.K._is(v);
     },
-    $signature: 11
+    $signature: 10
   };
   A._HashMapKeyIterable.prototype = {
     get$length(_) {
@@ -30949,10 +31385,10 @@
     },
     moveNext$0() {
       var _this = this,
-        keys = _this._collection$_keys,
+        keys = _this._keys,
         offset = _this._offset,
         t1 = _this._collection$_map;
-      if (keys !== t1._collection$_keys)
+      if (keys !== t1._keys)
         throw A.wrapException(A.ConcurrentModificationError$(t1));
       else if (offset >= keys.length) {
         _this._collection$_current = null;
@@ -31003,7 +31439,7 @@
     call$1(v) {
       return this.K._is(v);
     },
-    $signature: 11
+    $signature: 10
   };
   A._HashSet.prototype = {
     _newSet$0() {
@@ -31448,13 +31884,13 @@
     call$2(k, v) {
       this.result.$indexSet(0, this.K._as(k), this.V._as(v));
     },
-    $signature: 113
+    $signature: 101
   };
   A.LinkedHashMap_LinkedHashMap$from_closure.prototype = {
     call$2(k, v) {
       this.result.$indexSet(0, this.K._as(k), this.V._as(v));
     },
-    $signature: 113
+    $signature: 101
   };
   A.LinkedList.prototype = {
     remove$1(_, entry) {
@@ -31903,7 +32339,7 @@
       t2 = A.S(v);
       t1._contents += t2;
     },
-    $signature: 60
+    $signature: 52
   };
   A.UnmodifiableMapBase.prototype = {};
   A._MapBaseValueIterable.prototype = {
@@ -31942,7 +32378,7 @@
   A._MapBaseValueIterator.prototype = {
     moveNext$0() {
       var _this = this,
-        t1 = _this._collection$_keys;
+        t1 = _this._keys;
       if (t1.moveNext$0()) {
         _this._collection$_current = _this._collection$_map.$index(0, t1.get$current());
         return true;
@@ -32539,7 +32975,7 @@
     call$1(each) {
       return this.$this.$index(0, A._asString(each));
     },
-    $signature: 75
+    $signature: 98
   };
   A._JsonMapKeyIterable.prototype = {
     get$length(_) {
@@ -32594,7 +33030,7 @@
       }
       return null;
     },
-    $signature: 79
+    $signature: 108
   };
   A._Utf8Decoder__decoderNonfatal_closure.prototype = {
     call$0() {
@@ -32606,7 +33042,7 @@
       }
       return null;
     },
-    $signature: 79
+    $signature: 108
   };
   A.AsciiCodec.prototype = {
     get$name() {
@@ -33110,7 +33546,7 @@
     call$1(sink) {
       return new A._ConverterStreamEventSink(sink, this.$this.startChunkedConversion$1(sink), type$._ConverterStreamEventSink_dynamic_dynamic);
     },
-    $signature: 230
+    $signature: 229
   };
   A._FusedConverter.prototype = {
     convert$1(input) {
@@ -33419,7 +33855,7 @@
       B.JSArray_methods.$indexSet(t1, t2.i++, key);
       B.JSArray_methods.$indexSet(t1, t2.i++, value);
     },
-    $signature: 60
+    $signature: 52
   };
   A._JsonPrettyPrintMixin.prototype = {
     writeList$1(list) {
@@ -33483,7 +33919,7 @@
       B.JSArray_methods.$indexSet(t1, t2.i++, key);
       B.JSArray_methods.$indexSet(t1, t2.i++, value);
     },
-    $signature: 60
+    $signature: 52
   };
   A._JsonStringStringifier.prototype = {
     get$_partialResult() {
@@ -35143,7 +35579,7 @@
         return 0;
       return A.int_parse(matched, null, null);
     },
-    $signature: 130
+    $signature: 96
   };
   A.DateTime_parse_parseMilliAndMicroseconds.prototype = {
     call$1(matched) {
@@ -35160,7 +35596,7 @@
       }
       return result;
     },
-    $signature: 130
+    $signature: 96
   };
   A.Duration.prototype = {
     get$inMicroseconds() {
@@ -35663,7 +36099,7 @@
     call$2(msg, position) {
       throw A.wrapException(A.FormatException$("Illegal IPv6 address, " + msg, this.host, position));
     },
-    $signature: 141
+    $signature: 146
   };
   A._Uri.prototype = {
     get$_text() {
@@ -36349,13 +36785,13 @@
       } else
         return o;
     },
-    $signature: 42
+    $signature: 33
   };
   A.promiseToFuture_closure.prototype = {
     call$1(r) {
       return this.completer.complete$1(this.T._eval$1("0/?")._as(r));
     },
-    $signature: 33
+    $signature: 38
   };
   A.promiseToFuture_closure0.prototype = {
     call$1(e) {
@@ -36363,7 +36799,7 @@
         return this.completer.completeError$1(new A.NullRejectionException(e === undefined));
       return this.completer.completeError$1(e);
     },
-    $signature: 33
+    $signature: 38
   };
   A.dartify_convert.prototype = {
     call$1(o) {
@@ -36410,7 +36846,7 @@
       }
       return o;
     },
-    $signature: 42
+    $signature: 33
   };
   A._JSRandom.prototype = {
     nextInt$1(max) {
@@ -36597,7 +37033,7 @@
         t1.path = t3 + "?" + $name + "=" + value;
       t1.containsQueryParameter = true;
     },
-    $signature: 132
+    $signature: 90
   };
   A.ApiRequester__request_closure.prototype = {
     call$2(key, values) {
@@ -36606,7 +37042,7 @@
       for (t1 = J.get$iterator$ax(type$.List_String._as(values)), t2 = this.addQueryParameter; t1.moveNext$0();)
         t2.call$2(key, t1.get$current());
     },
-    $signature: 163
+    $signature: 188
   };
   A.ApiRequester__request_simpleUpload.prototype = {
     call$0() {
@@ -36620,7 +37056,7 @@
       t3.$indexSet(0, "content-length", A.S(t1.length));
       return t2._httpClient.send$1(A.RequestImpl$(_this.method, _this.uri, t3, bodyStream));
     },
-    $signature: 101
+    $signature: 88
   };
   A.ApiRequester__request_simpleRequest.prototype = {
     call$0() {
@@ -36644,7 +37080,7 @@
         t2.$indexSet(0, "range", "bytes=" + t3.start + "-" + t3.end);
       return t1._httpClient.send$1(A.RequestImpl$(_this.method, _this.uri, t2, new A._ControllerStream(bodyController, A._instanceType(bodyController)._eval$1("_ControllerStream<1>"))));
     },
-    $signature: 101
+    $signature: 88
   };
   A.validateResponse_closure.prototype = {
     call$1(e) {
@@ -36658,7 +37094,7 @@
       A._asStringQ(e.$index(0, "sendReport"));
       return new A.ApiRequestErrorDetail();
     },
-    $signature: 219
+    $signature: 216
   };
   A.MultipartMediaUploader.prototype = {
     upload$0() {
@@ -36739,7 +37175,7 @@
       });
       return A._asyncStartSync($async$call$0, $async$completer);
     },
-    $signature: 14
+    $signature: 15
   };
   A.RequestImpl.prototype = {
     RequestImpl$4$headers$stream(method, url, headers, stream) {
@@ -36876,7 +37312,7 @@
         return null;
       t1.completeError$2(error, stackTrace);
     },
-    $signature: 17
+    $signature: 14
   };
   A.ErrorResult.prototype = {
     complete$1(completer) {
@@ -36927,7 +37363,7 @@
     call$0() {
       return this.subscription._readLocal$0().cancel$0();
     },
-    $signature: 3
+    $signature: 1
   };
   A.SingleSubscriptionTransformer_bind_closure0.prototype = {
     call$1(value) {
@@ -37045,7 +37481,7 @@
       type$.StackTrace._as(stackTrace);
       this.$this._addResult$1(new A.ErrorResult(error, stackTrace));
     },
-    $signature: 17
+    $signature: 14
   };
   A.StreamQueue__ensureListening_closure0.prototype = {
     call$0() {
@@ -37199,6 +37635,9 @@
     },
     listen$3$onDone$onError(onData, onDone, onError) {
       return this.listen$4$cancelOnError$onDone$onError(onData, null, onDone, onError);
+    },
+    listen$3$cancelOnError$onDone(onData, cancelOnError, onDone) {
+      return this.listen$4$cancelOnError$onDone$onError(onData, cancelOnError, onDone, null);
     }
   };
   A._CancelOnErrorSubscriptionWrapper.prototype = {
@@ -37212,7 +37651,7 @@
       type$.StackTrace._as(stackTrace);
       this.$this.super$DelegatingStreamSubscription$cancel().whenComplete$1(new A._CancelOnErrorSubscriptionWrapper_onError__closure(this.handleError, error, stackTrace));
     },
-    $signature: 17
+    $signature: 14
   };
   A._CancelOnErrorSubscriptionWrapper_onError__closure.prototype = {
     call$0() {
@@ -37223,7 +37662,7 @@
       else if (type$.dynamic_Function_Object._is(t1))
         t1.call$1(_this.error);
     },
-    $signature: 4
+    $signature: 5
   };
   A.CanonicalizedMap.prototype = {
     $index(_, key) {
@@ -37932,7 +38371,7 @@
       t1.b = c + ((t6 << modShift | B.JSInt_methods._shrReceiverPositive$1(t6, 32 - modShift)) >>> 0) >>> 0;
       t1.a = temp;
     },
-    $signature: 310
+    $signature: 308
   };
   A.Column.prototype = {
     get$precedence() {
@@ -37952,7 +38391,7 @@
       if (value === $) {
         t1 = type$.Completer_dynamic;
         t2 = A.HashSet_HashSet(type$.nullable_StreamKey);
-        t3 = A.StreamController_StreamController$broadcast(true, type$.Set_TableUpdate);
+        t3 = A.StreamController_StreamController$broadcast(null, true, type$.Set_TableUpdate);
         _this.__DriftClient__streamStore_FI !== $ && A.throwLateFieldADI("_streamStore");
         value = _this.__DriftClient__streamStore_FI = new A._RemoteStreamQueryStore(_this, A.LinkedHashSet_LinkedHashSet$_empty(t1), A.LinkedHashMap_LinkedHashMap$_empty(type$.StreamKey, type$.QueryStream_Object), t2, false, A.LinkedHashSet_LinkedHashSet$_empty(t1), t3);
       }
@@ -37981,7 +38420,7 @@
     call$1(_) {
       return null;
     },
-    $signature: 323
+    $signature: 318
   };
   A._BaseExecutor.prototype = {
     get$dialect() {
@@ -38080,7 +38519,7 @@
   A._BaseExecutor__runRequest__closure.prototype = {
     call$2(_, __) {
     },
-    $signature: 334
+    $signature: 330
   };
   A._RemoteQueryExecutor.prototype = {
     ensureOpen$1(user) {
@@ -38113,7 +38552,7 @@
     call$1(payload) {
       return A._asBool(type$.PrimitiveResponsePayload._as(payload).message);
     },
-    $signature: 361
+    $signature: 341
   };
   A._RemoteTransactionExecutor.prototype = {
     get$dialect() {
@@ -38313,19 +38752,19 @@
   A._RemoteStreamQueryStore_handleTableUpdates_closure.prototype = {
     call$1(_) {
     },
-    $signature: 30
+    $signature: 23
   };
   A._RemoteStreamQueryStore_handleTableUpdates_closure0.prototype = {
     call$1(e) {
       return A._asObject(e) instanceof A.ConnectionClosedException;
     },
-    $signature: 368
+    $signature: 354
   };
   A._RemoteStreamQueryStore_handleTableUpdates_closure1.prototype = {
     call$0() {
       this.$this._awaitingUpdates.remove$1(0, this.completer);
     },
-    $signature: 4
+    $signature: 5
   };
   A.DriftCommunication.prototype = {
     DriftCommunication$3$debugLog$serialize(_channel, debugLog, serialize) {
@@ -38468,7 +38907,7 @@
       });
       return A._asyncStartSync($async$call$1, $async$completer);
     },
-    $signature: 387
+    $signature: 373
   };
   A._PendingRequest.prototype = {
     completeWithError$2(error, trace) {
@@ -38785,7 +39224,7 @@
       }
       return t1;
     },
-    $signature: 78
+    $signature: 84
   };
   A.Message.prototype = {};
   A.Request0.prototype = {
@@ -39418,14 +39857,14 @@
       var serialized = A._asJSObject(this._box_0.payload);
       return new A.Request0(A._asInt(serialized.i), this.$this._deserializeRequest$1(serialized.p));
     },
-    $signature: 559
+    $signature: 419
   };
   A.WebProtocol_deserialize_decodeSuccess.prototype = {
     call$0() {
       var serialized = A._asJSObject(this._box_0.payload);
       return new A.SuccessResponse(A._asInt(serialized.i), this.$this._deserializeResponse$1(serialized.p));
     },
-    $signature: 579
+    $signature: 544
   };
   A.WebProtocol__serializeRequest_closure.prototype = {
     call$1(e) {
@@ -39461,7 +39900,7 @@
       t1 = t1 == null ? null : A._asInt(A._asDouble(t1));
       return new A.ExecuteBatchedStatement(new A.BatchedStatements(sqlStatements, t5), t1);
     },
-    $signature: 588
+    $signature: 590
   };
   A.WebProtocol__deserializeRequest_readBatched_closure.prototype = {
     call$1(e) {
@@ -39474,7 +39913,7 @@
       type$.JSArray_nullable_Object._as(e);
       return e;
     },
-    $signature: 662
+    $signature: 599
   };
   A.WebProtocol__deserializeRequest_closure.prototype = {
     call$1(e) {
@@ -39505,7 +39944,7 @@
       }
       return new A.TableUpdate(t1, table);
     },
-    $signature: 139
+    $signature: 623
   };
   A.WebProtocol__serializeSelectResult_closure.prototype = {
     call$1(e) {
@@ -39633,7 +40072,7 @@
       B.JSArray_methods.add$1(t1, this.sql);
       return newIndex;
     },
-    $signature: 24
+    $signature: 26
   };
   A.DatabaseConnection.prototype = {
     beginExclusive$0() {
@@ -39870,7 +40309,7 @@
       type$.MultiStreamController_Set_TableUpdate._as(controller);
       this.engine.connection.streamQueries.updatesForSync$1(this.query).pipe$1(controller);
     },
-    $signature: 146
+    $signature: 141
   };
   A.DatabaseConnectionUser_doWhenOpened_closure.prototype = {
     call$1(_) {
@@ -39888,20 +40327,20 @@
     call$3(executor, sql, vars) {
       return executor.runUpdate$2(sql, vars);
     },
-    $signature: 80
+    $signature: 102
   };
   A.DatabaseConnectionUser_customInsert_closure.prototype = {
     call$3(executor, sql, vars) {
       return executor.runInsert$2(sql, vars);
     },
-    $signature: 80
+    $signature: 102
   };
   A.DatabaseConnectionUser__customWrite_closure.prototype = {
     call$1(v) {
       type$.Variable_Object._as(v);
       return A.BaseSqlType_mapToSqlParameter(this.ctx, v._customType, v.value, v.$ti._precomputed1);
     },
-    $signature: 83
+    $signature: 120
   };
   A.DatabaseConnectionUser__customWrite_closure0.prototype = {
     call$1(e) {
@@ -39915,7 +40354,7 @@
     call$1(executor) {
       return executor.runCustom$2(this.statement, this.args);
     },
-    $signature: 155
+    $signature: 154
   };
   A.DatabaseConnectionUser_transaction_closure.prototype = {
     call$1(executor) {
@@ -39923,7 +40362,7 @@
         t1 = this.$this,
         t2 = type$.QueryStream_Object,
         t3 = A.HashSet_HashSet(type$.nullable_StreamKey),
-        t4 = A.StreamController_StreamController$broadcast(true, type$.Set_TableUpdate),
+        t4 = A.StreamController_StreamController$broadcast(null, true, type$.Set_TableUpdate),
         transaction = new A.Transaction(t1, A.DatabaseConnection$(transactionExecutor, null, new A._TransactionStreamStore(t1.connection.streamQueries, A.LinkedHashSet_LinkedHashSet$_empty(type$.TableUpdate), A.LinkedHashSet_LinkedHashSet$_empty(t2), A.LinkedHashMap_LinkedHashMap$_empty(type$.StreamKey, t2), t3, false, A.LinkedHashSet_LinkedHashSet$_empty(type$.Completer_dynamic), t4)));
       t2 = this.T;
       return t1._runConnectionZoned$1$2(transaction, new A.DatabaseConnectionUser_transaction__closure(t1, transactionExecutor, this.action, transaction, t2), t2);
@@ -40130,7 +40569,7 @@
     call$1(_) {
       return this.batch._commit$0();
     },
-    $signature: 156
+    $signature: 155
   };
   A._ExclusiveExecutor.prototype = {
     get$attachedDatabase() {
@@ -40212,7 +40651,7 @@
       });
       return A._asyncStartSync($async$call$0, $async$completer);
     },
-    $signature: 3
+    $signature: 1
   };
   A.DriftRuntimeOptions.prototype = {};
   A.DriftRuntimeOptions_debugPrint_closure.prototype = {
@@ -40221,7 +40660,7 @@
         t2 = A._instanceType(t1);
       return A.MappedIterable_MappedIterable(t1, t2._eval$1("String?(Iterable.E)")._as(new A.DriftRuntimeOptions_debugPrint__closure()), t2._eval$1("Iterable.E"), type$.nullable_String).forEach$1(0, A.core__print$closure());
     },
-    $signature: 88
+    $signature: 128
   };
   A.DriftRuntimeOptions_debugPrint__closure.prototype = {
     call$1(m) {
@@ -40230,7 +40669,7 @@
         return A.ioore(t1, 0);
       return t1[0];
     },
-    $signature: 160
+    $signature: 158
   };
   A.StreamQueryUpdateRules.prototype = {
     apply$1(input) {
@@ -40351,7 +40790,7 @@
     call$2(meta, result) {
       this.messageBuilder._contents += "\u2022 " + type$.VerificationMeta._as(meta).dartGetterName + ": " + A.S(type$.VerificationResult._as(result).message) + "\n";
     },
-    $signature: 161
+    $signature: 160
   };
   A.TrackedDatabase.prototype = {};
   A.DriftServiceExtension.prototype = {
@@ -40544,14 +40983,14 @@
     call$1(e) {
       return type$.TrackedDatabase._as(e).id === this.databaseId;
     },
-    $signature: 162
+    $signature: 161
   };
   A.DriftServiceExtension__handle_closure0.prototype = {
     call$1($event) {
       var t1 = type$.nullable_Object;
       A.postEvent("drift:event", A.LinkedHashMap_LinkedHashMap$_literal(["subscription", this.id, "payload", B.C_DriftProtocol.encodePayload$1(new A.NotifyTablesUpdated(type$.Set_TableUpdate._as($event).toList$0(0)))], t1, t1));
     },
-    $signature: 89
+    $signature: 131
   };
   A.DriftServiceExtension__handle_closure1.prototype = {
     call$1(rows) {
@@ -40562,13 +41001,13 @@
         t1.push(t2.get$current().data);
       return new A.SelectResult(t1);
     },
-    $signature: 164
+    $signature: 163
   };
   A.DriftServiceExtension__handle_closure2.prototype = {
     call$1(_) {
       return 0;
     },
-    $signature: 166
+    $signature: 164
   };
   A.DriftServiceExtension__handle_closure3.prototype = {
     call$0() {
@@ -40592,7 +41031,7 @@
       });
       return A._asyncStartSync($async$call$0, $async$completer);
     },
-    $signature: 14
+    $signature: 15
   };
   A.DriftServiceExtension__handle_closure4.prototype = {
     call$0() {
@@ -40649,7 +41088,7 @@
       });
       return A._asyncStartSync($async$call$0, $async$completer);
     },
-    $signature: 14
+    $signature: 15
   };
   A.DriftServiceExtension_registerIfNeeded_closure.prototype = {
     call$2(method, parameters) {
@@ -40658,20 +41097,20 @@
       t1 = type$.ServiceExtensionResponse;
       return A.FutureExtensions_onError(A.Future_Future(new A.DriftServiceExtension_registerIfNeeded__closure(this.extension, type$.Map_String_String._as(parameters)), type$.nullable_Object).then$1$1(new A.DriftServiceExtension_registerIfNeeded__closure0(), t1), new A.DriftServiceExtension_registerIfNeeded__closure1(), null, t1, type$.Object);
     },
-    $signature: 167
+    $signature: 166
   };
   A.DriftServiceExtension_registerIfNeeded__closure.prototype = {
     call$0() {
       return this.extension._service_extension$_handle$1(this.parameters);
     },
-    $signature: 181
+    $signature: 167
   };
   A.DriftServiceExtension_registerIfNeeded__closure0.prototype = {
     call$1(value) {
       B.C_JsonCodec.encode$1(A.LinkedHashMap_LinkedHashMap$_literal(["r", value], type$.String, type$.nullable_Object));
       return new A.ServiceExtensionResponse();
     },
-    $signature: 182
+    $signature: 181
   };
   A.DriftServiceExtension_registerIfNeeded__closure1.prototype = {
     call$2(error, stackTrace) {
@@ -40680,7 +41119,7 @@
       A.ServiceExtensionResponse__validateErrorCode(-32016);
       return new A.ServiceExtensionResponse();
     },
-    $signature: 184
+    $signature: 182
   };
   A.CollectCreateStatements.prototype = {
     beginExclusive$0() {
@@ -40895,7 +41334,7 @@
       t1._log$2(t2, t3);
       return t1.get$impl().runSelect$2(t2, t3);
     },
-    $signature: 188
+    $signature: 184
   };
   A._BaseExecutor_runUpdate_closure.prototype = {
     call$0() {
@@ -40905,7 +41344,7 @@
       t1._log$2(t2, t3);
       return t1.get$impl().runUpdate$2(t2, t3);
     },
-    $signature: 90
+    $signature: 80
   };
   A._BaseExecutor_runInsert_closure.prototype = {
     call$0() {
@@ -40915,7 +41354,7 @@
       t1._log$2(t2, t3);
       return t1.get$impl().runInsert$2(t2, t3);
     },
-    $signature: 90
+    $signature: 80
   };
   A._BaseExecutor_runCustom_closure.prototype = {
     call$0() {
@@ -40928,7 +41367,7 @@
       t1._log$2(t2, resolvedArgs);
       return t1.get$impl().runCustom$2(t2, resolvedArgs);
     },
-    $signature: 3
+    $signature: 1
   };
   A._BaseExecutor_runBatched_closure.prototype = {
     call$0() {
@@ -40936,7 +41375,7 @@
       t1.get$logStatements();
       return t1.get$impl().runBatched$1(this.statements);
     },
-    $signature: 3
+    $signature: 1
   };
   A._TransactionExecutor.prototype = {
     _checkCanOpen$0() {
@@ -41128,13 +41567,13 @@
       });
       return A._asyncStartSync($async$call$0, $async$completer);
     },
-    $signature: 14
+    $signature: 15
   };
   A._StatementBasedTransactionExecutor_ensureOpen_closure0.prototype = {
     call$0() {
       return this.parent._waitingChildExecutors--;
     },
-    $signature: 24
+    $signature: 26
   };
   A.DelegatedDatabase.prototype = {
     get$impl() {
@@ -41313,7 +41752,7 @@
       });
       return A._asyncStartSync($async$call$0, $async$completer);
     },
-    $signature: 199
+    $signature: 66
   };
   A.DelegatedDatabase_close_closure.prototype = {
     call$0() {
@@ -41325,7 +41764,7 @@
       } else
         return A.Future_Future$value(null, type$.void);
     },
-    $signature: 3
+    $signature: 1
   };
   A._BeforeOpeningExecutor.prototype = {
     beginTransactionInContext$1(context) {
@@ -41401,7 +41840,7 @@
       });
       return A._asyncStartSync($async$call$0, $async$completer);
     },
-    $signature: 14
+    $signature: 15
   };
   A.QueryResult.prototype = {
     get$asMap(_) {
@@ -41423,7 +41862,7 @@
       }
       return t1;
     },
-    $signature: 201
+    $signature: 199
   };
   A.QueryInterceptor.prototype = {};
   A._InterceptedExecutor.prototype = {
@@ -41604,14 +42043,14 @@
     call$1(e) {
       return type$.Set_TableUpdate._as(e).where$1(0, this.query.get$matches()).toSet$0(0);
     },
-    $signature: 202
+    $signature: 201
   };
   A.StreamQueryStore_updatesForSync_closure0.prototype = {
     call$1(e) {
       type$.Set_TableUpdate._as(e);
       return e.get$isNotEmpty(e);
     },
-    $signature: 213
+    $signature: 202
   };
   A.StreamQueryStore_markAsClosed_closure.prototype = {
     call$0() {
@@ -41820,7 +42259,7 @@
               t1 = A._setArrayType([], type$.JSArray_Future_dynamic);
               for (t2 = $async$self._listeners, t3 = t2.length, _i = 0; _i < t2.length; t2.length === t3 || (0, A.throwConcurrentModificationError)(t2), ++_i)
                 t1.push(t2[_i].controller.close$0());
-              listenersDone = A.Future_wait(t1, type$.dynamic);
+              listenersDone = A.Future_wait(t1, false, type$.dynamic);
               B.JSArray_methods.clear$0(t2);
               $async$goto = 2;
               return A._asyncAwait(listenersDone, $async$close$0);
@@ -41873,7 +42312,7 @@
       B.JSArray_methods.remove$1(t2._listeners, t1);
       t2._onCancelOrPause$0();
     },
-    $signature: 4
+    $signature: 5
   };
   A.QueryStream__stream__closure1.prototype = {
     call$0() {
@@ -41896,7 +42335,7 @@
       if (t1._listeners.length - t1._pausedListeners > 0)
         t1.fetchAndEmitData$0();
     },
-    $signature: 89
+    $signature: 131
   };
   A.QueryStream__onCancelOrPause_closure.prototype = {
     call$0() {
@@ -41912,7 +42351,7 @@
   A.QueryStream_fetchAndEmitData_closure.prototype = {
     call$1(_) {
     },
-    $signature: 216
+    $signature: 213
   };
   A._QueryStreamListener.prototype = {
     add$1(_, row) {
@@ -41939,7 +42378,7 @@
     call$1(q) {
       return type$.TableUpdateQuery._as(q).matches$1(this.update);
     },
-    $signature: 222
+    $signature: 219
   };
   A.SpecificUpdateQuery.prototype = {
     matches$1(update) {
@@ -42642,7 +43081,7 @@
       t1._contents = (t1._contents += " ") + this.constraint;
       return t1;
     },
-    $signature: 229
+    $signature: 226
   };
   A.TableInfo.prototype = {
     get$$$primaryKey() {
@@ -42861,7 +43300,7 @@
       });
       return A._asyncStartSync($async$call$1, $async$completer);
     },
-    $signature: 98
+    $signature: 125
   };
   A.InsertStatement_insertOnConflictUpdate_closure.prototype = {
     call$1(_) {
@@ -42901,7 +43340,7 @@
         t3._contents += ")";
       }
     },
-    $signature: 239
+    $signature: 230
   };
   A.InsertMode.prototype = {
     _enumToString$0() {
@@ -42968,7 +43407,7 @@
       component.writeInto$1(this.context);
       t1.needsWhitespace = true;
     },
-    $signature: 240
+    $signature: 239
   };
   A.Selectable.prototype = {
     getSingleOrNull$0() {
@@ -43048,19 +43487,19 @@
       type$.Variable_Object._as(v);
       return A.BaseSqlType_mapToSqlParameter(this.ctx, v._customType, v.value, v.$ti._precomputed1);
     },
-    $signature: 83
+    $signature: 120
   };
   A.CustomSelectStatement__executeRaw_closure.prototype = {
     call$1(e) {
       return e.runSelect$2(this.$this.query, this.mappedArgs);
     },
-    $signature: 59
+    $signature: 51
   };
   A.CustomSelectStatement__mapDbResponse_closure.prototype = {
     call$1(row) {
       return new A.QueryRow(type$.Map_of_String_and_nullable_Object._as(row), this.$this._db);
     },
-    $signature: 247
+    $signature: 245
   };
   A.QueryRow.prototype = {
     read$1$1(key, $T) {
@@ -43135,7 +43574,7 @@
     call$0() {
       return this.$this._getRaw$1(this.query);
     },
-    $signature: 248
+    $signature: 247
   };
   A.SimpleSelectStatement__getRaw_closure.prototype = {
     call$1(e) {
@@ -43143,7 +43582,7 @@
         t2 = t1.buffer._contents;
       return e.runSelect$2(t2.charCodeAt(0) == 0 ? t2 : t2, t1._boundVariables);
     },
-    $signature: 59
+    $signature: 51
   };
   A.SimpleSelectStatement_orderBy_closure.prototype = {
     call$1(t) {
@@ -43505,7 +43944,7 @@
       return A._asyncStartSync($async$_mapWithStructure$2, $async$completer);
     },
     _mapResponse$1(rows) {
-      return A.Future_wait(J.map$1$1$ax(type$.List_Map_of_String_and_nullable_Object._as(rows), new A.JoinedSelectStatement__mapResponse_closure(this, this._computeResultStructure$0()), type$.Future_TypedResult), type$.TypedResult);
+      return A.Future_wait(J.map$1$1$ax(type$.List_Map_of_String_and_nullable_Object._as(rows), new A.JoinedSelectStatement__mapResponse_closure(this, this._computeResultStructure$0()), type$.Future_TypedResult), false, type$.TypedResult);
     },
     _warnAboutDuplicate$3(cause, trace, table) {
       type$.StackTrace._as(trace);
@@ -43592,19 +44031,19 @@
       });
       return A._asyncStartSync($async$call$1, $async$completer);
     },
-    $signature: 59
+    $signature: 51
   };
   A.JoinedSelectStatement__mapWithStructure_closure.prototype = {
     call$1(c) {
       return this.row.$index(0, this.prefix + type$.GeneratedColumn_Object._as(c).$$name) != null;
     },
-    $signature: 275
+    $signature: 249
   };
   A.JoinedSelectStatement__mapResponse_closure.prototype = {
     call$1(row) {
       return this.$this._mapWithStructure$2(this.structure, type$.Map_of_String_and_nullable_Object._as(row));
     },
-    $signature: 283
+    $signature: 278
   };
   A._LazyExpressionMap.prototype = {
     $index(_, key) {
@@ -43629,7 +44068,7 @@
       t2.toString;
       return t1._rawData.readNullableWithType$1$2(t3, t2, type$.Object);
     },
-    $signature: 288
+    $signature: 286
   };
   A._ResultStructure.prototype = {};
   A.UpdateStatement.prototype = {
@@ -43731,7 +44170,7 @@
       t2._contents = (t2._contents += t3 + columnName + t3) + " = ";
       variable.writeInto$1(t1);
     },
-    $signature: 290
+    $signature: 291
   };
   A.UpdateStatement__performQuery_closure.prototype = {
     call$1(e) {
@@ -43762,7 +44201,7 @@
       });
       return A._asyncStartSync($async$call$1, $async$completer);
     },
-    $signature: 98
+    $signature: 125
   };
   A._CustomSelectStatement_Object_Selectable.prototype = {};
   A._JoinedSelectStatement_Query_LimitContainerMixin.prototype = {};
@@ -43958,7 +44397,7 @@
       }
       return map;
     },
-    $signature: 295
+    $signature: 293
   };
   A.Sqlite3Delegate.prototype = {
     open$1(db) {
@@ -44200,7 +44639,7 @@
     call$1(args) {
       return Date.now();
     },
-    $signature: 305
+    $signature: 298
   };
   A._unaryNumFunction_closure.prototype = {
     call$1(args) {
@@ -44210,7 +44649,7 @@
       else
         return null;
     },
-    $signature: 103
+    $signature: 122
   };
   A.MapAndAwait_mapAsyncAndAwait_closure.prototype = {
     call$1(e) {
@@ -44296,7 +44735,7 @@
       if (t1._synchronized$_last === this.blockReleasedLock)
         t1._synchronized$_last = null;
     },
-    $signature: 4
+    $signature: 5
   };
   A.Lock_synchronized_closure.prototype = {
     call$1(_) {
@@ -44307,7 +44746,7 @@
     }
   };
   A.BroadcastStreamQueryStore.prototype = {
-    _handleMessage$1(message) {
+    _broadcast_stream_queries$_handleMessage$1(message) {
       var t1, t2, t3, t4, t5, t6,
         data = message.data;
       if (!A._asBool(init.G.Array.isArray(data)))
@@ -44365,7 +44804,7 @@
         }
       }
     },
-    $signature: 37
+    $signature: 36
   };
   A.WebPortToChannel_channel_closure0.prototype = {
     call$1(e) {
@@ -44375,7 +44814,7 @@
       else
         t1.postMessage(A.jsify(e));
     },
-    $signature: 5
+    $signature: 4
   };
   A.WebPortToChannel_channel_closure1.prototype = {
     call$0() {
@@ -44717,8 +45156,8 @@
                   t2 = connection.executor;
                   t3 = connection.connectionData;
                   t1 = A._asJSObject(new t1.BroadcastChannel("drift_updates_" + $name));
-                  t4 = new A.BroadcastStreamQueryStore(t1, A.LinkedHashMap_LinkedHashMap$_empty(type$.StreamKey, type$.QueryStream_Object), A.HashSet_HashSet(type$.nullable_StreamKey), false, A.LinkedHashSet_LinkedHashSet$_empty(type$.Completer_dynamic), A.StreamController_StreamController$broadcast(true, type$.Set_TableUpdate));
-                  t4._messageFromChannel = A._EventStreamSubscription$(t1, "message", type$.nullable_void_Function_JSObject._as(t4.get$_handleMessage()), false, type$.JSObject);
+                  t4 = new A.BroadcastStreamQueryStore(t1, A.LinkedHashMap_LinkedHashMap$_empty(type$.StreamKey, type$.QueryStream_Object), A.HashSet_HashSet(type$.nullable_StreamKey), false, A.LinkedHashSet_LinkedHashSet$_empty(type$.Completer_dynamic), A.StreamController_StreamController$broadcast(null, true, type$.Set_TableUpdate));
+                  t4._messageFromChannel = A._EventStreamSubscription$(t1, "message", type$.nullable_void_Function_JSObject._as(t4.get$_broadcast_stream_queries$_handleMessage()), false, type$.JSObject);
                   connection = A.DatabaseConnection$(t2, t3, t4);
                 }
               $async$returnValue = connection;
@@ -44772,7 +45211,7 @@
       listener.set$onPause(t1.subscription.get$pause());
       listener.set$onResume(t1.subscription.get$resume());
     },
-    $signature: 319
+    $signature: 324
   };
   A._readMessages_closure_stop.prototype = {
     call$0() {
@@ -44787,7 +45226,7 @@
       if (this._box_0.subscription != null)
         this.listener.addSync$1(new A.WorkerError("Worker emitted an error through onError."));
     },
-    $signature: 37
+    $signature: 36
   };
   A._readMessages__closure0.prototype = {
     call$0() {
@@ -44797,7 +45236,7 @@
         t2.cancel$0();
       t1.subscription = null;
     },
-    $signature: 4
+    $signature: 5
   };
   A._extension_0_get_nextNoError_closure.prototype = {
     call$1(value) {
@@ -44806,7 +45245,7 @@
         throw A.wrapException(value);
       return value;
     },
-    $signature: 322
+    $signature: 327
   };
   A.ProtocolVersion.prototype = {
     _enumToString$0() {
@@ -44828,7 +45267,7 @@
       t1 = transfer == null ? B.List_empty13 : transfer;
       this.worker.postMessage(msg, t1);
     },
-    $signature: 121
+    $signature: 119
   };
   A.WasmInitializationMessage_sendToPort_closure.prototype = {
     call$2(msg, transfer) {
@@ -44837,7 +45276,7 @@
       t1 = transfer == null ? B.List_empty13 : transfer;
       this.port.postMessage(msg, t1);
     },
-    $signature: 121
+    $signature: 119
   };
   A.CompatibilityResult.prototype = {};
   A.SharedWorkerCompatibilityResult.prototype = {
@@ -44900,7 +45339,7 @@
     call$1(index) {
       return A._asBool(J.$index$asx(this.asList, index));
     },
-    $signature: 324
+    $signature: 331
   };
   A.WorkerError.prototype = {
     sendTo$1(sender) {
@@ -45252,13 +45691,13 @@
     call$1(e) {
       return type$.WasmStorageImplementation._as(e).index;
     },
-    $signature: 325
+    $signature: 332
   };
   A.WasmDatabase_open_closure0.prototype = {
     call$1(e) {
       return type$.WasmStorageImplementation._as(e).storageApi === this.currentDb;
     },
-    $signature: 331
+    $signature: 333
   };
   A._WasmDelegate.prototype = {
     openDatabase$0() {
@@ -45913,7 +46352,7 @@
     call$1(value) {
       return A.Label$fromJson(type$.Map_String_dynamic._as(value));
     },
-    $signature: 332
+    $signature: 340
   };
   A.FileLinkShareMetadata.prototype = {
     toJson$0() {
@@ -46166,7 +46605,7 @@
     call$2(key, value) {
       return new A.MapEntry(A._asString(key), A._asStringQ(value), type$.MapEntry_of_String_and_nullable_String);
     },
-    $signature: 124
+    $signature: 133
   };
   A.File$fromJson_closure0.prototype = {
     call$1(value) {
@@ -46182,19 +46621,19 @@
       t5 = value.containsKey$1(_s15_0) ? A.DateTime_parse(A._asString(value.$index(0, _s15_0))) : null;
       return new A.ContentRestriction(t2, t3, t4, t1, t5, A._asBoolQ(value.$index(0, "systemRestricted")), A._asStringQ(value.$index(0, "type")));
     },
-    $signature: 341
+    $signature: 342
   };
   A.File$fromJson_closure1.prototype = {
     call$2(key, value) {
       return new A.MapEntry(A._asString(key), A._asString(value), type$.MapEntry_String_String);
     },
-    $signature: 346
+    $signature: 349
   };
   A.File$fromJson_closure2.prototype = {
     call$1(value) {
       return A.User$fromJson(type$.Map_String_dynamic._as(value));
     },
-    $signature: 73
+    $signature: 114
   };
   A.File$fromJson_closure3.prototype = {
     call$1(value) {
@@ -46212,13 +46651,13 @@
     call$1(value) {
       return A.Permission$fromJson(type$.Map_String_dynamic._as(value));
     },
-    $signature: 369
+    $signature: 380
   };
   A.File$fromJson_closure6.prototype = {
     call$2(key, value) {
       return new A.MapEntry(A._asString(key), A._asStringQ(value), type$.MapEntry_of_String_and_nullable_String);
     },
-    $signature: 124
+    $signature: 133
   };
   A.File$fromJson_closure7.prototype = {
     call$1(value) {
@@ -46249,7 +46688,7 @@
     call$1(value) {
       return A.File$fromJson(type$.Map_String_dynamic._as(value));
     },
-    $signature: 333
+    $signature: 381
   };
   A.Label.prototype = {
     toJson$0() {
@@ -46274,7 +46713,7 @@
     call$2(key, value) {
       return new A.MapEntry(A._asString(key), A.LabelField$fromJson(type$.Map_String_dynamic._as(value)), type$.MapEntry_String_LabelField);
     },
-    $signature: 388
+    $signature: 399
   };
   A.LabelField.prototype = {
     toJson$0() {
@@ -46315,7 +46754,7 @@
     call$1(value) {
       return A.DateTime_parse(A._asString(value));
     },
-    $signature: 389
+    $signature: 339
   };
   A.LabelField$fromJson_closure0.prototype = {
     call$1(value) {
@@ -46339,14 +46778,14 @@
     call$1(value) {
       return A.User$fromJson(type$.Map_String_dynamic._as(value));
     },
-    $signature: 73
+    $signature: 114
   };
   A.LabelField_toJson_closure.prototype = {
     call$1(value) {
       type$.DateTime._as(value);
       return B.JSString_methods.padLeft$2(B.JSInt_methods.toString$0(A.Primitives_getYear(value)), 4, "0") + "-" + B.JSString_methods.padLeft$2(B.JSInt_methods.toString$0(A.Primitives_getMonth(value)), 2, "0") + "-" + B.JSString_methods.padLeft$2(B.JSInt_methods.toString$0(A.Primitives_getDay(value)), 2, "0");
     },
-    $signature: 390
+    $signature: 401
   };
   A.PermissionPermissionDetails.prototype = {
     toJson$0() {
@@ -46446,14 +46885,14 @@
       type$.Map_String_dynamic._as(value);
       return new A.PermissionPermissionDetails(A._asBoolQ(value.$index(0, "inherited")), A._asStringQ(value.$index(0, "inheritedFrom")), A._asStringQ(value.$index(0, "permissionType")), A._asStringQ(value.$index(0, "role")));
     },
-    $signature: 399
+    $signature: 402
   };
   A.Permission$fromJson_closure0.prototype = {
     call$1(value) {
       type$.Map_String_dynamic._as(value);
       return new A.PermissionTeamDrivePermissionDetails(A._asBoolQ(value.$index(0, "inherited")), A._asStringQ(value.$index(0, "inheritedFrom")), A._asStringQ(value.$index(0, "role")), A._asStringQ(value.$index(0, "teamDrivePermissionType")));
     },
-    $signature: 406
+    $signature: 412
   };
   A.User.prototype = {
     toJson$0() {
@@ -46673,12 +47112,12 @@
     call$1(_) {
       type$.List_int._as(_);
     },
-    $signature: 76
+    $signature: 105
   };
   A.RetryClient_send_closure0.prototype = {
     call$1(_) {
     },
-    $signature: 30
+    $signature: 23
   };
   A.RequestAbortedException.prototype = {};
   A.BaseClient.prototype = {
@@ -46744,13 +47183,13 @@
     call$2(key1, key2) {
       return A._asString(key1).toLowerCase() === A._asString(key2).toLowerCase();
     },
-    $signature: 77
+    $signature: 99
   };
   A.BaseRequest_closure0.prototype = {
     call$1(key) {
       return B.JSString_methods.get$hashCode(A._asString(key).toLowerCase());
     },
-    $signature: 574
+    $signature: 572
   };
   A.BaseResponse.prototype = {
     BaseResponse$7$contentLength$headers$isRedirect$persistentConnection$reasonPhrase$request(statusCode, contentLength, headers, isRedirect, persistentConnection, reasonPhrase, request) {
@@ -46924,13 +47363,13 @@
     $defaultValues() {
       return [null];
     },
-    $signature: 575
+    $signature: 587
   };
   A._bodyToStream_closure.prototype = {
     call$1(listener) {
       return A._readStreamBody(this.request, this.response, type$.MultiStreamController_List_int._as(listener));
     },
-    $signature: 576
+    $signature: 588
   };
   A._readStreamBody_closure.prototype = {
     call$0() {
@@ -46994,7 +47433,7 @@
       });
       return A._asyncStartSync($async$call$0, $async$completer);
     },
-    $signature: 3
+    $signature: 1
   };
   A.ByteStream.prototype = {
     toBytes$0() {
@@ -47009,7 +47448,7 @@
     call$1(bytes) {
       return this.completer.complete$1(new Uint8Array(A._ensureNativeList(type$.List_int._as(bytes))));
     },
-    $signature: 76
+    $signature: 105
   };
   A.ClientException.prototype = {
     toString$0(_) {
@@ -47170,7 +47609,7 @@
       scanner.expectDone$0();
       return A.MediaType$(t4, t5, parameters);
     },
-    $signature: 577
+    $signature: 589
   };
   A.MediaType_toString_closure.prototype = {
     call$2(attribute, value) {
@@ -47189,13 +47628,13 @@
       } else
         t1._contents = t3 + value;
     },
-    $signature: 132
+    $signature: 90
   };
   A.MediaType_toString__closure.prototype = {
     call$1(match) {
       return "\\" + A.S(match.$index(0, 0));
     },
-    $signature: 38
+    $signature: 37
   };
   A.expectQuotedString_closure.prototype = {
     call$1(match) {
@@ -47203,7 +47642,7 @@
       t1.toString;
       return t1;
     },
-    $signature: 38
+    $signature: 37
   };
   A.ResourceConfigBase.prototype = {};
   A.ConfigBase.prototype = {};
@@ -47284,7 +47723,7 @@
     call$1(p) {
       return type$.GroupingProperty._as(p).hierarchyLevel;
     },
-    $signature: 581
+    $signature: 592
   };
   A.IndexItemData.prototype = {
     toJson$0() {
@@ -47299,13 +47738,13 @@
     call$1(p) {
       return new A.IriTerm(A._asString(p));
     },
-    $signature: 586
+    $signature: 594
   };
   A.IndexItemData_toJson_closure.prototype = {
     call$1(p) {
       return type$.IriTerm._as(p).value;
     },
-    $signature: 10
+    $signature: 11
   };
   A.FullIndexData.prototype = {
     toJson$0() {
@@ -47341,13 +47780,13 @@
     call$1(gp) {
       return A.GroupingProperty_GroupingProperty$fromJson(type$.Map_String_dynamic._as(gp));
     },
-    $signature: 589
+    $signature: 601
   };
   A.GroupIndexData_toJson_closure.prototype = {
     call$1(gp) {
       return type$.GroupingProperty._as(gp).toJson$0();
     },
-    $signature: 592
+    $signature: 602
   };
   A.DocumentIriTemplate.prototype = {
     toJson$0() {
@@ -47383,7 +47822,7 @@
       t1.toString;
       return t1;
     },
-    $signature: 593
+    $signature: 605
   };
   A.ResourceConfigData.prototype = {
     get$indicesInOrder() {
@@ -47425,13 +47864,13 @@
       t1._as(b);
       return B.JSString_methods.compareTo$1(a.get$localName(), b.get$localName());
     },
-    $signature: 609
+    $signature: 606
   };
   A.ResourceConfigData_getIndexByName_closure.prototype = {
     call$1(i) {
       return type$.CrdtIndexData._as(i).get$localName() === this.localName;
     },
-    $signature: 610
+    $signature: 622
   };
   A.ResourceConfigData_getIndexByName_closure0.prototype = {
     call$0() {
@@ -47449,7 +47888,7 @@
       t2.$indexSet(0, "type", t1 ? "FullIndex" : "GroupIndex");
       return t2;
     },
-    $signature: 663
+    $signature: 675
   };
   A.SyncEngineConfig.prototype = {
     get$resourcesInSyncOrder() {
@@ -47533,7 +47972,7 @@
         return 1;
       return B.JSString_methods.compareTo$1(t1, t2);
     },
-    $signature: 134
+    $signature: 676
   };
   A.SyncEngineConfig_allIndicesInOrder_closure.prototype = {
     call$1(r) {
@@ -47754,13 +48193,13 @@
     call$0() {
       return A.LinkedHashSet_LinkedHashSet$_empty(type$.RdfObject);
     },
-    $signature: 52
+    $signature: 54
   };
   A.MetadataStatement_merge_closure0.prototype = {
     call$0() {
       return A.LinkedHashSet_LinkedHashSet$_empty(type$.RdfObject);
     },
-    $signature: 52
+    $signature: 54
   };
   A.MetadataStatement_merge_closure1.prototype = {
     call$2(key, value) {
@@ -48056,19 +48495,19 @@
       t1 === $ && A.throwLateFieldNI("subject");
       return new A.Triple(t1, this.predicate, t.object);
     },
-    $signature: 49
+    $signature: 56
   };
   A.addInlineTriples_closure.prototype = {
     call$1(bnode) {
       return A.subjectAndInlineTriples(this.local, type$.BlankNodeTerm._as(bnode));
     },
-    $signature: 92
+    $signature: 93
   };
   A.addInlineTriples_closure0.prototype = {
     call$1(bnode) {
       return A.subjectAndInlineTriples(this.remote, type$.BlankNodeTerm._as(bnode));
     },
-    $signature: 92
+    $signature: 93
   };
   A.Immutable.prototype = {
     get$iri() {
@@ -48108,7 +48547,7 @@
       t1 === $ && A.throwLateFieldNI("subject");
       return new A.Triple(t1, this.predicate, object);
     },
-    $signature: 28
+    $signature: 27
   };
   A.OrSet.prototype = {
     get$iri() {
@@ -48232,19 +48671,19 @@
       t1 === $ && A.throwLateFieldNI("subject");
       return new A.Triple(t1, this.predicate, v);
     },
-    $signature: 28
+    $signature: 27
   };
   A.OrSet_localValueChange_closure.prototype = {
     call$1(v) {
       return A._identify(type$.RdfObject._as(v), this.newPropertyValue._values[1]);
     },
-    $signature: 97
+    $signature: 91
   };
   A.OrSet_localValueChange_closure0.prototype = {
     call$1(v) {
       return A._identify(type$.RdfObject._as(v), this.oldPropertyValue._values[1]);
     },
-    $signature: 97
+    $signature: 91
   };
   A.OrSet_localValueChange_closure1.prototype = {
     call$1(value) {
@@ -48269,7 +48708,7 @@
       t1 = A.List_List$_of(new A.EfficientLengthMappedIterable(t1, t2._eval$1("Triple(1)")._as(new A.OrSet_localValueChange___closure(metadataSubject, this.deletionDateTerm)), t3), t3._eval$1("Iterable.E"));
       return t1;
     },
-    $signature: 72
+    $signature: 60
   };
   A.OrSet_localValueChange___closure.prototype = {
     call$1(rv) {
@@ -48297,19 +48736,19 @@
     call$1(t) {
       return type$.Triple._as(t).subject;
     },
-    $signature: 29
+    $signature: 28
   };
   A._findStatementTriplesToRemove_closure0.prototype = {
     call$1(t) {
       return type$.Triple._as(t).subject;
     },
-    $signature: 29
+    $signature: 28
   };
   A._findStatementTriplesToRemove_closure1.prototype = {
     call$1(t) {
       return type$.Triple._as(t).subject;
     },
-    $signature: 29
+    $signature: 28
   };
   A._findStatementTriplesToRemove_closure2.prototype = {
     call$1(subj) {
@@ -48328,7 +48767,7 @@
       B.JSArray_methods.addAll$1(t1, stmt._triples);
       return t1;
     },
-    $signature: 72
+    $signature: 60
   };
   A._handleIdenticalClocksTriples_closure.prototype = {
     call$1(t) {
@@ -48346,37 +48785,37 @@
     call$1(v) {
       return !(type$.RdfObject._as(v) instanceof A.BlankNodeTerm);
     },
-    $signature: 18
+    $signature: 22
   };
   A._handleIdenticalClocksTriples_closure2.prototype = {
     call$1(v) {
       return !(type$.RdfObject._as(v) instanceof A.BlankNodeTerm);
     },
-    $signature: 18
+    $signature: 22
   };
   A._handleIdenticalClocksTriples_closure3.prototype = {
     call$1(v) {
       return this.localGraph.subgraph$1(type$.RdfSubject._as(v));
     },
-    $signature: 107
+    $signature: 81
   };
   A._handleIdenticalClocksTriples_closure4.prototype = {
     call$1(v) {
       return this.remoteGraph.subgraph$1(type$.RdfSubject._as(v));
     },
-    $signature: 107
+    $signature: 81
   };
   A._handleIdenticalClocksTriples_closure5.prototype = {
     call$1(g) {
       return type$.RdfGraph._as(g)._triples;
     },
-    $signature: 48
+    $signature: 65
   };
   A._handleIdenticalClocksTriples_closure6.prototype = {
     call$1(g) {
       return type$.RdfGraph._as(g)._triples;
     },
-    $signature: 48
+    $signature: 65
   };
   A._handleBothEmptyClocksTriples_closure.prototype = {
     call$1(t) {
@@ -48416,13 +48855,13 @@
     call$1(t) {
       return type$.Triple._as(t).subject.$eq(0, this.documentIri);
     },
-    $signature: 1
+    $signature: 2
   };
   A._constructCrdtDocument_closure0.prototype = {
     call$1(t) {
       return type$.Triple._as(t).predicate;
     },
-    $signature: 118
+    $signature: 83
   };
   A._constructCrdtDocument_closure1.prototype = {
     call$2(t, depth) {
@@ -48943,7 +49382,7 @@
     call$1(t) {
       return type$.RdfSubject._as(type$.Triple._as(t).object);
     },
-    $signature: 29
+    $signature: 28
   };
   A.HlcService__extractCrdtClock_closure0.prototype = {
     call$1(clockEntrySubject) {
@@ -48985,7 +49424,7 @@
         t1 = false;
       return t1;
     },
-    $signature: 1
+    $signature: 2
   };
   A.GroupIndexGraphSubscriptionException.prototype = {
     toString$0(_) {
@@ -49114,7 +49553,7 @@
       type$.Triple._as(triple);
       return triple.predicate.value === this.extractor.predicate.value;
     },
-    $signature: 1
+    $signature: 2
   };
   A.GroupKeyGenerator__generateCartesianProduct_closure.prototype = {
     call$1(levelCombination) {
@@ -49621,26 +50060,26 @@
       var t1 = this.$this;
       return t1._updateIndexMetadataCache$3(type$.List_IndexEntryWithIri._as(entries), t1._indexedClassToFullIndexMetadata, "FullIndex");
     },
-    $signature: 119
+    $signature: 79
   };
   A.IndexDiscovery__initializeWatches_closure0.prototype = {
     call$2(error, stackTrace) {
       $.$get$_log10().log$4(B.Level_SEVERE_1000, "Error watching fullIndices index-of-indices", error, type$.nullable_StackTrace._as(stackTrace));
     },
-    $signature: 43
+    $signature: 40
   };
   A.IndexDiscovery__initializeWatches_closure1.prototype = {
     call$1(entries) {
       var t1 = this.$this;
       return t1._updateIndexMetadataCache$3(type$.List_IndexEntryWithIri._as(entries), t1._indexedClassToTemplateMetadata, "GroupIndexTemplate");
     },
-    $signature: 119
+    $signature: 79
   };
   A.IndexDiscovery__initializeWatches_closure2.prototype = {
     call$2(error, stackTrace) {
       $.$get$_log10().log$4(B.Level_SEVERE_1000, "Error watching groupIndexTemplates index-of-indices", error, type$.nullable_StackTrace._as(stackTrace));
     },
-    $signature: 43
+    $signature: 40
   };
   A.IndexDiscovery__updateIndexMetadataCache_closure.prototype = {
     call$0() {
@@ -49653,14 +50092,14 @@
       type$._IndexMetadata._as(m);
       return m.indexIri.value === this.indexIri.value;
     },
-    $signature: 47
+    $signature: 70
   };
   A.IndexDiscovery__removeIndexFromCache_closure.prototype = {
     call$1(m) {
       type$._IndexMetadata._as(m);
       return m.indexIri.value === this.indexIri.value;
     },
-    $signature: 47
+    $signature: 70
   };
   A.IndexDiscovery__removeIndexFromCache_closure0.prototype = {
     call$2(key, value) {
@@ -49696,7 +50135,7 @@
       type$._IndexMetadata._as(m);
       return m.indexIri.value === this.templateIri.value;
     },
-    $signature: 47
+    $signature: 70
   };
   A.IndexManager.prototype = {
     initializeIndices$0() {
@@ -50225,7 +50664,7 @@
       var _this = this;
       return _this.$this._save$4$logicalTime$physicalTime(_this.type, _this.appData, _this.logicalTime, _this.physicalTime);
     },
-    $signature: 46
+    $signature: 71
   };
   A.IndexManager__generateGroupIndex_closure.prototype = {
     call$1(shard) {
@@ -50244,13 +50683,13 @@
     call$1(v) {
       return new A.Triple(this.resourceIri, this.e.key, type$.RdfObject._as(v));
     },
-    $signature: 28
+    $signature: 27
   };
   A.IndexManager__extractHeaderProperties_closure.prototype = {
     call$1(v) {
       return type$.RdfObject._as(v) instanceof A.BlankNodeTerm;
     },
-    $signature: 18
+    $signature: 22
   };
   A.ParsedFullIndex.prototype = {};
   A.ParsedGroupIndexTemplate.prototype = {};
@@ -50353,7 +50792,7 @@
         return levelCompare;
       return B.JSString_methods.compareTo$1(a.predicate.value, b.predicate.value);
     },
-    $signature: 129
+    $signature: 78
   };
   A.IndexParser__parseGroupingProperty_closure.prototype = {
     call$1(node) {
@@ -50712,7 +51151,7 @@
         return levelCompare;
       return B.JSString_methods.compareTo$1(a.predicate.value, b.predicate.value);
     },
-    $signature: 129
+    $signature: 78
   };
   A.IndexRdfGenerator_generateGroupIndexTemplateIri_closure0.prototype = {
     call$1(prop) {
@@ -50815,7 +51254,7 @@
         return t1 == null ? "" : t1;
       }
     },
-    $signature: 38
+    $signature: 37
   };
   A.ShardDeterminationMode.prototype = {
     _enumToString$0() {
@@ -51592,7 +52031,7 @@
       t1 = this._box_0;
       return new A.Triple(t1.subject, t1.predicate, obj);
     },
-    $signature: 28
+    $signature: 27
   };
   A.LocalDocumentMerger__getIdentifiedSubjects_closure.prototype = {
     call$1(subject) {
@@ -51614,20 +52053,20 @@
       var t1 = new A.DateTime(A.DateTime__validate(this.clock._values[3], 0, false), 0, false).toUtc$0().toIso8601String$0();
       return A._setArrayType([new A.Triple(metadataSubject, B.IriTerm_jPP, new A.LiteralTerm(t1, B.IriTerm_Ii8, null))], type$.JSArray_Triple);
     },
-    $signature: 72
+    $signature: 60
   };
   A.LocalDocumentMerger__valueEquals_closure.prototype = {
     call$1(oldId) {
       return J.contains$1$asx(this.newIdentifiers, oldId);
     },
-    $signature: 131
+    $signature: 76
   };
   A.CrdtMetadataResult.prototype = {};
   A.collectClassMappings_closure.prototype = {
     call$1(d) {
       return type$.DocumentMapping._as(d).imports;
     },
-    $signature: 74
+    $signature: 75
   };
   A.collectClassMappings_closure0.prototype = {
     call$1(d) {
@@ -51673,7 +52112,7 @@
     call$1(d) {
       return type$.DocumentMapping._as(d).imports;
     },
-    $signature: 74
+    $signature: 75
   };
   A.collectPredicateMappings_closure0.prototype = {
     call$1(d) {
@@ -51710,7 +52149,7 @@
       type$.Triple._as(t);
       return t.object instanceof A.BlankNodeTerm;
     },
-    $signature: 1
+    $signature: 2
   };
   A._buildIdentificationGraphWithLabels_processNode.prototype = {
     $call$body$_buildIdentificationGraphWithLabels_processNode($async$current) {
@@ -51832,7 +52271,7 @@
     call$0() {
       return new A.BlankNodeTerm();
     },
-    $signature: 32
+    $signature: 29
   };
   A._GraphWithLabels.prototype = {};
   A.IdentifiedBlankNodeParent.prototype = {
@@ -51994,13 +52433,13 @@
     call$1(t) {
       return "  " + type$.Triple._as(t).toString$0(0);
     },
-    $signature: 44
+    $signature: 41
   };
   A.UnidentifiedBlankNodeWithContextException_toString_closure0.prototype = {
     call$1(t) {
       return "  " + type$.Triple._as(t).toString$0(0);
     },
-    $signature: 44
+    $signature: 41
   };
   A.IdentifiedBlankNodeBuilder.prototype = {
     computeCanonicalBlankNodes$3(documentIri, graph, mergeContract) {
@@ -52080,7 +52519,7 @@
     call$1(t) {
       return this.blankNodeSubjects.contains$1(0, type$.Triple._as(t).object);
     },
-    $signature: 1
+    $signature: 2
   };
   A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure0.prototype = {
     call$2(r, t) {
@@ -52095,7 +52534,7 @@
     call$0() {
       return A._setArrayType([], type$.JSArray_Triple);
     },
-    $signature: 40
+    $signature: 45
   };
   A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure1.prototype = {
     call$1(l) {
@@ -52115,7 +52554,7 @@
       t1.toString;
       return A._setArrayType([t1], type$.JSArray_BlankNodeTerm);
     },
-    $signature: 133
+    $signature: 222
   };
   A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure3.prototype = {
     call$1(bn) {
@@ -52177,13 +52616,13 @@
     call$1(bn) {
       return this.circularReferences.contains$1(0, type$.BlankNodeTerm._as(bn));
     },
-    $signature: 226
+    $signature: 134
   };
   A._sortByDependencies_closure.prototype = {
     call$1(t) {
       return type$.Triple._as(t).subject instanceof A.IriTerm;
     },
-    $signature: 1
+    $signature: 2
   };
   A._addIdentifiedBlankNodes_closure.prototype = {
     call$1(triple) {
@@ -52192,13 +52631,13 @@
       rule = this.mergeContract.getEffectivePredicateRule$2(A.RdfGraphExtensions__findSingleObject(this.graph, triple.subject, B.IriTerm_f2r, false, B.ExpectationSeverity_1, type$.IriTerm), triple.predicate);
       return (rule == null ? null : rule.isPathIdentifying) === true;
     },
-    $signature: 1
+    $signature: 2
   };
   A._addIdentifiedBlankNodes_closure0.prototype = {
     call$1(o) {
       return type$.RdfObject._as(o) instanceof A.BlankNodeTerm;
     },
-    $signature: 18
+    $signature: 22
   };
   A._addIdentifiedBlankNodes_closure1.prototype = {
     call$1(triple) {
@@ -52374,7 +52813,7 @@
       }
       return new A.Triple(t1, predicate, t2);
     },
-    $signature: 49
+    $signature: 56
   };
   A.BaseIriTranslator_translateGraphToExternal_closure.prototype = {
     call$1(triple) {
@@ -52407,7 +52846,7 @@
       }
       return new A.Triple(t1, predicate, t2);
     },
-    $signature: 49
+    $signature: 56
   };
   A.AppResourceLocator.prototype = {
     fromIri$2$expectedTypeIri(externalIri, expectedTypeIri) {
@@ -52484,25 +52923,25 @@
       type$.PredicateMergeRule._as(r);
       return r.isIdentifying === true;
     },
-    $signature: 50
+    $signature: 67
   };
   A.ClassMergeRules__computeIdentifyingPredicates_closure0.prototype = {
     call$1(r) {
       return type$.PredicateMergeRule._as(r).predicateIri;
     },
-    $signature: 51
+    $signature: 64
   };
   A.ClassMergeRules__computeNonIdentifyingPredicates_closure.prototype = {
     call$1(r) {
       return type$.PredicateMergeRule._as(r).isIdentifying === false;
     },
-    $signature: 50
+    $signature: 67
   };
   A.ClassMergeRules__computeNonIdentifyingPredicates_closure0.prototype = {
     call$1(r) {
       return type$.PredicateMergeRule._as(r).predicateIri;
     },
-    $signature: 51
+    $signature: 64
   };
   A.MergeContract.prototype = {
     get$_classMappingsByPredicate() {
@@ -52682,13 +53121,13 @@
       type$.PredicateMergeRule._as(r);
       return r.isIdentifying === true;
     },
-    $signature: 50
+    $signature: 67
   };
   A.MergeContract__computeIdentifyingPredicates_closure0.prototype = {
     call$1(r) {
       return type$.PredicateMergeRule._as(r).predicateIri;
     },
-    $signature: 51
+    $signature: 64
   };
   A.MergeContract_getIdentifyingPredicates_closure.prototype = {
     call$1(predicateIri) {
@@ -52725,7 +53164,7 @@
     call$1(iri) {
       return type$.IriTerm._as(iri).value;
     },
-    $signature: 10
+    $signature: 11
   };
   A.CachingMergeContractLoader_load_closure.prototype = {
     call$1(error) {
@@ -52993,20 +53432,20 @@
     call$1(e) {
       return type$.Record_2_DocumentMapping_and_ValidationResult._as(e)._0;
     },
-    $signature: 81
+    $signature: 82
   };
   A.StandardMergeContractLoader_load_closure1.prototype = {
     call$1(e) {
       return type$.Record_2_DocumentMapping_and_ValidationResult._as(e)._1;
     },
-    $signature: 82
+    $signature: 132
   };
   A.StandardMergeContractLoader_load_closure2.prototype = {
     call$1(v) {
       type$.ValidationResult._as(v);
       return v.errors.length !== 0 || v.warnings.length !== 0;
     },
-    $signature: 26
+    $signature: 30
   };
   A.StandardMergeContractLoader__parseDocumentMapping_closure.prototype = {
     call$1(ref) {
@@ -53031,7 +53470,7 @@
       type$.ValidationResult._as(v);
       return v.errors.length !== 0 || v.warnings.length !== 0;
     },
-    $signature: 26
+    $signature: 30
   };
   A.StandardMergeContractLoader__parseDocumentMapping_closure3.prototype = {
     call$1(ref) {
@@ -53043,7 +53482,7 @@
       } else
         return true;
     },
-    $signature: 84
+    $signature: 85
   };
   A.StandardMergeContractLoader__parseDocumentMapping_closure4.prototype = {
     call$1(ref) {
@@ -53055,45 +53494,45 @@
     call$1(e) {
       return type$.Record_2_DocumentMapping_and_ValidationResult._as(e)._0;
     },
-    $signature: 81
+    $signature: 82
   };
   A.StandardMergeContractLoader__parseDocumentMapping_closure6.prototype = {
     call$1(e) {
       return type$.Record_2_DocumentMapping_and_ValidationResult._as(e)._1;
     },
-    $signature: 82
+    $signature: 132
   };
   A.StandardMergeContractLoader__parseDocumentMapping_closure7.prototype = {
     call$1(v) {
       type$.ValidationResult._as(v);
       return v.errors.length !== 0 || v.warnings.length !== 0;
     },
-    $signature: 26
+    $signature: 30
   };
   A.StandardMergeContractLoader__parseClassMappings_closure.prototype = {
     call$1(r) {
       return this.$this._parseRule$2(this.graph, type$.RdfSubject._as(r));
     },
-    $signature: 85
+    $signature: 86
   };
   A.StandardMergeContractLoader__parseClassMappings_closure0.prototype = {
     call$1(r) {
       return type$.Record_2_nullable_PredicateRule_and_ValidationResult._as(r)._0;
     },
-    $signature: 86
+    $signature: 87
   };
   A.StandardMergeContractLoader__parseClassMappings_closure1.prototype = {
     call$1(r) {
       return type$.Record_2_nullable_PredicateRule_and_ValidationResult._as(r)._1;
     },
-    $signature: 87
+    $signature: 111
   };
   A.StandardMergeContractLoader__parseClassMappings_closure2.prototype = {
     call$1(v) {
       type$.ValidationResult._as(v);
       return v.errors.length !== 0 || v.warnings.length !== 0;
     },
-    $signature: 26
+    $signature: 30
   };
   A.StandardMergeContractLoader__parseClassMappings_closure3.prototype = {
     call$1(e) {
@@ -53106,26 +53545,26 @@
     call$1(r) {
       return this.$this._parseRule$2(this.graph, type$.RdfSubject._as(r));
     },
-    $signature: 85
+    $signature: 86
   };
   A.StandardMergeContractLoader__parsePredicateMapping_closure0.prototype = {
     call$1(r) {
       return type$.Record_2_nullable_PredicateRule_and_ValidationResult._as(r)._0;
     },
-    $signature: 86
+    $signature: 87
   };
   A.StandardMergeContractLoader__parsePredicateMapping_closure1.prototype = {
     call$1(r) {
       return type$.Record_2_nullable_PredicateRule_and_ValidationResult._as(r)._1;
     },
-    $signature: 87
+    $signature: 111
   };
   A.StandardMergeContractLoader__parsePredicateMapping_closure2.prototype = {
     call$1(v) {
       type$.ValidationResult._as(v);
       return v.errors.length !== 0 || v.warnings.length !== 0;
     },
-    $signature: 26
+    $signature: 30
   };
   A.MetadataGenerator.prototype = {
     _createPropertyValueMetadata$5$predicate$value(documentIri, subject, createMetadataTriples, predicate, value) {
@@ -53210,7 +53649,7 @@
     call$1(m) {
       return type$.Triple._as(m).object instanceof A.BlankNodeTerm;
     },
-    $signature: 1
+    $signature: 2
   };
   A.IdTerm.prototype = {
     toString$0(_) {
@@ -53466,7 +53905,7 @@
             case 3:
               // then
               $async$goto = 5;
-              return A._asyncAwait(A.Future_wait(t1.map$1$1(iris, new A.RecursiveRdfLoader__loadRecursivelyMulti_closure($async$self, loadedContracts, inProgress, extractors), type$.Future_void), type$.void), $async$_loadRecursivelyMulti$4$extractors);
+              return A._asyncAwait(A.Future_wait(t1.map$1$1(iris, new A.RecursiveRdfLoader__loadRecursivelyMulti_closure($async$self, loadedContracts, inProgress, extractors), type$.Future_void), false, type$.void), $async$_loadRecursivelyMulti$4$extractors);
             case 5:
               // returning from await.
             case 4:
@@ -53608,7 +54047,7 @@
     call$1(g) {
       return type$.RdfGraph._as(g)._triples;
     },
-    $signature: 48
+    $signature: 65
   };
   A.splitDocument_closure.prototype = {
     call$2(triple, depth) {
@@ -54091,7 +54530,7 @@
     call$0() {
       return this.$this._crdtDocumentManager.save$2(this.type, this.internalAppData);
     },
-    $signature: 46
+    $signature: 71
   };
   A.StandardSyncEngine_hydrateStream_closure.prototype = {
     call$1(indexIris) {
@@ -54237,7 +54676,7 @@
       });
       return A._asyncStartSync($async$call$0, $async$completer);
     },
-    $signature: 3
+    $signature: 1
   };
   A.StandardSyncEngine__hydrateRootResourceStream_convertResult.prototype = {
     call$2(documents, cursor) {
@@ -54305,6 +54744,119 @@
   A.RemoteUploadResult.prototype = {};
   A.ConflictUploadResult.prototype = {};
   A.SuccessUploadResult.prototype = {};
+  A.RemoteSyncStorage.prototype = {
+    finalizeSync$0() {
+      var $async$goto = 0,
+        $async$completer = A._makeAsyncAwaitCompleter(type$.void);
+      var $async$finalizeSync$0 = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
+        if ($async$errorCode === 1)
+          return A._asyncRethrow($async$result, $async$completer);
+        for (;;)
+          switch ($async$goto) {
+            case 0:
+              // Function start
+              // implicit return
+              return A._asyncReturn(null, $async$completer);
+          }
+      });
+      return A._asyncStartSync($async$finalizeSync$0, $async$completer);
+    },
+    get$maxConcurrentDocumentSyncs() {
+      return 10;
+    },
+    get$maxConcurrentShardSyncs() {
+      return 5;
+    },
+    get$maxConcurrentIndexSyncs() {
+      return 3;
+    }
+  };
+  A.AuthException.prototype = {
+    toString$0(_) {
+      var t1 = A.S(this.cause);
+      return "AuthenticationException: " + this.message + (" (cause: " + t1 + ")");
+    },
+    $isException: 1
+  };
+  A.AuthRetryConfig.prototype = {};
+  A.AuthAwareRemoteStorage.prototype = {
+    get$remoteId() {
+      return this._remote_storage$_inner.get$remoteId();
+    },
+    isAvailable$0() {
+      return A._retryOnAuthFailure(this._remote_storage$_config, this._onAuthFailure, this._remote_storage$_inner.get$isAvailable(), type$.bool);
+    },
+    createSyncStorage$1(config) {
+      var $async$goto = 0,
+        $async$completer = A._makeAsyncAwaitCompleter(type$.RemoteSyncStorage),
+        $async$returnValue, $async$self = this, t1, t2, $async$temp1;
+      var $async$createSyncStorage$1 = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
+        if ($async$errorCode === 1)
+          return A._asyncRethrow($async$result, $async$completer);
+        for (;;)
+          switch ($async$goto) {
+            case 0:
+              // Function start
+              t1 = $async$self._remote_storage$_config;
+              t2 = $async$self._onAuthFailure;
+              $async$temp1 = A;
+              $async$goto = 3;
+              return A._asyncAwait(A._retryOnAuthFailure(t1, t2, new A.AuthAwareRemoteStorage_createSyncStorage_closure($async$self, config), type$.RemoteSyncStorage), $async$createSyncStorage$1);
+            case 3:
+              // returning from await.
+              $async$returnValue = new $async$temp1.AuthAwareSyncStorage($async$result, t2, t1);
+              // goto return
+              $async$goto = 1;
+              break;
+            case 1:
+              // return
+              return A._asyncReturn($async$returnValue, $async$completer);
+          }
+      });
+      return A._asyncStartSync($async$createSyncStorage$1, $async$completer);
+    },
+    $isRemoteStorage: 1
+  };
+  A.AuthAwareRemoteStorage_createSyncStorage_closure.prototype = {
+    call$0() {
+      return this.$this._remote_storage$_inner.createSyncStorage$1(this.config);
+    },
+    $signature: 264
+  };
+  A.AuthAwareSyncStorage.prototype = {
+    upload$3$ifMatch(documentIri, graph, ifMatch) {
+      return A._retryOnAuthFailure(this._remote_storage$_config, this._onAuthFailure, new A.AuthAwareSyncStorage_upload_closure(this, documentIri, graph, ifMatch), type$.RemoteUploadResult);
+    },
+    download$2$ifNoneMatch(documentIri, ifNoneMatch) {
+      return A._retryOnAuthFailure(this._remote_storage$_config, this._onAuthFailure, new A.AuthAwareSyncStorage_download_closure(this, documentIri, ifNoneMatch), type$.RemoteDownloadResult);
+    },
+    finalizeSync$0() {
+      return this._remote_storage$_inner.finalizeSync$0();
+    },
+    get$maxConcurrentDocumentSyncs() {
+      return this._remote_storage$_inner.get$maxConcurrentDocumentSyncs();
+    },
+    get$maxConcurrentShardSyncs() {
+      return this._remote_storage$_inner.get$maxConcurrentShardSyncs();
+    },
+    get$maxConcurrentIndexSyncs() {
+      return this._remote_storage$_inner.get$maxConcurrentIndexSyncs();
+    },
+    $isRemoteSyncStorage: 1
+  };
+  A.AuthAwareSyncStorage_upload_closure.prototype = {
+    call$0() {
+      var _this = this;
+      return _this.$this._remote_storage$_inner.upload$3$ifMatch(_this.documentIri, _this.graph, _this.ifMatch);
+    },
+    $signature: 265
+  };
+  A.AuthAwareSyncStorage_download_closure.prototype = {
+    call$0() {
+      return this.$this._remote_storage$_inner.download$2$ifNoneMatch(this.documentIri, this.ifNoneMatch);
+    },
+    $signature: 266
+  };
   A.IndexEntryWithIri.prototype = {};
   A.IndexEntriesPage.prototype = {};
   A.StoredDocument.prototype = {};
@@ -54346,25 +54898,25 @@
       t2 = A._instanceType(t1);
       return new A.EfficientLengthMappedIterable(t1, t2._eval$1("MapEntry<MetadataStatementKey,MetadataStatement>(1)")._as(new A.OrganizedStatements$___closure(stmt)), t2._eval$1("EfficientLengthMappedIterable<1,MapEntry<MetadataStatementKey,MetadataStatement>>"));
     },
-    $signature: 264
+    $signature: 267
   };
   A.OrganizedStatements$___closure.prototype = {
     call$1(k) {
       return new A.MapEntry(type$.MetadataStatementKey._as(k), this.stmt, type$.MapEntry_MetadataStatementKey_MetadataStatement);
     },
-    $signature: 265
+    $signature: 268
   };
   A.OrganizedStatements_OrganizedStatements$fromGraph_closure.prototype = {
     call$0() {
       return A.LinkedHashSet_LinkedHashSet$_empty(type$.Record_2_RdfSubject_and_RdfGraph);
     },
-    $signature: 266
+    $signature: 269
   };
   A.OrganizedStatements_OrganizedStatements$fromGraph_closure0.prototype = {
     call$0() {
       return A.LinkedHashSet_LinkedHashSet$_empty(type$.MetadataStatementKey);
     },
-    $signature: 267
+    $signature: 270
   };
   A.OrganizedStatements_OrganizedStatements$fromGraph_closure1.prototype = {
     call$1(entry) {
@@ -54378,7 +54930,7 @@
         t1.addAll$1(0, t2);
       return new A.MetadataStatement(key, t1, predicateObjectMap);
     },
-    $signature: 268
+    $signature: 271
   };
   A.OrganizedStatements_OrganizedStatements$fromGraph__closure.prototype = {
     call$2(map, node) {
@@ -54397,13 +54949,13 @@
       }
       return map;
     },
-    $signature: 269
+    $signature: 272
   };
   A.OrganizedStatements_OrganizedStatements$fromGraph___closure.prototype = {
     call$0() {
       return A.LinkedHashSet_LinkedHashSet$_empty(type$.RdfObject);
     },
-    $signature: 52
+    $signature: 54
   };
   A.OrganizedStatements_getAllStatementsForSubject_closure.prototype = {
     call$1(entry) {
@@ -54426,13 +54978,13 @@
       }
       return t1;
     },
-    $signature: 270
+    $signature: 273
   };
   A.OrganizedStatements_getAllStatementsForSubject_closure0.prototype = {
     call$1(entry) {
       return type$.MapEntry_MetadataStatementKey_MetadataStatement._as(entry).value;
     },
-    $signature: 271
+    $signature: 274
   };
   A.OrganizedStatements_getStatement_closure.prototype = {
     call$1(subj) {
@@ -54445,25 +54997,25 @@
       t2 = t1.$ti;
       return A.MappedIterable_MappedIterable(t1, t2._eval$1("MetadataStatement?(Iterable.E)")._as(new A.OrganizedStatements_getStatement__closure(_this.$this, subj, _this.predicate)), t2._eval$1("Iterable.E"), type$.nullable_MetadataStatement);
     },
-    $signature: 272
+    $signature: 275
   };
   A.OrganizedStatements_getStatement__closure.prototype = {
     call$1(obj) {
       return this.$this._statementsByKey.$index(0, A.MetadataStatementKey_MetadataStatementKey$from(this.subj, this.predicate, type$.RdfObject._as(obj)));
     },
-    $signature: 273
+    $signature: 276
   };
   A.OrganizedStatements_getStatement_closure0.prototype = {
     call$1(stmt) {
       return type$.nullable_MetadataStatement._as(stmt) != null;
     },
-    $signature: 274
+    $signature: 277
   };
   A.OrganizedStatements_getStatement_closure1.prototype = {
     call$0() {
       return null;
     },
-    $signature: 4
+    $signature: 5
   };
   A.MergeSubjectType.prototype = {
     _enumToString$0() {
@@ -54475,13 +55027,13 @@
     call$1(obj) {
       return A.RdfObjectKey_fromObject(type$.RdfObject._as(obj), this.local.blankNodeMappings);
     },
-    $signature: 110
+    $signature: 89
   };
   A.MergeObject_createMergeObjects_closure0.prototype = {
     call$1(obj) {
       return A.RdfObjectKey_fromObject(type$.RdfObject._as(obj), this.remote.blankNodeMappings);
     },
-    $signature: 110
+    $signature: 89
   };
   A.MergeObject_createMergeObjects_closure1.prototype = {
     call$1(key) {
@@ -54510,7 +55062,7 @@
       t5.__MergeObject_object_F = t1;
       return t5;
     },
-    $signature: 276
+    $signature: 279
   };
   A.MergeSubject.prototype = {};
   A.MergeSubject_createMergeSubjects_closure.prototype = {
@@ -54542,7 +55094,7 @@
       t5.__MergeSubject_subject_F = t1;
       return t5;
     },
-    $signature: 277
+    $signature: 280
   };
   A.OrganizedBlankNodeMappings.prototype = {
     get$blankNodeIdentifiers() {
@@ -54582,7 +55134,7 @@
     call$1(v) {
       return type$.Iterable_IriTerm._as(v);
     },
-    $signature: 278
+    $signature: 281
   };
   A.OrganizedBlankNodeMappings__buildBlankNodeToCanonicalMap_closure.prototype = {
     call$2(map, triple) {
@@ -54596,13 +55148,13 @@
         $.$get$_log22().log$4(B.Level_WARNING_900, "Unexpected triple in blank node mapping: " + triple.toString$0(0), null, null);
       return map;
     },
-    $signature: 279
+    $signature: 282
   };
   A.OrganizedBlankNodeMappings__buildBlankNodeToCanonicalMap__closure.prototype = {
     call$0() {
       return A.LinkedHashSet_LinkedHashSet$_empty(type$.IriTerm);
     },
-    $signature: 280
+    $signature: 283
   };
   A.RdfObjectKey.prototype = {
     get$canonicalIris() {
@@ -54775,7 +55327,7 @@
     call$1(times) {
       return type$.Record_2_int_and_int._as(times)._1;
     },
-    $signature: 281
+    $signature: 284
   };
   A.OrganizedGraph_maxPhysicalTime_closure0.prototype = {
     call$2(prev, element) {
@@ -54789,7 +55341,7 @@
     call$1(subject) {
       return A.RdfObjectKey_fromObject(type$.RdfSubject._as(subject), this.$this.blankNodeMappings);
     },
-    $signature: 282
+    $signature: 285
   };
   A.ClockComparison.prototype = {
     _enumToString$0() {
@@ -54867,7 +55419,7 @@
       var t2, inconsistentLocal, inconsistentRemote, localStatement, remoteStatement, _null = null,
         t1 = subject.type;
       if (t1 === B.MergeSubjectType_1 || t1 === B.MergeSubjectType_0)
-        return new A.MergeResults(B.Set_empty4, B.Map_empty1);
+        return new A.MergeResults(B.Set_empty4, B.Map_empty0);
       t1 = subject.localKey;
       t2 = !(t1 instanceof A.UnIdentifiedBlankNodeKey);
       if (!t2 || subject.remoteKey instanceof A.UnIdentifiedBlankNodeKey) {
@@ -54876,7 +55428,7 @@
         inconsistentRemote = !(t1 instanceof A.UnIdentifiedBlankNodeKey) && t1 != null;
         if (inconsistentLocal || inconsistentRemote)
           throw A.wrapException(A.StateError$("Cannot merge unidentified blank node subject with identified reference on one side. Subject: " + subject.toString$0(0)));
-        return new A.MergeResults(B.Set_empty4, B.Map_empty1);
+        return new A.MergeResults(B.Set_empty4, B.Map_empty0);
       }
       localStatement = t1 == null ? _null : localGraph.statements.getStatement$3(t1, _null, _null);
       t2 = subject.remoteKey;
@@ -54891,7 +55443,7 @@
         case 2:
           return this._mergeSubjectProperties$6$isShard(subject, localGraph, remoteGraph, mergeContract, mergeContext, isShard);
         case 3:
-          return new A.MergeResults(B.Set_empty4, B.Map_empty1);
+          return new A.MergeResults(B.Set_empty4, B.Map_empty0);
       }
     },
     _mergeSubjectProperties$6$isShard(subject, localGraph, remoteGraph, mergeContract, mergeContext, isShard) {
@@ -54976,21 +55528,21 @@
       var t1 = type$.IriTerm;
       return B.JSString_methods.compareTo$1(t1._as(a).value, t1._as(b).value);
     },
-    $signature: 45
+    $signature: 42
   };
   A.RemoteDocumentMerger__mergeSubjectsAndProperties_closure.prototype = {
     call$1(subject) {
       var _this = this;
       return _this.$this._mergeSubject$7$isShard(_this.documentIri, type$.MergeSubject._as(subject), _this.localGraph, _this.remoteGraph, _this.mergeContract, _this.mergeContext, _this.isShard);
     },
-    $signature: 284
+    $signature: 287
   };
   A.RemoteDocumentMerger__mergeSubjectProperties_closure.prototype = {
     call$2(a, b) {
       var t1 = type$.IriTerm;
       return B.JSString_methods.compareTo$1(t1._as(a).value, t1._as(b).value);
     },
-    $signature: 45
+    $signature: 42
   };
   A.RemoteDocumentMerger__buildResultDocument_closure.prototype = {
     call$1(t) {
@@ -55002,21 +55554,21 @@
         t1 = false;
       return !t1;
     },
-    $signature: 1
+    $signature: 2
   };
   A.RemoteDocumentMerger__buildResultDocument_closure0.prototype = {
     call$1(e) {
       type$.MapEntry_of_BlankNodeTerm_and_List_IriTerm._as(e);
       return J.expand$1$1$ax(e.value, new A.RemoteDocumentMerger__buildResultDocument__closure3(this.documentIri, e), type$.Triple);
     },
-    $signature: 285
+    $signature: 288
   };
   A.RemoteDocumentMerger__buildResultDocument__closure3.prototype = {
     call$1(canonicalIri) {
       type$.IriTerm._as(canonicalIri);
       return A._setArrayType([new A.Triple(this.documentIri, B.IriTerm_LFR, canonicalIri), new A.Triple(canonicalIri, B.IriTerm_8b4, this.e.key)], type$.JSArray_Triple);
     },
-    $signature: 286
+    $signature: 289
   };
   A.RemoteDocumentMerger__buildResultDocument_closure1.prototype = {
     call$1(stmt) {
@@ -55054,31 +55606,31 @@
       }
       return t1;
     },
-    $signature: 287
+    $signature: 290
   };
   A.RemoteDocumentMerger__buildResultDocument__closure0.prototype = {
     call$1(subject) {
       return this.$this._convertToTriples$3(this.stmt, this.identifiedBlankNodes, subject);
     },
-    $signature: 55
+    $signature: 59
   };
   A.RemoteDocumentMerger__buildResultDocument__closure1.prototype = {
     call$1(subject) {
       return this.$this._convertToTriples$3(this.stmt, this.identifiedBlankNodes, subject);
     },
-    $signature: 55
+    $signature: 59
   };
   A.RemoteDocumentMerger__buildResultDocument__closure2.prototype = {
     call$1(subject) {
       return this.$this._convertToTriples$3(this.stmt, this.identifiedBlankNodes, subject);
     },
-    $signature: 55
+    $signature: 59
   };
   A.RemoteDocumentMerger__buildResultDocument_closure2.prototype = {
     call$1(nodes) {
       return J.expand$1$1$ax(type$.Iterable_Record_2_RdfSubject_and_RdfGraph._as(nodes), new A.RemoteDocumentMerger__buildResultDocument__closure(this.documentIri), type$.Triple);
     },
-    $signature: 289
+    $signature: 292
   };
   A.RemoteDocumentMerger__buildResultDocument__closure.prototype = {
     call$1(n) {
@@ -55088,7 +55640,7 @@
       B.JSArray_methods.addAll$1(t1, n._1._triples);
       return t1;
     },
-    $signature: 91
+    $signature: 92
   };
   A.RemoteDocumentMerger__convertToTriples_closure.prototype = {
     call$1(e) {
@@ -55098,7 +55650,7 @@
       t2 = t1.$ti;
       return A.MappedIterable_MappedIterable(t1, t2._eval$1("Triple(Iterable.E)")._as(new A.RemoteDocumentMerger__convertToTriples__closure0(this.subject, e)), t2._eval$1("Iterable.E"), type$.Triple);
     },
-    $signature: 291
+    $signature: 294
   };
   A.RemoteDocumentMerger__convertToTriples__closure.prototype = {
     call$1(v) {
@@ -55121,13 +55673,13 @@
       }
       return t1;
     },
-    $signature: 292
+    $signature: 295
   };
   A.RemoteDocumentMerger__convertToTriples__closure0.prototype = {
     call$1(v) {
       return new A.Triple(this.subject, this.e.key, type$.RdfObject._as(v));
     },
-    $signature: 28
+    $signature: 27
   };
   A.IndexSyncSpec.prototype = {};
   A.FullIndexSync.prototype = {
@@ -55150,14 +55702,14 @@
       t2 = e.value.get$entries();
       return "\nShard " + t1 + ":\n\t" + t2.map$1$1(t2, new A.PartialIndexSync_toString__closure(), type$.String).join$1(0, "\n\t");
     },
-    $signature: 293
+    $signature: 296
   };
   A.PartialIndexSync_toString__closure.prototype = {
     call$1(e) {
       type$.MapEntry_IriTerm_String._as(e);
       return $.$get$IriTermExtensions__debugStringCache().putIfAbsent$2(e.key, A.rdf_extensions__IriTermExtensions__iriToDebugString$closure()) + ": " + e.value;
     },
-    $signature: 294
+    $signature: 297
   };
   A.ShardSyncSpec.prototype = {};
   A.FullShardSync.prototype = {};
@@ -55852,7 +56404,7 @@
     _syncResourceType$3(resourceType, lastSyncTimestamp, syncTime) {
       var $async$goto = 0,
         $async$completer = A._makeAsyncAwaitCompleter(type$.void),
-        $async$self = this, t1, $async$temp1;
+        $async$self = this, t1, t2, $async$temp1, $async$temp2;
       var $async$_syncResourceType$3 = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
         if ($async$errorCode === 1)
           return A._asyncRethrow($async$result, $async$completer);
@@ -55860,30 +56412,20 @@
           switch ($async$goto) {
             case 0:
               // Function start
-              $.$get$_log19().log$4(B.Level_INFO_800, "Syncing resource type: " + $.$get$IriTermExtensions__debugStringCache().putIfAbsent$2(resourceType, A.rdf_extensions__IriTermExtensions__iriToDebugString$closure()), null, null);
-              $async$temp1 = J;
-              $async$goto = 2;
+              t1 = $.$get$_log19();
+              t2 = $.$get$IriTermExtensions__debugStringCache();
+              t1.log$4(B.Level_INFO_800, "Syncing resource type: " + t2.putIfAbsent$2(resourceType, A.rdf_extensions__IriTermExtensions__iriToDebugString$closure()), null, null);
+              $async$temp1 = A;
+              $async$temp2 = J;
+              $async$goto = 3;
               return A._asyncAwait($async$self._syncIndexDocuments$3(resourceType, lastSyncTimestamp, syncTime), $async$_syncResourceType$3);
+            case 3:
+              // returning from await.
+              $async$goto = 2;
+              return A._asyncAwait($async$temp1._executeInChunks($async$temp2.map$1$1$ax($async$result, new A.RemoteSyncOrchestrator__syncResourceType_closure($async$self, resourceType, lastSyncTimestamp, syncTime), type$.Future_void_Function), $async$self._remoteSyncStorage.get$maxConcurrentIndexSyncs(), type$.void), $async$_syncResourceType$3);
             case 2:
               // returning from await.
-              t1 = $async$temp1.get$iterator$ax($async$result);
-            case 3:
-              // for condition
-              if (!t1.moveNext$0()) {
-                // goto after for
-                $async$goto = 4;
-                break;
-              }
-              $async$goto = 5;
-              return A._asyncAwait($async$self._syncIndex$4(resourceType, t1.get$current(), lastSyncTimestamp, syncTime), $async$_syncResourceType$3);
-            case 5:
-              // returning from await.
-              // goto for condition
-              $async$goto = 3;
-              break;
-            case 4:
-              // after for
-              $.$get$_log19().log$4(B.Level_INFO_800, "Completed sync for resource type: " + $.$get$IriTermExtensions__debugStringCache().putIfAbsent$2(resourceType, A.rdf_extensions__IriTermExtensions__iriToDebugString$closure()), null, null);
+              t1.log$4(B.Level_INFO_800, "Completed sync for resource type: " + t2.putIfAbsent$2(resourceType, A.rdf_extensions__IriTermExtensions__iriToDebugString$closure()), null, null);
               // implicit return
               return A._asyncReturn(null, $async$completer);
           }
@@ -55893,7 +56435,7 @@
     _syncIndex$4(resourceType, index, lastSyncTimestamp, syncTime) {
       var $async$goto = 0,
         $async$completer = A._makeAsyncAwaitCompleter(type$.void),
-        $async$self = this, t1, $async$temp1;
+        $async$self = this, t1, $async$temp1, $async$temp2;
       var $async$_syncIndex$4 = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
         if ($async$errorCode === 1)
           return A._asyncRethrow($async$result, $async$completer);
@@ -55901,30 +56443,19 @@
           switch ($async$goto) {
             case 0:
               // Function start
-              $.$get$_log19().log$4(B.Level_FINE_500, "Syncing index: " + index.toString$0(0), null, null);
-              $async$temp1 = J;
-              $async$goto = 2;
+              t1 = $.$get$_log19();
+              t1.log$4(B.Level_FINE_500, "Syncing index: " + index.toString$0(0), null, null);
+              $async$temp1 = A;
+              $async$temp2 = J;
+              $async$goto = 3;
               return A._asyncAwait($async$self._buildShardSyncSpecs$1(index), $async$_syncIndex$4);
+            case 3:
+              // returning from await.
+              $async$goto = 2;
+              return A._asyncAwait($async$temp1._executeInChunks($async$temp2.map$1$1$ax($async$result, new A.RemoteSyncOrchestrator__syncIndex_closure($async$self, resourceType, index, lastSyncTimestamp, syncTime), type$.Future_void_Function), $async$self._remoteSyncStorage.get$maxConcurrentShardSyncs(), type$.void), $async$_syncIndex$4);
             case 2:
               // returning from await.
-              t1 = $async$temp1.get$iterator$ax($async$result);
-            case 3:
-              // for condition
-              if (!t1.moveNext$0()) {
-                // goto after for
-                $async$goto = 4;
-                break;
-              }
-              $async$goto = 5;
-              return A._asyncAwait($async$self._syncShard$5(resourceType, index, t1.get$current(), lastSyncTimestamp, syncTime), $async$_syncIndex$4);
-            case 5:
-              // returning from await.
-              // goto for condition
-              $async$goto = 3;
-              break;
-            case 4:
-              // after for
-              $.$get$_log19().log$4(B.Level_INFO_800, "Completed sync for index: " + $.$get$IriTermExtensions__debugStringCache().putIfAbsent$2(index.indexIri, A.rdf_extensions__IriTermExtensions__iriToDebugString$closure()), null, null);
+              t1.log$4(B.Level_INFO_800, "Completed sync for index: " + $.$get$IriTermExtensions__debugStringCache().putIfAbsent$2(index.indexIri, A.rdf_extensions__IriTermExtensions__iriToDebugString$closure()), null, null);
               // implicit return
               return A._asyncReturn(null, $async$completer);
           }
@@ -55954,6 +56485,9 @@
           }
       });
       return A._asyncStartSync($async$_syncShard$5, $async$completer);
+    },
+    createSyncDocumentQueueTasks$5(documentQueue, shard, lastSyncTimestamp, syncTime, debugName) {
+      return type$.Set__DocumentQueueEntry._as(documentQueue).map$1$1(0, new A.RemoteSyncOrchestrator_createSyncDocumentQueueTasks_closure(this, shard, lastSyncTimestamp, syncTime), type$.Record_4_IriTerm_documentIri_and_int_lastSyncTimestamp_and_bool_shouldSync_and_DateTime_syncTime).where$1(0, new A.RemoteSyncOrchestrator_createSyncDocumentQueueTasks_closure0()).map$1$1(0, new A.RemoteSyncOrchestrator_createSyncDocumentQueueTasks_closure1(this, debugName), type$.Future_void_Function);
     },
     _computeEntriesToKeep$3(limitToResources, $document, shardIri) {
       var t1, entriesToKeep, existingEntries, t2, t3, t4, resourceIri;
@@ -55990,7 +56524,7 @@
     call$1(r) {
       return type$.ResourceConfigData._as(r).typeIri;
     },
-    $signature: 56
+    $signature: 57
   };
   A.RemoteSyncOrchestrator__syncIndexDocuments_closure.prototype = {
     call$1(r) {
@@ -56004,26 +56538,26 @@
       type$.FullIndexData._as(index);
       return new A.FullIndexSync(index.itemFetchPolicy, this.$this._remote_sync_orchestrator$_indexRdfGenerator.generateFullIndexIri$2(index, this.resourceType));
     },
-    $signature: 296
+    $signature: 299
   };
   A.RemoteSyncOrchestrator__syncIndexDocuments_closure1.prototype = {
     call$1(tuple) {
       type$.Record_3_IriTerm_and_IriTerm_and_ItemFetchPolicy._as(tuple);
       return new A.FullIndexSync(tuple._2, tuple._0);
     },
-    $signature: 297
+    $signature: 300
   };
   A.RemoteSyncOrchestrator__syncIndexDocuments_closure2.prototype = {
     call$1(tuple) {
       return type$.Record_3_IriTerm_and_IriTerm_and_ItemFetchPolicy._as(tuple)._0;
     },
-    $signature: 298
+    $signature: 301
   };
   A.RemoteSyncOrchestrator__syncIndexDocuments_closure3.prototype = {
     call$1(spec) {
       return type$.IndexSyncSpec._as(spec).indexIri;
     },
-    $signature: 299
+    $signature: 302
   };
   A.RemoteSyncOrchestrator__syncDocument_closure.prototype = {
     call$0() {
@@ -56113,26 +56647,26 @@
       });
       return A._asyncStartSync($async$call$0, $async$completer);
     },
-    $signature: 14
+    $signature: 15
   };
   A.RemoteSyncOrchestrator__buildShardSyncSpecs_closure.prototype = {
     call$1(shardIri) {
       return new A.FullShardSync(this.idxSpec.fetchPolicy, type$.IriTerm._as(shardIri));
     },
-    $signature: 300
+    $signature: 303
   };
   A.RemoteSyncOrchestrator__buildShardSyncSpecs_closure0.prototype = {
     call$1(entry) {
       type$.MapEntry_of_IriTerm_and_Map_IriTerm_String._as(entry);
       return new A.PartialShardSync(entry.value, entry.key);
     },
-    $signature: 301
+    $signature: 304
   };
   A.RemoteSyncOrchestrator__buildDocumentQueue_closure.prototype = {
     call$2(key, value) {
       return new A.MapEntry(type$.IriTerm._as(key), type$.Record_2_String_and_nullable_Set_RdfObject._as(value)._0, type$.MapEntry_IriTerm_String);
     },
-    $signature: 302
+    $signature: 305
   };
   A.RemoteSyncOrchestrator__buildDocumentQueue_closure0.prototype = {
     call$1(entry) {
@@ -56141,7 +56675,7 @@
       t1 = entry.key;
       return new A._DocumentQueueEntry(t1, entry.value, this.remoteEntries.$index(0, t1), null, null);
     },
-    $signature: 303
+    $signature: 306
   };
   A.RemoteSyncOrchestrator__buildDocumentQueue_closure1.prototype = {
     call$1(resourceIri) {
@@ -56156,39 +56690,39 @@
       t1 = t1 ? _null : localData._1;
       return new A._DocumentQueueEntry(resourceIri, t2, t4, t1, t3 ? _null : remoteData._1);
     },
-    $signature: 304
+    $signature: 307
   };
   A.RemoteSyncOrchestrator__matchesFilter_closure.prototype = {
     call$1(value) {
       return this.filter.acceptedObjectValues.contains$1(0, type$.RdfObject._as(value));
     },
-    $signature: 18
+    $signature: 22
   };
   A.RemoteSyncOrchestrator__matchesFilter_closure0.prototype = {
     call$1(value) {
       return this.filter.acceptedObjectValues.contains$1(0, type$.RdfObject._as(value));
     },
-    $signature: 18
+    $signature: 22
   };
   A.RemoteSyncOrchestrator__getFinalEntrySet_closure.prototype = {
     call$1(entry) {
       return this.limitToResourceIris.contains$1(0, type$.IndexEntryWithIri._as(entry).resourceIri);
     },
-    $signature: 93
+    $signature: 94
   };
   A.RemoteSyncOrchestrator__findForeignIndices_closure.prototype = {
     call$1(entry) {
       type$.MapEntry_of_IriTerm_and_Map_of_IriTerm_and_Map_IriTerm_String._as(entry);
       return new A.PartialIndexSync(entry.value, entry.key);
     },
-    $signature: 306
+    $signature: 309
   };
   A.RemoteSyncOrchestrator__findForeignIndices_closure0.prototype = {
     call$1(i) {
       var t1 = type$.PartialIndexSync._as(i).shardItems;
       return t1.get$length(t1);
     },
-    $signature: 307
+    $signature: 310
   };
   A.RemoteSyncOrchestrator__findForeignIndices_closure1.prototype = {
     call$2(a, b) {
@@ -56196,11 +56730,39 @@
     },
     $signature: 7
   };
+  A.RemoteSyncOrchestrator__syncResourceType_closure.prototype = {
+    call$1(index) {
+      var _this = this;
+      return new A.RemoteSyncOrchestrator__syncResourceType__closure(_this.$this, _this.resourceType, type$.IndexSyncSpec._as(index), _this.lastSyncTimestamp, _this.syncTime);
+    },
+    $signature: 311
+  };
+  A.RemoteSyncOrchestrator__syncResourceType__closure.prototype = {
+    call$0() {
+      var _this = this;
+      return _this.$this._syncIndex$4(_this.resourceType, _this.index, _this.lastSyncTimestamp, _this.syncTime);
+    },
+    $signature: 1
+  };
+  A.RemoteSyncOrchestrator__syncIndex_closure.prototype = {
+    call$1(shard) {
+      var _this = this;
+      return new A.RemoteSyncOrchestrator__syncIndex__closure(_this.$this, _this.resourceType, _this.index, type$.ShardSyncSpec._as(shard), _this.lastSyncTimestamp, _this.syncTime);
+    },
+    $signature: 312
+  };
+  A.RemoteSyncOrchestrator__syncIndex__closure.prototype = {
+    call$0() {
+      var _this = this;
+      return _this.$this._syncShard$5(_this.resourceType, _this.index, _this.shard, _this.lastSyncTimestamp, _this.syncTime);
+    },
+    $signature: 1
+  };
   A.RemoteSyncOrchestrator__syncShard_closure.prototype = {
     call$0() {
       var $async$goto = 0,
         $async$completer = A._makeAsyncAwaitCompleter(type$.Null),
-        $async$returnValue, $async$self = this, t5, t6, documentQueue, t7, t8, t9, t10, t11, t12, t13, needsUpload, needsMerge, policy, needsDownload, documentIri, _0_2, finalEntrySet, newShardNodes, entriesToKeep, updatedShardDocument, ourCurrentShardClock, clock, documentToUpload, clock2, missingGroupIndices, t1, shardDocumentIri, t2, t3, t4, merged;
+        $async$returnValue, $async$self = this, t5, t6, documentQueue, t7, _0_2_isSet, _0_2, t8, finalEntrySet, newShardNodes, entriesToKeep, updatedShardDocument, ourCurrentShardClock, clock, documentToUpload, clock2, missingGroupIndices, t1, shardDocumentIri, t2, t3, t4, merged;
       var $async$call$0 = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
         if ($async$errorCode === 1)
           return A._asyncRethrow($async$result, $async$completer);
@@ -56230,62 +56792,26 @@
             case 4:
               // returning from await.
               documentQueue = $async$result;
-              t7 = documentQueue.get$iterator(documentQueue), t8 = t6 instanceof A.FullShardSync, t9 = $async$self.syncTime;
-            case 5:
-              // for condition
-              if (!t7.moveNext$0()) {
-                // goto after for
-                $async$goto = 6;
-                break;
-              }
-              t10 = t7.get$current();
-              t11 = t10.localClockHash;
-              t12 = t11 == null;
-              t13 = !t12;
-              needsUpload = t13 && t10.remoteClockHash == null;
-              if (t13) {
-                t13 = t10.remoteClockHash;
-                needsMerge = t13 != null && t11 !== t13;
-              } else
-                needsMerge = false;
-              if (t12 && t10.remoteClockHash != null && t8) {
-                policy = t6.fetchPolicy;
-                if (!(policy instanceof A.Prefetch))
-                  needsDownload = policy instanceof A.PrefetchFiltered && t2._matchesFilter$2(t10, policy);
-                else
-                  needsDownload = true;
-              } else
-                needsDownload = false;
-              $async$goto = needsUpload || needsMerge || needsDownload ? 7 : 8;
-              break;
-            case 7:
-              // then
-              documentIri = A.IriTermExtensions_getDocumentIri(t10.resourceIri, A.rdf_term_IriTerm___validated_tearOff$closure());
-              $async$goto = 9;
-              return A._asyncAwait(t2._syncDocument$4$debugName(documentIri, t3, t9, "Document " + $.$get$IriTermExtensions__debugStringCache().putIfAbsent$2(documentIri, A.rdf_extensions__IriTermExtensions__iriToDebugString$closure()) + " (as part of " + t4 + ")"), $async$call$0);
-            case 9:
-              // returning from await.
-            case 8:
-              // join
-              // goto for condition
+              t7 = $async$self.syncTime;
               $async$goto = 5;
-              break;
-            case 6:
-              // after for
+              return A._asyncAwait(A._executeInChunks(t2.createSyncDocumentQueueTasks$5(documentQueue, t6, t3, t7, t4), t2._remoteSyncStorage.get$maxConcurrentDocumentSyncs(), type$.void), $async$call$0);
+            case 5:
+              // returning from await.
               $label0$0: {
+                _0_2_isSet = t6 instanceof A.FullShardSync;
                 _0_2 = null;
-                if (t8) {
+                if (_0_2_isSet) {
                   _0_2 = t6.fetchPolicy;
                   t3 = _0_2;
                   t3 = t3 instanceof A.Prefetch;
                 } else
                   t3 = false;
-                t7 = null;
+                t8 = null;
                 if (t3) {
-                  t3 = t7;
+                  t3 = t8;
                   break $label0$0;
                 }
-                if (t8)
+                if (_0_2_isSet)
                   if (!(_0_2 instanceof A.OnRequest))
                     t3 = _0_2 instanceof A.PrefetchFiltered;
                   else
@@ -56300,11 +56826,11 @@
                   t3 = documentQueue.map$1$1(0, new A.RemoteSyncOrchestrator__syncShard__closure0(), type$.IriTerm).toSet$0(0);
                   break $label0$0;
                 }
-                t3 = t7;
+                t3 = t8;
               }
-              $async$goto = 10;
+              $async$goto = 6;
               return A._asyncAwait(t2._getFinalEntrySet$2$limitToResourceIris(t1, t3), $async$call$0);
-            case 10:
+            case 6:
               // returning from await.
               finalEntrySet = $async$result;
               newShardNodes = t2._remote_sync_orchestrator$_shardDocumentGenerator.generateShardNodes$3$entries$shardDocumentIri$shardResourceIri(finalEntrySet, shardDocumentIri, t1);
@@ -56314,18 +56840,18 @@
               ourCurrentShardClock = t1.getCurrentClock$2(t5[3], shardDocumentIri);
               clock = finalEntrySet.any$1(0, new A.RemoteSyncOrchestrator__syncShard__closure2(ourCurrentShardClock)) ? t1.createOrIncrementClock$2(t5[3], shardDocumentIri) : ourCurrentShardClock;
               t1 = t5[3];
-              $async$goto = 11;
+              $async$goto = 7;
               return A._asyncAwait(t2._reconcileDocumentShards$3(shardDocumentIri, t2._applyMetadataToDocument$3(updatedShardDocument, t2._remote_sync_orchestrator$_localDocumentMerger.generateMetadata$8$appDataTypeIri$computeCanonicalBlankNodes(shardDocumentIri, updatedShardDocument, t1, t1, t5[2], clock, B.IriTerm_IIm, false)._0, shardDocumentIri), t5[2]), $async$call$0);
-            case 11:
+            case 7:
               // returning from await.
               t1 = $async$result._values;
               documentToUpload = t1[1];
               clock2 = t1[2];
               missingGroupIndices = t1[3];
               t1 = t5[1];
-              $async$goto = 12;
-              return A._asyncAwait(t2._applyAndStoreMergedDocument$9$clock$debugName$documentIri$documentToUpload$etag$localUpdatedAt$missingGroupIndices$syncTime$typeIri(clock2, t4, shardDocumentIri, documentToUpload, t5[0], t1, missingGroupIndices, t9, B.IriTerm_IIm), $async$call$0);
-            case 12:
+              $async$goto = 8;
+              return A._asyncAwait(t2._applyAndStoreMergedDocument$9$clock$debugName$documentIri$documentToUpload$etag$localUpdatedAt$missingGroupIndices$syncTime$typeIri(clock2, t4, shardDocumentIri, documentToUpload, t5[0], t1, missingGroupIndices, t7, B.IriTerm_IIm), $async$call$0);
+            case 8:
               // returning from await.
             case 1:
               // return
@@ -56334,19 +56860,19 @@
       });
       return A._asyncStartSync($async$call$0, $async$completer);
     },
-    $signature: 14
+    $signature: 15
   };
   A.RemoteSyncOrchestrator__syncShard__closure.prototype = {
     call$1(e) {
       return type$._DocumentQueueEntry._as(e).resourceIri;
     },
-    $signature: 94
+    $signature: 95
   };
   A.RemoteSyncOrchestrator__syncShard__closure0.prototype = {
     call$1(e) {
       return type$._DocumentQueueEntry._as(e).resourceIri;
     },
-    $signature: 94
+    $signature: 95
   };
   A.RemoteSyncOrchestrator__syncShard__closure1.prototype = {
     call$2(triple, depth) {
@@ -56366,7 +56892,61 @@
     call$1(entry) {
       return type$.IndexEntryWithIri._as(entry).ourPhysicalClock > this.ourCurrentShardClock._values[3];
     },
-    $signature: 93
+    $signature: 94
+  };
+  A.RemoteSyncOrchestrator_createSyncDocumentQueueTasks_closure.prototype = {
+    call$1(queueEntry) {
+      var t1, t2, t3, needsUpload, needsMerge, policy, needsDownload, shouldSync, _this = this;
+      type$._DocumentQueueEntry._as(queueEntry);
+      t1 = queueEntry.localClockHash;
+      t2 = t1 == null;
+      t3 = !t2;
+      needsUpload = t3 && queueEntry.remoteClockHash == null;
+      if (t3) {
+        t3 = queueEntry.remoteClockHash;
+        needsMerge = t3 != null && t1 !== t3;
+      } else
+        needsMerge = false;
+      if (t2 && queueEntry.remoteClockHash != null && _this.shard instanceof A.FullShardSync) {
+        policy = _this.shard.fetchPolicy;
+        if (!(policy instanceof A.Prefetch))
+          needsDownload = policy instanceof A.PrefetchFiltered && _this.$this._matchesFilter$2(queueEntry, policy);
+        else
+          needsDownload = true;
+      } else
+        needsDownload = false;
+      shouldSync = needsUpload || needsMerge || needsDownload;
+      return new A._Record_4_documentIri_lastSyncTimestamp_shouldSync_syncTime([A.IriTermExtensions_getDocumentIri(queueEntry.resourceIri, A.rdf_term_IriTerm___validated_tearOff$closure()), _this.lastSyncTimestamp, shouldSync, _this.syncTime]);
+    },
+    $signature: 314
+  };
+  A.RemoteSyncOrchestrator_createSyncDocumentQueueTasks_closure0.prototype = {
+    call$1(params) {
+      return type$.Record_4_IriTerm_documentIri_and_int_lastSyncTimestamp_and_bool_shouldSync_and_DateTime_syncTime._as(params)._values[2];
+    },
+    $signature: 315
+  };
+  A.RemoteSyncOrchestrator_createSyncDocumentQueueTasks_closure1.prototype = {
+    call$1(params) {
+      return new A.RemoteSyncOrchestrator_createSyncDocumentQueueTasks__closure(this.$this, type$.Record_4_IriTerm_documentIri_and_int_lastSyncTimestamp_and_bool_shouldSync_and_DateTime_syncTime._as(params), this.debugName);
+    },
+    $signature: 316
+  };
+  A.RemoteSyncOrchestrator_createSyncDocumentQueueTasks__closure.prototype = {
+    call$0() {
+      var t1 = this.params._values,
+        t2 = t1[0];
+      return this.$this._syncDocument$4$debugName(t2, t1[1], t1[3], "Document " + $.$get$IriTermExtensions__debugStringCache().putIfAbsent$2(t2, A.rdf_extensions__IriTermExtensions__iriToDebugString$closure()) + " (as part of " + this.debugName + ")");
+    },
+    $signature: 1
+  };
+  A._executeInChunks_closure.prototype = {
+    call$1(task) {
+      return this.T._eval$1("Future<0>()")._as(task).call$0();
+    },
+    $signature() {
+      return this.T._eval$1("Future<0>(Future<0>())");
+    }
   };
   A.ShardDocumentGenerator.prototype = {
     call$2(syncTime, lastSyncTimestamp) {
@@ -56543,7 +57123,7 @@
       var _this = this;
       return _this.$this._syncShardAttempt$4(_this.shardIri, _this.indexIri, _this.resourceTypeIri, _this.maxPhysicalClock);
     },
-    $signature: 46
+    $signature: 71
   };
   A.ShardDocumentGenerator__syncShardAttempt_closure0.prototype = {
     call$1(node) {
@@ -56553,19 +57133,19 @@
       B.JSArray_methods.addAll$1(t1, node._1._triples);
       return t1;
     },
-    $signature: 91
+    $signature: 92
   };
   A.ShardDocumentGenerator__syncShardAttempt_closure.prototype = {
     call$1(oldAppData) {
       return A.buildShardAppData(oldAppData, this.shardIri, this.indexIri, this.newTriples);
     },
-    $signature: 309
+    $signature: 317
   };
   A.ShardDocumentGenerator_generateShardNodes_closure.prototype = {
     call$0() {
       return A._setArrayType([], type$.JSArray_RdfObject);
     },
-    $signature: 36
+    $signature: 43
   };
   A.buildShardAppData_closure.prototype = {
     call$2(triple, depth) {
@@ -56709,7 +57289,7 @@
     call$0() {
       return this.$this.sync$1$trigger(B.SyncTrigger_1);
     },
-    $signature: 3
+    $signature: 1
   };
   A.StandardSyncManager__setupAutoSync_closure.prototype = {
     call$1(_) {
@@ -56717,7 +57297,7 @@
       $.$get$_log1().log$4(B.Level_FINE_500, "Auto-sync timer triggered", null, null);
       this.$this.sync$1$trigger(B.SyncTrigger_2);
     },
-    $signature: 96
+    $signature: 97
   };
   A.StandardSyncManager_enableAutoSync_closure.prototype = {
     call$1(_) {
@@ -56725,7 +57305,7 @@
       $.$get$_log1().log$4(B.Level_FINE_500, "Auto-sync timer triggered", null, null);
       this.$this.sync$1$trigger(B.SyncTrigger_2);
     },
-    $signature: 96
+    $signature: 97
   };
   A.SyncFunction.prototype = {
     call$1(syncTime) {
@@ -56988,7 +57568,7 @@
     call$1(r) {
       return type$.ResourceConfigData._as(r).typeIri;
     },
-    $signature: 56
+    $signature: 57
   };
   A.LRUCache.prototype = {
     $index(_, key) {
@@ -58082,14 +58662,14 @@
       });
       return A._asyncStartSync($async$call$0, $async$completer);
     },
-    $signature: 313
+    $signature: 321
   };
   A.DriftStorage_watchDocumentsModifiedSince_closure.prototype = {
     call$1(documents) {
       var storedDocuments = this.$this._convertToStoredDocuments$1(type$.List_DocumentWithIri._as(documents));
       return new A.DocumentsResult(storedDocuments, storedDocuments.length !== 0 ? B.JSInt_methods.toString$0(B.JSArray_methods.get$last(storedDocuments).metadata.updatedAt) : this.minCursor, false);
     },
-    $signature: 314
+    $signature: 322
   };
   A.DriftStorage_getSettings_closure.prototype = {
     call$1(s) {
@@ -58098,13 +58678,13 @@
       t2 = A._setArrayType(t2.slice(0), A._arrayInstanceType(t2));
       return t1.isIn$1(t2);
     },
-    $signature: 315
+    $signature: 323
   };
   A.DriftStorage_getIndexEntries_closure.prototype = {
     call$1(iri) {
       return type$.IriTerm._as(iri).value;
     },
-    $signature: 10
+    $signature: 11
   };
   A.DriftStorage_getIndexEntries_closure0.prototype = {
     call$1(e) {
@@ -58113,13 +58693,13 @@
       t1 = e.entry;
       return new A.IndexEntryWithIri(this.$this._drift_storage$_iriTermFactory.call$1(e.resourceIri), t1.clockHash, t1.headerProperties, t1.updatedAt, t1.ourPhysicalClock, t1.isDeleted);
     },
-    $signature: 58
+    $signature: 46
   };
   A.DriftStorage_watchIndexEntries_closure.prototype = {
     call$1(iri) {
       return type$.IriTerm._as(iri).value;
     },
-    $signature: 10
+    $signature: 11
   };
   A.DriftStorage_watchIndexEntries_closure0.prototype = {
     call$1(entries) {
@@ -58127,7 +58707,7 @@
       t1 = A.List_List$_of(t1, t1.$ti._eval$1("ListIterable.E"));
       return t1;
     },
-    $signature: 317
+    $signature: 325
   };
   A.DriftStorage_watchIndexEntries__closure.prototype = {
     call$1(e) {
@@ -58136,7 +58716,7 @@
       t1 = e.entry;
       return new A.IndexEntryWithIri(this.$this._drift_storage$_iriTermFactory.call$1(e.resourceIri), t1.clockHash, t1.headerProperties, t1.updatedAt, t1.ourPhysicalClock, t1.isDeleted);
     },
-    $signature: 58
+    $signature: 46
   };
   A.DriftStorage_getSubscribedGroupIndices_closure.prototype = {
     call$1(subscription) {
@@ -58145,7 +58725,7 @@
       t1 = this.$this._drift_storage$_iriTermFactory;
       return new A._Record_3(t1.call$1(subscription.groupIndexIri), t1.call$1(subscription.indexedTypeIri), A.ItemFetchPolicy_fromMap(type$.Map_String_dynamic._as(B.C_JsonCodec.decode$1(subscription.itemFetchPolicy))));
     },
-    $signature: 318
+    $signature: 326
   };
   A.DriftStorage_watchSubscribedGroupIndexIris_closure.prototype = {
     call$1(iri) {
@@ -58157,7 +58737,7 @@
     call$1(iri) {
       return type$.IriTerm._as(iri).value;
     },
-    $signature: 10
+    $signature: 11
   };
   A.DriftStorage_getIndexIrisForVersion_closure.prototype = {
     call$1(iri) {
@@ -58172,7 +58752,7 @@
       t1 = driftEntry.entry;
       return new A.IndexEntryWithIri(this.$this._drift_storage$_iriTermFactory.call$1(driftEntry.resourceIri), t1.clockHash, t1.headerProperties, t1.updatedAt, t1.ourPhysicalClock, t1.isDeleted);
     },
-    $signature: 58
+    $signature: 46
   };
   A.DriftStorage_getShardsToUpdate_closure.prototype = {
     call$1(iri) {
@@ -58182,13 +58762,13 @@
         t4 = t2.call$1(t1[2]);
       return new A._Record_4_index78Iri_max78PhysicalClock_resourceTypeIri_shardIri([t2.call$1(t1[0]), t1[1], t4, t3]);
     },
-    $signature: 320
+    $signature: 328
   };
   A.DriftStorage_getForeignIndexShardsToSync_closure.prototype = {
     call$1(iri) {
       return type$.IriTerm._as(iri).value;
     },
-    $signature: 10
+    $signature: 11
   };
   A.DriftStorage__convertToStoredDocuments_closure.prototype = {
     call$1(doc) {
@@ -58200,7 +58780,7 @@
       graph = t1._drift_storage$_codec.decode$2$documentUrl(t2.documentContent, t3);
       return new A.StoredDocument(t1._drift_storage$_iriTermFactory.call$1(t3), graph, new A.DocumentMetadata(t2.ourPhysicalClock, t2.updatedAt));
     },
-    $signature: 321
+    $signature: 329
   };
   A.SyncIris.prototype = {};
   A.SyncDocuments.prototype = {};
@@ -58556,19 +59136,19 @@
     call$1(iri) {
       return type$.$SyncIrisTable._as(iri).get$id().isIn$1(this.batch);
     },
-    $signature: 99
+    $signature: 100
   };
   A.IriBatchLoader_getOrCreateIriIdsBatch_closure.prototype = {
     call$1(iri) {
       return !this.existing.containsKey$1(A._asString(iri));
     },
-    $signature: 2
+    $signature: 3
   };
   A.IriBatchLoader__getExistingIriIds_closure.prototype = {
     call$1(iri) {
       return type$.$SyncIrisTable._as(iri).get$iri().isIn$1(this.batch);
     },
-    $signature: 99
+    $signature: 100
   };
   A.SyncDocumentDao.prototype = {
     saveDocument$6$content$documentIri$ifMatchUpdatedAt$ourPhysicalClock$typeIri$updatedAt($content, documentIri, ifMatchUpdatedAt, ourPhysicalClock, typeIri, updatedAt) {
@@ -58911,7 +59491,7 @@
         t2 = t1.$ti._eval$1("Expression.D");
       return new A._Comparison(t1, A.WithTypes_variable(t1, t2._as(this.documentIriId), t2), B._ComparisonOperator_3X3);
     },
-    $signature: 15
+    $signature: 17
   };
   A.SyncDocumentDao_saveDocument_closure0.prototype = {
     call$1(d) {
@@ -58919,7 +59499,7 @@
         t2 = t1.$ti._eval$1("Expression.D");
       return new A._Comparison(t1, A.WithTypes_variable(t1, t2._as(this.existingDocument.id), t2), B._ComparisonOperator_3X3);
     },
-    $signature: 15
+    $signature: 17
   };
   A.SyncDocumentDao_saveDocument_closure1.prototype = {
     call$1(d) {
@@ -58927,7 +59507,7 @@
         t2 = t1.$ti._eval$1("Expression.D");
       return new A._Comparison(t1, A.WithTypes_variable(t1, t2._as(this.ifMatchUpdatedAt), t2), B._ComparisonOperator_3X3);
     },
-    $signature: 15
+    $signature: 17
   };
   A.SyncDocumentDao_getDocument_closure.prototype = {
     call$1(d) {
@@ -58935,13 +59515,13 @@
         t2 = t1.$ti._eval$1("Expression.D");
       return new A._Comparison(t1, A.WithTypes_variable(t1, t2._as(this.documentIriId), t2), B._ComparisonOperator_3X3);
     },
-    $signature: 15
+    $signature: 17
   };
   A.SyncDocumentDao_getDocument_closure0.prototype = {
     call$1(d) {
       return A.ComparableExpr_isBiggerThanValue(type$.$SyncDocumentsTable._as(d).get$ourPhysicalClock(), this.ifChangedSincePhysicalClock, type$.int);
     },
-    $signature: 15
+    $signature: 17
   };
   A.SyncDocumentDao_getDocumentsModifiedSince_closure.prototype = {
     call$1(d) {
@@ -58951,13 +59531,13 @@
       t2 = t1.$ti._eval$1("Expression.D");
       return new A.BaseInfixOperator(new A._Comparison(t1, A.WithTypes_variable(t1, t2._as(this.typeIriId), t2), B._ComparisonOperator_3X3), "AND", A.ComparableExpr_isBiggerThanValue(d.get$updatedAt(), this.timestamp, type$.int), B.Precedence_11_2_and, type$.BaseInfixOperator_bool);
     },
-    $signature: 15
+    $signature: 17
   };
   A.SyncDocumentDao_getDocumentsModifiedSince_closure0.prototype = {
     call$1(d) {
       return new A.OrderingTerm(type$.$SyncDocumentsTable._as(d).get$updatedAt(), B.OrderingMode_0_asc, null);
     },
-    $signature: 102
+    $signature: 103
   };
   A.SyncDocumentDao_watchDocumentsModifiedSince_closure.prototype = {
     call$1(d) {
@@ -58967,19 +59547,19 @@
       t2 = t1.$ti._eval$1("Expression.D");
       return new A.BaseInfixOperator(new A._Comparison(t1, A.WithTypes_variable(t1, t2._as(this.typeIriId), t2), B._ComparisonOperator_3X3), "AND", A.ComparableExpr_isBiggerThanValue(d.get$updatedAt(), this.timestamp, type$.int), B.Precedence_11_2_and, type$.BaseInfixOperator_bool);
     },
-    $signature: 15
+    $signature: 17
   };
   A.SyncDocumentDao_watchDocumentsModifiedSince_closure0.prototype = {
     call$1(d) {
       return new A.OrderingTerm(type$.$SyncDocumentsTable._as(d).get$updatedAt(), B.OrderingMode_0_asc, null);
     },
-    $signature: 102
+    $signature: 103
   };
   A.SyncDocumentDao__convertDocumentsWithIris_closure0.prototype = {
     call$1(d) {
       return type$.SyncDocument._as(d).documentIriId;
     },
-    $signature: 326
+    $signature: 334
   };
   A.SyncDocumentDao__convertDocumentsWithIris_closure.prototype = {
     call$1(doc) {
@@ -58989,7 +59569,7 @@
       t1.toString;
       return new A.DocumentWithIri(t1, doc);
     },
-    $signature: 327
+    $signature: 335
   };
   A.SyncPropertyChangeDao.prototype = {
     recordPropertyChangesBatch$2$changes$documentId(changes, documentId) {
@@ -59048,7 +59628,7 @@
       type$.PropertyChange._as(change);
       return A._setArrayType([change.resourceIri.value, this.$this.predicateValue$1(change.propertyIri)], type$.JSArray_String);
     },
-    $signature: 328
+    $signature: 336
   };
   A.SyncPropertyChangeDao_recordPropertyChangesBatch_closure.prototype = {
     call$1(change) {
@@ -59062,13 +59642,13 @@
       t2.toString;
       return new A.SyncPropertyChangesCompanion(new A.Value(true, this.documentId, t1), new A.Value(true, t3, t1), new A.Value(true, t2, t1), new A.Value(true, change.changedAtMs, t1), new A.Value(true, change.changeLogicalClock, t1), new A.Value(true, change.isFrameworkProperty, type$.Value_bool));
     },
-    $signature: 329
+    $signature: 337
   };
   A.SyncPropertyChangeDao_recordPropertyChangesBatch_closure1.prototype = {
     call$1(batch) {
       batch.insertAll$2$2(0, this.$this.attachedDatabase.get$syncPropertyChanges(), this.companions, type$.$SyncPropertyChangesTable, type$.SyncPropertyChange);
     },
-    $signature: 330
+    $signature: 338
   };
   A.IndexDao.prototype = {
     getIndexEntries$3$cursorTimestamp$indexIds$limit(cursorTimestamp, indexIds, limit) {
@@ -59552,13 +60132,13 @@
     call$1(e) {
       return type$.$IndexEntriesTable._as(e).get$indexIriId().isIn$1(this.indexIds);
     },
-    $signature: 62
+    $signature: 47
   };
   A.IndexDao_getIndexEntries_closure0.prototype = {
     call$1(e) {
       return A.ComparableExpr_isBiggerThanValue(type$.$IndexEntriesTable._as(e).get$updatedAt(), this.cursorTimestamp, type$.int);
     },
-    $signature: 62
+    $signature: 47
   };
   A.IndexDao_getIndexEntries_closure1.prototype = {
     call$1(e) {
@@ -59570,7 +60150,7 @@
     call$1(e) {
       return type$.IndexEntry._as(e).resourceIriId;
     },
-    $signature: 54
+    $signature: 48
   };
   A.IndexDao_getIndexEntries_closure2.prototype = {
     call$1(e) {
@@ -59580,13 +60160,13 @@
       t1.toString;
       return new A.DriftIndexEntry(e, t1);
     },
-    $signature: 105
+    $signature: 106
   };
   A.IndexDao_watchIndexEntries_closure.prototype = {
     call$1(e) {
       return type$.$IndexEntriesTable._as(e).get$indexIriId().isIn$1(this.indexIds);
     },
-    $signature: 62
+    $signature: 47
   };
   A.IndexDao_watchIndexEntries_closure0.prototype = {
     call$1(e) {
@@ -59640,19 +60220,19 @@
       });
       return A._asyncStartSync($async$call$1, $async$completer);
     },
-    $signature: 335
+    $signature: 343
   };
   A.IndexDao_watchIndexEntries__closure.prototype = {
     call$1(e) {
       return type$.IndexEntry._as(e).updatedAt > this._box_0.currentCursor;
     },
-    $signature: 336
+    $signature: 344
   };
   A.IndexDao_watchIndexEntries__closure0.prototype = {
     call$1(e) {
       return type$.IndexEntry._as(e).updatedAt;
     },
-    $signature: 54
+    $signature: 48
   };
   A.IndexDao_watchIndexEntries__closure1.prototype = {
     call$2(a, b) {
@@ -59666,7 +60246,7 @@
     call$1(e) {
       return type$.IndexEntry._as(e).resourceIriId;
     },
-    $signature: 54
+    $signature: 48
   };
   A.IndexDao_watchIndexEntries__closure2.prototype = {
     call$1(e) {
@@ -59676,13 +60256,13 @@
       t1.toString;
       return new A.DriftIndexEntry(e, t1);
     },
-    $signature: 105
+    $signature: 106
   };
   A.IndexDao_watchIndexEntries_closure1.prototype = {
     call$0() {
       return this.subscription.cancel$0();
     },
-    $signature: 3
+    $signature: 1
   };
   A.IndexDao_watchSubscribedGroupIndexIds_closure.prototype = {
     call$1(s) {
@@ -59690,19 +60270,19 @@
         t2 = t1.$ti._eval$1("Expression.D");
       return new A._Comparison(t1, A.WithTypes_variable(t1, t2._as(this.templateId), t2), B._ComparisonOperator_3X3);
     },
-    $signature: 337
+    $signature: 345
   };
   A.IndexDao_watchSubscribedGroupIndexIds_closure0.prototype = {
     call$1(results) {
       return J.map$1$1$ax(type$.List_GroupIndexSubscription._as(results), new A.IndexDao_watchSubscribedGroupIndexIds__closure(), type$.int).toSet$0(0);
     },
-    $signature: 338
+    $signature: 346
   };
   A.IndexDao_watchSubscribedGroupIndexIds__closure.prototype = {
     call$1(row) {
       return type$.GroupIndexSubscription._as(row).groupIndexIriId;
     },
-    $signature: 339
+    $signature: 347
   };
   A.IndexDao_getSubscribedGroupIndices_closure.prototype = {
     call$1(row) {
@@ -59711,7 +60291,7 @@
       subscription = row.readTable$2$1(this.$this.attachedDatabase.get$groupIndexSubscriptions(), type$.$GroupIndexSubscriptionsTable, type$.GroupIndexSubscription);
       return new A.SubscribedGroupIndexData(row.readTable$2$1(this.groupIndexIriTable, type$.$SyncIrisTable, type$.SyncIri).iri, this.indexedTypeIri, subscription.itemFetchPolicy);
     },
-    $signature: 340
+    $signature: 348
   };
   A.IndexDao_ensureIndexIdSetVersion_closure.prototype = {
     call$1(v) {
@@ -59719,7 +60299,7 @@
         t2 = t1.$ti._eval$1("Expression.D");
       return new A._Comparison(t1, A.WithTypes_variable(t1, t2._as(this.idsStr), t2), B._ComparisonOperator_3X3);
     },
-    $signature: 106
+    $signature: 107
   };
   A.IndexDao_getIndexIriIdsForVersion_closure.prototype = {
     call$1(v) {
@@ -59727,7 +60307,7 @@
         t2 = t1.$ti._eval$1("Expression.D");
       return new A._Comparison(t1, A.WithTypes_variable(t1, t2._as(this.versionId), t2), B._ComparisonOperator_3X3);
     },
-    $signature: 106
+    $signature: 107
   };
   A.IndexDao_getActiveIndexEntriesForShard_closure.prototype = {
     call$1(row) {
@@ -59736,7 +60316,7 @@
       t1 = this.$this.attachedDatabase;
       return new A.DriftIndexEntry(row.readTable$2$1(t1.get$indexEntries(), type$.$IndexEntriesTable, type$.IndexEntry), row.readTable$2$1(t1.get$syncIris(), type$.$SyncIrisTable, type$.SyncIri).iri);
     },
-    $signature: 342
+    $signature: 350
   };
   A.IndexDao_getShardsToUpdate_closure.prototype = {
     call$1(row) {
@@ -59747,20 +60327,20 @@
       t3 = row.read$1$1("resource_type_iri", t1);
       return new A._Record_4_index78Iri_max78PhysicalClock_resourceTypeIri_shardIri([row.read$1$1("index_iri", t1), row.read$1$1("max_clock", type$.int), t3, t2]);
     },
-    $signature: 343
+    $signature: 351
   };
   A.IndexDao__groupResults_closure.prototype = {
     call$0() {
       return A.LinkedHashMap_LinkedHashMap$_empty(type$.String, type$.Map_String_String);
     },
-    $signature: 344
+    $signature: 352
   };
   A.IndexDao__groupResults_closure0.prototype = {
     call$0() {
       var t1 = type$.String;
       return A.LinkedHashMap_LinkedHashMap$_empty(t1, t1);
     },
-    $signature: 345
+    $signature: 353
   };
   A.RemoteSyncStateDao.prototype = {
     getOrCreateRemoteId$2(remoteType, remoteId) {
@@ -59919,7 +60499,7 @@
         t2 = t1.$ti._eval$1("Expression.D");
       return new A._Comparison(t1, A.WithTypes_variable(t1, t2._as(this.remoteId), t2), B._ComparisonOperator_3X3);
     },
-    $signature: 63
+    $signature: 74
   };
   A.RemoteSyncStateDao_getRemoteLastSyncTimestamp_closure.prototype = {
     call$1(r) {
@@ -59927,7 +60507,7 @@
         t2 = t1.$ti._eval$1("Expression.D");
       return new A._Comparison(t1, A.WithTypes_variable(t1, t2._as(this.remoteId), t2), B._ComparisonOperator_3X3);
     },
-    $signature: 63
+    $signature: 74
   };
   A.RemoteSyncStateDao_updateRemoteLastSyncTimestamp_closure.prototype = {
     call$1(r) {
@@ -59935,7 +60515,7 @@
         t2 = t1.$ti._eval$1("Expression.D");
       return new A._Comparison(t1, A.WithTypes_variable(t1, t2._as(this.remoteId), t2), B._ComparisonOperator_3X3);
     },
-    $signature: 63
+    $signature: 74
   };
   A.RemoteSyncStateDao_getETag_closure.prototype = {
     call$1(s) {
@@ -59948,7 +60528,7 @@
       t4 = t3.$ti._eval$1("Expression.D");
       return new A.BaseInfixOperator(new A._Comparison(t1, t2, B._ComparisonOperator_3X3), "AND", new A._Comparison(t3, A.WithTypes_variable(t3, t4._as(this.remoteId), t4), B._ComparisonOperator_3X3), B.Precedence_11_2_and, type$.BaseInfixOperator_bool);
     },
-    $signature: 347
+    $signature: 355
   };
   A.DriftIndexEntry.prototype = {};
   A.SubscribedGroupIndexData.prototype = {};
@@ -60025,7 +60605,7 @@
       });
       return A._asyncStartSync($async$call$1, $async$completer);
     },
-    $signature: 348
+    $signature: 356
   };
   A.SyncDatabase_migration_closure0.prototype = {
     call$3(m, from, to) {
@@ -60154,7 +60734,7 @@
       });
       return A._asyncStartSync($async$call$3, $async$completer);
     },
-    $signature: 349
+    $signature: 357
   };
   A._$SyncDocumentDaoMixin.prototype = {};
   A._$SyncPropertyChangeDaoMixin.prototype = {};
@@ -62288,17 +62868,17 @@
     }
   };
   A.GDriveClient.prototype = {
-    getOrCreateFolder$2$folderName$parentId(folderName, parentId) {
-      return this.getOrCreateFolder$body$GDriveClient(folderName, parentId);
+    getOrCreateFolder$3$folderName$parentId$spaces(folderName, parentId, spaces) {
+      return this.getOrCreateFolder$body$GDriveClient(folderName, parentId, spaces);
     },
-    getOrCreateFolder$1$folderName(folderName) {
-      return this.getOrCreateFolder$2$folderName$parentId(folderName, null);
+    getOrCreateFolder$2$folderName$spaces(folderName, spaces) {
+      return this.getOrCreateFolder$3$folderName$parentId$spaces(folderName, null, spaces);
     },
-    getOrCreateFolder$body$GDriveClient(folderName, parentId) {
+    getOrCreateFolder$body$GDriveClient(folderName, parentId, spaces) {
       var $async$goto = 0,
         $async$completer = A._makeAsyncAwaitCompleter(type$.String),
         $async$returnValue, $async$handler = 2, $async$errorStack = [], $async$self = this, escapedName, query, fileList, folderId, folderMetadata, createdFolder, folderId0, e, stackTrace, t2, t3, folderMetadata0, exception, t1, $parent, $async$exception;
-      var $async$getOrCreateFolder$2$folderName$parentId = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
+      var $async$getOrCreateFolder$3$folderName$parentId$spaces = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
         if ($async$errorCode === 1) {
           $async$errorStack.push($async$result);
           $async$goto = $async$handler;
@@ -62311,13 +62891,13 @@
               $parent = t1 ? "root" : parentId;
               $async$handler = 4;
               t2 = $.$get$_clientLog();
-              t2.log$4(B.Level_FINE_500, 'Searching for folder "' + folderName + '" in parent=' + A.S($parent), null, null);
+              t2.log$4(B.Level_FINE_500, 'Searching for folder "' + folderName + '" in parent=' + A.S($parent) + " (spaces=" + spaces + ")", null, null);
               t3 = A.stringReplaceAllUnchecked(folderName, "\\", "\\\\");
               escapedName = A.stringReplaceAllUnchecked(t3, "'", "\\'");
               query = "name='" + A.S(escapedName) + "' and mimeType='application/vnd.google-apps.folder' and '" + A.S($parent) + "' in parents and trashed=false";
               t3 = $async$self._driveApi._requester;
               $async$goto = 7;
-              return A._asyncAwait(new A.FilesResource(t3).list$3$$fields$q$spaces("files(id, name)", query, "drive"), $async$getOrCreateFolder$2$folderName$parentId);
+              return A._asyncAwait(new A.FilesResource(t3).list$3$$fields$q$spaces("files(id, name)", query, spaces), $async$getOrCreateFolder$3$folderName$parentId$spaces);
             case 7:
               // returning from await.
               fileList = $async$result;
@@ -62341,7 +62921,7 @@
               if (!t1)
                 folderMetadata.set$parents(A._setArrayType([$parent], type$.JSArray_String));
               $async$goto = 8;
-              return A._asyncAwait(new A.FilesResource(t3).create$2$$fields(folderMetadata, "id"), $async$getOrCreateFolder$2$folderName$parentId);
+              return A._asyncAwait(new A.FilesResource(t3).create$2$$fields(folderMetadata, "id"), $async$getOrCreateFolder$3$folderName$parentId$spaces);
             case 8:
               // returning from await.
               createdFolder = $async$result;
@@ -62363,6 +62943,7 @@
               $async$exception = $async$errorStack.pop();
               e = A.unwrapException($async$exception);
               stackTrace = A.getTraceFromException($async$exception);
+              $async$self.handleGDriveAuthError$1(e);
               t1 = 'Failed to get or create folder "' + folderName;
               $.$get$_clientLog().log$4(B.Level_SEVERE_1000, t1 + '"', e, type$.nullable_StackTrace._as(stackTrace));
               t1 = A.GDriveClientException$(t1 + '": ' + A.S(e));
@@ -62385,19 +62966,25 @@
               return A._asyncRethrow($async$errorStack.at(-1), $async$completer);
           }
       });
-      return A._asyncStartSync($async$getOrCreateFolder$2$folderName$parentId, $async$completer);
+      return A._asyncStartSync($async$getOrCreateFolder$3$folderName$parentId$spaces, $async$completer);
     },
-    createFile$4$fileNameMayBeRelativePath$folderId(filename, graph, fileNameMayBeRelativePath, folderId) {
-      return this.createFile$body$GDriveClient(filename, graph, fileNameMayBeRelativePath, folderId);
+    handleGDriveAuthError$1(e) {
+      if (e instanceof A.DetailedApiRequestError && e.status === 401) {
+        $.$get$_clientLog().log$4(B.Level_WARNING_900, "Authentication failed (401) - OAuth authorization may have been revoked", null, null);
+        throw A.wrapException(A.AuthException$("Google Drive authentication failed. Please sign in again.", e));
+      }
     },
-    createFile$3$folderId(filename, graph, folderId) {
-      return this.createFile$4$fileNameMayBeRelativePath$folderId(filename, graph, false, folderId);
+    createFile$5$fileNameMayBeRelativePath$folderId$spaces(filename, graph, fileNameMayBeRelativePath, folderId, spaces) {
+      return this.createFile$body$GDriveClient(filename, graph, fileNameMayBeRelativePath, folderId, spaces);
     },
-    createFile$body$GDriveClient(filename, graph, fileNameMayBeRelativePath, folderId) {
+    createFile$4$folderId$spaces(filename, graph, folderId, spaces) {
+      return this.createFile$5$fileNameMayBeRelativePath$folderId$spaces(filename, graph, false, folderId, spaces);
+    },
+    createFile$body$GDriveClient(filename, graph, fileNameMayBeRelativePath, folderId, spaces) {
       var $async$goto = 0,
         $async$completer = A._makeAsyncAwaitCompleter(type$.Record_2_String_etag_and_String_fileId),
         $async$returnValue, $async$handler = 2, $async$errorStack = [], $async$self = this, parentId, actualFileName, parts, folderName, $content, bytes, fileMetadata, media, createdFile, fileId, etag, e, stackTrace, t1, t2, _i, fileMetadata0, exception, $async$exception;
-      var $async$createFile$4$fileNameMayBeRelativePath$folderId = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
+      var $async$createFile$5$fileNameMayBeRelativePath$folderId$spaces = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
         if ($async$errorCode === 1) {
           $async$errorStack.push($async$result);
           $async$goto = $async$handler;
@@ -62425,7 +63012,7 @@
               }
               folderName = t1[_i];
               $async$goto = 12;
-              return A._asyncAwait($async$self.getOrCreateFolder$2$folderName$parentId(folderName, parentId), $async$createFile$4$fileNameMayBeRelativePath$folderId);
+              return A._asyncAwait($async$self.getOrCreateFolder$3$folderName$parentId$spaces(folderName, parentId, spaces), $async$createFile$5$fileNameMayBeRelativePath$folderId$spaces);
             case 12:
               // returning from await.
               parentId = $async$result;
@@ -62450,7 +63037,7 @@
               fileMetadata = fileMetadata0;
               media = A.Media$(A.Stream_Stream$value(bytes, type$.List_int), J.get$length$asx(bytes), "application/octet-stream");
               $async$goto = 13;
-              return A._asyncAwait(new A.FilesResource($async$self._driveApi._requester).create$3$$fields$uploadMedia(fileMetadata, "id, md5Checksum", media), $async$createFile$4$fileNameMayBeRelativePath$folderId);
+              return A._asyncAwait(new A.FilesResource($async$self._driveApi._requester).create$3$$fields$uploadMedia(fileMetadata, "id, md5Checksum", media), $async$createFile$5$fileNameMayBeRelativePath$folderId$spaces);
             case 13:
               // returning from await.
               createdFile = $async$result;
@@ -62475,6 +63062,7 @@
               $async$exception = $async$errorStack.pop();
               e = A.unwrapException($async$exception);
               stackTrace = A.getTraceFromException($async$exception);
+              $async$self.handleGDriveAuthError$1(e);
               t1 = 'Failed to create file "' + filename;
               $.$get$_clientLog().log$4(B.Level_SEVERE_1000, t1 + '"', e, type$.nullable_StackTrace._as(stackTrace));
               t1 = A.GDriveClientException$(t1 + '": ' + A.S(e));
@@ -62497,19 +63085,19 @@
               return A._asyncRethrow($async$errorStack.at(-1), $async$completer);
           }
       });
-      return A._asyncStartSync($async$createFile$4$fileNameMayBeRelativePath$folderId, $async$completer);
+      return A._asyncStartSync($async$createFile$5$fileNameMayBeRelativePath$folderId$spaces, $async$completer);
     },
-    findFile$3$fileName$fileNameMayBeRelativePath$parentId(fileName, fileNameMayBeRelativePath, parentId) {
-      return this.findFile$body$GDriveClient(fileName, fileNameMayBeRelativePath, parentId);
+    findFile$4$fileName$fileNameMayBeRelativePath$parentId$spaces(fileName, fileNameMayBeRelativePath, parentId, spaces) {
+      return this.findFile$body$GDriveClient(fileName, fileNameMayBeRelativePath, parentId, spaces);
     },
-    findFile$2$fileName$parentId(fileName, parentId) {
-      return this.findFile$3$fileName$fileNameMayBeRelativePath$parentId(fileName, false, parentId);
+    findFile$3$fileName$parentId$spaces(fileName, parentId, spaces) {
+      return this.findFile$4$fileName$fileNameMayBeRelativePath$parentId$spaces(fileName, false, parentId, spaces);
     },
-    findFile$body$GDriveClient(fileName, fileNameMayBeRelativePath, parentId) {
+    findFile$body$GDriveClient(fileName, fileNameMayBeRelativePath, parentId, spaces) {
       var $async$goto = 0,
         $async$completer = A._makeAsyncAwaitCompleter(type$.nullable_String),
         $async$returnValue, $async$handler = 2, $async$errorStack = [], $async$self = this, parts, folderPath, actualFileName, currentParentId, folderName, e, stackTrace, t1, t2, _i, exception, $async$exception;
-      var $async$findFile$3$fileName$fileNameMayBeRelativePath$parentId = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
+      var $async$findFile$4$fileName$fileNameMayBeRelativePath$parentId$spaces = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
         if ($async$errorCode === 1) {
           $async$errorStack.push($async$result);
           $async$goto = $async$handler;
@@ -62537,7 +63125,7 @@
               }
               folderName = t1[_i];
               $async$goto = 12;
-              return A._asyncAwait($async$self.getOrCreateFolder$2$folderName$parentId(folderName, currentParentId), $async$findFile$3$fileName$fileNameMayBeRelativePath$parentId);
+              return A._asyncAwait($async$self.getOrCreateFolder$3$folderName$parentId$spaces(folderName, currentParentId, spaces), $async$findFile$4$fileName$fileNameMayBeRelativePath$parentId$spaces);
             case 12:
               // returning from await.
               currentParentId = $async$result;
@@ -62550,7 +63138,7 @@
             case 11:
               // after for
               $async$goto = 13;
-              return A._asyncAwait($async$self._findFileInFolder$2$fileName$parentId(actualFileName, currentParentId), $async$findFile$3$fileName$fileNameMayBeRelativePath$parentId);
+              return A._asyncAwait($async$self._findFileInFolder$3$fileName$parentId$spaces(actualFileName, currentParentId, spaces), $async$findFile$4$fileName$fileNameMayBeRelativePath$parentId$spaces);
             case 13:
               // returning from await.
               t1 = $async$result;
@@ -62561,7 +63149,7 @@
             case 8:
               // join
               $async$goto = 14;
-              return A._asyncAwait($async$self._findFileInFolder$2$fileName$parentId(fileName, parentId), $async$findFile$3$fileName$fileNameMayBeRelativePath$parentId);
+              return A._asyncAwait($async$self._findFileInFolder$3$fileName$parentId$spaces(fileName, parentId, spaces), $async$findFile$4$fileName$fileNameMayBeRelativePath$parentId$spaces);
             case 14:
               // returning from await.
               t1 = $async$result;
@@ -62601,62 +63189,16 @@
               return A._asyncRethrow($async$errorStack.at(-1), $async$completer);
           }
       });
-      return A._asyncStartSync($async$findFile$3$fileName$fileNameMayBeRelativePath$parentId, $async$completer);
+      return A._asyncStartSync($async$findFile$4$fileName$fileNameMayBeRelativePath$parentId$spaces, $async$completer);
     },
-    _findFileInFolder$2$fileName$parentId(fileName, parentId) {
+    _findFileInFolder$3$fileName$parentId$spaces(fileName, parentId, spaces) {
+      return this._findFileInFolder$body$GDriveClient(fileName, parentId, spaces);
+    },
+    _findFileInFolder$body$GDriveClient(fileName, parentId, spaces) {
       var $async$goto = 0,
         $async$completer = A._makeAsyncAwaitCompleter(type$.nullable_String),
-        $async$returnValue, $async$self = this, t2, t1;
-      var $async$_findFileInFolder$2$fileName$parentId = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
-        if ($async$errorCode === 1)
-          return A._asyncRethrow($async$result, $async$completer);
-        for (;;)
-          switch ($async$goto) {
-            case 0:
-              // Function start
-              t1 = $.$get$_clientLog();
-              t1.log$4(B.Level_FINE_500, 'Searching for file "' + fileName + '" in folder=' + parentId, null, null);
-              t2 = A.stringReplaceAllUnchecked(fileName, "\\", "\\\\");
-              $async$goto = 3;
-              return A._asyncAwait(new A.FilesResource($async$self._driveApi._requester).list$3$$fields$q$spaces("files(id, name)", "name='" + A.stringReplaceAllUnchecked(t2, "'", "\\'") + "' and '" + parentId + "' in parents and trashed=false", "drive"), $async$_findFileInFolder$2$fileName$parentId);
-            case 3:
-              // returning from await.
-              t2 = $async$result.files;
-              if (t2 != null && t2.length !== 0) {
-                t2 = B.JSArray_methods.get$first(t2).id;
-                t2.toString;
-                t1.log$4(B.Level_FINE_500, "Found file: " + t2, null, null);
-                $async$returnValue = t2;
-                // goto return
-                $async$goto = 1;
-                break;
-              }
-              t1.log$4(B.Level_FINE_500, "File not found", null, null);
-              $async$returnValue = null;
-              // goto return
-              $async$goto = 1;
-              break;
-            case 1:
-              // return
-              return A._asyncReturn($async$returnValue, $async$completer);
-          }
-      });
-      return A._asyncStartSync($async$_findFileInFolder$2$fileName$parentId, $async$completer);
-    },
-    download$3$ifNoneMatch$isRetry(fileId, ifNoneMatch, isRetry) {
-      return this.download$body$GDriveClient(fileId, ifNoneMatch, isRetry);
-    },
-    download$2$ifNoneMatch(fileId, ifNoneMatch) {
-      return this.download$3$ifNoneMatch$isRetry(fileId, ifNoneMatch, false);
-    },
-    download$1(fileId) {
-      return this.download$3$ifNoneMatch$isRetry(fileId, null, false);
-    },
-    download$body$GDriveClient(fileId, ifNoneMatch, isRetry) {
-      var $async$goto = 0,
-        $async$completer = A._makeAsyncAwaitCompleter(type$.Record_3_nullable_String_etag_and_nullable_RdfGraph_graph_and_bool_notModified),
-        $async$returnValue, $async$handler = 2, $async$errorStack = [], $async$next = [], $async$self = this, metadata, currentEtag, media, completer, chunk, $content, graph, e, stackTrace, $status, e0, e1, stackTrace0, exception, t1, t2, $async$exception, $async$exception1, $async$temp1;
-      var $async$download$3$ifNoneMatch$isRetry = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
+        $async$returnValue, $async$handler = 2, $async$errorStack = [], $async$self = this, escapedName, query, fileList, fileId, e, t2, exception, t1, $async$exception;
+      var $async$_findFileInFolder$3$fileName$parentId$spaces = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
         if ($async$errorCode === 1) {
           $async$errorStack.push($async$result);
           $async$goto = $async$handler;
@@ -62666,13 +63208,94 @@
             case 0:
               // Function start
               t1 = $.$get$_clientLog();
-              t2 = isRetry ? " (retry after refresh)" : "";
-              t1.log$4(B.Level_FINE_500, "Downloading file " + fileId + t2, null, null);
+              t1.log$4(B.Level_FINE_500, 'Searching for file "' + fileName + '" in folder=' + parentId + " (spaces=" + spaces + ")", null, null);
+              $async$handler = 4;
+              t2 = A.stringReplaceAllUnchecked(fileName, "\\", "\\\\");
+              escapedName = A.stringReplaceAllUnchecked(t2, "'", "\\'");
+              query = "name='" + A.S(escapedName) + "' and '" + parentId + "' in parents and trashed=false";
+              $async$goto = 7;
+              return A._asyncAwait(new A.FilesResource($async$self._driveApi._requester).list$3$$fields$q$spaces("files(id, name)", query, spaces), $async$_findFileInFolder$3$fileName$parentId$spaces);
+            case 7:
+              // returning from await.
+              fileList = $async$result;
+              if (fileList.files != null && fileList.files.length !== 0) {
+                t2 = fileList.files;
+                t2.toString;
+                t2 = B.JSArray_methods.get$first(t2).id;
+                t2.toString;
+                fileId = t2;
+                t1.log$4(B.Level_FINE_500, "Found file: " + A.S(fileId), null, null);
+                $async$returnValue = fileId;
+                // goto return
+                $async$goto = 1;
+                break;
+              }
+              t1.log$4(B.Level_FINE_500, "File not found", null, null);
+              $async$returnValue = null;
+              // goto return
+              $async$goto = 1;
+              break;
+              $async$handler = 2;
+              // goto after finally
+              $async$goto = 6;
+              break;
+            case 4:
+              // catch
+              $async$handler = 3;
+              $async$exception = $async$errorStack.pop();
+              t1 = A.unwrapException($async$exception);
+              if (t1 instanceof A.DetailedApiRequestError) {
+                e = t1;
+                $async$self.handleGDriveAuthError$1(e);
+                throw $async$exception;
+              } else
+                throw $async$exception;
+              // goto after finally
+              $async$goto = 6;
+              break;
+            case 3:
+              // uncaught
+              // goto rethrow
+              $async$goto = 2;
+              break;
+            case 6:
+              // after finally
+            case 1:
+              // return
+              return A._asyncReturn($async$returnValue, $async$completer);
+            case 2:
+              // rethrow
+              return A._asyncRethrow($async$errorStack.at(-1), $async$completer);
+          }
+      });
+      return A._asyncStartSync($async$_findFileInFolder$3$fileName$parentId$spaces, $async$completer);
+    },
+    download$2$ifNoneMatch(fileId, ifNoneMatch) {
+      return this.download$body$GDriveClient(fileId, ifNoneMatch);
+    },
+    download$1(fileId) {
+      return this.download$2$ifNoneMatch(fileId, null);
+    },
+    download$body$GDriveClient(fileId, ifNoneMatch) {
+      var $async$goto = 0,
+        $async$completer = A._makeAsyncAwaitCompleter(type$.Record_3_nullable_String_etag_and_nullable_RdfGraph_graph_and_bool_notModified),
+        $async$returnValue, $async$handler = 2, $async$errorStack = [], $async$next = [], $async$self = this, metadata, currentEtag, media, completer, chunk, $content, graph, e, stackTrace, e0, stackTrace0, t2, exception, t1, $async$exception, $async$temp1;
+      var $async$download$2$ifNoneMatch = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
+        if ($async$errorCode === 1) {
+          $async$errorStack.push($async$result);
+          $async$goto = $async$handler;
+        }
+        for (;;)
+          switch ($async$goto) {
+            case 0:
+              // Function start
+              t1 = $.$get$_clientLog();
+              t1.log$4(B.Level_FINE_500, "Downloading file " + fileId, null, null);
               $async$handler = 4;
               t2 = $async$self._driveApi._requester;
               $async$temp1 = type$.File;
               $async$goto = 7;
-              return A._asyncAwait(new A.FilesResource(t2).$get$2$$fields(fileId, "md5Checksum"), $async$download$3$ifNoneMatch$isRetry);
+              return A._asyncAwait(new A.FilesResource(t2).$get$2$$fields(fileId, "md5Checksum"), $async$download$2$ifNoneMatch);
             case 7:
               // returning from await.
               metadata = $async$temp1._as($async$result);
@@ -62686,7 +63309,7 @@
               }
               $async$temp1 = type$.Media;
               $async$goto = 8;
-              return A._asyncAwait(new A.FilesResource(t2).$get$2$downloadOptions(fileId, $.$get$DownloadOptions_fullMedia()), $async$download$3$ifNoneMatch$isRetry);
+              return A._asyncAwait(new A.FilesResource(t2).$get$2$downloadOptions(fileId, $.$get$DownloadOptions_fullMedia()), $async$download$2$ifNoneMatch);
             case 8:
               // returning from await.
               media = $async$temp1._as($async$result);
@@ -62696,7 +63319,7 @@
             case 12:
               // while condition
               $async$goto = 14;
-              return A._asyncAwait(t1.moveNext$0(), $async$download$3$ifNoneMatch$isRetry);
+              return A._asyncAwait(t1.moveNext$0(), $async$download$2$ifNoneMatch);
             case 14:
               // returning from await.
               if (!$async$result) {
@@ -62722,7 +63345,7 @@
               // finally
               $async$handler = 4;
               $async$goto = 15;
-              return A._asyncAwait(t1.cancel$0(), $async$download$3$ifNoneMatch$isRetry);
+              return A._asyncAwait(t1.cancel$0(), $async$download$2$ifNoneMatch);
             case 15:
               // returning from await.
               // goto the next finally handler
@@ -62746,88 +63369,27 @@
               $async$handler = 3;
               $async$exception = $async$errorStack.pop();
               t1 = A.unwrapException($async$exception);
-              $async$goto = t1 instanceof A.DetailedApiRequestError ? 16 : 18;
-              break;
-            case 16:
-              // then
-              e = t1;
-              stackTrace = A.getTraceFromException($async$exception);
-              $status = e.status;
-              $async$goto = J.$eq$($status, 401) || J.$eq$($status, 403) ? 19 : 20;
-              break;
-            case 19:
-              // then
-              if (isRetry) {
-                $.$get$_clientLog().log$4(B.Level_SEVERE_1000, "Auth error (" + A.S($status) + ") for file " + fileId + string$.x20even_, null, null);
-                throw A.wrapException(A.GDriveClientException$("Unauthorized (" + A.S($status) + ") for file " + fileId + string$.x20__tok));
-              }
-              t1 = $.$get$_clientLog();
-              t1.log$4(B.Level_WARNING_900, "Auth error (" + A.S($status) + ") for file " + fileId + " - attempting token refresh", null, null);
-              $async$handler = 22;
-              $async$goto = 25;
-              return A._asyncAwait($async$self._authProvider.refreshToken$1$reason(A.S($status) + " on download file " + fileId), $async$download$3$ifNoneMatch$isRetry);
-            case 25:
-              // returning from await.
-              t1.log$4(B.Level_INFO_800, "Token refreshed - retrying download", null, null);
-              $async$goto = 26;
-              return A._asyncAwait($async$self.download$3$ifNoneMatch$isRetry(fileId, ifNoneMatch, true), $async$download$3$ifNoneMatch$isRetry);
-            case 26:
-              // returning from await.
-              t1 = $async$result;
-              $async$returnValue = t1;
-              // goto return
-              $async$goto = 1;
-              break;
-              $async$handler = 3;
-              // goto after finally
-              $async$goto = 24;
-              break;
-            case 22:
-              // catch
-              $async$handler = 21;
-              $async$exception1 = $async$errorStack.pop();
-              t1 = A.unwrapException($async$exception1);
-              if (t1 instanceof A.GDriveClientException)
-                throw $async$exception1;
-              else {
+              if (t1 instanceof A.DetailedApiRequestError) {
+                e = t1;
+                stackTrace = A.getTraceFromException($async$exception);
+                $async$self.handleGDriveAuthError$1(e);
+                if (e.status === 404) {
+                  $.$get$_clientLog().log$4(B.Level_FINE_500, "File not found: " + fileId, null, null);
+                  $async$returnValue = new A._Record_3_etag_graph_notModified(null, null, false);
+                  // goto return
+                  $async$goto = 1;
+                  break;
+                }
+                $.$get$_clientLog().log$4(B.Level_SEVERE_1000, "API error downloading file " + fileId, e, type$.nullable_StackTrace._as(stackTrace));
+                throw A.wrapException(A.GDriveClientException$("Failed to download file " + fileId + ": " + A.S(e.status) + " " + A.S(e.message)));
+              } else {
                 e0 = t1;
-                $.$get$_clientLog().log$4(B.Level_SEVERE_1000, "Token refresh failed: " + A.S(e0), null, null);
-                throw A.wrapException(A.GDriveClientException$("Unauthorized (" + A.S($status) + ") for file " + fileId + " - refresh failed: " + A.S(e0)));
+                stackTrace0 = A.getTraceFromException($async$exception);
+                t1 = "Failed to download file " + fileId;
+                $.$get$_clientLog().log$4(B.Level_SEVERE_1000, t1, e0, type$.nullable_StackTrace._as(stackTrace0));
+                t1 = A.GDriveClientException$(t1 + ": " + A.S(e0));
+                throw A.wrapException(t1);
               }
-              // goto after finally
-              $async$goto = 24;
-              break;
-            case 21:
-              // uncaught
-              // goto uncaught
-              $async$goto = 3;
-              break;
-            case 24:
-              // after finally
-            case 20:
-              // join
-              if (e.status === 404) {
-                $.$get$_clientLog().log$4(B.Level_FINE_500, "File not found: " + fileId, null, null);
-                $async$returnValue = new A._Record_3_etag_graph_notModified(null, null, false);
-                // goto return
-                $async$goto = 1;
-                break;
-              }
-              $.$get$_clientLog().log$4(B.Level_SEVERE_1000, "API error downloading file " + fileId, e, type$.nullable_StackTrace._as(stackTrace));
-              throw A.wrapException(A.GDriveClientException$("Failed to download file " + fileId + ": " + A.S(e.status) + " " + A.S(e.message)));
-              // goto join
-              $async$goto = 17;
-              break;
-            case 18:
-              // else
-              e1 = t1;
-              stackTrace0 = A.getTraceFromException($async$exception);
-              t1 = "Failed to download file " + fileId;
-              $.$get$_clientLog().log$4(B.Level_SEVERE_1000, t1, e1, type$.nullable_StackTrace._as(stackTrace0));
-              t1 = A.GDriveClientException$(t1 + ": " + A.S(e1));
-              throw A.wrapException(t1);
-            case 17:
-              // join
               // goto after finally
               $async$goto = 6;
               break;
@@ -62846,19 +63408,16 @@
               return A._asyncRethrow($async$errorStack.at(-1), $async$completer);
           }
       });
-      return A._asyncStartSync($async$download$3$ifNoneMatch$isRetry, $async$completer);
-    },
-    upload$4$ifMatch$isRetry(fileId, updatedGraph, ifMatch, isRetry) {
-      return this.upload$body$GDriveClient(fileId, updatedGraph, ifMatch, isRetry);
+      return A._asyncStartSync($async$download$2$ifNoneMatch, $async$completer);
     },
     upload$3$ifMatch(fileId, updatedGraph, ifMatch) {
-      return this.upload$4$ifMatch$isRetry(fileId, updatedGraph, ifMatch, false);
+      return this.upload$body$GDriveClient(fileId, updatedGraph, ifMatch);
     },
-    upload$body$GDriveClient(fileId, updatedGraph, ifMatch, isRetry) {
+    upload$body$GDriveClient(fileId, updatedGraph, ifMatch) {
       var $async$goto = 0,
         $async$completer = A._makeAsyncAwaitCompleter(type$.RemoteUploadResult),
-        $async$returnValue, $async$handler = 2, $async$errorStack = [], $async$self = this, metadata, currentEtag, $content, bytes, media, updated, newEtag, e, stackTrace, $status, e0, e1, stackTrace0, exception, t1, t2, $async$exception, $async$exception1, $async$temp1;
-      var $async$upload$4$ifMatch$isRetry = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
+        $async$returnValue, $async$handler = 2, $async$errorStack = [], $async$self = this, metadata, currentEtag, $content, bytes, media, updated, newEtag, e, stackTrace, e0, stackTrace0, t2, exception, t1, $async$exception, $async$temp1;
+      var $async$upload$3$ifMatch = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
         if ($async$errorCode === 1) {
           $async$errorStack.push($async$result);
           $async$goto = $async$handler;
@@ -62868,13 +63427,12 @@
             case 0:
               // Function start
               t1 = $.$get$_clientLog();
-              t2 = isRetry ? " (retry after refresh)" : "";
-              t1.log$4(B.Level_FINE_500, "Uploading file " + fileId + t2, null, null);
+              t1.log$4(B.Level_FINE_500, "Uploading file " + fileId, null, null);
               $async$handler = 4;
               t2 = $async$self._driveApi._requester;
               $async$temp1 = type$.File;
               $async$goto = 7;
-              return A._asyncAwait(new A.FilesResource(t2).$get$2$$fields(fileId, "md5Checksum"), $async$upload$4$ifMatch$isRetry);
+              return A._asyncAwait(new A.FilesResource(t2).$get$2$$fields(fileId, "md5Checksum"), $async$upload$3$ifMatch);
             case 7:
               // returning from await.
               metadata = $async$temp1._as($async$result);
@@ -62890,7 +63448,7 @@
               bytes = B.C_Utf8Encoder.convert$1(A._asString($content));
               media = A.Media$(A.Stream_Stream$value(bytes, type$.List_int), J.get$length$asx(bytes), "application/octet-stream");
               $async$goto = 8;
-              return A._asyncAwait(new A.FilesResource(t2).update$4$$fields$uploadMedia(A.File$(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null), fileId, "md5Checksum", media), $async$upload$4$ifMatch$isRetry);
+              return A._asyncAwait(new A.FilesResource(t2).update$4$$fields$uploadMedia(A.File$(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null), fileId, "md5Checksum", media), $async$upload$3$ifMatch);
             case 8:
               // returning from await.
               updated = $async$result;
@@ -62911,85 +63469,24 @@
               $async$handler = 3;
               $async$exception = $async$errorStack.pop();
               t1 = A.unwrapException($async$exception);
-              $async$goto = t1 instanceof A.DetailedApiRequestError ? 9 : 11;
-              break;
-            case 9:
-              // then
-              e = t1;
-              stackTrace = A.getTraceFromException($async$exception);
-              $status = e.status;
-              $async$goto = J.$eq$($status, 401) || J.$eq$($status, 403) ? 12 : 13;
-              break;
-            case 12:
-              // then
-              if (isRetry) {
-                $.$get$_clientLog().log$4(B.Level_SEVERE_1000, "Auth error (" + A.S($status) + ") for file " + fileId + string$.x20even_, null, null);
-                throw A.wrapException(A.GDriveClientException$("Unauthorized (" + A.S($status) + ") for file " + fileId + string$.x20__tok));
-              }
-              t1 = $.$get$_clientLog();
-              t1.log$4(B.Level_WARNING_900, "Auth error (" + A.S($status) + ") for file " + fileId + " - attempting token refresh", null, null);
-              $async$handler = 15;
-              $async$goto = 18;
-              return A._asyncAwait($async$self._authProvider.refreshToken$1$reason(A.S($status) + " on upload file " + fileId), $async$upload$4$ifMatch$isRetry);
-            case 18:
-              // returning from await.
-              t1.log$4(B.Level_INFO_800, "Token refreshed - retrying upload", null, null);
-              $async$goto = 19;
-              return A._asyncAwait($async$self.upload$4$ifMatch$isRetry(fileId, updatedGraph, ifMatch, true), $async$upload$4$ifMatch$isRetry);
-            case 19:
-              // returning from await.
-              t1 = $async$result;
-              $async$returnValue = t1;
-              // goto return
-              $async$goto = 1;
-              break;
-              $async$handler = 3;
-              // goto after finally
-              $async$goto = 17;
-              break;
-            case 15:
-              // catch
-              $async$handler = 14;
-              $async$exception1 = $async$errorStack.pop();
-              t1 = A.unwrapException($async$exception1);
-              if (t1 instanceof A.GDriveClientException)
-                throw $async$exception1;
-              else {
+              if (t1 instanceof A.DetailedApiRequestError) {
+                e = t1;
+                stackTrace = A.getTraceFromException($async$exception);
+                $async$self.handleGDriveAuthError$1(e);
+                if (e.status === 404) {
+                  $.$get$_clientLog().log$4(B.Level_WARNING_900, "File not found during upload: " + fileId, null, null);
+                  throw A.wrapException(A.GDriveClientException$("File not found: " + fileId));
+                }
+                $.$get$_clientLog().log$4(B.Level_SEVERE_1000, "API error uploading file " + fileId, e, type$.nullable_StackTrace._as(stackTrace));
+                throw A.wrapException(A.GDriveClientException$("Failed to upload file " + fileId + ": " + A.S(e.status) + " " + A.S(e.message)));
+              } else {
                 e0 = t1;
-                $.$get$_clientLog().log$4(B.Level_SEVERE_1000, "Token refresh failed: " + A.S(e0), null, null);
-                throw A.wrapException(A.GDriveClientException$("Unauthorized (" + A.S($status) + ") for file " + fileId + " - refresh failed: " + A.S(e0)));
+                stackTrace0 = A.getTraceFromException($async$exception);
+                t1 = "Failed to upload file " + fileId;
+                $.$get$_clientLog().log$4(B.Level_SEVERE_1000, t1, e0, type$.nullable_StackTrace._as(stackTrace0));
+                t1 = A.GDriveClientException$(t1 + ": " + A.S(e0));
+                throw A.wrapException(t1);
               }
-              // goto after finally
-              $async$goto = 17;
-              break;
-            case 14:
-              // uncaught
-              // goto uncaught
-              $async$goto = 3;
-              break;
-            case 17:
-              // after finally
-            case 13:
-              // join
-              if (e.status === 404) {
-                $.$get$_clientLog().log$4(B.Level_WARNING_900, "File not found during upload: " + fileId, null, null);
-                throw A.wrapException(A.GDriveClientException$("File not found: " + fileId));
-              }
-              $.$get$_clientLog().log$4(B.Level_SEVERE_1000, "API error uploading file " + fileId, e, type$.nullable_StackTrace._as(stackTrace));
-              throw A.wrapException(A.GDriveClientException$("Failed to upload file " + fileId + ": " + A.S(e.status) + " " + A.S(e.message)));
-              // goto join
-              $async$goto = 10;
-              break;
-            case 11:
-              // else
-              e1 = t1;
-              stackTrace0 = A.getTraceFromException($async$exception);
-              t1 = "Failed to upload file " + fileId;
-              $.$get$_clientLog().log$4(B.Level_SEVERE_1000, t1, e1, type$.nullable_StackTrace._as(stackTrace0));
-              t1 = A.GDriveClientException$(t1 + ": " + A.S(e1));
-              throw A.wrapException(t1);
-            case 10:
-              // join
               // goto after finally
               $async$goto = 6;
               break;
@@ -63008,7 +63505,7 @@
               return A._asyncRethrow($async$errorStack.at(-1), $async$completer);
           }
       });
-      return A._asyncStartSync($async$upload$4$ifMatch$isRetry, $async$completer);
+      return A._asyncStartSync($async$upload$3$ifMatch, $async$completer);
     }
   };
   A._GoogleAuthClient.prototype = {
@@ -63042,7 +63539,12 @@
       return A._asyncStartSync($async$send$1, $async$completer);
     }
   };
-  A.GDriveClientException.prototype = {$isException: 1};
+  A.GDriveClientException.prototype = {
+    toString$0(_) {
+      return "GDriveClientException: " + this.message;
+    },
+    $isException: 1
+  };
   A.GDriveSyncStorage.prototype = {
     download$2$ifNoneMatch(documentIri, ifNoneMatch) {
       var $async$goto = 0,
@@ -63058,7 +63560,7 @@
               docIri = $async$self._gdrive_backend$_resourceLocator.fromIri$1(documentIri);
               t1 = $async$self._gdrive_backend$_client;
               $async$goto = 3;
-              return A._asyncAwait(t1.findFile$3$fileName$fileNameMayBeRelativePath$parentId(docIri.id, true, $async$self._typeIndexMappings.getFolderId$1(docIri.typeIri)), $async$download$2$ifNoneMatch);
+              return A._asyncAwait(t1.findFile$4$fileName$fileNameMayBeRelativePath$parentId$spaces(docIri.id, true, $async$self._typeIndexMappings.getFolderId$1(docIri.typeIri), $async$self._spaces), $async$download$2$ifNoneMatch);
             case 3:
               // returning from await.
               fileId = $async$result;
@@ -63100,7 +63602,7 @@
     upload$3$ifMatch(documentIri, graph, ifMatch) {
       var $async$goto = 0,
         $async$completer = A._makeAsyncAwaitCompleter(type$.RemoteUploadResult),
-        $async$returnValue, $async$self = this, docIri, folderId, filePath, t1, fileId, $async$temp1;
+        $async$returnValue, $async$self = this, docIri, folderId, filePath, t1, t2, fileId, $async$temp1;
       var $async$upload$3$ifMatch = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
         if ($async$errorCode === 1)
           return A._asyncRethrow($async$result, $async$completer);
@@ -63112,8 +63614,9 @@
               folderId = $async$self._typeIndexMappings.getFolderId$1(docIri.typeIri);
               filePath = docIri.id;
               t1 = $async$self._gdrive_backend$_client;
+              t2 = $async$self._spaces;
               $async$goto = 3;
-              return A._asyncAwait(t1.findFile$3$fileName$fileNameMayBeRelativePath$parentId(filePath, true, folderId), $async$upload$3$ifMatch);
+              return A._asyncAwait(t1.findFile$4$fileName$fileNameMayBeRelativePath$parentId$spaces(filePath, true, folderId, t2), $async$upload$3$ifMatch);
             case 3:
               // returning from await.
               fileId = $async$result;
@@ -63123,7 +63626,7 @@
               // then
               $async$temp1 = A;
               $async$goto = 7;
-              return A._asyncAwait(t1.createFile$4$fileNameMayBeRelativePath$folderId(filePath, graph, true, folderId), $async$upload$3$ifMatch);
+              return A._asyncAwait(t1.createFile$5$fileNameMayBeRelativePath$folderId$spaces(filePath, graph, true, folderId, t2), $async$upload$3$ifMatch);
             case 7:
               // returning from await.
               $async$returnValue = new $async$temp1.SuccessUploadResult($async$result._0);
@@ -63168,8 +63671,7 @@
           }
       });
       return A._asyncStartSync($async$finalizeSync$0, $async$completer);
-    },
-    $isRemoteSyncStorage: 1
+    }
   };
   A.GDriveRemoteStorage.prototype = {
     get$remoteId() {
@@ -63192,7 +63694,7 @@
               return A._asyncAwait($async$self._typeIndexManager.loadOrCreateTypeIndex$1(engineConfig), $async$createSyncStorage$1);
             case 3:
               // returning from await.
-              $async$returnValue = new $async$temp1.GDriveSyncStorage($async$temp2, $async$result, $async$self._gdrive_backend$_resourceLocator);
+              $async$returnValue = new $async$temp1.GDriveSyncStorage($async$temp2, $async$result, $async$self._gdrive_backend$_resourceLocator, $async$self._spaces);
               // goto return
               $async$goto = 1;
               break;
@@ -63213,27 +63715,21 @@
       return "gdrive";
     },
     _authStateChanged$0() {
-      var userEmail, _this = this, _null = null,
+      var userId, spaces, _this = this, _null = null,
         t1 = $.$get$_log26(),
         t2 = _this._auth,
         t3 = t2._notifier;
-      t1.log$4(B.Level_INFO_800, string$.Authen + t3._isAuthenticated + ", userEmail=" + A.S(t2._userEmail), _null, _null);
+      t1.log$4(B.Level_INFO_800, string$.Authens + t3._isAuthenticated + ", userId=" + A.S(t2._userId), _null, _null);
       if (t3._isAuthenticated) {
-        userEmail = t2._userEmail;
-        if (userEmail == null)
-          throw A.wrapException(A.StateError$(string$.User_i));
+        userId = t2._userId;
+        if (userId == null)
+          throw A.wrapException(A.StateError$("User is authenticated but userId is null in GDriveBackend"));
         t2 = _this._remotes;
-        if (t2.length === 1) {
+        if (t2.length === 1)
           B.JSArray_methods.get$first(t2);
-          t2 = B.JSArray_methods.get$first(_this._remotes)._gdrive_backend$_userEmail === userEmail;
-        } else
-          t2 = false;
-        if (t2) {
-          t1.log$4(B.Level_FINE_500, "No change in GDrive remote storage for userEmail=" + userEmail, _null, _null);
-          return;
-        }
-        t1.log$4(B.Level_INFO_800, "User logged in: initializing GDrive remote storage for webId=" + userEmail, _null, _null);
-        _this._remotes = A._setArrayType([new A.GDriveRemoteStorage(A.RemoteId$("google", userEmail), userEmail, _this._gdrive_backend$_client, _this._typeIndexManager, _this._gdrive_backend$_resourceLocator)], type$.JSArray_RemoteStorage);
+        t1.log$4(B.Level_INFO_800, "User logged in: initializing GDrive remote storage for userId=" + userId, _null, _null);
+        spaces = _this._gdrive_backend$_config.folderMode === B.GDriveFolderMode_0 ? "appDataFolder" : "drive";
+        _this._remotes = A._setArrayType([new A.AuthAwareRemoteStorage(new A.GDriveRemoteStorage(A.RemoteId$("google", userId), userId, _this._gdrive_backend$_client, _this._typeIndexManager, _this._gdrive_backend$_resourceLocator, spaces), new A.GDriveBackend__authStateChanged_closure(_this), B.C_AuthRetryConfig)], type$.JSArray_RemoteStorage);
       } else {
         t1.log$4(B.Level_INFO_800, string$.User_l, _null, _null);
         _this._remotes = A._setArrayType([], type$.JSArray_RemoteStorage);
@@ -63262,8 +63758,44 @@
     },
     $isBackend: 1
   };
+  A.GDriveBackend__authStateChanged_closure.prototype = {
+    call$0() {
+      var $async$goto = 0,
+        $async$completer = A._makeAsyncAwaitCompleter(type$.void),
+        $async$self = this;
+      var $async$call$0 = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
+        if ($async$errorCode === 1)
+          return A._asyncRethrow($async$result, $async$completer);
+        for (;;)
+          switch ($async$goto) {
+            case 0:
+              // Function start
+              $.$get$_log26().log$4(B.Level_INFO_800, string$.Auth_f, null, null);
+              $async$goto = 2;
+              return A._asyncAwait($async$self.$this._auth.refreshToken$1$reason(string$.Authenf), $async$call$0);
+            case 2:
+              // returning from await.
+              // implicit return
+              return A._asyncReturn(null, $async$completer);
+          }
+      });
+      return A._asyncStartSync($async$call$0, $async$completer);
+    },
+    $signature: 1
+  };
+  A.GDriveFolderMode.prototype = {
+    _enumToString$0() {
+      return "GDriveFolderMode." + this._name;
+    }
+  };
   A.GDriveConfig.prototype = {};
   A.GDriveTypeIndexManager.prototype = {
+    get$_gdrive_type_index_manager$_spaces() {
+      var value = this.__GDriveTypeIndexManager__spaces_FI;
+      if (value === $)
+        value = this.__GDriveTypeIndexManager__spaces_FI = this._gdrive_type_index_manager$_config.folderMode === B.GDriveFolderMode_0 ? "appDataFolder" : "drive";
+      return value;
+    },
     loadOrCreateTypeIndex$1(engineConfig) {
       var $async$goto = 0,
         $async$completer = A._makeAsyncAwaitCompleter(type$.TypeIndexMappings),
@@ -63341,16 +63873,46 @@
           switch ($async$goto) {
             case 0:
               // Function start
-              t1 = $async$self._gdrive_type_index_manager$_config.appFolderName;
-              $.$get$_log27().log$4(B.Level_FINE_500, "Getting or creating app folder: " + t1, null, null);
-              $async$goto = 3;
-              return A._asyncAwait($async$self._client.getOrCreateFolder$1$folderName(t1), $async$_getOrCreateAppFolder$0);
+              t1 = $async$self._gdrive_type_index_manager$_config;
             case 3:
+              // switch
+              switch (t1.folderMode.index) {
+                case 0:
+                  // goto case
+                  $async$goto = 5;
+                  break;
+                case 1:
+                  // goto case
+                  $async$goto = 6;
+                  break;
+                default:
+                  // goto after switch
+                  $async$goto = 4;
+                  break;
+              }
+              break;
+            case 5:
+              // case
+              $.$get$_log27().log$4(B.Level_FINE_500, "Using appDataFolder (private app-specific space)", null, null);
+              $async$returnValue = "appDataFolder";
+              // goto return
+              $async$goto = 1;
+              break;
+            case 6:
+              // case
+              t1 = t1.appFolderName;
+              $.$get$_log27().log$4(B.Level_FINE_500, "Getting or creating visible folder: " + A.S(t1), null, null);
+              t1.toString;
+              $async$goto = 7;
+              return A._asyncAwait($async$self._client.getOrCreateFolder$2$folderName$spaces(t1, "drive"), $async$_getOrCreateAppFolder$0);
+            case 7:
               // returning from await.
               $async$returnValue = $async$result;
               // goto return
               $async$goto = 1;
               break;
+            case 4:
+              // after switch
             case 1:
               // return
               return A._asyncReturn($async$returnValue, $async$completer);
@@ -63385,7 +63947,7 @@
               t2 = type$.Triple;
               emptyGraph = new A.RdfGraph(A.List_List$unmodifiable(A.LinkedHashSet_LinkedHashSet$_literal([new A.Triple($async$self._localResourceLocator.toIri$1(new A.ResourceIdentifier(B.IriTerm_f2r, "gdrive-index", null)), B.IriTerm_f2r, B.IriTerm_QZ4)], t2), t2), true, null);
               $async$goto = 4;
-              return A._asyncAwait($async$self._client.createFile$3$folderId("gdrive-index.ttl", emptyGraph, appFolderId), $async$_loadOrCreateTypeIndexFile$1);
+              return A._asyncAwait($async$self._client.createFile$4$folderId$spaces("gdrive-index.ttl", emptyGraph, appFolderId, $async$self.get$_gdrive_type_index_manager$_spaces()), $async$_loadOrCreateTypeIndexFile$1);
             case 4:
               // returning from await.
               result = $async$result;
@@ -63416,7 +63978,7 @@
               // Function start
               t1 = $async$self._client;
               $async$goto = 3;
-              return A._asyncAwait(t1.findFile$2$fileName$parentId("gdrive-index.ttl", appFolderId), $async$_loadTypeIndexFile$1);
+              return A._asyncAwait(t1.findFile$3$fileName$parentId$spaces("gdrive-index.ttl", appFolderId, $async$self.get$_gdrive_type_index_manager$_spaces()), $async$_loadTypeIndexFile$1);
             case 3:
               // returning from await.
               fileId = $async$result;
@@ -63508,7 +64070,7 @@
               updatedGraph = $async$self._addTypeMappingsToGraph$3($async$temp1, $async$temp2, $async$result);
               t3 = $async$self._client;
               $async$goto = 4;
-              return A._asyncAwait(t3.findFile$2$fileName$parentId("gdrive-index.ttl", appFolderId), $async$_addMissingTypes$7$appFolderId$existingETag$existingGraph$maxRetries$missingTypes$retryCount$typeIndexIri);
+              return A._asyncAwait(t3.findFile$3$fileName$parentId$spaces("gdrive-index.ttl", appFolderId, $async$self.get$_gdrive_type_index_manager$_spaces()), $async$_addMissingTypes$7$appFolderId$existingETag$existingGraph$maxRetries$missingTypes$retryCount$typeIndexIri);
             case 4:
               // returning from await.
               fileId = $async$result;
@@ -63614,7 +64176,7 @@
               folderName = $async$self._determineFolderName$2(type, t1);
               t1.add$1(0, folderName);
               $async$goto = 6;
-              return A._asyncAwait(t3.getOrCreateFolder$2$folderName$parentId(folderName, appFolderId), $async$_createFoldersForTypes$3$alreadyUsedNames);
+              return A._asyncAwait(t3.getOrCreateFolder$3$folderName$parentId$spaces(folderName, appFolderId, $async$self.get$_gdrive_type_index_manager$_spaces()), $async$_createFoldersForTypes$3$alreadyUsedNames);
             case 6:
               // returning from await.
               folderId = $async$result;
@@ -63711,19 +64273,19 @@
     call$1(r) {
       return type$.ResourceConfigData._as(r).typeIri;
     },
-    $signature: 56
+    $signature: 57
   };
   A.GDriveTypeIndexManager__addMissingTypes_closure.prototype = {
     call$1(t) {
       return type$.IriTerm._as(t).value;
     },
-    $signature: 10
+    $signature: 11
   };
   A.GDriveTypeIndexManager__addMissingTypes_closure0.prototype = {
     call$1(mapping) {
       return type$.TypeMapping._as(mapping).folderName;
     },
-    $signature: 359
+    $signature: 367
   };
   A.GDriveTypeIndexManager__addMissingTypes_closure1.prototype = {
     call$1(type) {
@@ -63736,14 +64298,14 @@
       var t1 = type$.IriTerm;
       return B.JSString_methods.compareTo$1(t1._as(a).value, t1._as(b).value);
     },
-    $signature: 45
+    $signature: 42
   };
   A.GDriveTypeIndexManager__sortTypesForProcessing_closure0.prototype = {
     call$2(a, b) {
       var t1 = type$.IriTerm;
       return B.JSString_methods.compareTo$1(t1._as(a).value, t1._as(b).value);
     },
-    $signature: 45
+    $signature: 42
   };
   A.GDriveTypeIndexManager__fillInDefaults_closure.prototype = {
     call$1(it) {
@@ -63773,7 +64335,7 @@
       var _this = this,
         t1 = _this.expiresAt;
       t1 = t1 == null ? null : t1.toIso8601String$0();
-      return A.LinkedHashMap_LinkedHashMap$_literal(["type", "UpdateAuthMessage", "accessToken", _this.accessToken, "refreshToken", _this.refreshToken, "userEmail", _this.userEmail, "expiresAt", t1], type$.String, type$.dynamic);
+      return A.LinkedHashMap_LinkedHashMap$_literal(["type", "UpdateAuthMessage", "accessToken", _this.accessToken, "refreshToken", _this.refreshToken, "userId", _this.userId, "expiresAt", t1], type$.String, type$.dynamic);
     }
   };
   A.TokenRefreshRequest.prototype = {
@@ -63789,11 +64351,36 @@
       return A.LinkedHashMap_LinkedHashMap$_literal(["type", "TokenRefreshResponse", "requestId", _this.requestId, "accessToken", _this.accessToken, "expiresAt", t1, "error", _this.error], type$.String, type$.dynamic);
     }
   };
+  A.GDriveConfigMessage.prototype = {
+    toJson$0() {
+      var t1 = this.config,
+        t2 = type$.String;
+      return A.LinkedHashMap_LinkedHashMap$_literal(["type", "GDriveConfigMessage", "folderMode", t1.folderMode._name, "appFolderName", t1.appFolderName, "typeFolderNames", t1.typeFolderNames.map$2$1(0, new A.GDriveConfigMessage_toJson_closure(), t2, t2), "extraScopes", t1.extraScopes], t2, type$.dynamic);
+    }
+  };
+  A.GDriveConfigMessage_toJson_closure.prototype = {
+    call$2(key, value) {
+      return new A.MapEntry(type$.IriTerm._as(key).value, A._asString(value), type$.MapEntry_String_String);
+    },
+    $signature: 368
+  };
+  A.GDriveConfigMessage_fromJson_closure.prototype = {
+    call$1(e) {
+      return type$.GDriveFolderMode._as(e)._name === this.folderModeName;
+    },
+    $signature: 369
+  };
+  A.GDriveConfigMessage_fromJson_closure0.prototype = {
+    call$2(key, value) {
+      return new A.MapEntry(new A.IriTerm(A._asString(key)), A._asString(value), type$.MapEntry_IriTerm_String);
+    },
+    $signature: 370
+  };
   A.GDriveWorkerHandler.prototype = {
     createBackend$2(context, syncEngineConfig) {
       var $async$goto = 0,
         $async$completer = A._makeAsyncAwaitCompleter(type$.Backend),
-        $async$returnValue, $async$self = this, t4, client, t1, t2, t3;
+        $async$returnValue, t4, client, config, t1, t2, t3;
       var $async$createBackend$2 = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
         if ($async$errorCode === 1)
           return A._asyncRethrow($async$result, $async$completer);
@@ -63801,6 +64388,11 @@
           switch ($async$goto) {
             case 0:
               // Function start
+              $async$goto = 3;
+              return A._asyncAwait(A.WorkerGDriveConfigReceiver$(context.createChannel$1("locorda_gdrive/gdrive_config"))._configCompleter.future, $async$createBackend$2);
+            case 3:
+              // returning from await.
+              config = $async$result;
               t1 = A.WorkerGDriveAuthProvider$(context.createChannel$1("locorda_gdrive/gdrive_auth"));
               t2 = A.RdfCore_RdfCore$withStandardCodecs(A.rdf_term_IriTerm___validated_tearOff$closure());
               t3 = A.zoneClient();
@@ -63809,10 +64401,10 @@
               t4 = $.$get$requestHeaders();
               if (t2 == null)
                 t2 = A.RdfCore_RdfCore$withStandardCodecs(A.rdf_term_IriTerm___validated_tearOff$closure());
-              client = new A.GDriveClient(t2, new A.DriveApi(new A.ApiRequester(new A._GoogleAuthClient(t1, t3), "https://www.googleapis.com/", "drive/v3/", t4)), t1);
+              client = new A.GDriveClient(t2, new A.DriveApi(new A.ApiRequester(new A._GoogleAuthClient(t1, t3), "https://www.googleapis.com/", "drive/v3/", t4)));
               t4 = A._setArrayType([], type$.JSArray_RemoteStorage);
-              t2 = A.GDriveTypeIndexManager__fillInDefaults($async$self.config);
-              t2 = new A.GDriveBackend(t1, client, new A.GDriveTypeIndexManager(client, new A.LocalResourceLocator(A.rdf_term_IriTerm___validated_tearOff$closure()), t2), new A.LocalResourceLocator(A.rdf_term_IriTerm___validated_tearOff$closure()), t4);
+              t2 = A.GDriveTypeIndexManager__fillInDefaults(config);
+              t2 = new A.GDriveBackend(t1, client, new A.GDriveTypeIndexManager(client, new A.LocalResourceLocator(A.rdf_term_IriTerm___validated_tearOff$closure()), t2), new A.LocalResourceLocator(A.rdf_term_IriTerm___validated_tearOff$closure()), config, t4);
               B.JSArray_methods.add$1(t1._notifier._worker_gdrive_auth_provider$_listeners, type$.void_Function._as(t2.get$_authStateChanged()));
               t2._authStateChanged$0();
               $async$returnValue = t2;
@@ -63847,11 +64439,11 @@
     },
     _handleAuthUpdate$1(message) {
       var t2, t3, _this = this,
-        t1 = message.userEmail;
-      $.$get$_log25().log$4(B.Level_FINE_500, "Received auth update: userEmail=" + A.S(t1), null, null);
+        t1 = message.userId;
+      $.$get$_log25().log$4(B.Level_FINE_500, "Received auth update: userId=" + A.S(t1), null, null);
       t2 = message.accessToken;
       _this._accessToken = t2;
-      _this._userEmail = t1;
+      _this._userId = t1;
       _this._expiresAt = message.expiresAt;
       t3 = _this._notifier;
       t1 = t2 != null && t1 != null;
@@ -63968,7 +64560,7 @@
           case "UpdateAuthMessage":
             t1 = A._asStringQ(message.$index(0, _s11_));
             t2 = A._asStringQ(message.$index(0, "refreshToken"));
-            t3 = A._asStringQ(message.$index(0, "userEmail"));
+            t3 = A._asStringQ(message.$index(0, "userId"));
             t4 = message.$index(0, _s9_) != null ? A.DateTime_parse(A._asString(message.$index(0, _s9_))) : null;
             this.$this._handleAuthUpdate$1(new A.UpdateAuthMessage(t1, t2, t3, t4));
             break;
@@ -63980,7 +64572,7 @@
             break;
         }
     },
-    $signature: 5
+    $signature: 4
   };
   A.WorkerGDriveAuthProvider_refreshToken_closure.prototype = {
     call$0() {
@@ -63989,6 +64581,34 @@
     },
     $signature: 20
   };
+  A.WorkerGDriveConfigReceiver.prototype = {
+    WorkerGDriveConfigReceiver$1(_channel) {
+      var _this = this,
+        t1 = _this._worker_gdrive_config_receiver$_channel.get$messages(),
+        t2 = t1.$ti,
+        t3 = t2._eval$1("_WhereStream<Stream.T>");
+      t3 = new A.CastStream(new A._WhereStream(t2._eval$1("bool(Stream.T)")._as(new A.WorkerGDriveConfigReceiver_closure()), t1, t3), t3._eval$1("CastStream<Stream.T,Map<String,@>>")).listen$1(_this.get$_handleMessage());
+      _this.__WorkerGDriveConfigReceiver__subscription_F !== $ && A.throwLateFieldAI("_subscription");
+      _this.__WorkerGDriveConfigReceiver__subscription_F = t3;
+    },
+    _handleMessage$1(message) {
+      var t1, t2;
+      type$.Map_String_dynamic._as(message);
+      if (A._asStringQ(message.$index(0, "type")) === "GDriveConfigMessage") {
+        t1 = A.GDriveConfigMessage_fromJson(message).config;
+        $.$get$_log28().log$4(B.Level_FINE_500, "Received GDriveConfig: mode=" + t1.folderMode.toString$0(0), null, null);
+        t2 = this._configCompleter;
+        if ((t2.future._state & 30) === 0)
+          t2.complete$1(t1);
+      }
+    }
+  };
+  A.WorkerGDriveConfigReceiver_closure.prototype = {
+    call$1(msg) {
+      return type$.Map_String_dynamic._is(msg);
+    },
+    $signature: 10
+  };
   A.RdfCore.prototype = {
     decode$3$contentType$documentUrl($content, contentType, documentUrl) {
       return this.codec$2$contentType$decoderOptions(contentType, null).decode$2$documentUrl($content, documentUrl);
@@ -63996,8 +64616,11 @@
     decode$2$contentType($content, contentType) {
       return this.decode$3$contentType$documentUrl($content, contentType, null);
     },
+    encode$2$contentType(graph, contentType) {
+      return this.codec$2$contentType$encoderOptions(contentType, null).encode$2$baseUri(graph, null);
+    },
     encode$1(graph) {
-      return this.codec$2$contentType$encoderOptions(null, null).encode$2$baseUri(graph, null);
+      return this.encode$2$contentType(graph, null);
     },
     codec$3$contentType$decoderOptions$encoderOptions(contentType, decoderOptions, encoderOptions) {
       var t1 = this._registry,
@@ -64070,45 +64693,45 @@
       type$.MapEntry_RdfGraphName_RdfGraph._as(entry);
       return new A.RdfNamedGraph(entry.key, entry.value);
     },
-    $signature: 360
+    $signature: 372
   };
   A.RdfDataset__buildDefaultGraph_closure.prototype = {
     call$1(quad) {
       return type$.Quad._as(quad).graphName == null;
     },
-    $signature: 108
+    $signature: 109
   };
   A.RdfDataset__buildDefaultGraph_closure0.prototype = {
     call$1(quad) {
       type$.Quad._as(quad);
       return new A.Triple(quad.subject, quad.predicate, quad.object);
     },
-    $signature: 362
+    $signature: 374
   };
   A.RdfDataset__buildNamedGraphs_closure.prototype = {
     call$1(quad) {
       return type$.Quad._as(quad).graphName != null;
     },
-    $signature: 108
+    $signature: 109
   };
   A.RdfDataset__buildNamedGraphs_closure0.prototype = {
     call$0() {
       return A._setArrayType([], type$.JSArray_Triple);
     },
-    $signature: 40
+    $signature: 45
   };
   A.RdfDataset__buildNamedGraphs_closure1.prototype = {
     call$2($name, triples) {
       return new A.MapEntry(type$.RdfGraphName._as($name), new A.RdfGraph(A.List_List$unmodifiable(type$.List_Triple._as(triples), type$.Triple), true, null), type$.MapEntry_RdfGraphName_RdfGraph);
     },
-    $signature: 363
+    $signature: 375
   };
   A.RdfDataset_operator$eq_closure.prototype = {
     call$1(entry) {
       type$.MapEntry_RdfGraphName_RdfGraph._as(entry);
       return J.$eq$(this.other._namedGraphs.$index(0, entry.key), entry.value);
     },
-    $signature: 364
+    $signature: 376
   };
   A.RdfDataset_hashCode_closure.prototype = {
     call$1(entry) {
@@ -64117,7 +64740,7 @@
       t1 = entry.key;
       return A.Object_hash(t1.get$hashCode(t1), A.Object_hashAllUnordered(entry.value._triples), B.C_SentinelValue, B.C_SentinelValue, B.C_SentinelValue, B.C_SentinelValue, B.C_SentinelValue, B.C_SentinelValue, B.C_SentinelValue);
     },
-    $signature: 365
+    $signature: 377
   };
   A.RdfNamedGraph.prototype = {};
   A.RdfDecoderException.prototype = {
@@ -64575,7 +65198,7 @@
     call$1(triple) {
       return B.JSArray_methods.contains$1(this.triples, type$.Triple._as(triple));
     },
-    $signature: 1
+    $signature: 2
   };
   A.RdfGraph__effectiveIndex_closure.prototype = {
     call$2(r, triple) {
@@ -64594,56 +65217,56 @@
       J.add$1$ax(t1, triple);
       return r;
     },
-    $signature: 366
+    $signature: 378
   };
   A.RdfGraph_subjects_closure.prototype = {
     call$1(triple) {
       return type$.Triple._as(triple).subject;
     },
-    $signature: 29
+    $signature: 28
   };
   A.RdfGraph_predicates_closure.prototype = {
     call$1(triple) {
       return type$.Triple._as(triple).predicate;
     },
-    $signature: 118
+    $signature: 83
   };
   A.RdfGraph_predicates_closure0.prototype = {
     call$1(predicateMap) {
       return type$.Map_of_RdfPredicate_and_List_Triple._as(predicateMap).get$keys();
     },
-    $signature: 367
+    $signature: 379
   };
   A.RdfGraph_findTriples_closure.prototype = {
     call$1(p) {
       return this.subjectMap.$index(0, type$.RdfPredicate._as(p));
     },
-    $signature: 109
+    $signature: 110
   };
   A.RdfGraph_findTriples_closure0.prototype = {
     call$1(list) {
       return type$.List_Triple._as(list);
     },
-    $signature: 41
+    $signature: 39
   };
   A.RdfGraph_findTriples_closure1.prototype = {
     call$1(list) {
       return type$.List_Triple._as(list);
     },
-    $signature: 41
+    $signature: 39
   };
   A.RdfGraph_findTriples_closure2.prototype = {
     call$1(triple) {
       return this.objectSet.contains$1(0, type$.Triple._as(triple).object);
     },
-    $signature: 1
+    $signature: 2
   };
   A.RdfGraph_findTriples_closure3.prototype = {
     call$1(triple) {
       var _this = this;
       return _this.$this._matches$4(type$.Triple._as(triple), _this.subjectSet, _this.predicateSet, _this.objectSet);
     },
-    $signature: 1
+    $signature: 2
   };
   A.RdfGraph_hasTriples_closure.prototype = {
     call$1(s) {
@@ -64665,19 +65288,19 @@
       else
         return !candidates.get$isEmpty(0);
     },
-    $signature: 84
+    $signature: 85
   };
   A.RdfGraph_hasTriples__closure.prototype = {
     call$1(p) {
       return this.subjectMap.$index(0, type$.RdfPredicate._as(p));
     },
-    $signature: 109
+    $signature: 110
   };
   A.RdfGraph_hasTriples__closure0.prototype = {
     call$1(list) {
       return type$.nullable_List_Triple._as(list) != null;
     },
-    $signature: 370
+    $signature: 382
   };
   A.RdfGraph_hasTriples__closure1.prototype = {
     call$1(list) {
@@ -64685,32 +65308,32 @@
       list.toString;
       return list;
     },
-    $signature: 371
+    $signature: 383
   };
   A.RdfGraph_hasTriples__closure2.prototype = {
     call$1(list) {
       return type$.List_Triple._as(list);
     },
-    $signature: 41
+    $signature: 39
   };
   A.RdfGraph_hasTriples__closure3.prototype = {
     call$1(triple) {
       return this.objectSet.contains$1(0, type$.Triple._as(triple).object);
     },
-    $signature: 1
+    $signature: 2
   };
   A.RdfGraph_hasTriples_closure0.prototype = {
     call$1(triple) {
       var _this = this;
       return _this.$this._matches$4(type$.Triple._as(triple), _this.subjectSet, _this.predicateSet, _this.objectSet);
     },
-    $signature: 1
+    $signature: 2
   };
   A.RdfGraph_matching_closure.prototype = {
     call$1(list) {
       return type$.List_Triple._as(list);
     },
-    $signature: 41
+    $signature: 39
   };
   A.RdfTerm.prototype = {};
   A.RdfObject.prototype = {};
@@ -64849,19 +65472,19 @@
       type$.MapEntry_of_Record_2_IriTerm_and_IriRole_and_CompactIri._as(e);
       return e.key._0.value === this.iri.value;
     },
-    $signature: 372
+    $signature: 384
   };
   A.IriCompactionResult_compactIri_closure0.prototype = {
     call$1(e) {
       return type$.MapEntry_of_Record_2_IriTerm_and_IriRole_and_CompactIri._as(e).key._1;
     },
-    $signature: 373
+    $signature: 385
   };
   A.IriCompactionResult_compactIri_closure1.prototype = {
     call$1(e) {
       return type$.IriRole._as(e)._name;
     },
-    $signature: 374
+    $signature: 386
   };
   A.IriCompaction.prototype = {
     compactAllIris$3$baseUri(graph, customPrefixes, baseUri) {
@@ -65039,7 +65662,7 @@
       A._asString(value);
       return this.customPrefixes.get$values().contains$1(0, value);
     },
-    $signature: 77
+    $signature: 99
   };
   A.IriCompaction_compactAllIris_closure0.prototype = {
     call$1(triple) {
@@ -65070,7 +65693,7 @@
         t1.push(new A._Record_2(t3.datatype, B.IriRole_4));
       return t1;
     },
-    $signature: 375
+    $signature: 387
   };
   A.BaseIriRequiredException.prototype = {};
   A.JsonLdGraphCodec.prototype = {
@@ -65392,13 +66015,13 @@
       $.$get$_log24().log$4(B.Level_FINE_500, "Created blank node for label " + this.label + ": " + blankNode.toString$0(0), null, null);
       return blankNode;
     },
-    $signature: 32
+    $signature: 29
   };
   A.JsonLdParser__addTripleForValue_closure.prototype = {
     call$1(k) {
       return !B.JSString_methods.startsWith$1(A._asString(k), "@");
     },
-    $signature: 2
+    $signature: 3
   };
   A.JsonLdEncoderOptions.prototype = {};
   A.JsonLdEncoder.prototype = {
@@ -65687,7 +66310,7 @@
     call$1(localPart) {
       return A.RdfNamespaceMappings_isValidLocalPart(localPart, true);
     },
-    $signature: 2
+    $signature: 3
   };
   A.JsonLdEncoder_convert_closure.prototype = {
     call$1(entry) {
@@ -65696,31 +66319,31 @@
       t1 = this._box_0;
       return this.$this._createNodeObject$5$compactedIris(entry.key, entry.value, t1.context, this.blankNodeLabels, t1.compactedIris);
     },
-    $signature: 376
+    $signature: 388
   };
   A.JsonLdEncoder__groupTriplesBySubject_closure.prototype = {
     call$0() {
       return A._setArrayType([], type$.JSArray_Triple);
     },
-    $signature: 40
+    $signature: 45
   };
   A.JsonLdEncoder__createNodeObject_closure.prototype = {
     call$0() {
       return A._setArrayType([], type$.JSArray_RdfObject);
     },
-    $signature: 36
+    $signature: 43
   };
   A.JsonLdEncoder__createNodeObject_closure0.prototype = {
     call$1(obj) {
       return this.$this._getTypeValue$3$blankNodeLabels$compactedIris(type$.RdfObject._as(obj), this.blankNodeLabels, this.compactedIris);
     },
-    $signature: 377
+    $signature: 389
   };
   A.JsonLdEncoder__createNodeObject_closure1.prototype = {
     call$1(obj) {
       return this.$this._getObjectValue$3$compactedIris(type$.RdfObject._as(obj), this.blankNodeLabels, this.compactedIris);
     },
-    $signature: 378
+    $signature: 390
   };
   A.JsonLdEncoder__renderIri_closure.prototype = {
     call$0() {
@@ -65768,7 +66391,7 @@
     call$1(s) {
       return A._asString(s).length !== 0;
     },
-    $signature: 2
+    $signature: 3
   };
   A.NQuadsDecoderOptions.prototype = {};
   A.NQuadsDecoder.prototype = {
@@ -66096,19 +66719,19 @@
     call$0() {
       return new A.BlankNodeTerm();
     },
-    $signature: 32
+    $signature: 29
   };
   A.NQuadsDecoder__parseObject_closure.prototype = {
     call$0() {
       return new A.BlankNodeTerm();
     },
-    $signature: 32
+    $signature: 29
   };
   A.NQuadsDecoder__parseGraphName_closure.prototype = {
     call$0() {
       return new A.BlankNodeTerm();
     },
-    $signature: 32
+    $signature: 29
   };
   A.NQuadsEncoderOptions.prototype = {
     $eq(_, other) {
@@ -66263,7 +66886,7 @@
       t3 = buffer._contents += " .";
       return t3.charCodeAt(0) == 0 ? t3 : t3;
     },
-    $signature: 44
+    $signature: 41
   };
   A.NQuadsEncoder_encode_closure0.prototype = {
     call$1(namedGraph) {
@@ -66273,7 +66896,7 @@
       t2 = A._arrayInstanceType(t1);
       return new A.MappedListIterable(t1, t2._eval$1("String(1)")._as(new A.NQuadsEncoder_encode__closure(_this.$this, namedGraph, _this.blankNodeIdentifiers, _this.counter, _this.canonical)), t2._eval$1("MappedListIterable<1,String>"));
     },
-    $signature: 379
+    $signature: 391
   };
   A.NQuadsEncoder_encode__closure.prototype = {
     call$1(quad) {
@@ -66294,7 +66917,7 @@
       t3 = buffer._contents += " .";
       return t3.charCodeAt(0) == 0 ? t3 : t3;
     },
-    $signature: 44
+    $signature: 41
   };
   A.NQuadsEncoder__writeTerm_closure.prototype = {
     call$0() {
@@ -66340,7 +66963,7 @@
       return new A.NTriplesDecoder(t1, new A.NQuadsDecoder(A.Logger_Logger("rdf.nquads.parser"), this._ntriples_codec$_iriTermFactory));
     },
     get$encoder() {
-      return new A.NTriplesEncoder(new A.NQuadsEncoder(A.Logger_Logger("rdf.nquads.serializer"), new A.NQuadsEncoderOptions(false, B.Map_empty2, B.C_IriRelativizationOptions)), this._ntriples_codec$_encoderOptions);
+      return new A.NTriplesEncoder(new A.NQuadsEncoder(A.Logger_Logger("rdf.nquads.serializer"), new A.NQuadsEncoderOptions(false, B.Map_empty1, B.C_IriRelativizationOptions)), this._ntriples_codec$_encoderOptions);
     },
     canParse$1($content) {
       var lines, t1, t2, t3, t4, validLines, totalNonEmptyLines, _i, trimmed;
@@ -66365,7 +66988,7 @@
     call$1(s) {
       return A._asString(s).length !== 0;
     },
-    $signature: 2
+    $signature: 3
   };
   A.NTriplesDecoderOptions.prototype = {};
   A.NTriplesDecoder.prototype = {
@@ -67707,7 +68330,7 @@
     call$1(localPart) {
       return A.RdfNamespaceMappings_isValidLocalPart(localPart, false);
     },
-    $signature: 2
+    $signature: 3
   };
   A.TurtleEncoder__writePrefixes_closure.prototype = {
     call$2(a, b) {
@@ -67723,27 +68346,27 @@
         return 1;
       return B.JSString_methods.compareTo$1(t1, t2);
     },
-    $signature: 380
+    $signature: 392
   };
   A.TurtleEncoder__extractCollection_closure.prototype = {
     call$1(t) {
       return type$.Triple._as(t).subject.$eq(0, this.node);
     },
-    $signature: 1
+    $signature: 2
   };
   A.TurtleEncoder__extractCollection_closure0.prototype = {
     call$1(t) {
       type$.Triple._as(t);
       return t.predicate.value === string$.http__1f;
     },
-    $signature: 1
+    $signature: 2
   };
   A.TurtleEncoder__extractCollection_closure1.prototype = {
     call$1(t) {
       type$.Triple._as(t);
       return t.predicate.value === string$.http__1r;
     },
-    $signature: 1
+    $signature: 2
   };
   A.TurtleEncoder__extractCollection_closure2.prototype = {
     call$1(t) {
@@ -67755,7 +68378,7 @@
         t1 = false;
       return t1;
     },
-    $signature: 1
+    $signature: 2
   };
   A.TurtleEncoder__extractCollection_closure3.prototype = {
     call$0() {
@@ -67773,7 +68396,7 @@
         t1 = false;
       return t1;
     },
-    $signature: 1
+    $signature: 2
   };
   A.TurtleEncoder__extractCollection_closure5.prototype = {
     call$0() {
@@ -67791,25 +68414,25 @@
         t1 = false;
       return t1;
     },
-    $signature: 1
+    $signature: 2
   };
   A.TurtleEncoder__writeCollection_closure.prototype = {
     call$1(t) {
       return type$.Triple._as(t).object.$eq(0, this.item);
     },
-    $signature: 1
+    $signature: 2
   };
   A.TurtleEncoder__writeTriples_closure.prototype = {
     call$0() {
       return A._setArrayType([], type$.JSArray_Triple);
     },
-    $signature: 40
+    $signature: 45
   };
   A.TurtleEncoder__writeTriples_closure0.prototype = {
     call$1(t) {
       return type$.Triple._as(t).object.$eq(0, this.node);
     },
-    $signature: 1
+    $signature: 2
   };
   A.TurtleEncoder__writeTriples_closure1.prototype = {
     call$2(a, b) {
@@ -67835,14 +68458,14 @@
         return 1;
       return B.JSInt_methods.compareTo$1(A.objectHashCode(a), A.objectHashCode(b));
     },
-    $signature: 381
+    $signature: 393
   };
   A.TurtleEncoder__isPartOfRdfCollection_closure.prototype = {
     call$1(t) {
       type$.Triple._as(t);
       return t.predicate.value === string$.http__1r && t.object.$eq(0, this.node);
     },
-    $signature: 1
+    $signature: 2
   };
   A.TurtleEncoder__isPartOfRdfCollection_closure0.prototype = {
     call$1(t) {
@@ -67858,13 +68481,13 @@
         t1 = false;
       return t1;
     },
-    $signature: 1
+    $signature: 2
   };
   A.TurtleEncoder__writeSubjectGroup_closure.prototype = {
     call$0() {
       return A._setArrayType([], type$.JSArray_RdfObject);
     },
-    $signature: 36
+    $signature: 43
   };
   A.TurtleEncoder__writeSubjectGroup_closure0.prototype = {
     call$2(a, b) {
@@ -67881,13 +68504,13 @@
         return 1;
       return B.JSString_methods.compareTo$1(t1, t2);
     },
-    $signature: 382
+    $signature: 394
   };
   A.TurtleEncoder__writeInlineBlankNode_closure.prototype = {
     call$0() {
       return A._setArrayType([], type$.JSArray_RdfObject);
     },
-    $signature: 36
+    $signature: 43
   };
   A.TurtleParsingFlag.prototype = {
     _enumToString$0() {
@@ -69071,7 +69694,7 @@
     call$1(p) {
       return A._asString(p).length !== 0;
     },
-    $signature: 2
+    $signature: 3
   };
   A.RdfNamespaceMappings__extractDomainPrefix_closure0.prototype = {
     call$1(p) {
@@ -69086,7 +69709,7 @@
     call$1(p) {
       return A._asString(p).length !== 0;
     },
-    $signature: 2
+    $signature: 3
   };
   A.RdfNamespaceMappings__extractPathPrefix_closure0.prototype = {
     call$1(p) {
@@ -69104,13 +69727,13 @@
     call$1(p) {
       return A._asString(p).length !== 0;
     },
-    $signature: 2
+    $signature: 3
   };
   A.RdfNamespaceMappings__sanitizeComponentForPrefix_closure.prototype = {
     call$1(p) {
       return A._asString(p).length !== 0;
     },
-    $signature: 2
+    $signature: 3
   };
   A.RdfNamespaceMappings__sanitizeComponentForPrefix_closure0.prototype = {
     call$1(p) {
@@ -69334,7 +69957,7 @@
             break;
         }
     },
-    $signature: 5
+    $signature: 4
   };
   A.SolidAuthReceiver__requestTokenRefresh_closure.prototype = {
     call$0() {
@@ -69348,57 +69971,50 @@
       var t1 = type$.BaseResponse._as(response).statusCode;
       return t1 === 503 || t1 === 408;
     },
-    $signature: 383
+    $signature: 395
   };
   A._createRetryClient_closure0.prototype = {
     call$2(error, stackTrace) {
       A._asObject(error);
       type$.StackTrace._as(stackTrace);
-      $.$get$_log28().log$4(B.Level_FINE_500, "Network error, will retry: " + A.S(error), null, null);
+      $.$get$_log29().log$4(B.Level_FINE_500, "Network error, will retry: " + A.S(error), null, null);
       return true;
     },
-    $signature: 384
+    $signature: 396
   };
   A._createRetryClient_closure1.prototype = {
     call$1(retryCount) {
       var delay;
       A._asInt(retryCount);
       delay = A.Duration$(0, 500 * B.JSInt_methods.$shl(1, retryCount), 0, 0);
-      $.$get$_log28().log$4(B.Level_FINE_500, "Retry attempt " + retryCount + ", waiting " + B.JSInt_methods._tdivFast$1(delay._duration, 1000) + "ms", null, null);
+      $.$get$_log29().log$4(B.Level_FINE_500, "Retry attempt " + retryCount + ", waiting " + B.JSInt_methods._tdivFast$1(delay._duration, 1000) + "ms", null, null);
       return delay;
     },
-    $signature: 385
+    $signature: 397
   };
   A.SolidBackend.prototype = {
     get$name() {
       return "solid";
     },
     _solid_backend$_authStateChanged$0() {
-      var webId, _this = this, _null = null,
-        t1 = $.$get$_log28(),
+      var webId, baseRemote, _this = this, _null = null,
+        t1 = $.$get$_log29(),
         t2 = _this._solid_backend$_authProvider,
         t3 = t2._worker_solid_auth_provider$_notifier;
-      t1.log$4(B.Level_INFO_800, string$.Authen + t3._worker_solid_auth_provider$_isAuthenticated + ", webId=" + A.S(t2._webId), _null, _null);
+      t1.log$4(B.Level_INFO_800, string$.Authens + t3._worker_solid_auth_provider$_isAuthenticated + ", webId=" + A.S(t2._webId), _null, _null);
       if (t3._worker_solid_auth_provider$_isAuthenticated) {
         webId = t2._webId;
         if (webId == null)
-          throw A.wrapException(A.StateError$(string$.User_i));
+          throw A.wrapException(A.StateError$("User is authenticated but currentWebId is null in SolidBackend"));
         t2 = _this._solid_backend$_remotes;
-        if (t2.length === 1) {
+        if (t2.length === 1)
           B.JSArray_methods.get$first(t2);
-          t2 = B.JSArray_methods.get$first(_this._solid_backend$_remotes).webId === webId;
-        } else
-          t2 = false;
-        if (t2) {
-          t1.log$4(B.Level_FINE_500, "No change in Solid remote storage for webId=" + webId, _null, _null);
-          return;
-        }
         t1.log$4(B.Level_INFO_800, "User logged in: initializing Solid remote storage for webId=" + webId, _null, _null);
-        t1 = new A.SolidRemoteStorage(webId, _this._solidClient, _this._solid_backend$_iriTermFactory, new A.SolidProfileParser());
-        t2 = type$.Future_String._as(t1._resolvePodUrl$1(webId));
-        t1.__SolidRemoteStorage__podUrlFuture_F !== $ && A.throwLateFieldAI("_podUrlFuture");
-        t1.__SolidRemoteStorage__podUrlFuture_F = t2;
-        _this._solid_backend$_remotes = A._setArrayType([t1], type$.JSArray_RemoteStorage);
+        baseRemote = new A.SolidRemoteStorage(webId, _this._solidClient, _this._solid_backend$_iriTermFactory, new A.SolidProfileParser());
+        t1 = type$.Future_String._as(baseRemote._resolvePodUrl$1(webId));
+        baseRemote.__SolidRemoteStorage__podUrlFuture_F !== $ && A.throwLateFieldAI("_podUrlFuture");
+        baseRemote.__SolidRemoteStorage__podUrlFuture_F = t1;
+        _this._solid_backend$_remotes = A._setArrayType([new A.AuthAwareRemoteStorage(baseRemote, new A.SolidBackend__authStateChanged_closure(_this), B.C_AuthRetryConfig)], type$.JSArray_RemoteStorage);
       } else {
         t1.log$4(B.Level_INFO_800, string$.User_l, _null, _null);
         _this._solid_backend$_remotes = A._setArrayType([], type$.JSArray_RemoteStorage);
@@ -69427,6 +70043,31 @@
     },
     $isBackend: 1
   };
+  A.SolidBackend__authStateChanged_closure.prototype = {
+    call$0() {
+      var $async$goto = 0,
+        $async$completer = A._makeAsyncAwaitCompleter(type$.void),
+        $async$self = this;
+      var $async$call$0 = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
+        if ($async$errorCode === 1)
+          return A._asyncRethrow($async$result, $async$completer);
+        for (;;)
+          switch ($async$goto) {
+            case 0:
+              // Function start
+              $.$get$_log29().log$4(B.Level_INFO_800, string$.Auth_f, null, null);
+              $async$goto = 2;
+              return A._asyncAwait($async$self.$this._solid_backend$_authProvider.refreshToken$1$reason(string$.Authenf), $async$call$0);
+            case 2:
+              // returning from await.
+              // implicit return
+              return A._asyncReturn(null, $async$completer);
+          }
+      });
+      return A._asyncStartSync($async$call$0, $async$completer);
+    },
+    $signature: 1
+  };
   A.SolidClientException.prototype = {
     toString$0(_) {
       return "SolidClientException: " + this.message;
@@ -69437,134 +70078,71 @@
     toString$0(_) {
       return "NotFoundException: " + this.message;
     },
-    $isException: 1,
-    $isSolidClientException: 1
+    $isException: 1
   };
   A.SolidClient.prototype = {
-    download$4$ifNoneMatch$isRetry$requiresAuth(url, ifNoneMatch, isRetry, requiresAuth) {
-      return this.download$body$SolidClient(url, ifNoneMatch, isRetry, true);
-    },
     download$3$ifNoneMatch$requiresAuth(url, ifNoneMatch, requiresAuth) {
-      return this.download$4$ifNoneMatch$isRetry$requiresAuth(url, ifNoneMatch, false, requiresAuth);
-    },
-    download$2$requiresAuth(url, requiresAuth) {
-      return this.download$4$ifNoneMatch$isRetry$requiresAuth(url, null, false, requiresAuth);
-    },
-    download$body$SolidClient(url, ifNoneMatch, isRetry, requiresAuth) {
       var $async$goto = 0,
         $async$completer = A._makeAsyncAwaitCompleter(type$.RemoteDownloadResult),
-        $async$returnValue, $async$handler = 2, $async$errorStack = [], $async$self = this, e, t4, t5, response, exception, contentType, t1, dpop, t2, t3, $async$exception;
-      var $async$download$4$ifNoneMatch$isRetry$requiresAuth = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
-        if ($async$errorCode === 1) {
-          $async$errorStack.push($async$result);
-          $async$goto = $async$handler;
-        }
+        $async$returnValue, $async$self = this, t2, t3, t4, response, contentType, dpop, t1;
+      var $async$download$3$ifNoneMatch$requiresAuth = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
+        if ($async$errorCode === 1)
+          return A._asyncRethrow($async$result, $async$completer);
         for (;;)
           switch ($async$goto) {
             case 0:
               // Function start
-              t1 = $async$self._solid_backend$_authProvider;
               $async$goto = 3;
-              return A._asyncAwait(t1.getDpopToken$2(A.stringReplaceAllUnchecked(url, "=", "%3D"), "GET"), $async$download$4$ifNoneMatch$isRetry$requiresAuth);
+              return A._asyncAwait($async$self._solid_backend$_authProvider.getDpopToken$2(A.stringReplaceAllUnchecked(url, "=", "%3D"), "GET"), $async$download$3$ifNoneMatch$requiresAuth);
             case 3:
               // returning from await.
               dpop = $async$result;
-              t2 = $.$get$_log28();
-              t3 = isRetry ? " (retry after refresh)" : "";
-              t2.log$4(B.Level_FINE_500, "GET " + url + " with auth=true" + t3, null, null);
-              t3 = dpop != null;
-              if (t3) {
-                t2.log$4(B.Level_FINER_400, "Authorization: DPoP " + B.JSString_methods.substring$2(dpop._0, 0, 20) + "...", null, null);
-                t2.log$4(B.Level_FINER_400, "DPoP token length: " + dpop._1.length, null, null);
+              t1 = $.$get$_log29();
+              t1.log$4(B.Level_FINE_500, "GET " + url + " with auth=true", null, null);
+              t2 = dpop != null;
+              if (t2) {
+                t1.log$4(B.Level_FINER_400, "Authorization: DPoP " + B.JSString_methods.substring$2(dpop._0, 0, 20) + "...", null, null);
+                t1.log$4(B.Level_FINER_400, "DPoP token length: " + dpop._1.length, null, null);
               }
-              t4 = A.Uri_parse(url);
-              t5 = type$.String;
-              t5 = A.LinkedHashMap_LinkedHashMap$_empty(t5, t5);
-              t5.$indexSet(0, "Accept", string$.text_t);
-              if (t3)
-                t5.$indexSet(0, "Authorization", "DPoP " + dpop._0);
-              if (t3)
-                t5.$indexSet(0, "DPoP", dpop._1);
+              t3 = A.Uri_parse(url);
+              t4 = type$.String;
+              t4 = A.LinkedHashMap_LinkedHashMap$_empty(t4, t4);
+              t4.$indexSet(0, "Accept", string$.text_t);
+              if (t2)
+                t4.$indexSet(0, "Authorization", "DPoP " + dpop._0);
+              if (t2)
+                t4.$indexSet(0, "DPoP", dpop._1);
               if (ifNoneMatch != null)
-                t5.$indexSet(0, "If-None-Match", ifNoneMatch);
+                t4.$indexSet(0, "If-None-Match", ifNoneMatch);
               $async$goto = 4;
-              return A._asyncAwait($async$self._solid_backend$_client._sendUnstreamed$3("GET", t4, type$.nullable_Map_String_String._as(t5)), $async$download$4$ifNoneMatch$isRetry$requiresAuth);
+              return A._asyncAwait($async$self._solid_backend$_client._sendUnstreamed$3("GET", t3, type$.nullable_Map_String_String._as(t4)), $async$download$3$ifNoneMatch$requiresAuth);
             case 4:
               // returning from await.
               response = $async$result;
-              t3 = response.statusCode;
-              t4 = "" + t3;
-              t2.log$4(B.Level_FINE_500, "Response status: " + t4, null, null);
-              $async$goto = t3 === 401 ? 5 : 6;
-              break;
-            case 5:
-              // then
-              if (isRetry) {
-                t2.log$4(B.Level_SEVERE_1000, "401 Unauthorized for " + url + string$.x20even_, null, null);
-                throw A.wrapException(A.SolidClientException$("Unauthorized (401) for " + url + string$.x20__tok));
+              t2 = response.statusCode;
+              t3 = "" + t2;
+              t1.log$4(B.Level_FINE_500, "Response status: " + t3, null, null);
+              if (t2 === 401) {
+                t1.log$4(B.Level_WARNING_900, "401 Unauthorized for " + url + " - authentication required", null, null);
+                throw A.wrapException(A.AuthException$("Solid Pod authentication failed for " + url, "HTTP 401 Unauthorized"));
               }
-              t2.log$4(B.Level_WARNING_900, "401 Unauthorized for " + url + " - attempting token refresh", null, null);
-              $async$handler = 8;
-              $async$goto = 11;
-              return A._asyncAwait(t1.refreshToken$1$reason("401 on GET " + url), $async$download$4$ifNoneMatch$isRetry$requiresAuth);
-            case 11:
-              // returning from await.
-              t2.log$4(B.Level_INFO_800, "Token refreshed - retrying GET request", null, null);
-              $async$goto = 12;
-              return A._asyncAwait($async$self.download$4$ifNoneMatch$isRetry$requiresAuth(url, ifNoneMatch, true, true), $async$download$4$ifNoneMatch$isRetry$requiresAuth);
-            case 12:
-              // returning from await.
-              t1 = $async$result;
-              $async$returnValue = t1;
-              // goto return
-              $async$goto = 1;
-              break;
-              $async$handler = 2;
-              // goto after finally
-              $async$goto = 10;
-              break;
-            case 8:
-              // catch
-              $async$handler = 7;
-              $async$exception = $async$errorStack.pop();
-              t1 = A.unwrapException($async$exception);
-              if (type$.SolidClientException._is(t1))
-                throw $async$exception;
-              else {
-                e = t1;
-                $.$get$_log28().log$4(B.Level_SEVERE_1000, "Token refresh failed: " + A.S(e), null, null);
-                t1 = A.SolidClientException$("Unauthorized (401) for " + url + " - refresh failed: " + A.S(e));
-                throw A.wrapException(t1);
-              }
-              // goto after finally
-              $async$goto = 10;
-              break;
-            case 7:
-              // uncaught
-              // goto rethrow
-              $async$goto = 2;
-              break;
-            case 10:
-              // after finally
-            case 6:
-              // join
-              if (t3 === 404) {
+              if (t2 === 404) {
                 $async$returnValue = new A.RemoteDownloadResult(null, null, false);
                 // goto return
                 $async$goto = 1;
                 break;
               }
-              if (t3 === 304) {
+              if (t2 === 304) {
                 $async$returnValue = new A.RemoteDownloadResult(null, ifNoneMatch, true);
                 // goto return
                 $async$goto = 1;
                 break;
               }
-              if (t3 !== 200) {
-                t1 = "Failed to fetch " + url + ": " + t4;
-                t2.log$4(B.Level_WARNING_900, t1, null, null);
-                t2.log$4(B.Level_WARNING_900, "Response body: " + A.encodingForContentTypeHeader(A._contentTypeForHeaders(response.headers)).decode$1(response.bodyBytes), null, null);
-                throw A.wrapException(A.SolidClientException$(t1));
+              if (t2 !== 200) {
+                t2 = "Failed to fetch " + url + ": " + t3;
+                t1.log$4(B.Level_WARNING_900, t2, null, null);
+                t1.log$4(B.Level_WARNING_900, "Response body: " + A.encodingForContentTypeHeader(A._contentTypeForHeaders(response.headers)).decode$1(response.bodyBytes), null, null);
+                throw A.wrapException(A.SolidClientException$(t2));
               }
               t1 = response.headers;
               contentType = t1.$index(0, "content-type");
@@ -69577,12 +70155,12 @@
             case 1:
               // return
               return A._asyncReturn($async$returnValue, $async$completer);
-            case 2:
-              // rethrow
-              return A._asyncRethrow($async$errorStack.at(-1), $async$completer);
           }
       });
-      return A._asyncStartSync($async$download$4$ifNoneMatch$isRetry$requiresAuth, $async$completer);
+      return A._asyncStartSync($async$download$3$ifNoneMatch$requiresAuth, $async$completer);
+    },
+    download$2$requiresAuth(url, requiresAuth) {
+      return this.download$3$ifNoneMatch$requiresAuth(url, null, requiresAuth);
     },
     _fetchETag$2$requiresAuth(url, requiresAuth) {
       var $async$goto = 0,
@@ -69600,7 +70178,7 @@
             case 3:
               // returning from await.
               dpop = $async$result;
-              t1 = $.$get$_log28();
+              t1 = $.$get$_log29();
               t1.log$4(B.Level_FINE_500, "HEAD " + url + " with auth=true", null, null);
               t2 = A.Uri_parse(url);
               t3 = type$.String;
@@ -69634,161 +70212,99 @@
       });
       return A._asyncStartSync($async$_fetchETag$2$requiresAuth, $async$completer);
     },
-    upload$5$ifMatch$isRetry$requiresAuth(url, graph, ifMatch, isRetry, requiresAuth) {
-      return this.upload$body$SolidClient(url, graph, ifMatch, isRetry, true);
-    },
     upload$4$ifMatch$requiresAuth(url, graph, ifMatch, requiresAuth) {
-      return this.upload$5$ifMatch$isRetry$requiresAuth(url, graph, ifMatch, false, requiresAuth);
-    },
-    upload$body$SolidClient(url, graph, ifMatch, isRetry, requiresAuth) {
       var $async$goto = 0,
         $async$completer = A._makeAsyncAwaitCompleter(type$.RemoteUploadResult),
-        $async$returnValue, $async$handler = 2, $async$errorStack = [], $async$self = this, e, t4, t5, response, exception, etag, t1, dpop, t2, t3, $async$exception;
-      var $async$upload$5$ifMatch$isRetry$requiresAuth = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
-        if ($async$errorCode === 1) {
-          $async$errorStack.push($async$result);
-          $async$goto = $async$handler;
-        }
+        $async$returnValue, $async$self = this, t2, t3, t4, response, etag, turtle, dpop, t1;
+      var $async$upload$4$ifMatch$requiresAuth = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
+        if ($async$errorCode === 1)
+          return A._asyncRethrow($async$result, $async$completer);
         for (;;)
           switch ($async$goto) {
             case 0:
               // Function start
-              t1 = $async$self._solid_backend$_authProvider;
+              turtle = $async$self._solid_backend$_rdfCore.encode$2$contentType(graph, "text/turtle");
               $async$goto = 3;
-              return A._asyncAwait(t1.getDpopToken$2(A.stringReplaceAllUnchecked(url, "=", "%3D"), "PUT"), $async$upload$5$ifMatch$isRetry$requiresAuth);
+              return A._asyncAwait($async$self._solid_backend$_authProvider.getDpopToken$2(A.stringReplaceAllUnchecked(url, "=", "%3D"), "PUT"), $async$upload$4$ifMatch$requiresAuth);
             case 3:
               // returning from await.
               dpop = $async$result;
-              t2 = $.$get$_log28();
-              t3 = isRetry ? " (retry after refresh)" : "";
-              t2.log$4(B.Level_FINE_500, "PUT " + url + " with auth=true" + t3, null, null);
-              t3 = dpop != null;
-              if (t3) {
-                t2.log$4(B.Level_FINER_400, "Authorization: DPoP " + B.JSString_methods.substring$2(dpop._0, 0, 20) + "...", null, null);
-                t2.log$4(B.Level_FINER_400, "DPoP token length: " + dpop._1.length, null, null);
+              t1 = $.$get$_log29();
+              t1.log$4(B.Level_FINE_500, "PUT " + url + " with auth=true", null, null);
+              t2 = dpop != null;
+              if (t2) {
+                t1.log$4(B.Level_FINER_400, "Authorization: DPoP " + B.JSString_methods.substring$2(dpop._0, 0, 20) + "...", null, null);
+                t1.log$4(B.Level_FINER_400, "DPoP token length: " + dpop._1.length, null, null);
               }
-              t4 = A.Uri_parse(url);
-              t5 = type$.String;
-              t5 = A.LinkedHashMap_LinkedHashMap$_empty(t5, t5);
-              t5.$indexSet(0, "Content-Type", "text/turtle");
-              t5.$indexSet(0, "Accept", string$.text_t);
-              if (t3)
-                t5.$indexSet(0, "Authorization", "DPoP " + dpop._0);
-              if (t3)
-                t5.$indexSet(0, "DPoP", dpop._1);
-              t3 = ifMatch == null;
-              if (!t3)
-                t5.$indexSet(0, "If-Match", ifMatch);
-              if (t3)
-                t5.$indexSet(0, "If-None-Match", "*");
-              t3 = $async$self._solid_backend$_rdfCore.encode$1(graph);
+              t3 = A.Uri_parse(url);
+              t4 = type$.String;
+              t4 = A.LinkedHashMap_LinkedHashMap$_empty(t4, t4);
+              t4.$indexSet(0, "Content-Type", "text/turtle");
+              t4.$indexSet(0, "Accept", string$.text_t);
+              if (t2)
+                t4.$indexSet(0, "Authorization", "DPoP " + dpop._0);
+              if (t2)
+                t4.$indexSet(0, "DPoP", dpop._1);
+              t2 = ifMatch == null;
+              if (!t2)
+                t4.$indexSet(0, "If-Match", ifMatch);
+              if (t2)
+                t4.$indexSet(0, "If-None-Match", "*");
               $async$goto = 4;
-              return A._asyncAwait($async$self._solid_backend$_client._sendUnstreamed$5("PUT", t4, type$.nullable_Map_String_String._as(t5), t3, null), $async$upload$5$ifMatch$isRetry$requiresAuth);
+              return A._asyncAwait($async$self._solid_backend$_client._sendUnstreamed$5("PUT", t3, type$.nullable_Map_String_String._as(t4), turtle, null), $async$upload$4$ifMatch$requiresAuth);
             case 4:
               // returning from await.
               response = $async$result;
-              t3 = response.statusCode;
-              t5 = "" + t3;
-              t2.log$4(B.Level_FINE_500, "Response status: " + t5, null, null);
-              $async$goto = t3 === 401 ? 5 : 6;
-              break;
-            case 5:
-              // then
-              if (isRetry) {
-                t2.log$4(B.Level_SEVERE_1000, "401 Unauthorized for " + url + string$.x20even_, null, null);
-                throw A.wrapException(A.SolidClientException$("Unauthorized (401) for " + url + string$.x20__tok));
+              t2 = response.statusCode;
+              t3 = "" + t2;
+              t1.log$4(B.Level_FINE_500, "Response status: " + t3, null, null);
+              if (t2 === 401) {
+                t1.log$4(B.Level_WARNING_900, "401 Unauthorized for " + url + " - authentication required", null, null);
+                throw A.wrapException(A.AuthException$("Solid Pod authentication failed for " + url, "HTTP 401 Unauthorized"));
               }
-              t2.log$4(B.Level_WARNING_900, "401 Unauthorized for " + url + " - attempting token refresh", null, null);
-              $async$handler = 8;
-              $async$goto = 11;
-              return A._asyncAwait(t1.refreshToken$1$reason("401 on PUT " + url), $async$upload$5$ifMatch$isRetry$requiresAuth);
-            case 11:
-              // returning from await.
-              t2.log$4(B.Level_INFO_800, "Token refreshed - retrying PUT request", null, null);
-              $async$goto = 12;
-              return A._asyncAwait($async$self.upload$5$ifMatch$isRetry$requiresAuth(url, graph, ifMatch, true, true), $async$upload$5$ifMatch$isRetry$requiresAuth);
-            case 12:
-              // returning from await.
-              t1 = $async$result;
-              $async$returnValue = t1;
-              // goto return
-              $async$goto = 1;
-              break;
-              $async$handler = 2;
-              // goto after finally
-              $async$goto = 10;
-              break;
-            case 8:
-              // catch
-              $async$handler = 7;
-              $async$exception = $async$errorStack.pop();
-              t1 = A.unwrapException($async$exception);
-              if (type$.SolidClientException._is(t1))
-                throw $async$exception;
-              else {
-                e = t1;
-                $.$get$_log28().log$4(B.Level_SEVERE_1000, "Token refresh failed: " + A.S(e), null, null);
-                t1 = A.SolidClientException$("Unauthorized (401) for " + url + " - refresh failed: " + A.S(e));
-                throw A.wrapException(t1);
-              }
-              // goto after finally
-              $async$goto = 10;
-              break;
-            case 7:
-              // uncaught
-              // goto rethrow
-              $async$goto = 2;
-              break;
-            case 10:
-              // after finally
-            case 6:
-              // join
-              if (t3 === 404)
+              if (t2 === 404)
                 throw A.wrapException(new A.NotFoundException("Resource not found at " + url));
-              if (t3 === 409) {
+              if (t2 === 409) {
                 $async$returnValue = B.C_ConflictUploadResult;
                 // goto return
                 $async$goto = 1;
                 break;
               }
-              $async$goto = t3 >= 200 && t3 < 300 ? 13 : 14;
+              $async$goto = t2 >= 200 && t2 < 300 ? 5 : 6;
               break;
-            case 13:
+            case 5:
               // then
               etag = response.headers.$index(0, "etag");
-              $async$goto = etag == null ? 15 : 16;
+              $async$goto = etag == null ? 7 : 8;
               break;
-            case 15:
+            case 7:
               // then
-              t2.log$4(B.Level_FINE_500, "No ETag in PUT response from " + url + ", fetching via HEAD", null, null);
-              $async$goto = 17;
-              return A._asyncAwait($async$self._fetchETag$2$requiresAuth(url, true), $async$upload$5$ifMatch$isRetry$requiresAuth);
-            case 17:
+              t1.log$4(B.Level_FINE_500, "No ETag in PUT response from " + url + ", fetching via HEAD", null, null);
+              $async$goto = 9;
+              return A._asyncAwait($async$self._fetchETag$2$requiresAuth(url, true), $async$upload$4$ifMatch$requiresAuth);
+            case 9:
               // returning from await.
               etag = $async$result;
               if (etag == null)
-                t2.log$4(B.Level_WARNING_900, "Could not fetch ETag via HEAD for " + url, null, null);
-            case 16:
+                t1.log$4(B.Level_WARNING_900, "Could not fetch ETag via HEAD for " + url, null, null);
+            case 8:
               // join
               $async$returnValue = new A.SuccessUploadResult(etag == null ? "" : etag);
               // goto return
               $async$goto = 1;
               break;
-            case 14:
+            case 6:
               // join
-              t1 = "Failed to upload to " + url + ": " + t5;
-              t2.log$4(B.Level_WARNING_900, t1, null, null);
-              t2.log$4(B.Level_WARNING_900, "Response body: " + A.encodingForContentTypeHeader(A._contentTypeForHeaders(response.headers)).decode$1(response.bodyBytes), null, null);
-              throw A.wrapException(A.SolidClientException$(t1));
+              t2 = "Failed to upload to " + url + ": " + t3;
+              t1.log$4(B.Level_WARNING_900, t2, null, null);
+              t1.log$4(B.Level_WARNING_900, "Response body: " + A.encodingForContentTypeHeader(A._contentTypeForHeaders(response.headers)).decode$1(response.bodyBytes), null, null);
+              throw A.wrapException(A.SolidClientException$(t2));
             case 1:
               // return
               return A._asyncReturn($async$returnValue, $async$completer);
-            case 2:
-              // rethrow
-              return A._asyncRethrow($async$errorStack.at(-1), $async$completer);
           }
       });
-      return A._asyncStartSync($async$upload$5$ifMatch$isRetry$requiresAuth, $async$completer);
+      return A._asyncStartSync($async$upload$4$ifMatch$requiresAuth, $async$completer);
     }
   };
   A.SolidResourceLocator.prototype = {
@@ -69928,13 +70444,13 @@
       A._asString(_);
       return true;
     },
-    $signature: 2
+    $signature: 3
   };
   A.SolidRemoteStorage_isAvailable_closure0.prototype = {
     call$1(_) {
       return false;
     },
-    $signature: 131
+    $signature: 76
   };
   A.SolidSyncStorage.prototype = {
     download$2$ifNoneMatch(documentIri, ifNoneMatch) {
@@ -70014,8 +70530,7 @@
           }
       });
       return A._asyncStartSync($async$finalizeSync$0, $async$completer);
-    },
-    $isRemoteSyncStorage: 1
+    }
   };
   A.SolidProfileParser.prototype = {
     _findStorageUrls$1(graph) {
@@ -70038,7 +70553,7 @@
       } catch (exception) {
         e = A.unwrapException(exception);
         stackTrace = A.getTraceFromException(exception);
-        $.$get$_log29().log$4(B.Level_SEVERE_1000, "Failed to find storage URLs", e, type$.nullable_StackTrace._as(stackTrace));
+        $.$get$_log30().log$4(B.Level_SEVERE_1000, "Failed to find storage URLs", e, type$.nullable_StackTrace._as(stackTrace));
         throw exception;
       }
     },
@@ -70062,7 +70577,7 @@
           break $label0$0;
         }
         if (_0_0 instanceof A.LiteralTerm) {
-          $.$get$_log29().log$4(B.Level_WARNING_900, "Storage points to a literal, ignoring it: " + _0_0.toString$0(0), _null, _null);
+          $.$get$_log30().log$4(B.Level_WARNING_900, "Storage points to a literal, ignoring it: " + _0_0.toString$0(0), _null, _null);
           break $label0$0;
         }
       }
@@ -70086,7 +70601,7 @@
                   try {
                     storageUrls = $async$self._findStorageUrls$1(graph);
                     if (J.get$length$asx(storageUrls) !== 0) {
-                      $.$get$_log29().log$4(B.Level_INFO_800, "Found storage URL: " + J.get$first$ax(storageUrls), null, null);
+                      $.$get$_log30().log$4(B.Level_INFO_800, "Found storage URL: " + J.get$first$ax(storageUrls), null, null);
                       t1 = J.get$first$ax(storageUrls);
                       $async$returnValue = t1;
                       // goto return
@@ -70097,14 +70612,14 @@
                       ending = B.List_oOR[_i];
                       if (B.JSString_methods.endsWith$1(webId, ending)) {
                         storageUrl = B.JSString_methods.substring$2(webId, 0, webId.length - J.get$length$asx(ending)) + "/";
-                        $.$get$_log29().log$4(B.Level_INFO_800, "Did not find predicate " + B.IriTerm_nIu.toString$0(0) + ". Using root of WebID as storage URL: " + A.S(storageUrl), null, null);
+                        $.$get$_log30().log$4(B.Level_INFO_800, "Did not find predicate " + B.IriTerm_nIu.toString$0(0) + ". Using root of WebID as storage URL: " + A.S(storageUrl), null, null);
                         $async$returnValue = storageUrl;
                         // goto return
                         $async$goto = 1;
                         break $async$outer;
                       }
                     }
-                    $.$get$_log29().log$4(B.Level_WARNING_900, "No storage URL found in profile document", null, null);
+                    $.$get$_log30().log$4(B.Level_WARNING_900, "No storage URL found in profile document", null, null);
                     $async$returnValue = null;
                     // goto return
                     $async$goto = 1;
@@ -70112,7 +70627,7 @@
                   } catch (exception) {
                     e = A.unwrapException(exception);
                     stackTrace = A.getTraceFromException(exception);
-                    $.$get$_log29().log$4(B.Level_SEVERE_1000, "RDF parsing failed", e, type$.nullable_StackTrace._as(stackTrace));
+                    $.$get$_log30().log$4(B.Level_SEVERE_1000, "RDF parsing failed", e, type$.nullable_StackTrace._as(stackTrace));
                     $async$returnValue = null;
                     // goto return
                     $async$goto = 1;
@@ -70121,7 +70636,7 @@
                 } catch (exception) {
                   e0 = A.unwrapException(exception);
                   stackTrace0 = A.getTraceFromException(exception);
-                  $.$get$_log29().log$4(B.Level_SEVERE_1000, "Failed to parse profile", e0, type$.nullable_StackTrace._as(stackTrace0));
+                  $.$get$_log30().log$4(B.Level_SEVERE_1000, "Failed to parse profile", e0, type$.nullable_StackTrace._as(stackTrace0));
                   $async$returnValue = null;
                   // goto return
                   $async$goto = 1;
@@ -70139,7 +70654,7 @@
     call$2(key, val) {
       return new A.MapEntry(J.toString$0$(key), A._deepConvertJsObject(val), type$.MapEntry_String_dynamic);
     },
-    $signature: 386
+    $signature: 398
   };
   A.WorkerMessage.prototype = {};
   A.WorkerRequest.prototype = {};
@@ -70246,7 +70761,7 @@
       t1 = type$.String;
       return A.LinkedHashMap_LinkedHashMap$_literal(["id", item._0, "graph", item._1], t1, t1);
     },
-    $signature: 111
+    $signature: 112
   };
   A.HydrationBatchMessage_toJson_closure0.prototype = {
     call$1(item) {
@@ -70255,21 +70770,21 @@
       t1 = type$.String;
       return A.LinkedHashMap_LinkedHashMap$_literal(["id", item._0, "graph", item._1], t1, t1);
     },
-    $signature: 111
+    $signature: 112
   };
   A.HydrationBatchMessage_HydrationBatchMessage$fromJson_closure.prototype = {
     call$1(item) {
       var t1 = J.getInterceptor$asx(item);
       return new A._Record_2(A._asString(t1.$index(item, "id")), A._asString(t1.$index(item, "graph")));
     },
-    $signature: 112
+    $signature: 113
   };
   A.HydrationBatchMessage_HydrationBatchMessage$fromJson_closure0.prototype = {
     call$1(item) {
       var t1 = J.getInterceptor$asx(item);
       return new A._Record_2(A._asString(t1.$index(item, "id")), A._asString(t1.$index(item, "graph")));
     },
-    $signature: 112
+    $signature: 113
   };
   A.SyncTriggerRequest.prototype = {
     toJson$0() {
@@ -70280,13 +70795,13 @@
     call$1(t) {
       return type$.SyncTrigger._as(t)._name === this.json.$index(0, "trigger");
     },
-    $signature: 64
+    $signature: 72
   };
   A.SyncTriggerRequest_SyncTriggerRequest$fromJson_closure0.prototype = {
     call$0() {
       return B.SyncTrigger_0;
     },
-    $signature: 65
+    $signature: 63
   };
   A.SyncTriggerResponse.prototype = {
     toJson$0() {
@@ -70349,13 +70864,13 @@
     call$1(t) {
       return type$.SyncTrigger._as(t)._name === this.json.$index(0, "lastTrigger");
     },
-    $signature: 64
+    $signature: 72
   };
   A.GetSyncStateResponse_GetSyncStateResponse$fromJson_closure0.prototype = {
     call$0() {
       return B.SyncTrigger_0;
     },
-    $signature: 65
+    $signature: 63
   };
   A.SyncStateUpdateMessage.prototype = {
     toJson$0() {
@@ -70379,13 +70894,13 @@
     call$1(t) {
       return type$.SyncTrigger._as(t)._name === this.json.$index(0, "lastTrigger");
     },
-    $signature: 64
+    $signature: 72
   };
   A.SyncStateUpdateMessage_SyncStateUpdateMessage$fromJson_closure0.prototype = {
     call$0() {
       return B.SyncTrigger_0;
     },
-    $signature: 65
+    $signature: 63
   };
   A.WorkerParams.prototype = {};
   A.StorageWorkerHandler.prototype = {};
@@ -70394,7 +70909,7 @@
     call$1(message) {
       init.G.self.postMessage(A.jsify(A.LinkedHashMap_LinkedHashMap$_literal(["__channel", message.channel, "data", message.data], type$.String, type$.nullable_Object)));
     },
-    $signature: 391
+    $signature: 403
   };
   A.startWebWorkerLoop_resetInitializing.prototype = {
     call$0() {
@@ -70410,7 +70925,7 @@
   };
   A.startWebWorkerLoop_closure.prototype = {
     call$1($event) {
-      var _this = this, _null = null,
+      var t2, t3, _this = this, _null = null,
         _s9_ = "__channel",
         data = A._deepConvertJsObject(A.dartify(A._asJSObject($event).data)),
         t1 = $.$get$_log();
@@ -70421,19 +70936,23 @@
       }
       type$.Map_String_dynamic._as(data);
       if (typeof data.$index(0, _s9_) == "string") {
-        _this.channel._incomingController.add$1(0, new A.WorkerChannelMessage(A._asString(data.$index(0, _s9_)), data.$index(0, "data")));
+        t1 = _this.channel;
+        t2 = A._asString(data.$index(0, _s9_));
+        t3 = data.$index(0, "data");
+        t1._getOrCreateChannel$1(t2);
+        t1._incomingController.add$1(0, new A.WorkerChannelMessage(t2, t3));
         return;
       }
       t1 = _this._box_0;
       A._handleWorkerMessage(data, new A.startWebWorkerLoop__closure(t1), new A.startWebWorkerLoop__closure0(t1), _this.workerSetup, _this.channel, new A.startWebWorkerLoop__closure1(t1), _this.markAsInitializing, _this.resetInitializing).catchError$1(new A.startWebWorkerLoop__closure2());
     },
-    $signature: 37
+    $signature: 36
   };
   A.startWebWorkerLoop__closure.prototype = {
     call$0() {
       return this._box_0.context;
     },
-    $signature: 392
+    $signature: 404
   };
   A.startWebWorkerLoop__closure0.prototype = {
     call$1(newContext) {
@@ -70441,13 +70960,13 @@
       t1.context = newContext;
       t1.isInitializing = false;
     },
-    $signature: 393
+    $signature: 405
   };
   A.startWebWorkerLoop__closure1.prototype = {
     call$0() {
       return this._box_0.isInitializing;
     },
-    $signature: 394
+    $signature: 406
   };
   A.startWebWorkerLoop__closure2.prototype = {
     call$2(e, st) {
@@ -70460,38 +70979,80 @@
         $.$get$_log().log$4(B.Level_SEVERE_1000, "Failed to send error to main thread", _null, _null);
       }
     },
-    $signature: 43
+    $signature: 40
   };
   A.WorkerChannelMessage.prototype = {};
   A.WorkerHandlerChannel.prototype = {
-    get$messages() {
-      var t1 = this._workerChannel._incomingController,
+    WorkerHandlerChannel$_$2(channel, _workerChannel) {
+      var _this = this,
+        t1 = _this._workerChannel._incomingController,
         t2 = A._instanceType(t1)._eval$1("_BroadcastStream<1>"),
-        t3 = t2._eval$1("bool(Stream.T)")._as(new A.WorkerHandlerChannel_messages_closure(this)),
+        t3 = t2._eval$1("bool(Stream.T)")._as(new A.WorkerHandlerChannel$__closure(_this)),
         t4 = t2._eval$1("_WhereStream<Stream.T>");
-      return new A._MapStream(t4._eval$1("Object?(Stream.T)")._as(new A.WorkerHandlerChannel_messages_closure0()), new A._WhereStream(t3, new A._BroadcastStream(t1, t2), t4), t4._eval$1("_MapStream<Stream.T,Object?>"));
+      t4 = new A._MapStream(t4._eval$1("Object?(Stream.T)")._as(new A.WorkerHandlerChannel$__closure0()), new A._WhereStream(t3, new A._BroadcastStream(t1, t2), t4), t4._eval$1("_MapStream<Stream.T,Object?>")).listen$1(_this.get$_onMessage());
+      _this.__WorkerHandlerChannel__subscription_F !== $ && A.throwLateFieldAI("_subscription");
+      _this.__WorkerHandlerChannel__subscription_F = t4;
+    },
+    _onMessage$1(data) {
+      var t1 = this._worker_channel$_controller;
+      if (t1 != null)
+        t1.add$1(0, data);
+      else
+        B.JSArray_methods.add$1(this._worker_channel$_buffer, data);
+    },
+    get$messages() {
+      var t1 = this._worker_channel$_controller;
+      if (t1 == null)
+        t1 = this._worker_channel$_controller = A.StreamController_StreamController$broadcast(this.get$_onFirstListen(), false, type$.nullable_Object);
+      return new A._BroadcastStream(t1, A._instanceType(t1)._eval$1("_BroadcastStream<1>"));
+    },
+    _onFirstListen$0() {
+      var t1, t2, _i, msg, t3, _this = this;
+      if (_this._hasListener)
+        return;
+      _this._hasListener = true;
+      for (t1 = _this._worker_channel$_buffer, t2 = t1.length, _i = 0; _i < t1.length; t1.length === t2 || (0, A.throwConcurrentModificationError)(t1), ++_i) {
+        msg = t1[_i];
+        t3 = _this._worker_channel$_controller;
+        t3.toString;
+        A._instanceType(t3)._precomputed1._as(msg);
+        if (!t3.get$_mayAddEvent())
+          A.throwExpression(t3._addEventError$0());
+        t3._sendData$1(msg);
+      }
+      B.JSArray_methods.clear$0(t1);
     }
   };
-  A.WorkerHandlerChannel_messages_closure.prototype = {
+  A.WorkerHandlerChannel$__closure.prototype = {
     call$1(msg) {
       return type$.WorkerChannelMessage._as(msg).channel === this.$this.channel;
     },
-    $signature: 395
+    $signature: 407
   };
-  A.WorkerHandlerChannel_messages_closure0.prototype = {
+  A.WorkerHandlerChannel$__closure0.prototype = {
     call$1(msg) {
       return type$.WorkerChannelMessage._as(msg).data;
     },
-    $signature: 396
+    $signature: 408
   };
-  A.WorkerChannel.prototype = {};
+  A.WorkerChannel.prototype = {
+    _getOrCreateChannel$1($name) {
+      return this._cachedChannels.putIfAbsent$2($name, new A.WorkerChannel__getOrCreateChannel_closure(this, $name));
+    }
+  };
+  A.WorkerChannel__getOrCreateChannel_closure.prototype = {
+    call$0() {
+      return A.WorkerHandlerChannel$_(this.name, this.$this);
+    },
+    $signature: 409
+  };
   A.WorkerHandlerContextImpl.prototype = {
     createChannel$1($name) {
       var t1 = this._registeredChannels;
       if (t1.contains$1(0, $name))
         throw A.wrapException(A.StateError$('Channel "' + $name + '" already registered in this context.'));
       t1.add$1(0, $name);
-      return new A.WorkerHandlerChannel($name, this._channel);
+      return this._channel._getOrCreateChannel$1($name);
     },
     $isWorkerHandlerContext: 1
   };
@@ -71112,7 +71673,7 @@
       t2 = new A.SyncStateUpdateMessage(t1, state.lastSyncTime, state.errorMessage, t2).toJson$0();
       init.G.self.postMessage(A.jsify(t2));
     },
-    $signature: 397
+    $signature: 410
   };
   A.WorkerContext__handleHydrateStream_closure.prototype = {
     call$1(batch) {
@@ -71129,21 +71690,21 @@
       t1 = new A.HydrationBatchMessage(updates, deletions, batch._0, false, this.request.requestId).toJson$0();
       init.G.self.postMessage(A.jsify(t1));
     },
-    $signature: 398
+    $signature: 411
   };
   A.WorkerContext__handleHydrateStream__closure.prototype = {
     call$1(item) {
       type$.Record_2_IriTerm_and_RdfGraph._as(item);
       return new A._Record_2(item._0.value, this.$this._codec.encode$1(item._1));
     },
-    $signature: 115
+    $signature: 116
   };
   A.WorkerContext__handleHydrateStream__closure0.prototype = {
     call$1(item) {
       type$.Record_2_IriTerm_and_RdfGraph._as(item);
       return new A._Record_2(item._0.value, this.$this._codec.encode$1(item._1));
     },
-    $signature: 115
+    $signature: 116
   };
   A.WorkerContext__handleHydrateStream_closure1.prototype = {
     call$2(e, st) {
@@ -71153,7 +71714,7 @@
       init.G.self.postMessage(A.jsify(t2));
       this.$this._activeStreams.remove$1(0, t1);
     },
-    $signature: 43
+    $signature: 40
   };
   A.WorkerContext__handleHydrateStream_closure0.prototype = {
     call$0() {
@@ -71169,7 +71730,7 @@
     call$1(b) {
       return type$.RemoteWorkerHandler._as(b).createBackend$2(this.workerHandlerContext, this.config);
     },
-    $signature: 400
+    $signature: 413
   };
   A.Level.prototype = {
     $eq(_, other) {
@@ -71236,7 +71797,7 @@
       if (this.parent == null) {
         var t1 = this._controller;
         if (t1 == null)
-          t1 = this._controller = A.StreamController_StreamController$broadcast(true, type$.LogRecord);
+          t1 = this._controller = A.StreamController_StreamController$broadcast(null, true, type$.LogRecord);
         return new A._BroadcastStream(t1, A._instanceType(t1)._eval$1("_BroadcastStream<1>"));
       } else
         return $.$get$Logger_root()._getStream$0();
@@ -71268,7 +71829,7 @@
         $parent._children.$indexSet(0, thisName, t1);
       return t1;
     },
-    $signature: 401
+    $signature: 414
   };
   A.Context.prototype = {
     absolute$15(part1, part2, part3, part4, part5, part6, part7, part8, part9, part10, part11, part12, part13, part14, part15) {
@@ -71764,20 +72325,20 @@
     call$1(part) {
       return A._asString(part) !== "";
     },
-    $signature: 2
+    $signature: 3
   };
   A.Context_split_closure.prototype = {
     call$1(part) {
       return A._asString(part).length !== 0;
     },
-    $signature: 2
+    $signature: 3
   };
   A._validateArgList_closure.prototype = {
     call$1(arg) {
       A._asStringQ(arg);
       return arg == null ? "null" : '"' + arg + '"';
     },
-    $signature: 402
+    $signature: 415
   };
   A._PathDirection.prototype = {
     toString$0(_) {
@@ -72183,7 +72744,7 @@
     call$1(part) {
       return A._asString(part) !== "";
     },
-    $signature: 2
+    $signature: 3
   };
   A.TimestampFormat.prototype = {
     _enumToString$0() {
@@ -72223,7 +72784,7 @@
       if (t1 != null)
         A.print("  \u21b3 Stack trace:\n" + A._indentStackTrace(t1));
     },
-    $signature: 403
+    $signature: 416
   };
   A._indentStackTrace_closure.prototype = {
     call$1(line) {
@@ -72839,7 +73400,7 @@
       A._asString(_);
       return new A.OAEPEncoding_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 404
+    $signature: 417
   };
   A.OAEPEncoding_factoryConfig__closure.prototype = {
     call$0() {
@@ -72847,13 +73408,13 @@
       t1.toString;
       return A.OAEPEncoding_OAEPEncoding$withSHA1($.$get$registry().create$1$1(t1, type$.AsymmetricBlockCipher), null);
     },
-    $signature: 405
+    $signature: 418
   };
   A.OAEPEncoding_OAEPEncoding$withSHA1_closure.prototype = {
     call$0() {
       return A.SHA1Digest$();
     },
-    $signature: 116
+    $signature: 117
   };
   A.PKCS1Encoding.prototype = {
     init$2(forEncryption, params) {
@@ -72922,7 +73483,7 @@
       A._asString(_);
       return new A.PKCS1Encoding_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 407
+    $signature: 420
   };
   A.PKCS1Encoding_factoryConfig__closure.prototype = {
     call$0() {
@@ -72930,7 +73491,7 @@
       t1.toString;
       return A.PKCS1Encoding$($.$get$registry().create$1$1(t1, type$.AsymmetricBlockCipher));
     },
-    $signature: 408
+    $signature: 421
   };
   A.RSAEngine.prototype = {
     get$inputBlockSize() {
@@ -73028,7 +73589,7 @@
     call$0() {
       return A.RSAEngine$();
     },
-    $signature: 409
+    $signature: 422
   };
   A.AESEngine.prototype = {
     _subWord$1(x) {
@@ -73544,7 +74105,7 @@
       var t1 = J.JSArray_JSArray$fixed(0, type$.int);
       return new A.AESEngine(t1);
     },
-    $signature: 410
+    $signature: 423
   };
   A.DesBase.prototype = {
     generateWorkingKey$2(encrypting, key) {
@@ -73831,7 +74392,7 @@
     call$0() {
       return new A.DESedeEngine();
     },
-    $signature: 411
+    $signature: 424
   };
   A.CBCBlockCipher.prototype = {
     get$blockSize() {
@@ -73900,7 +74461,7 @@
       A._asString(_);
       return new A.CBCBlockCipher_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 412
+    $signature: 425
   };
   A.CBCBlockCipher_factoryConfig__closure.prototype = {
     call$0() {
@@ -73908,7 +74469,7 @@
       t1.toString;
       return A.CBCBlockCipher$($.$get$registry().create$1$1(t1, type$.BlockCipher));
     },
-    $signature: 413
+    $signature: 426
   };
   A.CCMBlockCipher.prototype = {
     get$macSize() {
@@ -73957,7 +74518,7 @@
       A._asString(_);
       return new A.CCMBlockCipher_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 414
+    $signature: 427
   };
   A.CCMBlockCipher_factoryConfig__closure.prototype = {
     call$0() {
@@ -73972,7 +74533,7 @@
         A.throwExpression(A.ArgumentError$("CCM requires a block size of 16", null));
       return new A.CCMBlockCipher(new A._CopyingBytesBuilder(t1), new A._CopyingBytesBuilder(t1), underlying);
     },
-    $signature: 415
+    $signature: 428
   };
   A.CFBBlockCipher.prototype = {
     reset$0() {
@@ -74057,7 +74618,7 @@
       A._asString(_);
       return new A.CFBBlockCipher_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 416
+    $signature: 429
   };
   A.CFBBlockCipher_factoryConfig__closure.prototype = {
     call$0() {
@@ -74080,7 +74641,7 @@
       t1._cfbOutV = new Uint8Array(t2);
       return t1;
     },
-    $signature: 417
+    $signature: 430
   };
   A.CTRBlockCipher.prototype = {};
   A.CTRBlockCipher_factoryConfig_closure.prototype = {
@@ -74088,7 +74649,7 @@
       A._asString(_);
       return new A.CTRBlockCipher_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 418
+    $signature: 431
   };
   A.CTRBlockCipher_factoryConfig__closure.prototype = {
     call$0() {
@@ -74099,7 +74660,7 @@
       t1 = underlying.get$blockSize();
       return new A.CTRBlockCipher(A.CTRStreamCipher$(underlying), t1);
     },
-    $signature: 419
+    $signature: 432
   };
   A.ECBBlockCipher.prototype = {
     get$blockSize() {
@@ -74120,7 +74681,7 @@
       A._asString(_);
       return new A.ECBBlockCipher_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 420
+    $signature: 433
   };
   A.ECBBlockCipher_factoryConfig__closure.prototype = {
     call$0() {
@@ -74128,7 +74689,7 @@
       t1.toString;
       return new A.ECBBlockCipher($.$get$registry().create$1$1(t1, type$.BlockCipher));
     },
-    $signature: 421
+    $signature: 434
   };
   A.GCMBlockCipher.prototype = {
     init$2(forEncryption, params) {
@@ -74304,7 +74865,7 @@
       A._asString(_);
       return new A.GCMBlockCipher_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 422
+    $signature: 435
   };
   A.GCMBlockCipher_factoryConfig__closure.prototype = {
     call$0() {
@@ -74316,7 +74877,7 @@
       t1[0] = 225;
       return new A.GCMBlockCipher(t1, underlying);
     },
-    $signature: 423
+    $signature: 436
   };
   A.GCTRBlockCipher.prototype = {
     get$blockSize() {
@@ -74420,7 +74981,7 @@
       A._asString(_);
       return new A.GCTRBlockCipher_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 424
+    $signature: 437
   };
   A.GCTRBlockCipher_factoryConfig__closure.prototype = {
     call$0() {
@@ -74439,7 +75000,7 @@
       t1._gctr$_ofbOutV = new Uint8Array(t2);
       return t1;
     },
-    $signature: 425
+    $signature: 438
   };
   A.IGEBlockCipher.prototype = {
     get$blockSize() {
@@ -74531,7 +75092,7 @@
       A._asString(_);
       return new A.IGEBlockCipher_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 426
+    $signature: 439
   };
   A.IGEBlockCipher_factoryConfig__closure.prototype = {
     call$0() {
@@ -74550,7 +75111,7 @@
       t1.__IGEBlockCipher__yPrev_A = new Uint8Array(t2);
       return t1;
     },
-    $signature: 427
+    $signature: 440
   };
   A.OFBBlockCipher.prototype = {
     reset$0() {
@@ -74628,7 +75189,7 @@
       A._asString(_);
       return new A.OFBBlockCipher_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 428
+    $signature: 441
   };
   A.OFBBlockCipher_factoryConfig__closure.prototype = {
     call$0() {
@@ -74651,7 +75212,7 @@
       t1._ofbOutV = new Uint8Array(t2);
       return t1;
     },
-    $signature: 429
+    $signature: 442
   };
   A.SICBlockCipher.prototype = {};
   A.SICBlockCipher_factoryConfig_closure.prototype = {
@@ -74659,7 +75220,7 @@
       A._asString(_);
       return new A.SICBlockCipher_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 430
+    $signature: 443
   };
   A.SICBlockCipher_factoryConfig__closure.prototype = {
     call$0() {
@@ -74670,7 +75231,7 @@
       t1 = underlying.get$blockSize();
       return new A.SICBlockCipher(A.SICStreamCipher$(underlying), t1);
     },
-    $signature: 431
+    $signature: 444
   };
   A.RC2Engine.prototype = {
     get$blockSize() {
@@ -75116,7 +75677,7 @@
     call$0() {
       return new A.RC2Engine();
     },
-    $signature: 432
+    $signature: 445
   };
   A.Blake2bDigest.prototype = {
     get$algorithmName() {
@@ -75618,7 +76179,7 @@
       t1.init$0();
       return t1;
     },
-    $signature: 433
+    $signature: 446
   };
   A.CSHAKEDigest.prototype = {
     CSHAKEDigest$3(bitLength, $N, $S) {
@@ -75680,7 +76241,7 @@
       A._asString(_);
       return new A.CSHAKEDigest_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 434
+    $signature: 447
   };
   A.CSHAKEDigest_factoryConfig__closure.prototype = {
     call$0() {
@@ -75695,7 +76256,7 @@
       t1.CSHAKEDigest$3(bitLength, _null, _null);
       return t1;
     },
-    $signature: 435
+    $signature: 448
   };
   A.KeccakDigest.prototype = {
     KeccakDigest$1(bitLength) {
@@ -75731,7 +76292,7 @@
       A._asString(_);
       return new A.KeccakDigest_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 436
+    $signature: 449
   };
   A.KeccakDigest_factoryConfig__closure.prototype = {
     call$0() {
@@ -75744,7 +76305,7 @@
       t1.KeccakDigest$1(bitLength);
       return t1;
     },
-    $signature: 437
+    $signature: 450
   };
   A.MD2Digest.prototype = {
     get$algorithmName() {
@@ -75862,7 +76423,7 @@
         t2 = new Uint8Array(16);
       return new A.MD2Digest(t1, t2, new Uint8Array(16));
     },
-    $signature: 438
+    $signature: 451
   };
   A.MD4Digest.prototype = {
     resetState$0() {
@@ -75997,7 +76558,7 @@
       t3.reset$0();
       return t3;
     },
-    $signature: 439
+    $signature: 679
   };
   A.MD5Digest.prototype = {
     resetState$0() {
@@ -76147,7 +76708,7 @@
       t3.reset$0();
       return t3;
     },
-    $signature: 440
+    $signature: 453
   };
   A.RIPEMD128Digest.prototype = {
     resetState$0() {
@@ -76378,7 +76939,7 @@
       t3.reset$0();
       return t3;
     },
-    $signature: 441
+    $signature: 454
   };
   A.RIPEMD160Digest.prototype = {
     resetState$0() {
@@ -76789,7 +77350,7 @@
       t3.reset$0();
       return t3;
     },
-    $signature: 442
+    $signature: 455
   };
   A.RIPEMD256Digest.prototype = {
     resetState$0() {
@@ -77039,7 +77600,7 @@
       t3.reset$0();
       return t3;
     },
-    $signature: 443
+    $signature: 456
   };
   A.RIPEMD320Digest.prototype = {
     resetState$0() {
@@ -77474,7 +78035,7 @@
       t3.reset$0();
       return t3;
     },
-    $signature: 666
+    $signature: 457
   };
   A.SHA1Digest.prototype = {
     resetState$0() {
@@ -77663,7 +78224,7 @@
     call$0() {
       return A.SHA1Digest$();
     },
-    $signature: 116
+    $signature: 117
   };
   A.SHA224Digest.prototype = {
     resetState$0() {
@@ -77854,7 +78415,7 @@
       t3.reset$0();
       return t3;
     },
-    $signature: 445
+    $signature: 458
   };
   A.SHA256Digest.prototype = {
     resetState$0() {
@@ -78045,7 +78606,7 @@
       t3.reset$0();
       return t3;
     },
-    $signature: 446
+    $signature: 459
   };
   A.SHA3Digest.prototype = {
     SHA3Digest$1(bitLength) {
@@ -78080,7 +78641,7 @@
       A._asString(_);
       return new A.SHA3Digest_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 447
+    $signature: 460
   };
   A.SHA3Digest_factoryConfig__closure.prototype = {
     call$0() {
@@ -78093,7 +78654,7 @@
       t1.SHA3Digest$1(bitLength);
       return t1;
     },
-    $signature: 448
+    $signature: 461
   };
   A.SHA384Digest.prototype = {
     reset$0() {
@@ -78144,7 +78705,7 @@
       t1.reset$0();
       return t1;
     },
-    $signature: 449
+    $signature: 462
   };
   A.SHA512Digest.prototype = {
     reset$0() {
@@ -78197,7 +78758,7 @@
       t1.reset$0();
       return t1;
     },
-    $signature: 450
+    $signature: 463
   };
   A.SHA512tDigest.prototype = {
     get$algorithmName() {
@@ -78242,7 +78803,7 @@
       A._asString(_);
       return new A.SHA512tDigest_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 451
+    $signature: 464
   };
   A.SHA512tDigest_factoryConfig__closure.prototype = {
     call$0() {
@@ -78323,7 +78884,7 @@
       t18.reset$0();
       return t18;
     },
-    $signature: 452
+    $signature: 465
   };
   A.SHAKEDigest.prototype = {
     SHAKEDigest$1(bitLength) {
@@ -78364,7 +78925,7 @@
       A._asString(_);
       return new A.SHAKEDigest_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 453
+    $signature: 466
   };
   A.SHAKEDigest_factoryConfig__closure.prototype = {
     call$0() {
@@ -78372,7 +78933,7 @@
       t1.toString;
       return A.SHAKEDigest$(A.int_parse(t1, null, null));
     },
-    $signature: 454
+    $signature: 467
   };
   A.SM3Digest.prototype = {
     resetState$0() {
@@ -78486,7 +79047,7 @@
       t1.reset$0();
       return t1;
     },
-    $signature: 455
+    $signature: 468
   };
   A.TigerDigest.prototype = {
     reset$0() {
@@ -78931,7 +79492,7 @@
       t1.reset$0();
       return t1;
     },
-    $signature: 456
+    $signature: 469
   };
   A.WhirlpoolDigest.prototype = {
     reset$0() {
@@ -79496,7 +80057,7 @@
       t1.reset$0();
       return t1;
     },
-    $signature: 457
+    $signature: 470
   };
   A.ECSignature.prototype = {
     toString$0(_) {
@@ -79524,7 +80085,7 @@
         t5 = A._BigIntImpl_parse("e95e4a5f737059dc60df5991d45029409e60fc09", 16);
       return type$.ECCurve_brainpoolp160r1._as(A.constructFpStandardCurve("brainpoolp160r1", A.brainpoolp160r1_ECCurve_brainpoolp160r1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 458
+    $signature: 471
   };
   A.ECCurve_brainpoolp160t1.prototype = {};
   A.ECCurve_brainpoolp160t1_factoryConfig_closure.prototype = {
@@ -79536,7 +80097,7 @@
         t5 = A._BigIntImpl_parse("e95e4a5f737059dc60df5991d45029409e60fc09", 16);
       return type$.ECCurve_brainpoolp160t1._as(A.constructFpStandardCurve("brainpoolp160t1", A.brainpoolp160t1_ECCurve_brainpoolp160t1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 459
+    $signature: 472
   };
   A.ECCurve_brainpoolp192r1.prototype = {};
   A.ECCurve_brainpoolp192r1_factoryConfig_closure.prototype = {
@@ -79548,7 +80109,7 @@
         t5 = A._BigIntImpl_parse(string$.c302f42, 16);
       return type$.ECCurve_brainpoolp192r1._as(A.constructFpStandardCurve("brainpoolp192r1", A.brainpoolp192r1_ECCurve_brainpoolp192r1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 460
+    $signature: 473
   };
   A.ECCurve_brainpoolp192t1.prototype = {};
   A.ECCurve_brainpoolp192t1_factoryConfig_closure.prototype = {
@@ -79560,7 +80121,7 @@
         t5 = A._BigIntImpl_parse(string$.c302f42, 16);
       return type$.ECCurve_brainpoolp192t1._as(A.constructFpStandardCurve("brainpoolp192t1", A.brainpoolp192t1_ECCurve_brainpoolp192t1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 461
+    $signature: 474
   };
   A.ECCurve_brainpoolp224r1.prototype = {};
   A.ECCurve_brainpoolp224r1_factoryConfig_closure.prototype = {
@@ -79572,7 +80133,7 @@
         t5 = A._BigIntImpl_parse(string$.d7c1340, 16);
       return type$.ECCurve_brainpoolp224r1._as(A.constructFpStandardCurve("brainpoolp224r1", A.brainpoolp224r1_ECCurve_brainpoolp224r1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 462
+    $signature: 475
   };
   A.ECCurve_brainpoolp224t1.prototype = {};
   A.ECCurve_brainpoolp224t1_factoryConfig_closure.prototype = {
@@ -79584,7 +80145,7 @@
         t5 = A._BigIntImpl_parse(string$.d7c1340, 16);
       return type$.ECCurve_brainpoolp224t1._as(A.constructFpStandardCurve("brainpoolp224t1", A.brainpoolp224t1_ECCurve_brainpoolp224t1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 463
+    $signature: 476
   };
   A.ECCurve_brainpoolp256r1.prototype = {};
   A.ECCurve_brainpoolp256r1_factoryConfig_closure.prototype = {
@@ -79596,7 +80157,7 @@
         t5 = A._BigIntImpl_parse(string$.a9fb571, 16);
       return type$.ECCurve_brainpoolp256r1._as(A.constructFpStandardCurve("brainpoolp256r1", A.brainpoolp256r1_ECCurve_brainpoolp256r1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 464
+    $signature: 477
   };
   A.ECCurve_brainpoolp256t1.prototype = {};
   A.ECCurve_brainpoolp256t1_factoryConfig_closure.prototype = {
@@ -79608,7 +80169,7 @@
         t5 = A._BigIntImpl_parse(string$.a9fb571, 16);
       return type$.ECCurve_brainpoolp256t1._as(A.constructFpStandardCurve("brainpoolp256t1", A.brainpoolp256t1_ECCurve_brainpoolp256t1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 465
+    $signature: 478
   };
   A.ECCurve_brainpoolp320r1.prototype = {};
   A.ECCurve_brainpoolp320r1_factoryConfig_closure.prototype = {
@@ -79620,7 +80181,7 @@
         t5 = A._BigIntImpl_parse(string$.d35e475, 16);
       return type$.ECCurve_brainpoolp320r1._as(A.constructFpStandardCurve("brainpoolp320r1", A.brainpoolp320r1_ECCurve_brainpoolp320r1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 466
+    $signature: 479
   };
   A.ECCurve_brainpoolp320t1.prototype = {};
   A.ECCurve_brainpoolp320t1_factoryConfig_closure.prototype = {
@@ -79632,7 +80193,7 @@
         t5 = A._BigIntImpl_parse(string$.d35e475, 16);
       return type$.ECCurve_brainpoolp320t1._as(A.constructFpStandardCurve("brainpoolp320t1", A.brainpoolp320t1_ECCurve_brainpoolp320t1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 467
+    $signature: 480
   };
   A.ECCurve_brainpoolp384r1.prototype = {};
   A.ECCurve_brainpoolp384r1_factoryConfig_closure.prototype = {
@@ -79644,7 +80205,7 @@
         t5 = A._BigIntImpl_parse(string$.x38cb91e3, 16);
       return type$.ECCurve_brainpoolp384r1._as(A.constructFpStandardCurve("brainpoolp384r1", A.brainpoolp384r1_ECCurve_brainpoolp384r1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 468
+    $signature: 481
   };
   A.ECCurve_brainpoolp384t1.prototype = {};
   A.ECCurve_brainpoolp384t1_factoryConfig_closure.prototype = {
@@ -79656,7 +80217,7 @@
         t5 = A._BigIntImpl_parse(string$.x38cb91e3, 16);
       return type$.ECCurve_brainpoolp384t1._as(A.constructFpStandardCurve("brainpoolp384t1", A.brainpoolp384t1_ECCurve_brainpoolp384t1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 469
+    $signature: 482
   };
   A.ECCurve_brainpoolp512r1.prototype = {};
   A.ECCurve_brainpoolp512r1_factoryConfig_closure.prototype = {
@@ -79668,7 +80229,7 @@
         t5 = A._BigIntImpl_parse(string$.aadd9d0, 16);
       return type$.ECCurve_brainpoolp512r1._as(A.constructFpStandardCurve("brainpoolp512r1", A.brainpoolp512r1_ECCurve_brainpoolp512r1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 470
+    $signature: 483
   };
   A.ECCurve_brainpoolp512t1.prototype = {};
   A.ECCurve_brainpoolp512t1_factoryConfig_closure.prototype = {
@@ -79680,7 +80241,7 @@
         t5 = A._BigIntImpl_parse(string$.aadd9d0, 16);
       return type$.ECCurve_brainpoolp512t1._as(A.constructFpStandardCurve("brainpoolp512t1", A.brainpoolp512t1_ECCurve_brainpoolp512t1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 471
+    $signature: 484
   };
   A.ECCurve_gostr3410_2001_cryptopro_a.prototype = {};
   A.ECCurve_gostr3410_2001_cryptopro_a_factoryConfig_closure.prototype = {
@@ -79692,7 +80253,7 @@
         t5 = A._BigIntImpl_parse(string$.fffffffff6, 16);
       return type$.ECCurve_gostr3410_2001_cryptopro_a._as(A.constructFpStandardCurve("GostR3410-2001-CryptoPro-A", A.gostr3410_2001_cryptopro_a_ECCurve_gostr3410_2001_cryptopro_a__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 472
+    $signature: 485
   };
   A.ECCurve_gostr3410_2001_cryptopro_b.prototype = {};
   A.ECCurve_gostr3410_2001_cryptopro_b_factoryConfig_closure.prototype = {
@@ -79704,7 +80265,7 @@
         t5 = A._BigIntImpl_parse("800000000000000000000000000000015f700cfff1a624e5e497161bcc8a198f", 16);
       return type$.ECCurve_gostr3410_2001_cryptopro_b._as(A.constructFpStandardCurve("GostR3410-2001-CryptoPro-B", A.gostr3410_2001_cryptopro_b_ECCurve_gostr3410_2001_cryptopro_b__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 473
+    $signature: 486
   };
   A.ECCurve_gostr3410_2001_cryptopro_c.prototype = {};
   A.ECCurve_gostr3410_2001_cryptopro_c_factoryConfig_closure.prototype = {
@@ -79716,7 +80277,7 @@
         t5 = A._BigIntImpl_parse(string$.x39b9f605, 16);
       return type$.ECCurve_gostr3410_2001_cryptopro_c._as(A.constructFpStandardCurve("GostR3410-2001-CryptoPro-C", A.gostr3410_2001_cryptopro_c_ECCurve_gostr3410_2001_cryptopro_c__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 474
+    $signature: 487
   };
   A.ECCurve_gostr3410_2001_cryptopro_xcha.prototype = {};
   A.ECCurve_gostr3410_2001_cryptopro_xcha_factoryConfig_closure.prototype = {
@@ -79728,7 +80289,7 @@
         t5 = A._BigIntImpl_parse(string$.fffffffff6, 16);
       return type$.ECCurve_gostr3410_2001_cryptopro_xcha._as(A.constructFpStandardCurve("GostR3410-2001-CryptoPro-XchA", A.gostr3410_2001_cryptopro_xcha_ECCurve_gostr3410_2001_cryptopro_xcha__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 475
+    $signature: 488
   };
   A.ECCurve_gostr3410_2001_cryptopro_xchb.prototype = {};
   A.ECCurve_gostr3410_2001_cryptopro_xchb_factoryConfig_closure.prototype = {
@@ -79740,7 +80301,7 @@
         t5 = A._BigIntImpl_parse(string$.x39b9f605, 16);
       return type$.ECCurve_gostr3410_2001_cryptopro_xchb._as(A.constructFpStandardCurve("GostR3410-2001-CryptoPro-XchB", A.gostr3410_2001_cryptopro_xchb_ECCurve_gostr3410_2001_cryptopro_xchb__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 476
+    $signature: 489
   };
   A.ECCurve_prime192v1.prototype = {};
   A.ECCurve_prime192v1_factoryConfig_closure.prototype = {
@@ -79752,7 +80313,7 @@
         t5 = A._BigIntImpl_parse(string$.fffffff9, 16);
       return type$.ECCurve_prime192v1._as(A.constructFpStandardCurve("prime192v1", A.prime192v1_ECCurve_prime192v1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("3045ae6fc8422f64ed579528d38120eae12196d5", 16)));
     },
-    $signature: 477
+    $signature: 490
   };
   A.ECCurve_prime192v2.prototype = {};
   A.ECCurve_prime192v2_factoryConfig_closure.prototype = {
@@ -79764,7 +80325,7 @@
         t5 = A._BigIntImpl_parse("fffffffffffffffffffffffe5fb1a724dc80418648d8dd31", 16);
       return type$.ECCurve_prime192v2._as(A.constructFpStandardCurve("prime192v2", A.prime192v2_ECCurve_prime192v2__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("31a92ee2029fd10d901b113e990710f0d21ac6b6", 16)));
     },
-    $signature: 478
+    $signature: 491
   };
   A.ECCurve_prime192v3.prototype = {};
   A.ECCurve_prime192v3_factoryConfig_closure.prototype = {
@@ -79776,7 +80337,7 @@
         t5 = A._BigIntImpl_parse("ffffffffffffffffffffffff7a62d031c83f4294f640ec13", 16);
       return type$.ECCurve_prime192v3._as(A.constructFpStandardCurve("prime192v3", A.prime192v3_ECCurve_prime192v3__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("c469684435deb378c4b65ca9591e2a5763059a2e", 16)));
     },
-    $signature: 479
+    $signature: 492
   };
   A.ECCurve_prime239v1.prototype = {};
   A.ECCurve_prime239v1_factoryConfig_closure.prototype = {
@@ -79788,7 +80349,7 @@
         t5 = A._BigIntImpl_parse("7fffffffffffffffffffffff7fffff9e5e9a9f5d9071fbd1522688909d0b", 16);
       return type$.ECCurve_prime239v1._as(A.constructFpStandardCurve("prime239v1", A.prime239v1_ECCurve_prime239v1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("e43bb460f0b80cc0c0b075798e948060f8321b7d", 16)));
     },
-    $signature: 480
+    $signature: 493
   };
   A.ECCurve_prime239v2.prototype = {};
   A.ECCurve_prime239v2_factoryConfig_closure.prototype = {
@@ -79800,7 +80361,7 @@
         t5 = A._BigIntImpl_parse("7fffffffffffffffffffffff800000cfa7e8594377d414c03821bc582063", 16);
       return type$.ECCurve_prime239v2._as(A.constructFpStandardCurve("prime239v2", A.prime239v2_ECCurve_prime239v2__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("e8b4011604095303ca3b8099982be09fcb9ae616", 16)));
     },
-    $signature: 481
+    $signature: 494
   };
   A.ECCurve_prime239v3.prototype = {};
   A.ECCurve_prime239v3_factoryConfig_closure.prototype = {
@@ -79812,7 +80373,7 @@
         t5 = A._BigIntImpl_parse("7fffffffffffffffffffffff7fffff975deb41b3a6057c3c432146526551", 16);
       return type$.ECCurve_prime239v3._as(A.constructFpStandardCurve("prime239v3", A.prime239v3_ECCurve_prime239v3__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("7d7374168ffe3471b60a857686a19475d3bfa2ff", 16)));
     },
-    $signature: 482
+    $signature: 495
   };
   A.ECCurve_prime256v1.prototype = {};
   A.ECCurve_prime256v1_factoryConfig_closure.prototype = {
@@ -79824,7 +80385,7 @@
         t5 = A._BigIntImpl_parse(string$.ffffff00, 16);
       return type$.ECCurve_prime256v1._as(A.constructFpStandardCurve("prime256v1", A.prime256v1_ECCurve_prime256v1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("c49d360886e704936a6678e1139d26b7819f7e90", 16)));
     },
-    $signature: 483
+    $signature: 496
   };
   A.ECCurve_secp112r1.prototype = {};
   A.ECCurve_secp112r1_factoryConfig_closure.prototype = {
@@ -79836,7 +80397,7 @@
         t5 = A._BigIntImpl_parse("db7c2abf62e35e7628dfac6561c5", 16);
       return type$.ECCurve_secp112r1._as(A.constructFpStandardCurve("secp112r1", A.secp112r1_ECCurve_secp112r1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("00f50b028e4d696e676875615175290472783fb1", 16)));
     },
-    $signature: 484
+    $signature: 497
   };
   A.ECCurve_secp112r2.prototype = {};
   A.ECCurve_secp112r2_factoryConfig_closure.prototype = {
@@ -79848,7 +80409,7 @@
         t5 = A._BigIntImpl_parse("36df0aafd8b8d7597ca10520d04b", 16);
       return type$.ECCurve_secp112r2._as(A.constructFpStandardCurve("secp112r2", A.secp112r2_ECCurve_secp112r2__make$closure(), t2, t3, t4, A._BigIntImpl_parse("4", 16), t5, t1, A._BigIntImpl_parse("002757a1114d696e6768756151755316c05e0bd4", 16)));
     },
-    $signature: 485
+    $signature: 498
   };
   A.ECCurve_secp128r1.prototype = {};
   A.ECCurve_secp128r1_factoryConfig_closure.prototype = {
@@ -79860,7 +80421,7 @@
         t5 = A._BigIntImpl_parse("fffffffe0000000075a30d1b9038a115", 16);
       return type$.ECCurve_secp128r1._as(A.constructFpStandardCurve("secp128r1", A.secp128r1_ECCurve_secp128r1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("000e0d4d696e6768756151750cc03a4473d03679", 16)));
     },
-    $signature: 486
+    $signature: 499
   };
   A.ECCurve_secp128r2.prototype = {};
   A.ECCurve_secp128r2_factoryConfig_closure.prototype = {
@@ -79872,7 +80433,7 @@
         t5 = A._BigIntImpl_parse("3fffffff7fffffffbe0024720613b5a3", 16);
       return type$.ECCurve_secp128r2._as(A.constructFpStandardCurve("secp128r2", A.secp128r2_ECCurve_secp128r2__make$closure(), t2, t3, t4, A._BigIntImpl_parse("4", 16), t5, t1, A._BigIntImpl_parse("004d696e67687561517512d8f03431fce63b88f4", 16)));
     },
-    $signature: 487
+    $signature: 500
   };
   A.ECCurve_secp160k1.prototype = {};
   A.ECCurve_secp160k1_factoryConfig_closure.prototype = {
@@ -79884,7 +80445,7 @@
         t5 = A._BigIntImpl_parse("100000000000000000001b8fa16dfab9aca16b6b3", 16);
       return type$.ECCurve_secp160k1._as(A.constructFpStandardCurve("secp160k1", A.secp160k1_ECCurve_secp160k1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 488
+    $signature: 501
   };
   A.ECCurve_secp160r1.prototype = {};
   A.ECCurve_secp160r1_factoryConfig_closure.prototype = {
@@ -79896,7 +80457,7 @@
         t5 = A._BigIntImpl_parse("100000000000000000001f4c8f927aed3ca752257", 16);
       return type$.ECCurve_secp160r1._as(A.constructFpStandardCurve("secp160r1", A.secp160r1_ECCurve_secp160r1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("1053cde42c14d696e67687561517533bf3f83345", 16)));
     },
-    $signature: 489
+    $signature: 502
   };
   A.ECCurve_secp160r2.prototype = {};
   A.ECCurve_secp160r2_factoryConfig_closure.prototype = {
@@ -79908,7 +80469,7 @@
         t5 = A._BigIntImpl_parse("100000000000000000000351ee786a818f3a1a16b", 16);
       return type$.ECCurve_secp160r2._as(A.constructFpStandardCurve("secp160r2", A.secp160r2_ECCurve_secp160r2__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("b99b99b099b323e02709a4d696e6768756151751", 16)));
     },
-    $signature: 490
+    $signature: 503
   };
   A.ECCurve_secp192k1.prototype = {};
   A.ECCurve_secp192k1_factoryConfig_closure.prototype = {
@@ -79920,7 +80481,7 @@
         t5 = A._BigIntImpl_parse("fffffffffffffffffffffffe26f2fc170f69466a74defd8d", 16);
       return type$.ECCurve_secp192k1._as(A.constructFpStandardCurve("secp192k1", A.secp192k1_ECCurve_secp192k1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 491
+    $signature: 504
   };
   A.ECCurve_secp192r1.prototype = {};
   A.ECCurve_secp192r1_factoryConfig_closure.prototype = {
@@ -79932,7 +80493,7 @@
         t5 = A._BigIntImpl_parse(string$.fffffff9, 16);
       return type$.ECCurve_secp192r1._as(A.constructFpStandardCurve("secp192r1", A.secp192r1_ECCurve_secp192r1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("3045ae6fc8422f64ed579528d38120eae12196d5", 16)));
     },
-    $signature: 492
+    $signature: 505
   };
   A.ECCurve_secp224k1.prototype = {};
   A.ECCurve_secp224k1_factoryConfig_closure.prototype = {
@@ -79944,7 +80505,7 @@
         t5 = A._BigIntImpl_parse("10000000000000000000000000001dce8d2ec6184caf0a971769fb1f7", 16);
       return type$.ECCurve_secp224k1._as(A.constructFpStandardCurve("secp224k1", A.secp224k1_ECCurve_secp224k1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 493
+    $signature: 506
   };
   A.ECCurve_secp224r1.prototype = {};
   A.ECCurve_secp224r1_factoryConfig_closure.prototype = {
@@ -79956,7 +80517,7 @@
         t5 = A._BigIntImpl_parse("ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d", 16);
       return type$.ECCurve_secp224r1._as(A.constructFpStandardCurve("secp224r1", A.secp224r1_ECCurve_secp224r1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("bd71344799d5c7fcdc45b59fa3b9ab8f6a948bc5", 16)));
     },
-    $signature: 494
+    $signature: 507
   };
   A.ECCurve_secp256k1.prototype = {};
   A.ECCurve_secp256k1_factoryConfig_closure.prototype = {
@@ -79968,7 +80529,7 @@
         t5 = A._BigIntImpl_parse("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16);
       return type$.ECCurve_secp256k1._as(A.constructFpStandardCurve("secp256k1", A.secp256k1_ECCurve_secp256k1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, null));
     },
-    $signature: 495
+    $signature: 508
   };
   A.ECCurve_secp256r1.prototype = {};
   A.ECCurve_secp256r1_factoryConfig_closure.prototype = {
@@ -79980,7 +80541,7 @@
         t5 = A._BigIntImpl_parse(string$.ffffff00, 16);
       return type$.ECCurve_secp256r1._as(A.constructFpStandardCurve("secp256r1", A.secp256r1_ECCurve_secp256r1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("c49d360886e704936a6678e1139d26b7819f7e90", 16)));
     },
-    $signature: 496
+    $signature: 509
   };
   A.ECCurve_secp384r1.prototype = {};
   A.ECCurve_secp384r1_factoryConfig_closure.prototype = {
@@ -79992,7 +80553,7 @@
         t5 = A._BigIntImpl_parse("ffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973", 16);
       return type$.ECCurve_secp384r1._as(A.constructFpStandardCurve("secp384r1", A.secp384r1_ECCurve_secp384r1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("a335926aa319a27a1d00896a6773a4827acdac73", 16)));
     },
-    $signature: 497
+    $signature: 510
   };
   A.ECCurve_secp521r1.prototype = {};
   A.ECCurve_secp521r1_factoryConfig_closure.prototype = {
@@ -80004,7 +80565,7 @@
         t5 = A._BigIntImpl_parse("1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa51868783bf2f966b7fcc0148f709a5d03bb5c9b8899c47aebb6fb71e91386409", 16);
       return type$.ECCurve_secp521r1._as(A.constructFpStandardCurve("secp521r1", A.secp521r1_ECCurve_secp521r1__make$closure(), t2, t3, t4, A._BigIntImpl_parse("1", 16), t5, t1, A._BigIntImpl_parse("d09e8800291cb85396cc6717393284aaa0da64ba", 16)));
     },
-    $signature: 498
+    $signature: 511
   };
   A.ECDomainParametersImpl.prototype = {$isECDomainParameters: 1};
   A.ECFieldElementBase.prototype = {
@@ -80279,14 +80840,14 @@
       type$.nullable_ECPoint._as(e);
       return e == null ? type$.ECPoint._as(e) : e;
     },
-    $signature: 499
+    $signature: 512
   };
   A.Argon2BytesGenerator.prototype = {};
   A.Argon2BytesGenerator_factoryConfig_closure.prototype = {
     call$0() {
       return new A.Argon2BytesGenerator(A.Register64$(0, null));
     },
-    $signature: 500
+    $signature: 513
   };
   A.ConcatKDFDerivator.prototype = {};
   A.ConcatKDFDerivator_factoryConfig_closure.prototype = {
@@ -80297,20 +80858,20 @@
       digestName.toString;
       return new A.ConcatKDFDerivator_factoryConfig__closure($.$get$registry().create$1$1(digestName, type$.Digest_2));
     },
-    $signature: 501
+    $signature: 514
   };
   A.ConcatKDFDerivator_factoryConfig__closure.prototype = {
     call$0() {
       return new A.ConcatKDFDerivator();
     },
-    $signature: 502
+    $signature: 515
   };
   A.ECDHKeyDerivator.prototype = {};
   A.ECDHKeyDerivator_factoryConfig_closure.prototype = {
     call$0() {
       return new A.ECDHKeyDerivator();
     },
-    $signature: 503
+    $signature: 516
   };
   A.HKDFKeyDerivator.prototype = {};
   A.HKDFKeyDerivator_factoryConfig_closure.prototype = {
@@ -80321,7 +80882,7 @@
       digestName.toString;
       return new A.HKDFKeyDerivator_factoryConfig__closure($.$get$registry().create$1$1(digestName, type$.Digest_2));
     },
-    $signature: 504
+    $signature: 517
   };
   A.HKDFKeyDerivator_factoryConfig__closure.prototype = {
     call$0() {
@@ -80338,13 +80899,13 @@
       t2.__HKDFKeyDerivator__hMac_A = t4;
       return t2;
     },
-    $signature: 505
+    $signature: 518
   };
   A.HKDFKeyDerivator__getBlockLengthFromDigest_closure.prototype = {
     call$1(map) {
       return type$.MapEntry_String_int._as(map).key.toLowerCase() === this.digestName.toLowerCase();
     },
-    $signature: 506
+    $signature: 519
   };
   A.PBKDF2KeyDerivator.prototype = {};
   A.PBKDF2KeyDerivator_factoryConfig_closure.prototype = {
@@ -80352,7 +80913,7 @@
       A._asString(_);
       return new A.PBKDF2KeyDerivator_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 507
+    $signature: 520
   };
   A.PBKDF2KeyDerivator_factoryConfig__closure.prototype = {
     call$0() {
@@ -80364,7 +80925,7 @@
       new Uint8Array(t1);
       return new A.PBKDF2KeyDerivator(mac);
     },
-    $signature: 508
+    $signature: 521
   };
   A.PKCS12ParametersGenerator.prototype = {};
   A.PKCS12ParametersGenerator_factoryConfig_closure.prototype = {
@@ -80372,7 +80933,7 @@
       A._asString(_);
       return new A.PKCS12ParametersGenerator_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 509
+    $signature: 522
   };
   A.PKCS12ParametersGenerator_factoryConfig__closure.prototype = {
     call$0() {
@@ -80384,7 +80945,7 @@
       mac.get$byteLength(mac);
       return new A.PKCS12ParametersGenerator(mac);
     },
-    $signature: 510
+    $signature: 523
   };
   A.PKCS5S1ParameterGenerator.prototype = {};
   A.PKCS5S1ParameterGenerator_factoryConfig_closure.prototype = {
@@ -80392,7 +80953,7 @@
       A._asString(_);
       return new A.PKCS5S1ParameterGenerator_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 511
+    $signature: 524
   };
   A.PKCS5S1ParameterGenerator_factoryConfig__closure.prototype = {
     call$0() {
@@ -80401,7 +80962,7 @@
       $.$get$registry().create$1$1(t1, type$.Digest_2);
       return new A.PKCS5S1ParameterGenerator();
     },
-    $signature: 512
+    $signature: 525
   };
   A.Scrypt.prototype = {};
   A.Scrypt_factoryConfig_closure.prototype = {
@@ -80409,21 +80970,21 @@
       var t1 = type$.int;
       return new A.Scrypt(A.List_List$filled(16, 0, false, t1), A.List_List$filled(16, 0, false, t1));
     },
-    $signature: 513
+    $signature: 526
   };
   A.ECKeyGenerator.prototype = {};
   A.ECKeyGenerator_factoryConfig_closure.prototype = {
     call$0() {
       return new A.ECKeyGenerator();
     },
-    $signature: 514
+    $signature: 527
   };
   A.RSAKeyGenerator.prototype = {};
   A.RSAKeyGenerator_factoryConfig_closure.prototype = {
     call$0() {
       return new A.RSAKeyGenerator();
     },
-    $signature: 515
+    $signature: 528
   };
   A.CBCBlockCipherMac.prototype = {
     init$1(params) {
@@ -80557,7 +81118,7 @@
       A._asString(_);
       return new A.CBCBlockCipherMac_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 516
+    $signature: 529
   };
   A.CBCBlockCipherMac_factoryConfig__closure.prototype = {
     call$0() {
@@ -80584,7 +81145,7 @@
       t2.__CBCBlockCipherMac__bufOff_A = 0;
       return t2;
     },
-    $signature: 517
+    $signature: 530
   };
   A.CMac.prototype = {
     _doubleLu$1(inp) {
@@ -80745,7 +81306,7 @@
       A._asString(_);
       return new A.CMac_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 518
+    $signature: 531
   };
   A.CMac_factoryConfig__closure.prototype = {
     call$0() {
@@ -80771,7 +81332,7 @@
       t2.__CMac__bufOff_A = 0;
       return t2;
     },
-    $signature: 519
+    $signature: 532
   };
   A.HMac.prototype = {
     get$macSize() {
@@ -80853,7 +81414,7 @@
       A._asString(_);
       return new A.HMac_factoryConfig__closure(type$.Match._as(match).group$1(1));
     },
-    $signature: 520
+    $signature: 533
   };
   A.HMac_factoryConfig__closure.prototype = {
     call$0() {
@@ -80869,7 +81430,7 @@
       t2.__HMac__outputBuf_A = new Uint8Array(t3 + t1);
       return t2;
     },
-    $signature: 521
+    $signature: 534
   };
   A.Poly1305.prototype = {
     get$macSize() {
@@ -81140,7 +81701,7 @@
       A._asString(_);
       return new A.Poly1305_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 522
+    $signature: 535
   };
   A.Poly1305_factoryConfig__closure.prototype = {
     call$0() {
@@ -81153,7 +81714,7 @@
       $.$get$PlatformWeb_instance().assertFullWidthInteger$0();
       return new A.Poly1305(cipher, t1, t2);
     },
-    $signature: 523
+    $signature: 536
   };
   A.PaddedBlockCipherImpl.prototype = {
     get$blockSize() {
@@ -81177,7 +81738,7 @@
       A._asString(_);
       return new A.PaddedBlockCipherImpl_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 524
+    $signature: 537
   };
   A.PaddedBlockCipherImpl_factoryConfig__closure.prototype = {
     call$0() {
@@ -81191,7 +81752,7 @@
       t1.toString;
       return new A.PaddedBlockCipherImpl(padding, t3.create$1$1(t1, type$.BlockCipher));
     },
-    $signature: 525
+    $signature: 538
   };
   A.ISO7816d4Padding.prototype = {
     init$1(params) {
@@ -81216,7 +81777,7 @@
     call$0() {
       return new A.ISO7816d4Padding();
     },
-    $signature: 526
+    $signature: 539
   };
   A.PKCS7Padding.prototype = {
     init$1(params) {
@@ -81239,7 +81800,7 @@
     call$0() {
       return new A.PKCS7Padding();
     },
-    $signature: 527
+    $signature: 540
   };
   A.AutoSeedBlockCtrRandom.prototype = {
     nextUint8$0() {
@@ -81282,7 +81843,7 @@
       A._asString(_);
       return new A.AutoSeedBlockCtrRandom_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 528
+    $signature: 541
   };
   A.AutoSeedBlockCtrRandom_factoryConfig__closure.prototype = {
     call$0() {
@@ -81290,7 +81851,7 @@
       blockCipherName.toString;
       return A.AutoSeedBlockCtrRandom$($.$get$registry().create$1$1(blockCipherName, type$.BlockCipher), true);
     },
-    $signature: 529
+    $signature: 542
   };
   A.AutoSeedBlockCtrRandom_nextUint8_closure.prototype = {
     call$0() {
@@ -81298,7 +81859,7 @@
       t1 === $ && A.throwLateFieldNI("_delegate");
       return t1.nextUint8$0();
     },
-    $signature: 24
+    $signature: 26
   };
   A.AutoSeedBlockCtrRandom_nextBigInteger_closure.prototype = {
     call$0() {
@@ -81306,7 +81867,7 @@
       t1 === $ && A.throwLateFieldNI("_delegate");
       return A.decodeBigIntWithSign(1, t1._randomBits$1(this.bitLength));
     },
-    $signature: 530
+    $signature: 543
   };
   A.AutoSeedBlockCtrRandom_nextBytes_closure.prototype = {
     call$0() {
@@ -81314,7 +81875,7 @@
       t1 === $ && A.throwLateFieldNI("_delegate");
       return t1.nextBytes$1(this.count);
     },
-    $signature: 117
+    $signature: 118
   };
   A.BlockCtrRandom.prototype = {
     seed$1(params) {
@@ -81372,7 +81933,7 @@
       A._asString(_);
       return new A.BlockCtrRandom_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 532
+    $signature: 545
   };
   A.BlockCtrRandom_factoryConfig__closure.prototype = {
     call$0() {
@@ -81380,7 +81941,7 @@
       blockCipherName.toString;
       return A.BlockCtrRandom$($.$get$registry().create$1$1(blockCipherName, type$.BlockCipher));
     },
-    $signature: 533
+    $signature: 546
   };
   A.FortunaRandom.prototype = {
     seed$1(param) {
@@ -81423,7 +81984,7 @@
     call$0() {
       return A.FortunaRandom$();
     },
-    $signature: 534
+    $signature: 547
   };
   A.ECDSASigner.prototype = {
     init$2(forSigning, params) {
@@ -81527,7 +82088,7 @@
       type$.Match._as(match);
       return new A.ECDSASigner_factoryConfig__closure(match.group$1(1), match.group$1(2) != null);
     },
-    $signature: 535
+    $signature: 548
   };
   A.ECDSASigner_factoryConfig__closure.prototype = {
     call$0() {
@@ -81538,7 +82099,7 @@
       underlyingDigest = t2.create$1$1(t1, type$.Digest_2);
       return new A.ECDSASigner(underlyingDigest, this.withMac ? t2.create$1$1(t1 + "/HMAC", type$.Mac) : null);
     },
-    $signature: 536
+    $signature: 549
   };
   A._RFC6979KCalculator.prototype = {
     nextK$0() {
@@ -81723,7 +82284,7 @@
       A._asString(_);
       return new A.PSSSigner_factoryConfig__closure(type$.Match._as(match).group$1(1));
     },
-    $signature: 537
+    $signature: 550
   };
   A.PSSSigner_factoryConfig__closure.prototype = {
     call$0() {
@@ -81737,7 +82298,7 @@
       t4 = t3.create$1$1(t2, t4);
       return new A.PSSSigner(t5, t4, t1, t5.get$digestSize(), t4.get$digestSize());
     },
-    $signature: 538
+    $signature: 551
   };
   A.RSASigner.prototype = {
     init$2(forSigning, params) {
@@ -81827,7 +82388,7 @@
         throw A.wrapException(A.RegistryFactoryException$("RSA signing with digest " + digestName + " is not supported"));
       return new A.RSASigner_factoryConfig__closure(digestName, digestIdentifierHex);
     },
-    $signature: 539
+    $signature: 552
   };
   A.RSASigner_factoryConfig__closure.prototype = {
     call$0() {
@@ -81836,7 +82397,7 @@
       t1.__RSASigner__digestIdentifier_A = t1._hexStringToBytes$1(this.digestIdentifierHex);
       return t1;
     },
-    $signature: 540
+    $signature: 553
   };
   A.BaseAEADBlockCipher.prototype = {
     get$blockSize() {
@@ -83216,7 +83777,7 @@
     call$1(m) {
       return "\\" + A.S(m.group$1(0));
     },
-    $signature: 38
+    $signature: 37
   };
   A._escapeRegExp_closure0.prototype = {
     call$1(s) {
@@ -83398,13 +83959,13 @@
     call$0() {
       return A.LinkedHashMap_LinkedHashMap$_empty(type$.String, type$.dynamic_Function);
     },
-    $signature: 541
+    $signature: 554
   };
   A._RegistryImpl__addDynamicFactoryConfig_closure.prototype = {
     call$0() {
       return A.LinkedHashSet_LinkedHashSet$_empty(type$.DynamicFactoryConfig);
     },
-    $signature: 542
+    $signature: 555
   };
   A.Register64.prototype = {
     get$_hi32() {
@@ -83833,7 +84394,7 @@
       A._asString(_);
       return new A.ChaCha20Engine_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 543
+    $signature: 556
   };
   A.ChaCha20Engine_factoryConfig__closure.prototype = {
     call$0() {
@@ -83846,7 +84407,7 @@
       t1 = A.List_List$filled(16, 0, false, t1);
       return new A.ChaCha20Engine(rounds, t2, t1, new Uint8Array(64));
     },
-    $signature: 544
+    $signature: 557
   };
   A.ChaCha20Poly1305_factoryConfig_closure.prototype = {
     call$0() {
@@ -83859,7 +84420,7 @@
       $.$get$PlatformWeb_instance().assertFullWidthInteger$0();
       return void 1;
     },
-    $signature: 545
+    $signature: 558
   };
   A.ChaCha7539Engine.prototype = {};
   A.ChaCha7539Engine_factoryConfig_closure.prototype = {
@@ -83867,7 +84428,7 @@
       A._asString(_);
       return new A.ChaCha7539Engine_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 546
+    $signature: 559
   };
   A.ChaCha7539Engine_factoryConfig__closure.prototype = {
     call$0() {
@@ -83880,7 +84441,7 @@
       t1 = A.List_List$filled(16, 0, false, t1);
       return new A.ChaCha7539Engine(rounds, t2, t1, new Uint8Array(64));
     },
-    $signature: 547
+    $signature: 560
   };
   A.CTRStreamCipher.prototype = {};
   A.CTRStreamCipher_factoryConfig_closure.prototype = {
@@ -83888,7 +84449,7 @@
       A._asString(_);
       return new A.CTRStreamCipher_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 548
+    $signature: 561
   };
   A.CTRStreamCipher_factoryConfig__closure.prototype = {
     call$0() {
@@ -83896,7 +84457,7 @@
       digestName.toString;
       return A.CTRStreamCipher$($.$get$registry().create$1$1(digestName, type$.BlockCipher));
     },
-    $signature: 549
+    $signature: 562
   };
   A.EAX.prototype = {};
   A.EAX_factoryConfig_closure.prototype = {
@@ -83904,7 +84465,7 @@
       A._asString(_);
       return new A.EAX_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 550
+    $signature: 563
   };
   A.EAX_factoryConfig__closure.prototype = {
     call$0() {
@@ -83917,14 +84478,14 @@
       B.JSInt_methods._tdivFast$1(t1.get$blockSize(), 2);
       return new A.EAX();
     },
-    $signature: 551
+    $signature: 564
   };
   A.RC4Engine.prototype = {};
   A.RC4Engine_factoryConfig_closure.prototype = {
     call$0() {
       return new A.RC4Engine();
     },
-    $signature: 552
+    $signature: 565
   };
   A.Salsa20Engine.prototype = {};
   A.Salsa20Engine_factoryConfig_closure.prototype = {
@@ -83934,7 +84495,7 @@
       t1 = A.List_List$filled(16, 0, false, t1);
       return new A.Salsa20Engine(t2, t1, new Uint8Array(64));
     },
-    $signature: 553
+    $signature: 566
   };
   A.SICStreamCipher.prototype = {
     SICStreamCipher$1(underlyingCipher) {
@@ -84012,7 +84573,7 @@
       A._asString(_);
       return new A.SICStreamCipher_factoryConfig__closure(type$.Match._as(match));
     },
-    $signature: 554
+    $signature: 567
   };
   A.SICStreamCipher_factoryConfig__closure.prototype = {
     call$0() {
@@ -84020,7 +84581,7 @@
       digestName.toString;
       return A.SICStreamCipher$($.$get$registry().create$1$1(digestName, type$.BlockCipher));
     },
-    $signature: 555
+    $signature: 568
   };
   A._SwitchMapStreamSink.prototype = {
     onData$1(data) {
@@ -84090,7 +84651,7 @@
       if (!t1._isCancelled)
         t1.get$sink().addError$2(e, s);
     },
-    $signature: 17
+    $signature: 14
   };
   A._SwitchMapStreamSink_onData_closure0.prototype = {
     call$0() {
@@ -84168,7 +84729,7 @@
     call$0() {
       return this.call$1(null);
     },
-    $signature: 556
+    $signature: 569
   };
   A._forward__listenToUpstream_closure.prototype = {
     call$0() {
@@ -84743,7 +85304,7 @@
     call$0() {
       return this.color;
     },
-    $signature: 557
+    $signature: 570
   };
   A.Highlighter$__closure.prototype = {
     call$1(line) {
@@ -84751,34 +85312,34 @@
         t2 = A._arrayInstanceType(t1);
       return new A.WhereIterable(t1, t2._eval$1("bool(1)")._as(new A.Highlighter$___closure()), t2._eval$1("WhereIterable<1>")).get$length(0);
     },
-    $signature: 558
+    $signature: 571
   };
   A.Highlighter$___closure.prototype = {
     call$1(highlight) {
       var t1 = type$._Highlight._as(highlight).span;
       return t1.get$start().get$line() !== t1.get$end().get$line();
     },
-    $signature: 66
+    $signature: 55
   };
   A.Highlighter$__closure0.prototype = {
     call$1(line) {
       return type$._Line._as(line).url;
     },
-    $signature: 560
+    $signature: 573
   };
   A.Highlighter__collateLines_closure.prototype = {
     call$1(highlight) {
       var t1 = type$._Highlight._as(highlight).span.get$sourceUrl();
       return t1 == null ? new A.Object() : t1;
     },
-    $signature: 561
+    $signature: 574
   };
   A.Highlighter__collateLines_closure0.prototype = {
     call$2(highlight1, highlight2) {
       var t1 = type$._Highlight;
       return t1._as(highlight1).span.compareTo$1(0, t1._as(highlight2).span);
     },
-    $signature: 562
+    $signature: 575
   };
   A.Highlighter__collateLines_closure1.prototype = {
     call$1(entry) {
@@ -84821,20 +85382,20 @@
       }
       return lines;
     },
-    $signature: 563
+    $signature: 576
   };
   A.Highlighter__collateLines__closure.prototype = {
     call$1(highlight) {
       return type$._Highlight._as(highlight).span.get$end().get$line() < this.line.number;
     },
-    $signature: 66
+    $signature: 55
   };
   A.Highlighter_highlight_closure.prototype = {
     call$1(highlight) {
       type$._Highlight._as(highlight);
       return true;
     },
-    $signature: 66
+    $signature: 55
   };
   A.Highlighter__writeFileStart_closure.prototype = {
     call$0() {
@@ -84849,7 +85410,7 @@
         t2 = this.startLine === this.line.number ? "\u250c" : "\u2514";
       t1._contents += t2;
     },
-    $signature: 4
+    $signature: 5
   };
   A.Highlighter__writeMultilineHighlights_closure0.prototype = {
     call$0() {
@@ -84857,7 +85418,7 @@
         t2 = this.highlight == null ? "\u2500" : "\u253c";
       t1._contents += t2;
     },
-    $signature: 4
+    $signature: 5
   };
   A.Highlighter__writeMultilineHighlights_closure1.prototype = {
     call$0() {
@@ -84892,7 +85453,7 @@
         }
       }
     },
-    $signature: 4
+    $signature: 5
   };
   A.Highlighter__writeMultilineHighlights__closure.prototype = {
     call$0() {
@@ -84900,13 +85461,13 @@
         t2 = this._box_0.openedOnThisLine ? "\u252c" : "\u250c";
       t1._contents += t2;
     },
-    $signature: 4
+    $signature: 5
   };
   A.Highlighter__writeMultilineHighlights__closure0.prototype = {
     call$0() {
       this.$this._highlighter$_buffer._contents += this.vertical;
     },
-    $signature: 4
+    $signature: 5
   };
   A.Highlighter__writeHighlightedText_closure.prototype = {
     call$0() {
@@ -84932,7 +85493,7 @@
       t2._contents = t4;
       return t4.length - t3.length;
     },
-    $signature: 24
+    $signature: 26
   };
   A.Highlighter__writeIndicator_closure0.prototype = {
     call$0() {
@@ -84952,7 +85513,7 @@
         t1._writeArrow$3$beginning(_this.line, Math.max(_this.highlight.span.get$end().get$column() - 1, 0), false);
       return t2._contents.length - t3.length;
     },
-    $signature: 24
+    $signature: 26
   };
   A.Highlighter__writeSidebar_closure.prototype = {
     call$0() {
@@ -84966,7 +85527,7 @@
       t3 = this.end;
       t2._contents = t1 + (t3 == null ? "\u2502" : t3);
     },
-    $signature: 4
+    $signature: 5
   };
   A._Highlight.prototype = {
     toString$0(_) {
@@ -84988,7 +85549,7 @@
       }
       return A._Highlight__normalizeEndOfLine(A._Highlight__normalizeTrailingNewline(A._Highlight__normalizeNewlines(newSpan)));
     },
-    $signature: 564
+    $signature: 577
   };
   A._Line.prototype = {
     toString$0(_) {
@@ -85206,7 +85767,7 @@
       else
         return J.toString$0$(e);
     },
-    $signature: 565
+    $signature: 578
   };
   A.AllowedArgumentCount.prototype = {};
   A.RawSqliteBindings.prototype = {};
@@ -85409,7 +85970,7 @@
     call$2(context, args) {
       A._extension_0_runWithArgsAndSetResult(context, this.$function, type$.List_RawSqliteValue._as(args));
     },
-    $signature: 566
+    $signature: 579
   };
   A.DatabaseImplementation__prepareInternal_freeIntermediateResults.prototype = {
     call$0() {
@@ -85473,7 +86034,7 @@
     call$1(element) {
       type$.FinalizablePart._as(element).dispose$0();
     },
-    $signature: 567
+    $signature: 580
   };
   A.Sqlite3Implementation.prototype = {
     open$2$vfs(filename, vfs) {
@@ -85592,7 +86153,7 @@
         A.throwException(_this.database, resultCode, "selecting from statement", _this.sql, _this._latestArguments);
       names = _this.get$_columnNames();
       _this.get$_tableNames();
-      t1 = new A.ResultSet(rows, names, B.Map_empty3);
+      t1 = new A.ResultSet(rows, names, B.Map_empty2);
       t1._calculateIndexes$0();
       return t1;
     },
@@ -86085,13 +86646,13 @@
       this.importsJs[module] = _this;
       moduleImports.forEach$1(0, new A.WasmInstance_load__closure(_this));
     },
-    $signature: 568
+    $signature: 581
   };
   A.WasmInstance_load__closure.prototype = {
     call$2($name, value) {
       this.moduleJs[A._asString($name)] = value;
     },
-    $signature: 569
+    $signature: 582
   };
   A.WasmSqlite3.prototype = {};
   A.WasmVfs.prototype = {
@@ -86427,7 +86988,7 @@
             case 5:
               // after for
               $async$goto = 7;
-              return A._asyncAwait(A.Future_wait(readOperations, t1), $async$readFully$1);
+              return A._asyncAwait(A.Future_wait(readOperations, false, t1), $async$readFully$1);
             case 7:
               // returning from await.
               $async$returnValue = result;
@@ -86467,7 +87028,7 @@
               B.JSArray_methods.sort$0(changedOffsets);
               t1 = A._arrayInstanceType(changedOffsets);
               $async$goto = 3;
-              return A._asyncAwait(A.Future_wait(new A.MappedListIterable(changedOffsets, t1._eval$1("Future<~>(1)")._as(new A.AsynchronousIndexedDbFileSystem__write_closure(new A.AsynchronousIndexedDbFileSystem__write_writeBlock(blocks, fileId), writes)), t1._eval$1("MappedListIterable<1,Future<~>>")), type$.void), $async$_write$2);
+              return A._asyncAwait(A.Future_wait(new A.MappedListIterable(changedOffsets, t1._eval$1("Future<~>(1)")._as(new A.AsynchronousIndexedDbFileSystem__write_closure(new A.AsynchronousIndexedDbFileSystem__write_writeBlock(blocks, fileId), writes)), t1._eval$1("MappedListIterable<1,Future<~>>")), false, type$.void), $async$_write$2);
             case 3:
               // returning from await.
               $async$goto = writes.newFileLength !== A._asInt(file.length) ? 4 : 5;
@@ -86554,7 +87115,7 @@
               blocksRange = $async$self._rangeOverFile$3$endOffsetInclusive$startOffset(id, 9007199254740992, 0);
               t1 = type$.nullable_Object;
               $async$goto = 2;
-              return A._asyncAwait(A.Future_wait(A._setArrayType([A.CompleteIdbRequest_complete(A._asJSObject(A._asJSObject(transaction.objectStore("blocks")).delete(blocksRange)), t1), A.CompleteIdbRequest_complete(A._asJSObject(A._asJSObject(transaction.objectStore("files")).delete(id)), t1)], type$.JSArray_Future_void), type$.void), $async$deleteFile$1);
+              return A._asyncAwait(A.Future_wait(A._setArrayType([A.CompleteIdbRequest_complete(A._asJSObject(A._asJSObject(transaction.objectStore("blocks")).delete(blocksRange)), t1), A.CompleteIdbRequest_complete(A._asJSObject(A._asJSObject(transaction.objectStore("files")).delete(id)), t1)], type$.JSArray_Future_void), false, type$.void), $async$deleteFile$1);
             case 2:
               // returning from await.
               // implicit return
@@ -86574,7 +87135,7 @@
         A._asJSObject(database.createObjectStore("blocks"));
       }
     },
-    $signature: 37
+    $signature: 36
   };
   A.AsynchronousIndexedDbFileSystem__readFile_closure.prototype = {
     call$1(value) {
@@ -86584,7 +87145,7 @@
       else
         return value;
     },
-    $signature: 570
+    $signature: 583
   };
   A.AsynchronousIndexedDbFileSystem_readFully_closure.prototype = {
     call$0() {
@@ -86623,7 +87184,7 @@
       });
       return A._asyncStartSync($async$call$0, $async$completer);
     },
-    $signature: 3
+    $signature: 1
   };
   A.AsynchronousIndexedDbFileSystem__write_writeBlock.prototype = {
     call$2(blockStart, block) {
@@ -86672,7 +87233,7 @@
       });
       return A._asyncStartSync($async$call$2, $async$completer);
     },
-    $signature: 571
+    $signature: 584
   };
   A.AsynchronousIndexedDbFileSystem__write_closure.prototype = {
     call$1(offset) {
@@ -86682,7 +87243,7 @@
       t1.toString;
       return this.writeBlock.call$2(offset, t1);
     },
-    $signature: 572
+    $signature: 585
   };
   A._FileWriteRequest.prototype = {
     _updateBlock$3(blockOffset, offsetInBlock, data) {
@@ -86717,7 +87278,7 @@
         B.NativeUint8List_methods.setAll$2(block, 0, J.asUint8List$2$x(B.NativeUint8List_methods.get$buffer(t1), t1.byteOffset + t3, Math.min(4096, t2 - t3)));
       return block;
     },
-    $signature: 117
+    $signature: 118
   };
   A._OffsetAndBuffer.prototype = {};
   A.IndexedDbFileSystem.prototype = {
@@ -86911,7 +87472,7 @@
       t1._currentWorkItem = null;
       t1._startWorkingIfNeeded$0();
     },
-    $signature: 4
+    $signature: 5
   };
   A._IndexedDbFile.prototype = {
     xRead$2(target, fileOffset) {
@@ -87001,7 +87562,7 @@
       });
       return A._asyncStartSync($async$call$0, $async$completer);
     },
-    $signature: 3
+    $signature: 1
   };
   A._IndexedDbWorkItem.prototype = {
     insertInto$1(pending) {
@@ -87272,7 +87833,7 @@
       });
       return A._asyncStartSync($async$call$1, $async$completer);
     },
-    $signature: 573
+    $signature: 586
   };
   A._SimpleOpfsFile.prototype = {
     readInto$2(buffer, offset) {
@@ -87349,7 +87910,7 @@
     call$1(ptr) {
       A.print("[sqlite3] " + A.WrappedMemory_readString(this.memory, A._asInt(ptr), null));
     },
-    $signature: 22
+    $signature: 31
   };
   A._InjectedValues_closure0.prototype = {
     call$5(vfsId, zName, dartFdPtr, flags, pOutFlags) {
@@ -87367,7 +87928,7 @@
     },
     "call*": "call$5",
     $requiredArgCount: 5,
-    $signature: 120
+    $signature: 121
   };
   A._InjectedValues__closure13.prototype = {
     call$0() {
@@ -87408,7 +87969,7 @@
     },
     "call*": "call$3",
     $requiredArgCount: 3,
-    $signature: 68
+    $signature: 69
   };
   A._InjectedValues__closure12.prototype = {
     call$0() {
@@ -87430,7 +87991,7 @@
     },
     "call*": "call$4",
     $requiredArgCount: 4,
-    $signature: 122
+    $signature: 123
   };
   A._InjectedValues__closure11.prototype = {
     call$0() {
@@ -87459,7 +88020,7 @@
     },
     "call*": "call$4",
     $requiredArgCount: 4,
-    $signature: 122
+    $signature: 123
   };
   A._InjectedValues__closure10.prototype = {
     call$0() {
@@ -87487,7 +88048,7 @@
     },
     "call*": "call$3",
     $requiredArgCount: 3,
-    $signature: 68
+    $signature: 69
   };
   A._InjectedValues__closure9.prototype = {
     call$0() {
@@ -87527,7 +88088,7 @@
       t1 = type$.JavaScriptBigInt._as(init.G.BigInt(Date.now()));
       A.JSObjectUnsafeUtilExtension__callMethod(A.NativeByteData_NativeByteData$view(type$.NativeArrayBuffer._as(this.memory.buffer), 0, null), "setBigInt64", target, t1, true, null);
     },
-    $signature: 578
+    $signature: 591
   };
   A._InjectedValues_closure7.prototype = {
     call$1(fd) {
@@ -87566,7 +88127,7 @@
     },
     "call*": "call$4",
     $requiredArgCount: 4,
-    $signature: 123
+    $signature: 124
   };
   A._InjectedValues__closure6.prototype = {
     call$0() {
@@ -87588,7 +88149,7 @@
     },
     "call*": "call$4",
     $requiredArgCount: 4,
-    $signature: 123
+    $signature: 124
   };
   A._InjectedValues__closure5.prototype = {
     call$0() {
@@ -87606,7 +88167,7 @@
       t1.toString;
       return A._runVfs(new A._InjectedValues__closure4(t1, size));
     },
-    $signature: 580
+    $signature: 593
   };
   A._InjectedValues__closure4.prototype = {
     call$0() {
@@ -87726,7 +88287,7 @@
     },
     "call*": "call$3",
     $requiredArgCount: 3,
-    $signature: 69
+    $signature: 50
   };
   A._InjectedValues_closure18.prototype = {
     call$3(ctx, args, value) {
@@ -87743,7 +88304,7 @@
     },
     "call*": "call$3",
     $requiredArgCount: 3,
-    $signature: 69
+    $signature: 50
   };
   A._InjectedValues_closure19.prototype = {
     call$3(ctx, args, value) {
@@ -87760,7 +88321,7 @@
     },
     "call*": "call$3",
     $requiredArgCount: 3,
-    $signature: 69
+    $signature: 50
   };
   A._InjectedValues_closure20.prototype = {
     call$1(ctx) {
@@ -87771,7 +88332,7 @@
       t2 === $ && A.throwLateFieldNI("bindings");
       t1.callbacks.functions.$index(0, A._asInt(t2.sqlite3.sqlite3_user_data(ctx))).xFinal.call$1(new A.WasmContext(t1.___InjectedValues_bindings_A, ctx));
     },
-    $signature: 22
+    $signature: 31
   };
   A._InjectedValues_closure21.prototype = {
     call$1(ctx) {
@@ -87783,13 +88344,13 @@
       t1.callbacks.functions.$index(0, A._asInt(t2.sqlite3.sqlite3_user_data(ctx))).toString;
       null.call$1(new A.WasmContext(t1.___InjectedValues_bindings_A, ctx));
     },
-    $signature: 22
+    $signature: 31
   };
   A._InjectedValues_closure22.prototype = {
     call$1(ctx) {
       this.$this.callbacks.functions.remove$1(0, A._asInt(ctx));
     },
-    $signature: 22
+    $signature: 31
   };
   A._InjectedValues_closure23.prototype = {
     call$5(ctx, lengthA, a, lengthB, b) {
@@ -87807,7 +88368,7 @@
     },
     "call*": "call$5",
     $requiredArgCount: 5,
-    $signature: 120
+    $signature: 121
   };
   A._InjectedValues_closure24.prototype = {
     call$5(id, kind, _, table, rowId) {
@@ -87820,20 +88381,20 @@
     },
     "call*": "call$5",
     $requiredArgCount: 5,
-    $signature: 582
+    $signature: 595
   };
   A._InjectedValues_closure25.prototype = {
     call$1(id) {
       A._asInt(id);
       return null;
     },
-    $signature: 78
+    $signature: 84
   };
   A._InjectedValues_closure26.prototype = {
     call$1(id) {
       A._asInt(id);
     },
-    $signature: 22
+    $signature: 31
   };
   A._InjectedValues_closure27.prototype = {
     call$2(timestamp, resultPtr) {
@@ -87867,7 +88428,7 @@
         return A.ioore(tmValues, 6);
       tmValues[6] = t2;
     },
-    $signature: 583
+    $signature: 596
   };
   A._InjectedValues_closure28.prototype = {
     call$2(context, zTab) {
@@ -87886,7 +88447,7 @@
     },
     "call*": "call$3",
     $requiredArgCount: 3,
-    $signature: 68
+    $signature: 69
   };
   A.DartCallbacks.prototype = {
     register$1(set) {
@@ -87922,13 +88483,13 @@
     call$1(line) {
       return A._asString(line).length !== 0;
     },
-    $signature: 2
+    $signature: 3
   };
   A.Chain_toTrace_closure.prototype = {
     call$1(trace) {
       return type$.Trace._as(trace).get$frames();
     },
-    $signature: 584
+    $signature: 597
   };
   A.Chain_toString_closure0.prototype = {
     call$1(trace) {
@@ -87936,13 +88497,13 @@
         t2 = A._arrayInstanceType(t1);
       return new A.MappedListIterable(t1, t2._eval$1("int(1)")._as(new A.Chain_toString__closure0()), t2._eval$1("MappedListIterable<1,int>")).fold$1$2(0, 0, B.CONSTANT, type$.int);
     },
-    $signature: 585
+    $signature: 598
   };
   A.Chain_toString__closure0.prototype = {
     call$1(frame) {
       return type$.Frame._as(frame).get$location().length;
     },
-    $signature: 125
+    $signature: 126
   };
   A.Chain_toString_closure.prototype = {
     call$1(trace) {
@@ -87950,14 +88511,14 @@
         t2 = A._arrayInstanceType(t1);
       return new A.MappedListIterable(t1, t2._eval$1("String(1)")._as(new A.Chain_toString__closure(this.longest)), t2._eval$1("MappedListIterable<1,String>")).join$0(0);
     },
-    $signature: 587
+    $signature: 600
   };
   A.Chain_toString__closure.prototype = {
     call$1(frame) {
       type$.Frame._as(frame);
       return B.JSString_methods.padRight$1(frame.get$location(), this.longest) + "  " + A.S(frame.get$member()) + "\n";
     },
-    $signature: 126
+    $signature: 127
   };
   A.Frame.prototype = {
     get$library() {
@@ -88019,7 +88580,7 @@
       line = t1 > 1 ? A.int_parse(lineAndColumn[1], _null, _null) : _null;
       return new A.Frame(uri, line, t1 > 2 ? A.int_parse(lineAndColumn[2], _null, _null) : _null, member);
     },
-    $signature: 23
+    $signature: 32
   };
   A.Frame_Frame$parseV8_closure.prototype = {
     call$0() {
@@ -88066,7 +88627,7 @@
       }
       return new A.UnparsedFrame(A._Uri__Uri(_null, "unparsed", _null, _null), t1);
     },
-    $signature: 23
+    $signature: 32
   };
   A.Frame_Frame$parseV8_closure_parseJsLocation.prototype = {
     call$2($location, member) {
@@ -88102,7 +88663,7 @@
       columnMatch = t1[3];
       return new A.Frame(uri, line, columnMatch != null ? A.int_parse(columnMatch, _null, _null) : _null, member);
     },
-    $signature: 590
+    $signature: 603
   };
   A.Frame_Frame$_parseFirefoxEval_closure.prototype = {
     call$0() {
@@ -88129,7 +88690,7 @@
       line = A.int_parse(t1, _null, _null);
       return new A.Frame(uri, line, _null, member.length === 0 || member === "anonymous" ? "<fn>" : member);
     },
-    $signature: 23
+    $signature: 32
   };
   A.Frame_Frame$parseFirefox_closure.prototype = {
     call$0() {
@@ -88209,7 +88770,7 @@
       }
       return new A.UnparsedFrame(A._Uri__Uri(_null, "unparsed", _null, _null), t1);
     },
-    $signature: 23
+    $signature: 32
   };
   A.Frame_Frame$parseFriendly_closure.prototype = {
     call$0() {
@@ -88257,7 +88818,7 @@
         return A.ioore(t1, 4);
       return new A.Frame(uri, line, column, t1[4]);
     },
-    $signature: 23
+    $signature: 32
   };
   A.LazyTrace.prototype = {
     get$_lazy_trace$_trace() {
@@ -88295,44 +88856,44 @@
     call$0() {
       return A.Trace_Trace$parse(this.trace.toString$0(0));
     },
-    $signature: 591
+    $signature: 604
   };
   A.Trace__parseVM_closure.prototype = {
     call$1(line) {
       return A._asString(line).length !== 0;
     },
-    $signature: 2
+    $signature: 3
   };
   A.Trace$parseV8_closure.prototype = {
     call$1(line) {
       return !B.JSString_methods.startsWith$1(A._asString(line), $.$get$_v8TraceLine());
     },
-    $signature: 2
+    $signature: 3
   };
   A.Trace$parseJSCore_closure.prototype = {
     call$1(line) {
       return A._asString(line) !== "\tat ";
     },
-    $signature: 2
+    $signature: 3
   };
   A.Trace$parseFirefox_closure.prototype = {
     call$1(line) {
       A._asString(line);
       return line.length !== 0 && line !== "[native code]";
     },
-    $signature: 2
+    $signature: 3
   };
   A.Trace$parseFriendly_closure.prototype = {
     call$1(line) {
       return !B.JSString_methods.startsWith$1(A._asString(line), "=====");
     },
-    $signature: 2
+    $signature: 3
   };
   A.Trace_toString_closure0.prototype = {
     call$1(frame) {
       return type$.Frame._as(frame).get$location().length;
     },
-    $signature: 125
+    $signature: 126
   };
   A.Trace_toString_closure.prototype = {
     call$1(frame) {
@@ -88341,7 +88902,7 @@
         return frame.toString$0(0) + "\n";
       return B.JSString_methods.padRight$1(frame.get$location(), this.longest) + "  " + A.S(frame.get$member()) + "\n";
     },
-    $signature: 126
+    $signature: 127
   };
   A.UnparsedFrame.prototype = {
     toString$0(_) {
@@ -88757,6 +89318,9 @@
     },
     listen$3$onDone$onError(onData, onDone, onError) {
       return this.listen$4$cancelOnError$onDone$onError(onData, null, onDone, onError);
+    },
+    listen$3$cancelOnError$onDone(onData, cancelOnError, onDone) {
+      return this.listen$4$cancelOnError$onDone$onError(onData, cancelOnError, onDone, null);
     }
   };
   A._EventStreamSubscription.prototype = {
@@ -88779,6 +89343,8 @@
       t1 = t1 == null ? null : A._functionToJS1(t1);
       _this._streams$_onData = t1;
       _this._tryResume$0();
+    },
+    onError$1(handleError) {
     },
     pause$1(resumeSignal) {
       var _this = this;
@@ -88888,129 +89454,133 @@
   (function installTearOffs() {
     var _static_2 = hunkHelpers._static_2,
       _instance_1_i = hunkHelpers._instance_1i,
+      _instance_0_u = hunkHelpers._instance_0u,
+      _instance_1_u = hunkHelpers._instance_1u,
+      _instance = hunkHelpers.installInstanceTearOff,
       _static_1 = hunkHelpers._static_1,
       _static_0 = hunkHelpers._static_0,
       _static = hunkHelpers.installStaticTearOff,
-      _instance_0_u = hunkHelpers._instance_0u,
-      _instance = hunkHelpers.installInstanceTearOff,
-      _instance_2_u = hunkHelpers._instance_2u,
-      _instance_1_u = hunkHelpers._instance_1u;
-    _static_2(J, "_interceptors_JSArray__compareAny$closure", "JSArray__compareAny", 128);
+      _instance_2_u = hunkHelpers._instance_2u;
+    _static_2(J, "_interceptors_JSArray__compareAny$closure", "JSArray__compareAny", 129);
     var _;
-    _instance_1_i(_ = J.JSArray.prototype, "get$remove", "remove$1", 11);
-    _instance_1_i(_, "get$contains", "contains$1", 11);
-    _instance_1_i(A._CastIterableBase.prototype, "get$contains", "contains$1", 11);
+    _instance_1_i(_ = J.JSArray.prototype, "get$remove", "remove$1", 10);
+    _instance_1_i(_, "get$contains", "contains$1", 10);
+    _instance_0_u(_ = A.CastStreamSubscription.prototype, "get$cancel", "cancel$0", 18);
+    _instance_1_u(_, "get$__internal$_onData", "__internal$_onData$1", 4);
+    _instance(_, "get$pause", 0, 0, null, ["call$1", "call$0"], ["pause$1", "pause$0"], 58, 0, 0);
+    _instance_0_u(_, "get$resume", "resume$0", 0);
+    _instance_1_i(A._CastIterableBase.prototype, "get$contains", "contains$1", 10);
     _static_1(A, "_js_helper___stringIdentity$closure", "_stringIdentity", 6);
-    _static_1(A, "async__AsyncRun__scheduleImmediateJsOverride$closure", "_AsyncRun__scheduleImmediateJsOverride", 71);
-    _static_1(A, "async__AsyncRun__scheduleImmediateWithSetImmediate$closure", "_AsyncRun__scheduleImmediateWithSetImmediate", 71);
-    _static_1(A, "async__AsyncRun__scheduleImmediateWithTimer$closure", "_AsyncRun__scheduleImmediateWithTimer", 71);
+    _static_1(A, "async__AsyncRun__scheduleImmediateJsOverride$closure", "_AsyncRun__scheduleImmediateJsOverride", 73);
+    _static_1(A, "async__AsyncRun__scheduleImmediateWithSetImmediate$closure", "_AsyncRun__scheduleImmediateWithSetImmediate", 73);
+    _static_1(A, "async__AsyncRun__scheduleImmediateWithTimer$closure", "_AsyncRun__scheduleImmediateWithTimer", 73);
     _static_0(A, "async___startMicrotaskLoop$closure", "_startMicrotaskLoop", 0);
-    _static_1(A, "async___nullDataHandler$closure", "_nullDataHandler", 33);
+    _static_1(A, "async___nullDataHandler$closure", "_nullDataHandler", 38);
     _static_2(A, "async___nullErrorHandler$closure", "_nullErrorHandler", 12);
     _static_0(A, "async___nullDoneHandler$closure", "_nullDoneHandler", 0);
-    _static(A, "async___rootHandleUncaughtError$closure", 5, null, ["call$5"], ["_rootHandleUncaughtError"], 594, 0);
+    _static(A, "async___rootHandleUncaughtError$closure", 5, null, ["call$5"], ["_rootHandleUncaughtError"], 607, 0);
     _static(A, "async___rootRun$closure", 4, null, ["call$1$4", "call$4"], ["_rootRun", function($self, $parent, zone, f) {
       return A._rootRun($self, $parent, zone, f, type$.dynamic);
-    }], 595, 1);
+    }], 608, 1);
     _static(A, "async___rootRunUnary$closure", 5, null, ["call$2$5", "call$5"], ["_rootRunUnary", function($self, $parent, zone, f, arg) {
       var t1 = type$.dynamic;
       return A._rootRunUnary($self, $parent, zone, f, arg, t1, t1);
-    }], 596, 1);
+    }], 609, 1);
     _static(A, "async___rootRunBinary$closure", 6, null, ["call$3$6", "call$6"], ["_rootRunBinary", function($self, $parent, zone, f, arg1, arg2) {
       var t1 = type$.dynamic;
       return A._rootRunBinary($self, $parent, zone, f, arg1, arg2, t1, t1, t1);
-    }], 597, 1);
+    }], 610, 1);
     _static(A, "async___rootRegisterCallback$closure", 4, null, ["call$1$4", "call$4"], ["_rootRegisterCallback", function($self, $parent, zone, f) {
       return A._rootRegisterCallback($self, $parent, zone, f, type$.dynamic);
-    }], 598, 0);
+    }], 611, 0);
     _static(A, "async___rootRegisterUnaryCallback$closure", 4, null, ["call$2$4", "call$4"], ["_rootRegisterUnaryCallback", function($self, $parent, zone, f) {
       var t1 = type$.dynamic;
       return A._rootRegisterUnaryCallback($self, $parent, zone, f, t1, t1);
-    }], 599, 0);
+    }], 612, 0);
     _static(A, "async___rootRegisterBinaryCallback$closure", 4, null, ["call$3$4", "call$4"], ["_rootRegisterBinaryCallback", function($self, $parent, zone, f) {
       var t1 = type$.dynamic;
       return A._rootRegisterBinaryCallback($self, $parent, zone, f, t1, t1, t1);
-    }], 600, 0);
-    _static(A, "async___rootErrorCallback$closure", 5, null, ["call$5"], ["_rootErrorCallback"], 601, 0);
-    _static(A, "async___rootScheduleMicrotask$closure", 4, null, ["call$4"], ["_rootScheduleMicrotask"], 602, 0);
-    _static(A, "async___rootCreateTimer$closure", 5, null, ["call$5"], ["_rootCreateTimer"], 603, 0);
-    _static(A, "async___rootCreatePeriodicTimer$closure", 5, null, ["call$5"], ["_rootCreatePeriodicTimer"], 604, 0);
-    _static(A, "async___rootPrint$closure", 4, null, ["call$4"], ["_rootPrint"], 605, 0);
-    _static_1(A, "async___printToZone$closure", "_printToZone", 88);
-    _static(A, "async___rootFork$closure", 5, null, ["call$5"], ["_rootFork"], 606, 0);
+    }], 613, 0);
+    _static(A, "async___rootErrorCallback$closure", 5, null, ["call$5"], ["_rootErrorCallback"], 614, 0);
+    _static(A, "async___rootScheduleMicrotask$closure", 4, null, ["call$4"], ["_rootScheduleMicrotask"], 615, 0);
+    _static(A, "async___rootCreateTimer$closure", 5, null, ["call$5"], ["_rootCreateTimer"], 616, 0);
+    _static(A, "async___rootCreatePeriodicTimer$closure", 5, null, ["call$5"], ["_rootCreatePeriodicTimer"], 617, 0);
+    _static(A, "async___rootPrint$closure", 4, null, ["call$4"], ["_rootPrint"], 618, 0);
+    _static_1(A, "async___printToZone$closure", "_printToZone", 128);
+    _static(A, "async___rootFork$closure", 5, null, ["call$5"], ["_rootFork"], 619, 0);
     _instance_0_u(_ = A._BroadcastSubscription.prototype, "get$_onPause", "_onPause$0", 0);
     _instance_0_u(_, "get$_onResume", "_onResume$0", 0);
     _instance(A._Completer.prototype, "get$completeError", 0, 1, function() {
       return [null];
-    }, ["call$2", "call$1"], ["completeError$2", "completeError$1"], 31, 0, 0);
+    }, ["call$2", "call$1"], ["completeError$2", "completeError$1"], 24, 0, 0);
     _instance_2_u(A._Future.prototype, "get$_completeError", "_completeError$2", 12);
-    _instance_1_i(_ = A._StreamController.prototype, "get$add", "add$1", 5);
+    _instance_1_i(_ = A._StreamController.prototype, "get$add", "add$1", 4);
     _instance(_, "get$addError", 0, 1, function() {
       return [null];
-    }, ["call$2", "call$1"], ["addError$2", "addError$1"], 31, 0, 0);
-    _instance_0_u(_, "get$close", "close$0", 27);
-    _instance_1_u(_, "get$_async$_add", "_async$_add$1", 5);
+    }, ["call$2", "call$1"], ["addError$2", "addError$1"], 24, 0, 0);
+    _instance_0_u(_, "get$close", "close$0", 18);
+    _instance_1_u(_, "get$_async$_add", "_async$_add$1", 4);
     _instance_2_u(_, "get$_addError", "_addError$2", 12);
     _instance_0_u(_, "get$_close", "_close$0", 0);
     _instance_0_u(_ = A._ControllerSubscription.prototype, "get$_onPause", "_onPause$0", 0);
     _instance_0_u(_, "get$_onResume", "_onResume$0", 0);
-    _instance_1_i(_ = A._StreamSinkWrapper.prototype, "get$add", "add$1", 5);
+    _instance_1_i(_ = A._StreamSinkWrapper.prototype, "get$add", "add$1", 4);
     _instance(_, "get$addError", 0, 1, function() {
       return [null];
-    }, ["call$2", "call$1"], ["addError$2", "addError$1"], 31, 0, 0);
-    _instance_0_u(_, "get$close", "close$0", 27);
-    _instance(_ = A._BufferingStreamSubscription.prototype, "get$pause", 0, 0, null, ["call$1", "call$0"], ["pause$1", "pause$0"], 100, 0, 0);
+    }, ["call$2", "call$1"], ["addError$2", "addError$1"], 24, 0, 0);
+    _instance_0_u(_, "get$close", "close$0", 18);
+    _instance(_ = A._BufferingStreamSubscription.prototype, "get$pause", 0, 0, null, ["call$1", "call$0"], ["pause$1", "pause$0"], 77, 0, 0);
     _instance_0_u(_, "get$resume", "resume$0", 0);
-    _instance_0_u(_, "get$cancel", "cancel$0", 27);
+    _instance_0_u(_, "get$cancel", "cancel$0", 18);
     _instance_0_u(_, "get$_onPause", "_onPause$0", 0);
     _instance_0_u(_, "get$_onResume", "_onResume$0", 0);
-    _instance(_ = A._DoneStreamSubscription.prototype, "get$pause", 0, 0, null, ["call$1", "call$0"], ["pause$1", "pause$0"], 100, 0, 0);
+    _instance(_ = A._DoneStreamSubscription.prototype, "get$pause", 0, 0, null, ["call$1", "call$0"], ["pause$1", "pause$0"], 77, 0, 0);
     _instance_0_u(_, "get$resume", "resume$0", 0);
-    _instance_0_u(_, "get$cancel", "cancel$0", 27);
+    _instance_0_u(_, "get$cancel", "cancel$0", 18);
     _instance_0_u(_, "get$_onMicrotask", "_onMicrotask$0", 0);
-    _instance_1_u(_ = A._StreamIterator.prototype, "get$_onData", "_onData$1", 5);
+    _instance_1_u(_ = A._StreamIterator.prototype, "get$_onData", "_onData$1", 4);
     _instance_2_u(_, "get$_onError", "_onError$2", 12);
     _instance_0_u(_, "get$_onDone", "_onDone$0", 0);
-    _instance_1_u(_ = A._MultiStreamController.prototype, "get$addSync", "addSync$1", 5);
+    _instance_1_u(_ = A._MultiStreamController.prototype, "get$addSync", "addSync$1", 4);
     _instance(_, "get$addErrorSync", 0, 1, function() {
       return [null];
-    }, ["call$2", "call$1"], ["addErrorSync$2", "addErrorSync$1"], 31, 0, 0);
+    }, ["call$2", "call$1"], ["addErrorSync$2", "addErrorSync$1"], 24, 0, 0);
     _instance_0_u(_, "get$closeSync", "closeSync$0", 0);
     _instance_0_u(_ = A._ForwardingStreamSubscription.prototype, "get$_onPause", "_onPause$0", 0);
     _instance_0_u(_, "get$_onResume", "_onResume$0", 0);
-    _instance_1_u(_, "get$_handleData", "_handleData$1", 5);
+    _instance_1_u(_, "get$_handleData", "_handleData$1", 4);
     _instance_2_u(_, "get$_handleError", "_handleError$2", 153);
     _instance_0_u(_, "get$_handleDone", "_handleDone$0", 0);
     _instance_0_u(_ = A._SinkTransformerStreamSubscription.prototype, "get$_onPause", "_onPause$0", 0);
     _instance_0_u(_, "get$_onResume", "_onResume$0", 0);
-    _instance_1_u(_, "get$_handleData", "_handleData$1", 5);
+    _instance_1_u(_, "get$_handleData", "_handleData$1", 4);
     _instance_2_u(_, "get$_handleError", "_handleError$2", 12);
     _instance_0_u(_, "get$_handleDone", "_handleDone$0", 0);
-    _static_2(A, "collection___defaultEquals$closure", "_defaultEquals", 67);
-    _static_1(A, "collection___defaultHashCode$closure", "_defaultHashCode", 61);
-    _static_2(A, "collection_ListBase__compareAny$closure", "ListBase__compareAny", 128);
-    _instance_1_i(A._LinkedHashSet.prototype, "get$remove", "remove$1", 11);
-    _instance_1_i(A.ListBase.prototype, "get$contains", "contains$1", 11);
-    _static_1(A, "convert___defaultToEncodable$closure", "_defaultToEncodable", 70);
+    _static_2(A, "collection___defaultEquals$closure", "_defaultEquals", 62);
+    _static_1(A, "collection___defaultHashCode$closure", "_defaultHashCode", 68);
+    _static_2(A, "collection_ListBase__compareAny$closure", "ListBase__compareAny", 129);
+    _instance_1_i(A._LinkedHashSet.prototype, "get$remove", "remove$1", 10);
+    _instance_1_i(A.ListBase.prototype, "get$contains", "contains$1", 10);
+    _static_1(A, "convert___defaultToEncodable$closure", "_defaultToEncodable", 61);
     _instance_0_u(A._JsonDecoderSink.prototype, "get$close", "close$0", 0);
-    _instance_1_i(_ = A._ByteCallbackSink.prototype, "get$add", "add$1", 5);
+    _instance_1_i(_ = A._ByteCallbackSink.prototype, "get$add", "add$1", 4);
     _instance_0_u(_, "get$close", "close$0", 0);
-    _instance(A._JsonUtf8EncoderSink.prototype, "get$_addChunk", 0, 3, null, ["call$3"], ["_addChunk$3"], 245, 0, 0);
-    _static_1(A, "core__identityHashCode$closure", "identityHashCode", 61);
+    _instance(A._JsonUtf8EncoderSink.prototype, "get$_addChunk", 0, 3, null, ["call$3"], ["_addChunk$3"], 241, 0, 0);
+    _static_1(A, "core__identityHashCode$closure", "identityHashCode", 68);
     _static(A, "core_int_parse$closure", 1, function() {
       return {onError: null, radix: null};
     }, ["call$3$onError$radix", "call$1", "call$2$onError"], ["int_parse", function(source) {
       return A.int_parse(source, null, null);
     }, function(source, onError) {
       return A.int_parse(source, onError, null);
-    }], 607, 0);
-    _static_2(A, "core__identical$closure", "identical", 67);
-    _static_1(A, "core__print$closure", "print", 5);
+    }], 620, 0);
+    _static_2(A, "core__identical$closure", "identical", 62);
+    _static_1(A, "core__print$closure", "print", 4);
     _static_1(A, "core_Uri_decodeComponent$closure", "Uri_decodeComponent", 6);
-    _instance_1_i(A.Iterable.prototype, "get$contains", "contains$1", 11);
+    _instance_1_i(A.Iterable.prototype, "get$contains", "contains$1", 10);
     _static(A, "math__max$closure", 2, null, ["call$1$2", "call$2"], ["max", function(a, b) {
       return A.max(a, b, type$.num);
-    }], 608, 1);
+    }], 621, 1);
     _static_1(A, "math__sqrt$closure", "sqrt", 13);
     _static_1(A, "math__sin$closure", "sin", 13);
     _static_1(A, "math__cos$closure", "cos", 13);
@@ -89018,178 +89588,184 @@
     _static_1(A, "math__acos$closure", "acos", 13);
     _static_1(A, "math__asin$closure", "asin", 13);
     _static_1(A, "math__atan$closure", "atan", 13);
-    _instance(_ = A.DelegatingStreamSubscription.prototype, "get$pause", 0, 0, null, ["call$1", "call$0"], ["pause$1", "pause$0"], 114, 0, 0);
+    _instance(_ = A.DelegatingStreamSubscription.prototype, "get$pause", 0, 0, null, ["call$1", "call$0"], ["pause$1", "pause$0"], 58, 0, 0);
     _instance_0_u(_, "get$resume", "resume$0", 0);
-    _instance_0_u(_, "get$cancel", "cancel$0", 27);
+    _instance_0_u(_, "get$cancel", "cancel$0", 18);
     _instance_0_u(_ = A.StreamSplitter.prototype, "get$_stream_splitter$_onListen", "_stream_splitter$_onListen$0", 0);
     _instance_0_u(_, "get$_stream_splitter$_onPause", "_stream_splitter$_onPause$0", 0);
     _instance_0_u(_, "get$_stream_splitter$_onResume", "_stream_splitter$_onResume$0", 0);
-    _instance_1_u(_, "get$_stream_splitter$_onData", "_stream_splitter$_onData$1", 5);
+    _instance_1_u(_, "get$_stream_splitter$_onData", "_stream_splitter$_onData$1", 4);
     _instance_2_u(_, "get$_stream_splitter$_onError", "_stream_splitter$_onError$2", 12);
     _instance_0_u(_, "get$_stream_splitter$_onDone", "_stream_splitter$_onDone$0", 0);
-    _instance_2_u(_ = A.DefaultEquality.prototype, "get$equals", "equals$2", 67);
-    _instance_1_u(_, "get$hash", "hash$1", 61);
-    _instance_1_u(_, "get$isValidKey", "isValidKey$1", 11);
-    _instance_1_u(A.DriftClient.prototype, "get$_handleRequest", "_handleRequest$1", 311);
-    _instance_1_u(A.DriftCommunication.prototype, "get$_communication$_handleMessage", "_communication$_handleMessage$1", 5);
-    _instance_1_u(A.DriftProtocol.prototype, "get$_decodeDbValue", "_decodeDbValue$1", 42);
-    _instance_1_u(A.WebProtocol.prototype, "get$_web_protocol$_decodeDbValue", "_web_protocol$_decodeDbValue$1", 42);
-    _static_1(A, "delegates___defaultSavepoint$closure", "_defaultSavepoint", 57);
-    _static_1(A, "delegates___defaultRelease$closure", "_defaultRelease", 57);
-    _static_1(A, "delegates___defaultRollbackToSavepoint$closure", "_defaultRollbackToSavepoint", 57);
-    _instance_1_u(A.AnyUpdateQuery.prototype, "get$matches", "matches$1", 95);
-    _instance_1_u(A.MultipleUpdateQuery.prototype, "get$matches", "matches$1", 95);
+    _instance_2_u(_ = A.DefaultEquality.prototype, "get$equals", "equals$2", 62);
+    _instance_1_u(_, "get$hash", "hash$1", 68);
+    _instance_1_u(_, "get$isValidKey", "isValidKey$1", 10);
+    _instance_1_u(A.DriftClient.prototype, "get$_handleRequest", "_handleRequest$1", 313);
+    _instance_1_u(A.DriftCommunication.prototype, "get$_communication$_handleMessage", "_communication$_handleMessage$1", 4);
+    _instance_1_u(A.DriftProtocol.prototype, "get$_decodeDbValue", "_decodeDbValue$1", 33);
+    _instance_1_u(A.WebProtocol.prototype, "get$_web_protocol$_decodeDbValue", "_web_protocol$_decodeDbValue$1", 33);
+    _static_1(A, "delegates___defaultSavepoint$closure", "_defaultSavepoint", 49);
+    _static_1(A, "delegates___defaultRelease$closure", "_defaultRelease", 49);
+    _static_1(A, "delegates___defaultRollbackToSavepoint$closure", "_defaultRollbackToSavepoint", 49);
+    _instance_1_u(A.AnyUpdateQuery.prototype, "get$matches", "matches$1", 130);
+    _instance_1_u(A.MultipleUpdateQuery.prototype, "get$matches", "matches$1", 130);
     _instance_1_u(A.GenerationContext.prototype, "get$identifier", "identifier$1", 6);
-    _instance_1_u(A.CustomSelectStatement.prototype, "get$_mapDbResponse", "_mapDbResponse$1", 241);
+    _instance_1_u(A.CustomSelectStatement.prototype, "get$_mapDbResponse", "_mapDbResponse$1", 240);
     _instance_1_u(A.SimpleSelectStatement.prototype, "get$_mapResponse", "_mapResponse$1", "List<2>/(List<Map<String,Object?>>)");
-    _static_1(A, "native_functions___pow$closure", "_pow", 103);
-    _static_1(A, "native_functions___regexpImpl$closure", "_regexpImpl", 611);
-    _static_1(A, "native_functions___containsImpl$closure", "_containsImpl", 612);
-    _instance_1_u(A.BroadcastStreamQueryStore.prototype, "get$_handleMessage", "_handleMessage$1", 8);
-    _instance_2_u(A._DriftWorker.prototype, "get$send", "send$2", 316);
-    _static_1(A, "protocol_WasmInitializationMessage___read_tearOff$closure", "WasmInitializationMessage___read_tearOff", 613);
+    _static_1(A, "native_functions___pow$closure", "_pow", 122);
+    _static_1(A, "native_functions___regexpImpl$closure", "_regexpImpl", 624);
+    _static_1(A, "native_functions___containsImpl$closure", "_containsImpl", 625);
+    _instance_1_u(A.BroadcastStreamQueryStore.prototype, "get$_broadcast_stream_queries$_handleMessage", "_broadcast_stream_queries$_handleMessage$1", 8);
+    _instance_2_u(A._DriftWorker.prototype, "get$send", "send$2", 319);
+    _static_1(A, "protocol_WasmInitializationMessage___read_tearOff$closure", "WasmInitializationMessage___read_tearOff", 626);
     _static_1(A, "case_insensitive_map_CaseInsensitiveMap__canonicalizer$closure", "CaseInsensitiveMap__canonicalizer", 6);
-    _static_1(A, "crdt_types__RdfObjectComparison_forRdfObject$closure", "_RdfObjectComparison_forRdfObject", 614);
-    _static_1(A, "crdt_types___expandIdentifiedValues$closure", "_expandIdentifiedValues", 615);
-    _static_0(A, "hlc_service__defaultPhysicalTimestampFactory$closure", "defaultPhysicalTimestampFactory", 616);
+    _static_1(A, "crdt_types__RdfObjectComparison_forRdfObject$closure", "_RdfObjectComparison_forRdfObject", 627);
+    _static_1(A, "crdt_types___expandIdentifiedValues$closure", "_expandIdentifiedValues", 628);
+    _static_0(A, "hlc_service__defaultPhysicalTimestampFactory$closure", "defaultPhysicalTimestampFactory", 629);
     _instance_2_u(_ = A.IndexDiscovery.prototype, "get$_loadAndParseFullIndex", "_loadAndParseFullIndex$2", 179);
     _instance_2_u(_, "get$_loadAndParseTemplate", "_loadAndParseTemplate$2", 180);
     _static_1(A, "resource_locator_LocalResourceLocator_isLocalIri$closure", "LocalResourceLocator_isLocalIri", 16);
-    _static_1(A, "rdf_extensions__IriTermExtensions__iriToDebugString$closure", "IriTermExtensions__iriToDebugString", 10);
-    _instance_1_u(A.SyncFunction.prototype, "get$$call", "call$1", 312);
+    _static_1(A, "rdf_extensions__IriTermExtensions__iriToDebugString$closure", "IriTermExtensions__iriToDebugString", 11);
+    _instance_1_u(A.SyncFunction.prototype, "get$$call", "call$1", 320);
     _instance(A.$SyncIrisTable.prototype, "get$map", 1, 1, function() {
       return {tablePrefix: null};
-    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 350, 0, 0);
+    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 358, 0, 0);
     _instance(A.$SyncDocumentsTable.prototype, "get$map", 1, 1, function() {
       return {tablePrefix: null};
-    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 351, 0, 0);
+    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 359, 0, 0);
     _instance(A.$SyncPropertyChangesTable.prototype, "get$map", 1, 1, function() {
       return {tablePrefix: null};
-    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 352, 0, 0);
+    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 360, 0, 0);
     _instance(A.$SyncSettingsTable.prototype, "get$map", 1, 1, function() {
       return {tablePrefix: null};
-    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 353, 0, 0);
+    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 361, 0, 0);
     _instance(A.$IndexEntriesTable.prototype, "get$map", 1, 1, function() {
       return {tablePrefix: null};
-    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 354, 0, 0);
+    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 362, 0, 0);
     _instance(A.$GroupIndexSubscriptionsTable.prototype, "get$map", 1, 1, function() {
       return {tablePrefix: null};
-    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 355, 0, 0);
+    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 363, 0, 0);
     _instance(A.$IndexIriIdSetVersionsTable.prototype, "get$map", 1, 1, function() {
       return {tablePrefix: null};
-    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 356, 0, 0);
+    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 364, 0, 0);
     _instance(A.$RemoteSettingsTable.prototype, "get$map", 1, 1, function() {
       return {tablePrefix: null};
-    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 357, 0, 0);
+    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 365, 0, 0);
     _instance(A.$RemoteSyncStateTable.prototype, "get$map", 1, 1, function() {
       return {tablePrefix: null};
-    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 358, 0, 0);
+    }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 366, 0, 0);
+    _instance_0_u(A.GDriveRemoteStorage.prototype, "get$isAvailable", "isAvailable$0", 66);
     _instance_0_u(_ = A.GDriveBackend.prototype, "get$_authStateChanged", "_authStateChanged$0", 0);
-    _instance_0_u(_, "get$dispose", "dispose$0", 3);
+    _instance_0_u(_, "get$dispose", "dispose$0", 1);
+    _instance_1_u(A.WorkerGDriveConfigReceiver.prototype, "get$_handleMessage", "_handleMessage$1", 371);
     _static_1(A, "rdf_term_IriTerm___new_tearOff$closure", "IriTerm___new_tearOff", 34);
     _static_1(A, "rdf_term_IriTerm___validated_tearOff$closure", "IriTerm___validated_tearOff", 34);
     _instance_0_u(_ = A.SolidBackend.prototype, "get$_solid_backend$_authStateChanged", "_solid_backend$_authStateChanged$0", 0);
-    _instance_0_u(_, "get$dispose", "dispose$0", 3);
-    _static_1(A, "js_interop_utils___deepConvertJsObject$closure", "_deepConvertJsObject", 70);
+    _instance_0_u(_, "get$dispose", "dispose$0", 1);
+    _instance_0_u(A.SolidRemoteStorage.prototype, "get$isAvailable", "isAvailable$0", 66);
+    _static_1(A, "js_interop_utils___deepConvertJsObject$closure", "_deepConvertJsObject", 61);
+    _instance_1_u(_ = A.WorkerHandlerChannel.prototype, "get$_onMessage", "_onMessage$1", 4);
+    _instance_0_u(_, "get$_onFirstListen", "_onFirstListen$0", 0);
     _static_0(A, "logging_setup__setupWorkerLogging$closure", "setupWorkerLogging", 0);
-    _static(A, "brainpoolp160r1_ECCurve_brainpoolp160r1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp160r1__make"], 617, 0);
-    _static(A, "brainpoolp160t1_ECCurve_brainpoolp160t1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp160t1__make"], 618, 0);
-    _static(A, "brainpoolp192r1_ECCurve_brainpoolp192r1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp192r1__make"], 619, 0);
-    _static(A, "brainpoolp192t1_ECCurve_brainpoolp192t1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp192t1__make"], 620, 0);
-    _static(A, "brainpoolp224r1_ECCurve_brainpoolp224r1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp224r1__make"], 621, 0);
-    _static(A, "brainpoolp224t1_ECCurve_brainpoolp224t1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp224t1__make"], 622, 0);
-    _static(A, "brainpoolp256r1_ECCurve_brainpoolp256r1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp256r1__make"], 623, 0);
-    _static(A, "brainpoolp256t1_ECCurve_brainpoolp256t1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp256t1__make"], 624, 0);
-    _static(A, "brainpoolp320r1_ECCurve_brainpoolp320r1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp320r1__make"], 625, 0);
-    _static(A, "brainpoolp320t1_ECCurve_brainpoolp320t1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp320t1__make"], 626, 0);
-    _static(A, "brainpoolp384r1_ECCurve_brainpoolp384r1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp384r1__make"], 627, 0);
-    _static(A, "brainpoolp384t1_ECCurve_brainpoolp384t1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp384t1__make"], 628, 0);
-    _static(A, "brainpoolp512r1_ECCurve_brainpoolp512r1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp512r1__make"], 629, 0);
-    _static(A, "brainpoolp512t1_ECCurve_brainpoolp512t1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp512t1__make"], 630, 0);
-    _static(A, "gostr3410_2001_cryptopro_a_ECCurve_gostr3410_2001_cryptopro_a__make$closure", 6, null, ["call$6"], ["ECCurve_gostr3410_2001_cryptopro_a__make"], 631, 0);
-    _static(A, "gostr3410_2001_cryptopro_b_ECCurve_gostr3410_2001_cryptopro_b__make$closure", 6, null, ["call$6"], ["ECCurve_gostr3410_2001_cryptopro_b__make"], 632, 0);
-    _static(A, "gostr3410_2001_cryptopro_c_ECCurve_gostr3410_2001_cryptopro_c__make$closure", 6, null, ["call$6"], ["ECCurve_gostr3410_2001_cryptopro_c__make"], 633, 0);
-    _static(A, "gostr3410_2001_cryptopro_xcha_ECCurve_gostr3410_2001_cryptopro_xcha__make$closure", 6, null, ["call$6"], ["ECCurve_gostr3410_2001_cryptopro_xcha__make"], 634, 0);
-    _static(A, "gostr3410_2001_cryptopro_xchb_ECCurve_gostr3410_2001_cryptopro_xchb__make$closure", 6, null, ["call$6"], ["ECCurve_gostr3410_2001_cryptopro_xchb__make"], 635, 0);
-    _static(A, "prime192v1_ECCurve_prime192v1__make$closure", 6, null, ["call$6"], ["ECCurve_prime192v1__make"], 636, 0);
-    _static(A, "prime192v2_ECCurve_prime192v2__make$closure", 6, null, ["call$6"], ["ECCurve_prime192v2__make"], 637, 0);
-    _static(A, "prime192v3_ECCurve_prime192v3__make$closure", 6, null, ["call$6"], ["ECCurve_prime192v3__make"], 638, 0);
-    _static(A, "prime239v1_ECCurve_prime239v1__make$closure", 6, null, ["call$6"], ["ECCurve_prime239v1__make"], 639, 0);
-    _static(A, "prime239v2_ECCurve_prime239v2__make$closure", 6, null, ["call$6"], ["ECCurve_prime239v2__make"], 640, 0);
-    _static(A, "prime239v3_ECCurve_prime239v3__make$closure", 6, null, ["call$6"], ["ECCurve_prime239v3__make"], 641, 0);
-    _static(A, "prime256v1_ECCurve_prime256v1__make$closure", 6, null, ["call$6"], ["ECCurve_prime256v1__make"], 642, 0);
-    _static(A, "secp112r1_ECCurve_secp112r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp112r1__make"], 643, 0);
-    _static(A, "secp112r2_ECCurve_secp112r2__make$closure", 6, null, ["call$6"], ["ECCurve_secp112r2__make"], 644, 0);
-    _static(A, "secp128r1_ECCurve_secp128r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp128r1__make"], 645, 0);
-    _static(A, "secp128r2_ECCurve_secp128r2__make$closure", 6, null, ["call$6"], ["ECCurve_secp128r2__make"], 646, 0);
-    _static(A, "secp160k1_ECCurve_secp160k1__make$closure", 6, null, ["call$6"], ["ECCurve_secp160k1__make"], 647, 0);
-    _static(A, "secp160r1_ECCurve_secp160r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp160r1__make"], 648, 0);
-    _static(A, "secp160r2_ECCurve_secp160r2__make$closure", 6, null, ["call$6"], ["ECCurve_secp160r2__make"], 649, 0);
-    _static(A, "secp192k1_ECCurve_secp192k1__make$closure", 6, null, ["call$6"], ["ECCurve_secp192k1__make"], 650, 0);
-    _static(A, "secp192r1_ECCurve_secp192r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp192r1__make"], 651, 0);
-    _static(A, "secp224k1_ECCurve_secp224k1__make$closure", 6, null, ["call$6"], ["ECCurve_secp224k1__make"], 652, 0);
-    _static(A, "secp224r1_ECCurve_secp224r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp224r1__make"], 653, 0);
-    _static(A, "secp256k1_ECCurve_secp256k1__make$closure", 6, null, ["call$6"], ["ECCurve_secp256k1__make"], 654, 0);
-    _static(A, "secp256r1_ECCurve_secp256r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp256r1__make"], 655, 0);
-    _static(A, "secp384r1_ECCurve_secp384r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp384r1__make"], 656, 0);
-    _static(A, "secp521r1_ECCurve_secp521r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp521r1__make"], 657, 0);
-    _static(A, "ecc_fp___wNafMultiplier$closure", 3, null, ["call$3"], ["_wNafMultiplier"], 658, 0);
-    _instance_1_u(_ = A._SwitchMapStreamSink.prototype, "get$onData", "onData$1", 5);
+    _static(A, "brainpoolp160r1_ECCurve_brainpoolp160r1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp160r1__make"], 630, 0);
+    _static(A, "brainpoolp160t1_ECCurve_brainpoolp160t1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp160t1__make"], 631, 0);
+    _static(A, "brainpoolp192r1_ECCurve_brainpoolp192r1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp192r1__make"], 632, 0);
+    _static(A, "brainpoolp192t1_ECCurve_brainpoolp192t1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp192t1__make"], 633, 0);
+    _static(A, "brainpoolp224r1_ECCurve_brainpoolp224r1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp224r1__make"], 634, 0);
+    _static(A, "brainpoolp224t1_ECCurve_brainpoolp224t1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp224t1__make"], 635, 0);
+    _static(A, "brainpoolp256r1_ECCurve_brainpoolp256r1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp256r1__make"], 636, 0);
+    _static(A, "brainpoolp256t1_ECCurve_brainpoolp256t1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp256t1__make"], 637, 0);
+    _static(A, "brainpoolp320r1_ECCurve_brainpoolp320r1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp320r1__make"], 638, 0);
+    _static(A, "brainpoolp320t1_ECCurve_brainpoolp320t1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp320t1__make"], 639, 0);
+    _static(A, "brainpoolp384r1_ECCurve_brainpoolp384r1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp384r1__make"], 640, 0);
+    _static(A, "brainpoolp384t1_ECCurve_brainpoolp384t1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp384t1__make"], 641, 0);
+    _static(A, "brainpoolp512r1_ECCurve_brainpoolp512r1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp512r1__make"], 642, 0);
+    _static(A, "brainpoolp512t1_ECCurve_brainpoolp512t1__make$closure", 6, null, ["call$6"], ["ECCurve_brainpoolp512t1__make"], 643, 0);
+    _static(A, "gostr3410_2001_cryptopro_a_ECCurve_gostr3410_2001_cryptopro_a__make$closure", 6, null, ["call$6"], ["ECCurve_gostr3410_2001_cryptopro_a__make"], 644, 0);
+    _static(A, "gostr3410_2001_cryptopro_b_ECCurve_gostr3410_2001_cryptopro_b__make$closure", 6, null, ["call$6"], ["ECCurve_gostr3410_2001_cryptopro_b__make"], 645, 0);
+    _static(A, "gostr3410_2001_cryptopro_c_ECCurve_gostr3410_2001_cryptopro_c__make$closure", 6, null, ["call$6"], ["ECCurve_gostr3410_2001_cryptopro_c__make"], 646, 0);
+    _static(A, "gostr3410_2001_cryptopro_xcha_ECCurve_gostr3410_2001_cryptopro_xcha__make$closure", 6, null, ["call$6"], ["ECCurve_gostr3410_2001_cryptopro_xcha__make"], 647, 0);
+    _static(A, "gostr3410_2001_cryptopro_xchb_ECCurve_gostr3410_2001_cryptopro_xchb__make$closure", 6, null, ["call$6"], ["ECCurve_gostr3410_2001_cryptopro_xchb__make"], 648, 0);
+    _static(A, "prime192v1_ECCurve_prime192v1__make$closure", 6, null, ["call$6"], ["ECCurve_prime192v1__make"], 649, 0);
+    _static(A, "prime192v2_ECCurve_prime192v2__make$closure", 6, null, ["call$6"], ["ECCurve_prime192v2__make"], 650, 0);
+    _static(A, "prime192v3_ECCurve_prime192v3__make$closure", 6, null, ["call$6"], ["ECCurve_prime192v3__make"], 651, 0);
+    _static(A, "prime239v1_ECCurve_prime239v1__make$closure", 6, null, ["call$6"], ["ECCurve_prime239v1__make"], 652, 0);
+    _static(A, "prime239v2_ECCurve_prime239v2__make$closure", 6, null, ["call$6"], ["ECCurve_prime239v2__make"], 653, 0);
+    _static(A, "prime239v3_ECCurve_prime239v3__make$closure", 6, null, ["call$6"], ["ECCurve_prime239v3__make"], 654, 0);
+    _static(A, "prime256v1_ECCurve_prime256v1__make$closure", 6, null, ["call$6"], ["ECCurve_prime256v1__make"], 655, 0);
+    _static(A, "secp112r1_ECCurve_secp112r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp112r1__make"], 656, 0);
+    _static(A, "secp112r2_ECCurve_secp112r2__make$closure", 6, null, ["call$6"], ["ECCurve_secp112r2__make"], 657, 0);
+    _static(A, "secp128r1_ECCurve_secp128r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp128r1__make"], 658, 0);
+    _static(A, "secp128r2_ECCurve_secp128r2__make$closure", 6, null, ["call$6"], ["ECCurve_secp128r2__make"], 659, 0);
+    _static(A, "secp160k1_ECCurve_secp160k1__make$closure", 6, null, ["call$6"], ["ECCurve_secp160k1__make"], 660, 0);
+    _static(A, "secp160r1_ECCurve_secp160r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp160r1__make"], 661, 0);
+    _static(A, "secp160r2_ECCurve_secp160r2__make$closure", 6, null, ["call$6"], ["ECCurve_secp160r2__make"], 662, 0);
+    _static(A, "secp192k1_ECCurve_secp192k1__make$closure", 6, null, ["call$6"], ["ECCurve_secp192k1__make"], 663, 0);
+    _static(A, "secp192r1_ECCurve_secp192r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp192r1__make"], 664, 0);
+    _static(A, "secp224k1_ECCurve_secp224k1__make$closure", 6, null, ["call$6"], ["ECCurve_secp224k1__make"], 665, 0);
+    _static(A, "secp224r1_ECCurve_secp224r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp224r1__make"], 666, 0);
+    _static(A, "secp256k1_ECCurve_secp256k1__make$closure", 6, null, ["call$6"], ["ECCurve_secp256k1__make"], 667, 0);
+    _static(A, "secp256r1_ECCurve_secp256r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp256r1__make"], 668, 0);
+    _static(A, "secp384r1_ECCurve_secp384r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp384r1__make"], 669, 0);
+    _static(A, "secp521r1_ECCurve_secp521r1__make$closure", 6, null, ["call$6"], ["ECCurve_secp521r1__make"], 670, 0);
+    _static(A, "ecc_fp___wNafMultiplier$closure", 3, null, ["call$3"], ["_wNafMultiplier"], 671, 0);
+    _instance_1_u(_ = A._SwitchMapStreamSink.prototype, "get$onData", "onData$1", 4);
     _instance_2_u(_, "get$onError", "onError$2", 12);
     _instance_0_u(_, "get$onDone", "onDone$0", 0);
-    _instance_1_i(_ = A._EnhancedEventSink.prototype, "get$add", "add$1", 5);
+    _instance_1_i(_ = A._EnhancedEventSink.prototype, "get$add", "add$1", 4);
     _instance(_, "get$addError", 0, 1, function() {
       return [null];
-    }, ["call$2", "call$1"], ["addError$2", "addError$1"], 31, 0, 0);
+    }, ["call$2", "call$1"], ["addError$2", "addError$1"], 24, 0, 0);
     _instance_0_u(A.WasmVfs.prototype, "get$close", "close$0", 0);
-    _static_1(A, "sync_channel_MessageSerializer_readEmpty$closure", "MessageSerializer_readEmpty", 659);
-    _static_1(A, "sync_channel_MessageSerializer_readFlags$closure", "MessageSerializer_readFlags", 660);
-    _static_1(A, "sync_channel_MessageSerializer_readNameAndFlags$closure", "MessageSerializer_readNameAndFlags", 661);
+    _static_1(A, "sync_channel_MessageSerializer_readEmpty$closure", "MessageSerializer_readEmpty", 672);
+    _static_1(A, "sync_channel_MessageSerializer_readFlags$closure", "MessageSerializer_readFlags", 673);
+    _static_1(A, "sync_channel_MessageSerializer_readNameAndFlags$closure", "MessageSerializer_readNameAndFlags", 674);
     _instance_0_u(A.AsynchronousIndexedDbFileSystem.prototype, "get$close", "close$0", 0);
-    _instance_0_u(A.IndexedDbFileSystem.prototype, "get$close", "close$0", 3);
+    _instance_0_u(A.IndexedDbFileSystem.prototype, "get$close", "close$0", 1);
     _instance_0_u(A._FunctionWorkItem.prototype, "get$run", "run$0", 0);
-    _instance_0_u(A._DeleteFileWorkItem.prototype, "get$run", "run$0", 3);
-    _instance_0_u(A._CreateFileWorkItem.prototype, "get$run", "run$0", 3);
-    _instance_0_u(A._WriteFileWorkItem.prototype, "get$run", "run$0", 3);
+    _instance_0_u(A._DeleteFileWorkItem.prototype, "get$run", "run$0", 1);
+    _instance_0_u(A._CreateFileWorkItem.prototype, "get$run", "run$0", 1);
+    _instance_0_u(A._WriteFileWorkItem.prototype, "get$run", "run$0", 1);
     _instance_0_u(A.SimpleOpfsFileSystem.prototype, "get$close", "close$0", 0);
-    _static_1(A, "frame_Frame___parseVM_tearOff$closure", "Frame___parseVM_tearOff", 39);
-    _static_1(A, "frame_Frame___parseV8_tearOff$closure", "Frame___parseV8_tearOff", 39);
-    _static_1(A, "frame_Frame___parseFirefox_tearOff$closure", "Frame___parseFirefox_tearOff", 39);
-    _static_1(A, "frame_Frame___parseFriendly_tearOff$closure", "Frame___parseFriendly_tearOff", 39);
-    _static_1(A, "trace_Trace___parseVM_tearOff$closure", "Trace___parseVM_tearOff", 127);
-    _static_1(A, "trace_Trace___parseFriendly_tearOff$closure", "Trace___parseFriendly_tearOff", 127);
-    _instance_0_u(_ = A._EventStreamSubscription.prototype, "get$cancel", "cancel$0", 3);
-    _instance(_, "get$pause", 0, 0, null, ["call$1", "call$0"], ["pause$1", "pause$0"], 114, 0, 0);
+    _static_1(A, "frame_Frame___parseVM_tearOff$closure", "Frame___parseVM_tearOff", 44);
+    _static_1(A, "frame_Frame___parseV8_tearOff$closure", "Frame___parseV8_tearOff", 44);
+    _static_1(A, "frame_Frame___parseFirefox_tearOff$closure", "Frame___parseFirefox_tearOff", 44);
+    _static_1(A, "frame_Frame___parseFriendly_tearOff$closure", "Frame___parseFriendly_tearOff", 44);
+    _static_1(A, "trace_Trace___parseVM_tearOff$closure", "Trace___parseVM_tearOff", 115);
+    _static_1(A, "trace_Trace___parseFriendly_tearOff$closure", "Trace___parseFriendly_tearOff", 115);
+    _instance_0_u(_ = A._EventStreamSubscription.prototype, "get$cancel", "cancel$0", 1);
+    _instance(_, "get$pause", 0, 0, null, ["call$1", "call$0"], ["pause$1", "pause$0"], 58, 0, 0);
     _instance_0_u(_, "get$resume", "resume$0", 0);
     _static(A, "utils__compareComparable$closure", 2, null, ["call$1$2", "call$2"], ["compareComparable", function(a, b) {
       return A.compareComparable(a, b, type$.Comparable_dynamic);
-    }], 664, 0);
-    _static_1(A, "regex_transform_validation_RegexTransformValidator_validate$closure", "RegexTransformValidator_validate", 665);
-    _static_1(A, "rdf_extensions0__IriTermExtensions__iriToDebugString$closure", "IriTermExtensions__iriToDebugString0", 10);
-    _static_0(A, "worker__setupWorkerEngine$closure", "setupWorkerEngine", 444);
-    _static_1(A, "future___ignore$closure", "_ignore", 5);
+    }], 677, 0);
+    _static_1(A, "regex_transform_validation_RegexTransformValidator_validate$closure", "RegexTransformValidator_validate", 678);
+    _static_1(A, "rdf_extensions0__IriTermExtensions__iriToDebugString$closure", "IriTermExtensions__iriToDebugString0", 11);
+    _static_0(A, "worker__setupWorkerEngine$closure", "setupWorkerEngine", 452);
+    _static_1(A, "future___ignore$closure", "_ignore", 4);
   })();
   (function inheritance() {
     var _mixin = hunkHelpers.mixin,
       _inheritMany = hunkHelpers.inheritMany,
       _inherit = hunkHelpers.inherit;
     _inheritMany(null, [A.Object, A.AbortableStreamedRequest]);
-    _inheritMany(A.Object, [A.JS_CONST, J.Interceptor, A.SafeToStringHook, J.ArrayIterator, A._CopyingBytesBuilder, A.Iterable, A.CastIterator, A.Closure, A.MapBase, A.Error, A.ListBase, A.SentinelValue, A.ListIterator, A.MappedIterator, A.WhereIterator, A.ExpandIterator, A.TakeIterator, A.SkipIterator, A.SkipWhileIterator, A.EmptyIterator, A.WhereTypeIterator, A.NonNullsIterator, A.IndexedIterator, A.FixedLengthListMixin, A.UnmodifiableListMixin, A.Symbol, A._Record, A.MapView, A.ConstantMap, A._KeysOrValuesOrElementsIterator, A.SetBase, A.TypeErrorDecoder, A.NullThrownFromJavaScriptException, A.ExceptionAndStackTrace, A._StackTrace, A.LinkedHashMapCell, A.LinkedHashMapKeyIterator, A.LinkedHashMapValueIterator, A.LinkedHashMapEntryIterator, A.JSSyntaxRegExp, A._MatchImplementation, A._AllMatchesIterator, A.StringMatch, A._StringAllMatchesIterator, A._Cell, A._InitializedCell, A._UnmodifiableNativeByteBufferView, A.Rti, A._FunctionParameters, A._Type, A._TimerImpl, A._AsyncAwaitCompleter, A._AsyncStarStreamController, A._IterationMarker, A._SyncStarIterator, A.AsyncError, A.Stream, A._BufferingStreamSubscription, A._BroadcastStreamController, A.TimeoutException, A._Completer, A._FutureListener, A._Future, A._AsyncCallbackEntry, A.StreamTransformerBase, A._StreamController, A._SyncStreamControllerDispatch, A._AsyncStreamControllerDispatch, A._StreamSinkWrapper, A._AddStreamState, A._DelayedEvent, A._DelayedDone, A._PendingEvents, A._DoneStreamSubscription, A._StreamIterator, A._EventSinkWrapper, A._ZoneFunction, A._ZoneSpecification, A._ZoneDelegate, A._Zone, A._HashMapKeyIterator, A._HashSetIterator, A._LinkedHashSetCell, A._LinkedHashSetIterator, A._LinkedListIterator, A.LinkedListEntry, A._MapBaseValueIterator, A._UnmodifiableMapMixin, A._ListQueueIterator, A._UnmodifiableSetMixin, A.StringConversionSink, A.Codec, A.Converter, A.ByteConversionSink, A._Base64Encoder, A._Base64Decoder, A.ChunkedConversionSink, A._ConverterStreamEventSink, A._JsonStringifier, A._JsonPrettyPrintMixin, A._ClosableStringSink, A._StringConversionSinkAsStringSinkAdapter, A._Utf8Encoder, A._Utf8Decoder, A._BigIntImpl, A._BigIntClassic, A._FinalizationRegistryWrapper, A.DateTime, A.Duration, A._Enum, A.OutOfMemoryError, A.StackOverflowError, A._Exception, A.FormatException, A.IntegerDivisionByZeroException, A.MapEntry, A.Null, A._StringStackTrace, A.StringBuffer, A._Uri, A.UriData, A._SimpleUri, A.Expando, A.ServiceExtensionResponse, A.NullRejectionException, A._JSRandom, A._JSSecureRandom, A.Endian, A.ApiRequester, A.MultipartMediaUploader, A.BaseRequest, A.Media, A.UploadOptions, A.DownloadOptions, A.ByteRange, A.ApiRequestError, A.ApiRequestErrorDetail, A.DelegatingStreamSubscription, A.FutureGroup, A.ErrorResult, A.ValueResult, A.StreamQueue, A._NextRequest, A._CancelRequest, A.StreamSplitter, A.CanonicalizedMap, A.DefaultEquality, A.ListEquality, A._UnorderedEquality, A._MapEntry, A.MapEquality, A._QueueList_Object_ListMixin, A.NonGrowableListMixin, A.UnmodifiableMapMixin, A.Digest, A.DigestSink, A.HashSink, A.Expression, A.HasResultSet, A.DriftClient, A.QueryExecutor, A.StreamQueryStore, A.DriftCommunication, A._PendingRequest, A.ConnectionClosedException, A.DriftRemoteException, A.DriftProtocol, A.Message, A.PrimitiveResponsePayload, A.ExecuteQuery, A.RequestCancellation, A.ExecuteBatchedStatement, A.RunNestedExecutorControl, A.EnsureOpen, A.ServerInfo, A.RunBeforeOpen, A.NotifyTablesUpdated, A.SelectResult, A.WebProtocol, A.DriftDatabaseOptions, A.Batch, A.DatabaseConnection, A.DatabaseConnectionUser, A.DriftRuntimeOptions, A.StreamQueryUpdateRules, A.TableUpdate, A.TableUpdateQuery, A.CancellationToken, A.CancellationException, A.DataClass, A.UpdateCompanion, A.Value, A.ValueSerializer, A.VerificationMeta, A.VerificationResult, A.VerificationContext, A.TrackedDatabase, A.DriftServiceExtension, A.InvalidDataException, A.DriftWrappedException, A.CouldNotRollBackException, A.BatchedStatements, A.ArgumentsForBatchedStatement, A.QueryDelegate, A.TransactionDelegate, A.DbVersionDelegate, A.QueryResult, A.QueryInterceptor, A.QueryStreamFetcher, A.StreamKey, A.QueryStream, A._QueryStreamListener, A.Component, A.GenerationContext, A.MigrationStrategy, A.Migrator, A.OpeningDetails, A.TableInfo, A.InsertStatement, A.UpsertClause, A.Selectable, A.SingleTableQueryMixin, A.LimitContainerMixin, A._CustomSelectStatement_Object_Selectable, A.QueryRow, A.TypedResult, A._ResultStructure, A.SqlTypes, A.DriftAny, A.PreparedStatementsCache, A.Lock, A.WasmDatabaseOpener, A._DriftWorker, A._ProbeResult, A.WasmInitializationMessage, A.DriftServerController, A.WasmDatabaseResult, A.DriveApi, A.FilesResource, A.ContentRestriction, A.DownloadRestriction, A.DownloadRestrictionsMetadata, A.FileCapabilities, A.FileContentHintsThumbnail, A.FileContentHints, A.FileImageMediaMetadataLocation, A.FileImageMediaMetadata, A.FileLabelInfo, A.FileLinkShareMetadata, A.FileShortcutDetails, A.FileVideoMediaMetadata, A.File, A.FileList, A.Label, A.LabelField, A.PermissionPermissionDetails, A.PermissionTeamDrivePermissionDetails, A.Permission, A.User, A.BaseClient, A.ClientException, A.BaseResponse, A.MediaType, A.ResourceConfigBase, A.ConfigBase, A.ConfigBaseValidator, A.IndexItemConfigBase, A.CrdtIndexConfigBase, A.DocumentIriTemplate, A.SyncEngineConfigValidator, A.ValidationResult, A.ValidationIssue, A.SyncConfigValidationException, A.MetadataStatement, A.MetadataStatementKey, A.MergeResults, A.GRegister, A.LwwRegister, A.Immutable, A.OrSet, A.CrdtMergeContext, A.RemoteCrdtMergeContext, A.CrdtTypeRegistry, A.CrdtDocumentManager, A.HlcService, A.GroupIndexGraphSubscriptionException, A.GroupIndexGraphSubscriptionManager, A.GroupKeyGenerator, A._PropertyExtractor, A.ItemFetchPolicy, A.RegexTransform, A.GroupingProperty, A._ParsedIndexCacheEntry, A._IndexMetadata, A.IndexDiscovery, A.IndexManager, A.ParsedFullIndex, A.ParsedGroupIndexTemplate, A.IndexParser, A.IndexPropertyResolver, A.IndexRdfGenerator, A.RdfGroupExtractor, A.MissingIndexDocument, A.MissingGroupIndex, A.ShardDeterminationResult, A.ShardDeterminer, A.ShardManager, A.ShardingConfig, A.InstallationService, A.LocalDocumentMerger, A.CrdtMetadataResult, A.FrameworkIriGenerator, A._GraphWithLabels, A.IdentifiedBlankNodeParent, A.IdentifiedBlankNode, A.IdentifiedBlankNodes, A.UnidentifiedBlankNodeException, A.UnidentifiedBlankNodeWithContextException, A.IdentifiedBlankNodeBuilder, A.IdentifiedRdfSubject, A.NoOpIriTranslator, A.BaseIriTranslator, A.ResourceLocator, A.PredicateRule, A.DocumentMapping, A.PredicateMapping, A.ClassMapping, A.PredicateMergeRule, A.ClassMergeRules, A.MergeContract, A.DocumentMappingDependencyExtractor, A.MergeContractLoader, A.MetadataGenerator, A.IdTerm, A.HttpFetcher, A.StandardRdfGraphFetcher, A.RecursiveRdfLoader, A.UnsupportedIriException, A.ResourceIdentifier, A.LocalResourceLocator, A.StandardSyncEngine, A.ConcurrentUpdateException, A.RemoteId, A.RemoteDownloadResult, A.RemoteUploadResult, A.IndexEntryWithIri, A.IndexEntriesPage, A.StoredDocument, A.SaveDocumentResult, A.DocumentsResult, A.DocumentMetadata, A.PropertyChange, A.OrganizedStatements, A.MergeObject, A.MergeSubject, A.OrganizedBlankNodeMappings, A.RdfObjectKey, A.OrganizedGraph, A.MergeResult, A.RemoteDocumentMerger, A.IndexSyncSpec, A.ShardSyncSpec, A._DocumentQueueEntry, A.RemoteSyncOrchestrator, A.ShardDocumentGenerator, A.StandardSyncManager, A.SyncFunction, A.AutoSyncConfig, A.SyncState, A.EngineParams, A.LRUCache, A.RdfExpectations, A.LocordaDriftWebOptions, A.LocordaDriftNativeOptions, A.DriftStorage, A.IriBatchLoader, A.DriftIndexEntry, A.SubscribedGroupIndexData, A.IndexEntriesPage0, A.DocumentWithIri, A._$SyncDocumentDaoMixin, A._$SyncPropertyChangeDaoMixin, A._$IndexDaoMixin, A._$RemoteSyncStateDaoMixin, A.StorageWorkerHandler, A.GDriveClient, A.GDriveClientException, A.GDriveSyncStorage, A.GDriveRemoteStorage, A.GDriveBackend, A.GDriveConfig, A.GDriveTypeIndexManager, A._TypeIndexFile, A.TypeMapping, A.TypeIndexMappings, A.GDriveAuthMessage, A.GDriveWorkerHandler, A._WorkerAuthNotifier, A.WorkerGDriveAuthProvider, A.RdfCore, A.Quad, A.RdfDataset, A.RdfNamedGraph, A.RdfException, A.SourceLocation, A.RdfGraph, A.RdfTerm, A.Triple, A.IriCompactionSettings, A.CompactIri, A.IriCompactionResult, A.IriCompaction, A.RdfGraphDecoderOptions, A.JsonLdParser, A.RdfGraphEncoderOptions, A._BlankNodeLabelFactoryImpl, A._NoOpBlankNodeCounter, A.CodecNotSupportedException, A.BaseRdfCodecRegistry, A.RdfCodecRegistry, A.IriRelativizationOptions, A.TurtleParser, A.Token, A.TurtleTokenizer, A.RdfNamespaceMappings, A.SolidWorkerHandler, A.UpdateAuthMessage0, A._WorkerAuthNotifier0, A.SolidAuthReceiver, A.SolidBackend, A.SolidClientException, A.NotFoundException, A.SolidClient, A.SolidRemoteStorage, A.SolidSyncStorage, A.SolidProfileParser, A.WorkerMessage, A.WorkerParams, A.WebWorkerSender, A.WorkerChannelMessage, A.WorkerHandlerChannel, A.WorkerChannel, A.WorkerHandlerContextImpl, A.WorkerContext, A.Level, A.LogRecord, A.Logger, A.Context, A._PathDirection, A._PathRelation, A.Style, A.ParsedPath, A.PathException, A.BaseBlockCipher, A.AsymmetricKeyParameter, A.CipherParameters, A.ParametersWithIV, A.RegistryFactoryException, A.ASN1Object, A.ASN1Parser, A.UnsupportedASN1TagException, A.RSAAsymmetricKey, A.RSASignature, A.BaseAsymmetricBlockCipher, A.DesBase, A.BaseAEADBlockCipher, A.BaseDigest, A.ECSignature, A.ECDomainParametersImpl, A.ECFieldElementBase, A.ECPointBase, A.ECCurveBase, A._WNafPreCompInfo, A.BaseKeyDerivator, A.PKCS12ParametersGenerator, A.PKCS5S1ParameterGenerator, A.ECKeyGenerator, A.RSAKeyGenerator, A.BaseMac, A.PaddedBlockCipherImpl, A.BasePadding, A.AutoSeedBlockCtrRandom, A.SecureRandomBase, A.FortunaRandom, A.ECDSASigner, A._RFC6979KCalculator, A._RandomKCalculator, A.PSSSigner, A.RSASigner, A.BaseAEADCipher, A.BaseStreamCipher, A.Platform, A.PlatformException, A._JsBuiltInEntropySource, A._JsNodeEntropySource, A.FactoryConfig, A._RegistryImpl, A.Register64, A.Register64List, A.ForwardingSink, A._EnhancedEventSink, A.JWTAlgorithm, A.JWT, A.JWTKey, A.DpopCredentials, A.SourceFile, A.SourceLocationMixin, A.SourceSpanMixin, A.Highlighter, A._Highlight, A._Line, A.SourceLocation0, A.SourceSpanException, A.SqliteException, A.AllowedArgumentCount, A.RawSqliteBindings, A.SqliteResult, A.RawSqliteDatabase, A.RawStatementCompiler, A.RawSqliteStatement, A.RawSqliteContext, A.RawSqliteValue, A.FinalizablePart, A.DatabaseImplementation, A.Sqlite3Implementation, A.CommonPreparedStatement, A.VirtualFileSystem, A.BaseVfsFile, A.Cursor, A._Row_Object_UnmodifiableMapMixin, A._ResultIterator, A.IndexedParameters, A.VfsException, A.Sqlite3Filename, A._CursorReader, A.RequestResponseSynchronizer, A.MessageSerializer, A.Message0, A.AsynchronousIndexedDbFileSystem, A._FileWriteRequest, A._OffsetAndBuffer, A._IndexedDbFile, A.WasmBindings, A._InjectedValues, A.DartCallbacks, A.RegisteredFunctionSet, A.Chain, A.Frame, A.LazyTrace, A.Trace, A.UnparsedFrame, A.StreamChannelMixin, A._GuaranteeSink, A.StreamChannelController, A.StringScanner, A.RNG, A.Uuid, A.EventStreamProvider, A._EventStreamSubscription]);
+    _inheritMany(A.Object, [A.JS_CONST, J.Interceptor, A.SafeToStringHook, J.ArrayIterator, A.Stream, A.CastStreamSubscription, A._CopyingBytesBuilder, A.Iterable, A.CastIterator, A.Closure, A.MapBase, A.Error, A.ListBase, A.SentinelValue, A.ListIterator, A.MappedIterator, A.WhereIterator, A.ExpandIterator, A.TakeIterator, A.SkipIterator, A.SkipWhileIterator, A.EmptyIterator, A.WhereTypeIterator, A.NonNullsIterator, A.IndexedIterator, A.FixedLengthListMixin, A.UnmodifiableListMixin, A.Symbol, A._Record, A.MapView, A.ConstantMap, A._KeysOrValuesOrElementsIterator, A.SetBase, A.TypeErrorDecoder, A.NullThrownFromJavaScriptException, A.ExceptionAndStackTrace, A._StackTrace, A.LinkedHashMapCell, A.LinkedHashMapKeyIterator, A.LinkedHashMapValueIterator, A.LinkedHashMapEntryIterator, A.JSSyntaxRegExp, A._MatchImplementation, A._AllMatchesIterator, A.StringMatch, A._StringAllMatchesIterator, A._Cell, A._InitializedCell, A._UnmodifiableNativeByteBufferView, A.Rti, A._FunctionParameters, A._Type, A._TimerImpl, A._AsyncAwaitCompleter, A._AsyncStarStreamController, A._IterationMarker, A._SyncStarIterator, A.AsyncError, A._BufferingStreamSubscription, A._BroadcastStreamController, A.TimeoutException, A._Completer, A._FutureListener, A._Future, A._AsyncCallbackEntry, A.StreamTransformerBase, A._StreamController, A._SyncStreamControllerDispatch, A._AsyncStreamControllerDispatch, A._StreamSinkWrapper, A._AddStreamState, A._DelayedEvent, A._DelayedDone, A._PendingEvents, A._DoneStreamSubscription, A._StreamIterator, A._EventSinkWrapper, A._ZoneFunction, A._ZoneSpecification, A._ZoneDelegate, A._Zone, A._HashMapKeyIterator, A._HashSetIterator, A._LinkedHashSetCell, A._LinkedHashSetIterator, A._LinkedListIterator, A.LinkedListEntry, A._MapBaseValueIterator, A._UnmodifiableMapMixin, A._ListQueueIterator, A._UnmodifiableSetMixin, A.StringConversionSink, A.Codec, A.Converter, A.ByteConversionSink, A._Base64Encoder, A._Base64Decoder, A.ChunkedConversionSink, A._ConverterStreamEventSink, A._JsonStringifier, A._JsonPrettyPrintMixin, A._ClosableStringSink, A._StringConversionSinkAsStringSinkAdapter, A._Utf8Encoder, A._Utf8Decoder, A._BigIntImpl, A._BigIntClassic, A._FinalizationRegistryWrapper, A.DateTime, A.Duration, A._Enum, A.OutOfMemoryError, A.StackOverflowError, A._Exception, A.FormatException, A.IntegerDivisionByZeroException, A.MapEntry, A.Null, A._StringStackTrace, A.StringBuffer, A._Uri, A.UriData, A._SimpleUri, A.Expando, A.ServiceExtensionResponse, A.NullRejectionException, A._JSRandom, A._JSSecureRandom, A.Endian, A.ApiRequester, A.MultipartMediaUploader, A.BaseRequest, A.Media, A.UploadOptions, A.DownloadOptions, A.ByteRange, A.ApiRequestError, A.ApiRequestErrorDetail, A.DelegatingStreamSubscription, A.FutureGroup, A.ErrorResult, A.ValueResult, A.StreamQueue, A._NextRequest, A._CancelRequest, A.StreamSplitter, A.CanonicalizedMap, A.DefaultEquality, A.ListEquality, A._UnorderedEquality, A._MapEntry, A.MapEquality, A._QueueList_Object_ListMixin, A.NonGrowableListMixin, A.UnmodifiableMapMixin, A.Digest, A.DigestSink, A.HashSink, A.Expression, A.HasResultSet, A.DriftClient, A.QueryExecutor, A.StreamQueryStore, A.DriftCommunication, A._PendingRequest, A.ConnectionClosedException, A.DriftRemoteException, A.DriftProtocol, A.Message, A.PrimitiveResponsePayload, A.ExecuteQuery, A.RequestCancellation, A.ExecuteBatchedStatement, A.RunNestedExecutorControl, A.EnsureOpen, A.ServerInfo, A.RunBeforeOpen, A.NotifyTablesUpdated, A.SelectResult, A.WebProtocol, A.DriftDatabaseOptions, A.Batch, A.DatabaseConnection, A.DatabaseConnectionUser, A.DriftRuntimeOptions, A.StreamQueryUpdateRules, A.TableUpdate, A.TableUpdateQuery, A.CancellationToken, A.CancellationException, A.DataClass, A.UpdateCompanion, A.Value, A.ValueSerializer, A.VerificationMeta, A.VerificationResult, A.VerificationContext, A.TrackedDatabase, A.DriftServiceExtension, A.InvalidDataException, A.DriftWrappedException, A.CouldNotRollBackException, A.BatchedStatements, A.ArgumentsForBatchedStatement, A.QueryDelegate, A.TransactionDelegate, A.DbVersionDelegate, A.QueryResult, A.QueryInterceptor, A.QueryStreamFetcher, A.StreamKey, A.QueryStream, A._QueryStreamListener, A.Component, A.GenerationContext, A.MigrationStrategy, A.Migrator, A.OpeningDetails, A.TableInfo, A.InsertStatement, A.UpsertClause, A.Selectable, A.SingleTableQueryMixin, A.LimitContainerMixin, A._CustomSelectStatement_Object_Selectable, A.QueryRow, A.TypedResult, A._ResultStructure, A.SqlTypes, A.DriftAny, A.PreparedStatementsCache, A.Lock, A.WasmDatabaseOpener, A._DriftWorker, A._ProbeResult, A.WasmInitializationMessage, A.DriftServerController, A.WasmDatabaseResult, A.DriveApi, A.FilesResource, A.ContentRestriction, A.DownloadRestriction, A.DownloadRestrictionsMetadata, A.FileCapabilities, A.FileContentHintsThumbnail, A.FileContentHints, A.FileImageMediaMetadataLocation, A.FileImageMediaMetadata, A.FileLabelInfo, A.FileLinkShareMetadata, A.FileShortcutDetails, A.FileVideoMediaMetadata, A.File, A.FileList, A.Label, A.LabelField, A.PermissionPermissionDetails, A.PermissionTeamDrivePermissionDetails, A.Permission, A.User, A.BaseClient, A.ClientException, A.BaseResponse, A.MediaType, A.ResourceConfigBase, A.ConfigBase, A.ConfigBaseValidator, A.IndexItemConfigBase, A.CrdtIndexConfigBase, A.DocumentIriTemplate, A.SyncEngineConfigValidator, A.ValidationResult, A.ValidationIssue, A.SyncConfigValidationException, A.MetadataStatement, A.MetadataStatementKey, A.MergeResults, A.GRegister, A.LwwRegister, A.Immutable, A.OrSet, A.CrdtMergeContext, A.RemoteCrdtMergeContext, A.CrdtTypeRegistry, A.CrdtDocumentManager, A.HlcService, A.GroupIndexGraphSubscriptionException, A.GroupIndexGraphSubscriptionManager, A.GroupKeyGenerator, A._PropertyExtractor, A.ItemFetchPolicy, A.RegexTransform, A.GroupingProperty, A._ParsedIndexCacheEntry, A._IndexMetadata, A.IndexDiscovery, A.IndexManager, A.ParsedFullIndex, A.ParsedGroupIndexTemplate, A.IndexParser, A.IndexPropertyResolver, A.IndexRdfGenerator, A.RdfGroupExtractor, A.MissingIndexDocument, A.MissingGroupIndex, A.ShardDeterminationResult, A.ShardDeterminer, A.ShardManager, A.ShardingConfig, A.InstallationService, A.LocalDocumentMerger, A.CrdtMetadataResult, A.FrameworkIriGenerator, A._GraphWithLabels, A.IdentifiedBlankNodeParent, A.IdentifiedBlankNode, A.IdentifiedBlankNodes, A.UnidentifiedBlankNodeException, A.UnidentifiedBlankNodeWithContextException, A.IdentifiedBlankNodeBuilder, A.IdentifiedRdfSubject, A.NoOpIriTranslator, A.BaseIriTranslator, A.ResourceLocator, A.PredicateRule, A.DocumentMapping, A.PredicateMapping, A.ClassMapping, A.PredicateMergeRule, A.ClassMergeRules, A.MergeContract, A.DocumentMappingDependencyExtractor, A.MergeContractLoader, A.MetadataGenerator, A.IdTerm, A.HttpFetcher, A.StandardRdfGraphFetcher, A.RecursiveRdfLoader, A.UnsupportedIriException, A.ResourceIdentifier, A.LocalResourceLocator, A.StandardSyncEngine, A.ConcurrentUpdateException, A.RemoteId, A.RemoteDownloadResult, A.RemoteUploadResult, A.RemoteSyncStorage, A.AuthException, A.AuthRetryConfig, A.AuthAwareRemoteStorage, A.AuthAwareSyncStorage, A.IndexEntryWithIri, A.IndexEntriesPage, A.StoredDocument, A.SaveDocumentResult, A.DocumentsResult, A.DocumentMetadata, A.PropertyChange, A.OrganizedStatements, A.MergeObject, A.MergeSubject, A.OrganizedBlankNodeMappings, A.RdfObjectKey, A.OrganizedGraph, A.MergeResult, A.RemoteDocumentMerger, A.IndexSyncSpec, A.ShardSyncSpec, A._DocumentQueueEntry, A.RemoteSyncOrchestrator, A.ShardDocumentGenerator, A.StandardSyncManager, A.SyncFunction, A.AutoSyncConfig, A.SyncState, A.EngineParams, A.LRUCache, A.RdfExpectations, A.LocordaDriftWebOptions, A.LocordaDriftNativeOptions, A.DriftStorage, A.IriBatchLoader, A.DriftIndexEntry, A.SubscribedGroupIndexData, A.IndexEntriesPage0, A.DocumentWithIri, A._$SyncDocumentDaoMixin, A._$SyncPropertyChangeDaoMixin, A._$IndexDaoMixin, A._$RemoteSyncStateDaoMixin, A.StorageWorkerHandler, A.GDriveClient, A.GDriveClientException, A.GDriveRemoteStorage, A.GDriveBackend, A.GDriveConfig, A.GDriveTypeIndexManager, A._TypeIndexFile, A.TypeMapping, A.TypeIndexMappings, A.GDriveAuthMessage, A.GDriveConfigMessage, A.GDriveWorkerHandler, A._WorkerAuthNotifier, A.WorkerGDriveAuthProvider, A.WorkerGDriveConfigReceiver, A.RdfCore, A.Quad, A.RdfDataset, A.RdfNamedGraph, A.RdfException, A.SourceLocation, A.RdfGraph, A.RdfTerm, A.Triple, A.IriCompactionSettings, A.CompactIri, A.IriCompactionResult, A.IriCompaction, A.RdfGraphDecoderOptions, A.JsonLdParser, A.RdfGraphEncoderOptions, A._BlankNodeLabelFactoryImpl, A._NoOpBlankNodeCounter, A.CodecNotSupportedException, A.BaseRdfCodecRegistry, A.RdfCodecRegistry, A.IriRelativizationOptions, A.TurtleParser, A.Token, A.TurtleTokenizer, A.RdfNamespaceMappings, A.SolidWorkerHandler, A.UpdateAuthMessage0, A._WorkerAuthNotifier0, A.SolidAuthReceiver, A.SolidBackend, A.SolidClientException, A.NotFoundException, A.SolidClient, A.SolidRemoteStorage, A.SolidProfileParser, A.WorkerMessage, A.WorkerParams, A.WebWorkerSender, A.WorkerChannelMessage, A.WorkerHandlerChannel, A.WorkerChannel, A.WorkerHandlerContextImpl, A.WorkerContext, A.Level, A.LogRecord, A.Logger, A.Context, A._PathDirection, A._PathRelation, A.Style, A.ParsedPath, A.PathException, A.BaseBlockCipher, A.AsymmetricKeyParameter, A.CipherParameters, A.ParametersWithIV, A.RegistryFactoryException, A.ASN1Object, A.ASN1Parser, A.UnsupportedASN1TagException, A.RSAAsymmetricKey, A.RSASignature, A.BaseAsymmetricBlockCipher, A.DesBase, A.BaseAEADBlockCipher, A.BaseDigest, A.ECSignature, A.ECDomainParametersImpl, A.ECFieldElementBase, A.ECPointBase, A.ECCurveBase, A._WNafPreCompInfo, A.BaseKeyDerivator, A.PKCS12ParametersGenerator, A.PKCS5S1ParameterGenerator, A.ECKeyGenerator, A.RSAKeyGenerator, A.BaseMac, A.PaddedBlockCipherImpl, A.BasePadding, A.AutoSeedBlockCtrRandom, A.SecureRandomBase, A.FortunaRandom, A.ECDSASigner, A._RFC6979KCalculator, A._RandomKCalculator, A.PSSSigner, A.RSASigner, A.BaseAEADCipher, A.BaseStreamCipher, A.Platform, A.PlatformException, A._JsBuiltInEntropySource, A._JsNodeEntropySource, A.FactoryConfig, A._RegistryImpl, A.Register64, A.Register64List, A.ForwardingSink, A._EnhancedEventSink, A.JWTAlgorithm, A.JWT, A.JWTKey, A.DpopCredentials, A.SourceFile, A.SourceLocationMixin, A.SourceSpanMixin, A.Highlighter, A._Highlight, A._Line, A.SourceLocation0, A.SourceSpanException, A.SqliteException, A.AllowedArgumentCount, A.RawSqliteBindings, A.SqliteResult, A.RawSqliteDatabase, A.RawStatementCompiler, A.RawSqliteStatement, A.RawSqliteContext, A.RawSqliteValue, A.FinalizablePart, A.DatabaseImplementation, A.Sqlite3Implementation, A.CommonPreparedStatement, A.VirtualFileSystem, A.BaseVfsFile, A.Cursor, A._Row_Object_UnmodifiableMapMixin, A._ResultIterator, A.IndexedParameters, A.VfsException, A.Sqlite3Filename, A._CursorReader, A.RequestResponseSynchronizer, A.MessageSerializer, A.Message0, A.AsynchronousIndexedDbFileSystem, A._FileWriteRequest, A._OffsetAndBuffer, A._IndexedDbFile, A.WasmBindings, A._InjectedValues, A.DartCallbacks, A.RegisteredFunctionSet, A.Chain, A.Frame, A.LazyTrace, A.Trace, A.UnparsedFrame, A.StreamChannelMixin, A._GuaranteeSink, A.StreamChannelController, A.StringScanner, A.RNG, A.Uuid, A.EventStreamProvider, A._EventStreamSubscription]);
     _inheritMany(J.Interceptor, [J.JSBool, J.JSNull, J.JavaScriptObject, J.JavaScriptBigInt, J.JavaScriptSymbol, J.JSNumber, J.JSString]);
     _inheritMany(J.JavaScriptObject, [J.LegacyJavaScriptObject, J.JSArray, A.NativeByteBuffer, A.NativeTypedData]);
     _inheritMany(J.LegacyJavaScriptObject, [J.PlainJavaScriptObject, J.UnknownJavaScriptObject, J.JavaScriptFunction]);
     _inherit(J.JSArraySafeToStringHook, A.SafeToStringHook);
     _inherit(J.JSUnmodifiableArray, J.JSArray);
     _inheritMany(J.JSNumber, [J.JSInt, J.JSNumNotInt]);
+    _inheritMany(A.Stream, [A.CastStream, A._StreamImpl, A.StreamView, A._EmptyStream, A._MultiStream, A._ForwardingStream, A._BoundSinkStream, A.SubscriptionStream, A._EventStream]);
     _inheritMany(A.Iterable, [A._CastIterableBase, A.EfficientLengthIterable, A.MappedIterable, A.WhereIterable, A.ExpandIterable, A.TakeIterable, A.SkipIterable, A.SkipWhileIterable, A.WhereTypeIterable, A.NonNullsIterable, A.IndexedIterable, A._KeysOrValues, A._AllMatchesIterable, A._StringAllMatchesIterable, A._SyncStarIterable, A.LinkedList]);
     _inheritMany(A._CastIterableBase, [A.CastIterable, A.__CastListBase__CastIterableBase_ListMixin]);
     _inherit(A._EfficientLengthCastIterable, A.CastIterable);
     _inherit(A._CastListBase, A.__CastListBase__CastIterableBase_ListMixin);
-    _inheritMany(A.Closure, [A.Closure2Args, A.Closure0Args, A.CastMap_update_closure0, A.CastMap_entries_closure, A.Instantiation, A.TearOffClosure, A.JsLinkedHashMap_containsValue_closure, A.initHooks_closure, A.initHooks_closure1, A._AsyncRun__initializeScheduleImmediate_internalCallback, A._AsyncRun__initializeScheduleImmediate_closure, A._awaitOnObject_closure, A._asyncStarHelper_closure0, A._SyncBroadcastStreamController__sendData_closure, A._SyncBroadcastStreamController__sendError_closure, A._SyncBroadcastStreamController__sendDone_closure, A.Future_wait_closure, A._Future__propagateToListeners_handleWhenCompleteCallback_closure, A._Future_timeout_closure0, A.Stream_pipe_closure, A.Stream_join_closure0, A.Stream_length_closure, A.Stream_first_closure0, A._CustomZone_bindUnaryCallback_closure, A._CustomZone_bindUnaryCallbackGuarded_closure, A._RootZone_bindUnaryCallback_closure, A._RootZone_bindUnaryCallbackGuarded_closure, A._HashMap_values_closure, A._CustomHashMap_closure, A._LinkedCustomHashMap_closure, A.MapBase_entries_closure, A._JsonMap_values_closure, A.Converter_bind_closure, A._BigIntImpl_hashCode_finish, A._BigIntImpl_toDouble_readBits, A.DateTime_parse_parseIntOrZero, A.DateTime_parse_parseMilliAndMicroseconds, A._Uri__makePath_closure, A.jsify__convert, A.promiseToFuture_closure, A.promiseToFuture_closure0, A.dartify_convert, A.validateResponse_closure, A.FutureGroup_add_closure, A.SingleSubscriptionTransformer_bind_closure0, A.StreamQueue__ensureListening_closure, A.StreamSplitter__onPause_closure, A.CanonicalizedMap_entries_closure, A.CanonicalizedMap_keys_closure, A.CanonicalizedMap_update_closure, A.CanonicalizedMap_values_closure, A._MD5Sink_updateHash_round, A.DriftClient__handleRequest_closure, A._RemoteQueryExecutor_ensureOpen_closure, A._RemoteStreamQueryStore_handleTableUpdates_closure, A._RemoteStreamQueryStore_handleTableUpdates_closure0, A.DriftCommunication_setRequestHandler_closure, A.DriftProtocol_decodePayload_readInt, A.DriftProtocol_decodePayload_readNullableInt, A.WebProtocol__serializeRequest_closure, A.WebProtocol__deserializeRequest_readBatched_closure, A.WebProtocol__deserializeRequest_readBatched_closure0, A.WebProtocol__deserializeRequest_closure, A.WebProtocol__serializeSelectResult_closure, A.WebProtocol__deserializeResponse_closure, A.DatabaseConnectionUser_tableUpdates_closure, A.DatabaseConnectionUser_doWhenOpened_closure, A.DatabaseConnectionUser_customUpdate_closure, A.DatabaseConnectionUser_customInsert_closure, A.DatabaseConnectionUser__customWrite_closure, A.DatabaseConnectionUser__customWrite_closure0, A.DatabaseConnectionUser_customStatement_closure, A.DatabaseConnectionUser_transaction_closure, A.DatabaseConnectionUser_exclusively_closure, A.DatabaseConnectionUser_batch_closure, A.DriftRuntimeOptions_debugPrint_closure, A.DriftRuntimeOptions_debugPrint__closure, A.DriftServiceExtension__handle_closure, A.DriftServiceExtension__handle_closure0, A.DriftServiceExtension__handle_closure1, A.DriftServiceExtension__handle_closure2, A.DriftServiceExtension_registerIfNeeded__closure0, A.QueryResult_asMap_closure, A.StreamQueryStore_updatesForSync_closure, A.StreamQueryStore_updatesForSync_closure0, A.QueryStream__stream_closure, A.QueryStream__onListenOrResume_closure, A.QueryStream_fetchAndEmitData_closure, A.MultipleUpdateQuery_matches_closure, A.GeneratedColumn_constraintIsAlways_closure, A.InsertStatement_insert_closure, A.InsertStatement_insertOnConflictUpdate_closure, A.Query__writeInto_writeWithSpace, A.CustomSelectStatement__mapArgs_closure, A.CustomSelectStatement__executeRaw_closure, A.CustomSelectStatement__mapDbResponse_closure, A.SimpleSelectStatement__getRaw_closure, A.SimpleSelectStatement_orderBy_closure, A.JoinedSelectStatement__getRaw_closure, A.JoinedSelectStatement__mapWithStructure_closure, A.JoinedSelectStatement__mapResponse_closure, A.UpdateStatement__performQuery_closure, A.EnableNativeFunctions_useNativeFunctions_closure, A._unaryNumFunction_closure, A.MapAndAwait_mapAsyncAndAwait_closure, A.AsyncMapPerSubscription_asyncMapPerSubscription_closure, A.AsyncMapPerSubscription_asyncMapPerSubscription_closure_onData, A.Lock_synchronized_closure, A.WebPortToChannel_channel_closure, A.WebPortToChannel_channel_closure0, A._readMessages_closure, A._readMessages__closure, A._extension_0_get_nextNoError_closure, A.SharedWorkerCompatibilityResult_SharedWorkerCompatibilityResult$fromJsPayload_asBoolean, A.WasmDatabase_open_closure, A.WasmDatabase_open_closure0, A.FileLabelInfo$fromJson_closure, A.File$fromJson_closure0, A.File$fromJson_closure2, A.File$fromJson_closure3, A.File$fromJson_closure4, A.File$fromJson_closure5, A.File$fromJson_closure7, A.FileList$fromJson_closure, A.LabelField$fromJson_closure, A.LabelField$fromJson_closure0, A.LabelField$fromJson_closure1, A.LabelField$fromJson_closure2, A.LabelField$fromJson_closure3, A.LabelField_toJson_closure, A.Permission$fromJson_closure, A.Permission$fromJson_closure0, A.RetryClient_send_closure, A.RetryClient_send_closure0, A.BaseRequest_closure0, A.BrowserClient_send_closure0, A._bodyToStream_closure, A.ByteStream_toBytes_closure, A.MediaType_toString__closure, A.expectQuotedString_closure, A.ConfigBaseValidator__validateIndexConfigurations_closure, A.IndexItemData_IndexItemData$fromJson_closure, A.IndexItemData_toJson_closure, A.GroupIndexData_GroupIndexData$fromJson_closure, A.GroupIndexData_toJson_closure, A.DocumentIriTemplate_DocumentIriTemplate$fromJson_closure, A.ResourceConfigData_getIndexByName_closure, A.ResourceConfigData_toJson_closure, A.SyncEngineConfig_allIndicesInOrder_closure, A.SyncEngineConfig_allIndicesInOrder__closure, A.SyncEngineConfig_SyncEngineConfig$fromJson_closure, A.SyncEngineConfig_toJson_closure, A.SyncEngineConfig_getResourceConfig_closure, A.SyncEngineConfigValidator__baseValidator_closure, A.MergeResults_join__closure, A._RdfObjectComparison__max_closure, A._RdfObjectComparison__max_closure1, A._RdfObjectComparison__max_closure3, A.LwwRegister_remoteMerge_closure, A.addInlineTriples_closure, A.addInlineTriples_closure0, A.Immutable_remoteMerge_closure, A.OrSet_remoteMerge_closure, A.OrSet_localValueChange_closure, A.OrSet_localValueChange_closure0, A.OrSet_localValueChange_closure1, A.OrSet_localValueChange__closure, A.OrSet_localValueChange___closure, A._findStatementTriplesToRemove_closure, A._findStatementTriplesToRemove_closure0, A._findStatementTriplesToRemove_closure1, A._findStatementTriplesToRemove_closure2, A._handleIdenticalClocksTriples_closure, A._handleIdenticalClocksTriples_closure0, A._handleIdenticalClocksTriples_closure1, A._handleIdenticalClocksTriples_closure2, A._handleIdenticalClocksTriples_closure3, A._handleIdenticalClocksTriples_closure4, A._handleIdenticalClocksTriples_closure5, A._handleIdenticalClocksTriples_closure6, A._handleBothEmptyClocksTriples_closure, A._handleBothEmptyClocksTriples_closure0, A.objectsIfSubjectNonNull_closure, A._constructCrdtDocument_closure, A._constructCrdtDocument_closure0, A.HlcService__extractCrdtClock_closure, A.HlcService__extractCrdtClock_closure0, A.HlcService__getOurTime_closure, A.HlcService__getOurTime_closure0, A.HlcService__incrementClock_closure0, A.GroupKeyGenerator__extractAllValuesForProperty_closure, A.GroupKeyGenerator__generateCartesianProduct_closure, A.ItemFetchPolicy_fromMap_closure, A.PrefetchFiltered_toMap_closure, A.GroupingProperty_GroupingProperty$fromJson_closure, A.GroupingProperty_toJson_closure, A.IndexDiscovery__initializeWatches_closure, A.IndexDiscovery__initializeWatches_closure1, A.IndexDiscovery__updateIndexMetadataCache_closure0, A.IndexDiscovery__removeIndexFromCache_closure, A.IndexDiscovery__isConfiguredResourceType_closure, A.IndexDiscovery_discoverGroupIndexTemplate_closure, A.IndexManager__generateGroupIndex_closure, A.IndexManager__updateShardIndexEntries_closure, A.IndexManager__updateShardIndexEntries__closure, A.IndexManager__extractHeaderProperties_closure, A.IndexParser__parseGroupingProperties_closure, A.IndexParser__parseGroupingProperty_closure, A.IndexRdfGenerator_generateGroupIndexTemplate_closure, A.IndexRdfGenerator_generateGroupIndexTemplateIri_closure0, A.IndexRdfGenerator_generateGroupIndexTemplateIri__closure, A.IndexRdfGenerator__generateIndexedProperties_closure, A.RdfGroupExtractor_closure, A.RdfGroupExtractor__applyReplacement_closure, A.ShardDeterminer_calculateShards_closure, A.LocalDocumentMerger_replaceInDocument_closure, A.LocalDocumentMerger_replaceInDocument_closure0, A.LocalDocumentMerger__getIdentifiedSubjects_closure, A.LocalDocumentMerger__generateCrdtMetadataForChanges_closure, A.LocalDocumentMerger__valueEquals_closure, A.collectClassMappings_closure, A.collectClassMappings_closure0, A.mergeClassMappingGroups_closure, A.mergeClassMappingGroups_closure1, A.mergeClassMappingGroups__closure, A.collectPredicateMappings_closure, A.collectPredicateMappings_closure0, A.mergePredicateMappingGroups_closure, A.FrameworkIriGenerator_generateSimpleCanonicalIri_closure, A._buildIdentificationGraphWithLabels_processNode, A.IdentifiedBlankNode_hashCode_closure, A.IdentifiedBlankNode_operator$eq_closure, A.UnidentifiedBlankNodeWithContextException_toString_closure, A.UnidentifiedBlankNodeWithContextException_toString_closure0, A.IdentifiedBlankNodeBuilder_computeCanonicalBlankNodes_closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure1, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes__closure0, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure3, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure4, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes__closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes___closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes___closure0, A._sortByDependencies_closure, A._addIdentifiedBlankNodes_closure, A._addIdentifiedBlankNodes_closure0, A._addIdentifiedBlankNodes_closure1, A._addIdentifiedBlankNodes__closure, A.IdentifiedBlankNodeSubject_operator$eq_closure, A.BaseIriTranslator_translateGraphToInternal_closure, A.BaseIriTranslator_translateGraphToExternal_closure, A.ClassMergeRules__computeIdentifyingPredicates_closure, A.ClassMergeRules__computeIdentifyingPredicates_closure0, A.ClassMergeRules__computeNonIdentifyingPredicates_closure, A.ClassMergeRules__computeNonIdentifyingPredicates_closure0, A.MergeContract_getEffectivePredicateRule_closure, A.MergeContract__computeIdentifyingPredicates_closure, A.MergeContract__computeIdentifyingPredicates_closure0, A.MergeContract_getIdentifyingPredicates_closure, A.CachingMergeContractLoader__cacheKey_closure, A.CachingMergeContractLoader_load_closure, A.MergeContractLoader_getMergedGovernanceIris_closure, A.StandardMergeContractLoader_load_closure, A.StandardMergeContractLoader_load_closure0, A.StandardMergeContractLoader_load_closure1, A.StandardMergeContractLoader_load_closure2, A.StandardMergeContractLoader__parseDocumentMapping_closure, A.StandardMergeContractLoader__parseDocumentMapping_closure0, A.StandardMergeContractLoader__parseDocumentMapping_closure1, A.StandardMergeContractLoader__parseDocumentMapping_closure2, A.StandardMergeContractLoader__parseDocumentMapping_closure3, A.StandardMergeContractLoader__parseDocumentMapping_closure4, A.StandardMergeContractLoader__parseDocumentMapping_closure5, A.StandardMergeContractLoader__parseDocumentMapping_closure6, A.StandardMergeContractLoader__parseDocumentMapping_closure7, A.StandardMergeContractLoader__parseClassMappings_closure, A.StandardMergeContractLoader__parseClassMappings_closure0, A.StandardMergeContractLoader__parseClassMappings_closure1, A.StandardMergeContractLoader__parseClassMappings_closure2, A.StandardMergeContractLoader__parseClassMappings_closure3, A.StandardMergeContractLoader__parsePredicateMapping_closure, A.StandardMergeContractLoader__parsePredicateMapping_closure0, A.StandardMergeContractLoader__parsePredicateMapping_closure1, A.StandardMergeContractLoader__parsePredicateMapping_closure2, A.MetadataGenerator__createPropertyValueMetadata_closure, A.MetadataGenerator__createPropertyValueMetadata__closure, A.MetadataGenerator__createPropertyValueMetadata___closure, A.RecursiveRdfLoader__loadRecursivelySingle_closure, A.RecursiveRdfLoader__loadRecursivelyMulti_closure, A.RdfGraphExtensions_getMultiValueObjectList_closure, A.RdfGraphExtensions_getMultiValueObjects_closure, A.RdfGraphExtensions_traverseListObjects_closure0, A.RdfGraphIterableExtensions_mergeGraphs_closure, A.StandardSyncEngine_create_closure0, A.StandardSyncEngine_hydrateStream_closure, A.StandardSyncEngine__doHydrateIndexEntryStream_closure, A.StandardSyncEngine__doHydrateIndexEntryStream_closure0, A.StandardSyncEngine__hydrateRootResourceStream_closure, A.OrganizedStatements$__closure, A.OrganizedStatements$___closure, A.OrganizedStatements_OrganizedStatements$fromGraph_closure1, A.OrganizedStatements_getAllStatementsForSubject_closure, A.OrganizedStatements_getAllStatementsForSubject_closure0, A.OrganizedStatements_getStatement_closure, A.OrganizedStatements_getStatement__closure, A.OrganizedStatements_getStatement_closure0, A.MergeObject_createMergeObjects_closure, A.MergeObject_createMergeObjects_closure0, A.MergeObject_createMergeObjects_closure1, A.MergeSubject_createMergeSubjects_closure, A.OrganizedBlankNodeMappings_blankNodeIdentifiers_closure, A.IdentifiedBlankNodeKey_operator$eq_closure, A.OrganizedGraph_maxPhysicalTime_closure, A.OrganizedGraph_allSubjectKeys_closure, A.RemoteDocumentMerger__mergeSubjectsAndProperties_closure, A.RemoteDocumentMerger__buildResultDocument_closure, A.RemoteDocumentMerger__buildResultDocument_closure0, A.RemoteDocumentMerger__buildResultDocument__closure3, A.RemoteDocumentMerger__buildResultDocument_closure1, A.RemoteDocumentMerger__buildResultDocument__closure0, A.RemoteDocumentMerger__buildResultDocument__closure1, A.RemoteDocumentMerger__buildResultDocument__closure2, A.RemoteDocumentMerger__buildResultDocument_closure2, A.RemoteDocumentMerger__buildResultDocument__closure, A.RemoteDocumentMerger__convertToTriples_closure, A.RemoteDocumentMerger__convertToTriples__closure, A.RemoteDocumentMerger__convertToTriples__closure0, A.PartialIndexSync_toString_closure, A.PartialIndexSync_toString__closure, A.RemoteSyncOrchestrator_sync_closure, A.RemoteSyncOrchestrator__syncIndexDocuments_closure, A.RemoteSyncOrchestrator__syncIndexDocuments_closure0, A.RemoteSyncOrchestrator__syncIndexDocuments_closure1, A.RemoteSyncOrchestrator__syncIndexDocuments_closure2, A.RemoteSyncOrchestrator__syncIndexDocuments_closure3, A.RemoteSyncOrchestrator__buildShardSyncSpecs_closure, A.RemoteSyncOrchestrator__buildShardSyncSpecs_closure0, A.RemoteSyncOrchestrator__buildDocumentQueue_closure0, A.RemoteSyncOrchestrator__buildDocumentQueue_closure1, A.RemoteSyncOrchestrator__matchesFilter_closure, A.RemoteSyncOrchestrator__matchesFilter_closure0, A.RemoteSyncOrchestrator__getFinalEntrySet_closure, A.RemoteSyncOrchestrator__findForeignIndices_closure, A.RemoteSyncOrchestrator__findForeignIndices_closure0, A.RemoteSyncOrchestrator__syncShard__closure, A.RemoteSyncOrchestrator__syncShard__closure0, A.RemoteSyncOrchestrator__syncShard__closure2, A.ShardDocumentGenerator__syncShardAttempt_closure0, A.ShardDocumentGenerator__syncShardAttempt_closure, A.StandardSyncManager__setupAutoSync_closure, A.StandardSyncManager_enableAutoSync_closure, A.buildEffectiveConfig_closure, A.DriftStorage_watchDocumentsModifiedSince_closure, A.DriftStorage_getSettings_closure, A.DriftStorage_getIndexEntries_closure, A.DriftStorage_getIndexEntries_closure0, A.DriftStorage_watchIndexEntries_closure, A.DriftStorage_watchIndexEntries_closure0, A.DriftStorage_watchIndexEntries__closure, A.DriftStorage_getSubscribedGroupIndices_closure, A.DriftStorage_watchSubscribedGroupIndexIris_closure, A.DriftStorage_ensureIndexSetVersion_closure, A.DriftStorage_getIndexIrisForVersion_closure, A.DriftStorage_getActiveIndexEntriesForShard_closure, A.DriftStorage_getShardsToUpdate_closure, A.DriftStorage_getForeignIndexShardsToSync_closure, A.DriftStorage__convertToStoredDocuments_closure, A.IriBatchLoader_getIrisBatch_closure, A.IriBatchLoader_getOrCreateIriIdsBatch_closure, A.IriBatchLoader__getExistingIriIds_closure, A.SyncDocumentDao_saveDocument_closure, A.SyncDocumentDao_saveDocument_closure0, A.SyncDocumentDao_saveDocument_closure1, A.SyncDocumentDao_getDocument_closure, A.SyncDocumentDao_getDocument_closure0, A.SyncDocumentDao_getDocumentsModifiedSince_closure, A.SyncDocumentDao_getDocumentsModifiedSince_closure0, A.SyncDocumentDao_watchDocumentsModifiedSince_closure, A.SyncDocumentDao_watchDocumentsModifiedSince_closure0, A.SyncDocumentDao__convertDocumentsWithIris_closure0, A.SyncDocumentDao__convertDocumentsWithIris_closure, A.SyncPropertyChangeDao_recordPropertyChangesBatch_closure0, A.SyncPropertyChangeDao_recordPropertyChangesBatch_closure, A.SyncPropertyChangeDao_recordPropertyChangesBatch_closure1, A.IndexDao_getIndexEntries_closure, A.IndexDao_getIndexEntries_closure0, A.IndexDao_getIndexEntries_closure1, A.IndexDao_getIndexEntries_closure3, A.IndexDao_getIndexEntries_closure2, A.IndexDao_watchIndexEntries_closure, A.IndexDao_watchIndexEntries_closure0, A.IndexDao_watchIndexEntries_closure2, A.IndexDao_watchIndexEntries__closure, A.IndexDao_watchIndexEntries__closure0, A.IndexDao_watchIndexEntries__closure3, A.IndexDao_watchIndexEntries__closure2, A.IndexDao_watchSubscribedGroupIndexIds_closure, A.IndexDao_watchSubscribedGroupIndexIds_closure0, A.IndexDao_watchSubscribedGroupIndexIds__closure, A.IndexDao_getSubscribedGroupIndices_closure, A.IndexDao_ensureIndexIdSetVersion_closure, A.IndexDao_getIndexIriIdsForVersion_closure, A.IndexDao_getActiveIndexEntriesForShard_closure, A.IndexDao_getShardsToUpdate_closure, A.RemoteSyncStateDao_getOrCreateRemoteId_closure, A.RemoteSyncStateDao_getRemoteLastSyncTimestamp_closure, A.RemoteSyncStateDao_updateRemoteLastSyncTimestamp_closure, A.RemoteSyncStateDao_getETag_closure, A.SyncDatabase_migration_closure, A.SyncDatabase_migration_closure0, A.GDriveTypeIndexManager_loadOrCreateTypeIndex_closure, A.GDriveTypeIndexManager__collectAllTypes_closure, A.GDriveTypeIndexManager__addMissingTypes_closure, A.GDriveTypeIndexManager__addMissingTypes_closure0, A.GDriveTypeIndexManager__addMissingTypes_closure1, A.GDriveTypeIndexManager__fillInDefaults_closure, A.RdfGraphExtensions_getMultiValueObjects_closure0, A.WorkerGDriveAuthProvider_closure, A.RdfDataset_namedGraphs_closure, A.RdfDataset__buildDefaultGraph_closure, A.RdfDataset__buildDefaultGraph_closure0, A.RdfDataset__buildNamedGraphs_closure, A.RdfDataset_operator$eq_closure, A.RdfDataset_hashCode_closure, A.RdfGraph_withoutTriples_closure, A.RdfGraph_subjects_closure, A.RdfGraph_predicates_closure, A.RdfGraph_predicates_closure0, A.RdfGraph_findTriples_closure, A.RdfGraph_findTriples_closure0, A.RdfGraph_findTriples_closure1, A.RdfGraph_findTriples_closure2, A.RdfGraph_findTriples_closure3, A.RdfGraph_hasTriples_closure, A.RdfGraph_hasTriples__closure, A.RdfGraph_hasTriples__closure0, A.RdfGraph_hasTriples__closure1, A.RdfGraph_hasTriples__closure2, A.RdfGraph_hasTriples__closure3, A.RdfGraph_hasTriples_closure0, A.RdfGraph_matching_closure, A.IriCompactionResult_compactIri_closure, A.IriCompactionResult_compactIri_closure0, A.IriCompactionResult_compactIri_closure1, A.IriCompaction_compactAllIris_closure0, A.JsonLdParser__addTripleForValue_closure, A.JsonLdEncoder_closure, A.JsonLdEncoder_convert_closure, A.JsonLdEncoder__createNodeObject_closure0, A.JsonLdEncoder__createNodeObject_closure1, A.NQuadsCodec_canParse_closure, A.NQuadsEncoder_encode_closure, A.NQuadsEncoder_encode_closure0, A.NQuadsEncoder_encode__closure, A.NTriplesCodec_canParse_closure, A.TurtleEncoder_closure, A.TurtleEncoder__extractCollection_closure, A.TurtleEncoder__extractCollection_closure0, A.TurtleEncoder__extractCollection_closure1, A.TurtleEncoder__extractCollection_closure2, A.TurtleEncoder__extractCollection_closure4, A.TurtleEncoder__markCollectionNodesAsProcessed_closure, A.TurtleEncoder__writeCollection_closure, A.TurtleEncoder__writeTriples_closure0, A.TurtleEncoder__isPartOfRdfCollection_closure, A.TurtleEncoder__isPartOfRdfCollection_closure0, A.RdfNamespaceMappings__extractDomainPrefix_closure, A.RdfNamespaceMappings__extractDomainPrefix_closure0, A.RdfNamespaceMappings__extractPathPrefix_closure, A.RdfNamespaceMappings__extractPathPrefix_closure0, A.RdfNamespaceMappings__extractPathPrefix_closure1, A.RdfNamespaceMappings__sanitizeComponentForPrefix_closure, A.RdfNamespaceMappings__sanitizeComponentForPrefix_closure0, A.SolidAuthReceiver_closure, A._createRetryClient_closure, A._createRetryClient_closure1, A.SolidRemoteStorage_isAvailable_closure, A.SolidRemoteStorage_isAvailable_closure0, A.HydrationBatchMessage_toJson_closure, A.HydrationBatchMessage_toJson_closure0, A.HydrationBatchMessage_HydrationBatchMessage$fromJson_closure, A.HydrationBatchMessage_HydrationBatchMessage$fromJson_closure0, A.SyncTriggerRequest_SyncTriggerRequest$fromJson_closure, A.GetSyncStateResponse_GetSyncStateResponse$fromJson_closure, A.SyncStateUpdateMessage_SyncStateUpdateMessage$fromJson_closure, A.startWebWorkerLoop_closure0, A.startWebWorkerLoop_closure, A.startWebWorkerLoop__closure0, A.WorkerHandlerChannel_messages_closure, A.WorkerHandlerChannel_messages_closure0, A.WorkerContext_setSyncSystem_closure, A.WorkerContext__handleHydrateStream_closure, A.WorkerContext__handleHydrateStream__closure, A.WorkerContext__handleHydrateStream__closure0, A.toEngineParams_closure, A.Context_joinAll_closure, A.Context_split_closure, A._validateArgList_closure, A.WindowsStyle_absolutePathToUri_closure, A._createLogHandler_closure, A._indentStackTrace_closure, A._wNafMultiplier_closure, A.HKDFKeyDerivator__getBlockLengthFromDigest_closure, A._escapeRegExp_closure, A._escapeRegExp_closure0, A._forward_closure_listenToUpstream, A.Highlighter$__closure, A.Highlighter$___closure, A.Highlighter$__closure0, A.Highlighter__collateLines_closure, A.Highlighter__collateLines_closure1, A.Highlighter__collateLines__closure, A.Highlighter_highlight_closure, A.SqliteException_toString_closure, A.disposeFinalizer_closure, A._CursorReader_moveNext_closure, A._CursorReader_moveNext_closure0, A.CompleteIdbRequest_complete_closure, A.CompleteIdbRequest_complete_closure0, A.CompleteOpenIdbRequest_completeOrBlocked_closure, A.CompleteOpenIdbRequest_completeOrBlocked_closure0, A.CompleteOpenIdbRequest_completeOrBlocked_closure1, A.AsynchronousIndexedDbFileSystem_open_closure, A.AsynchronousIndexedDbFileSystem__readFile_closure, A.AsynchronousIndexedDbFileSystem__write_closure, A.SimpleOpfsFileSystem_inDirectory_open, A._InjectedValues_closure, A._InjectedValues_closure0, A._InjectedValues_closure1, A._InjectedValues_closure2, A._InjectedValues_closure3, A._InjectedValues_closure4, A._InjectedValues_closure7, A._InjectedValues_closure8, A._InjectedValues_closure9, A._InjectedValues_closure10, A._InjectedValues_closure17, A._InjectedValues_closure18, A._InjectedValues_closure19, A._InjectedValues_closure20, A._InjectedValues_closure21, A._InjectedValues_closure22, A._InjectedValues_closure23, A._InjectedValues_closure24, A._InjectedValues_closure25, A._InjectedValues_closure26, A._InjectedValues_closure29, A.Chain_Chain$parse_closure, A.Chain_toTrace_closure, A.Chain_toString_closure0, A.Chain_toString__closure0, A.Chain_toString_closure, A.Chain_toString__closure, A.Trace__parseVM_closure, A.Trace$parseV8_closure, A.Trace$parseJSCore_closure, A.Trace$parseFirefox_closure, A.Trace$parseFriendly_closure, A.Trace_toString_closure0, A.Trace_toString_closure, A._EventStreamSubscription_closure, A._EventStreamSubscription_onData_closure]);
-    _inheritMany(A.Closure2Args, [A._CastListBase_sort_closure, A.CastMap_forEach_closure, A.ConstantMap_map_closure, A.JsLinkedHashMap_addAll_closure, A.initHooks_closure0, A._awaitOnObject_closure0, A._wrapJsFunctionForAsync_closure, A.Future_wait_handleError, A.FutureExtensions_onError_onError, A._Future__propagateToListeners_handleWhenCompleteCallback_closure0, A._Future_timeout_closure1, A._AddStreamState_makeErrorHandler_closure, A._CustomZone_bindBinaryCallback_closure, A._RootZone_bindBinaryCallback_closure, A.HashMap_HashMap$from_closure, A.LinkedHashMap_LinkedHashMap$from_closure, A.MapBase_mapToString_closure, A._JsonStringifier_writeMap_closure, A._JsonPrettyPrintMixin_writeMap_closure, A._BigIntImpl_hashCode_combine, A.Uri_parseIPv6Address_error, A.ApiRequester__request_addQueryParameter, A.ApiRequester__request_closure, A.FutureGroup_add_closure0, A.StreamQueue__ensureListening_closure1, A._CancelOnErrorSubscriptionWrapper_onError_closure, A.CanonicalizedMap_addAll_closure, A.CanonicalizedMap_forEach_closure, A.CanonicalizedMap_map_closure, A._BaseExecutor__runRequest__closure, A.VerificationContext_throwIfInvalid_closure, A.DriftServiceExtension_registerIfNeeded_closure, A.DriftServiceExtension_registerIfNeeded__closure1, A.InsertStatement__writeOnConflict_writeOnConflictConstraint, A.DoUpdate_closure, A.UpdateStatement_writeStartPart_closure, A.WasmInitializationMessage_sendToWorker_closure, A.WasmInitializationMessage_sendToPort_closure, A.File$fromJson_closure, A.File$fromJson_closure1, A.File$fromJson_closure6, A.Label$fromJson_closure, A.BaseRequest_closure, A.MediaType_toString_closure, A.ResourceConfigData_indicesInOrder_closure, A.SyncEngineConfig_resourcesInSyncOrder_closure, A.MetadataStatement_merge_closure1, A.MergeResults_join_closure, A.subjectAndInlineTriples_closure, A._RdfObjectComparison__max_closure0, A._RdfObjectComparison__max_closure2, A._RdfObjectComparison__max_closure4, A._constructCrdtDocument_closure1, A.HlcService__incrementClock_closure, A.GroupKeyGenerator__organizeExtractorsByLevel_closure0, A.IndexDiscovery__initializeWatches_closure0, A.IndexDiscovery__initializeWatches_closure2, A.IndexDiscovery__removeIndexFromCache_closure0, A.IndexDiscovery__loadAndParseFullIndex_closure, A.IndexDiscovery__loadAndParseTemplate_closure, A.IndexParser__parseGroupingProperties_closure0, A.IndexRdfGenerator_generateGroupIndexTemplateIri_closure, A.mergeClassMappingGroups_closure0, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure0, A.MergeContract__classMappingsByPredicate_closure, A.MergeContractLoader_getMergedGovernanceIris_closure0, A.RdfGraphExtensions_traverseListObjects_closure, A.splitDocument_closure, A.StandardSyncEngine_create_closure, A.StandardSyncEngine__hydrateRootResourceStream_convertResult, A.StandardSyncEngine__hydrateRootResourceStream_convertResult_closure, A.OrganizedStatements_OrganizedStatements$fromGraph__closure, A.OrganizedBlankNodeMappings__buildBlankNodeToCanonicalMap_closure, A.OrganizedGraph_maxPhysicalTime_closure0, A.RemoteDocumentMerger_merge_closure, A.RemoteDocumentMerger__mergeSubjectProperties_closure, A.RemoteSyncOrchestrator__buildDocumentQueue_closure, A.RemoteSyncOrchestrator__findForeignIndices_closure1, A.RemoteSyncOrchestrator__syncShard__closure1, A.buildShardAppData_closure, A.IndexDao_watchIndexEntries__closure1, A.GDriveTypeIndexManager__sortTypesForProcessing_closure, A.GDriveTypeIndexManager__sortTypesForProcessing_closure0, A.RdfDataset__buildNamedGraphs_closure1, A.RdfGraph__effectiveIndex_closure, A.IriCompaction_compactAllIris_closure, A.TurtleEncoder__writePrefixes_closure, A.TurtleEncoder__writeTriples_closure1, A.TurtleEncoder__writeSubjectGroup_closure0, A._createRetryClient_closure0, A._deepConvertJsObject_closure, A.startWebWorkerLoop__closure2, A.WorkerContext__handleHydrateStream_closure1, A.OAEPEncoding_factoryConfig_closure, A.PKCS1Encoding_factoryConfig_closure, A.CBCBlockCipher_factoryConfig_closure, A.CCMBlockCipher_factoryConfig_closure, A.CFBBlockCipher_factoryConfig_closure, A.CTRBlockCipher_factoryConfig_closure, A.ECBBlockCipher_factoryConfig_closure, A.GCMBlockCipher_factoryConfig_closure, A.GCTRBlockCipher_factoryConfig_closure, A.IGEBlockCipher_factoryConfig_closure, A.OFBBlockCipher_factoryConfig_closure, A.SICBlockCipher_factoryConfig_closure, A.CSHAKEDigest_factoryConfig_closure, A.KeccakDigest_factoryConfig_closure, A.SHA3Digest_factoryConfig_closure, A.SHA512tDigest_factoryConfig_closure, A.SHAKEDigest_factoryConfig_closure, A.ConcatKDFDerivator_factoryConfig_closure, A.HKDFKeyDerivator_factoryConfig_closure, A.PBKDF2KeyDerivator_factoryConfig_closure, A.PKCS12ParametersGenerator_factoryConfig_closure, A.PKCS5S1ParameterGenerator_factoryConfig_closure, A.CBCBlockCipherMac_factoryConfig_closure, A.CMac_factoryConfig_closure, A.HMac_factoryConfig_closure, A.Poly1305_factoryConfig_closure, A.PaddedBlockCipherImpl_factoryConfig_closure, A.AutoSeedBlockCtrRandom_factoryConfig_closure, A.BlockCtrRandom_factoryConfig_closure, A.ECDSASigner_factoryConfig_closure, A.PSSSigner_factoryConfig_closure, A.RSASigner_factoryConfig_closure, A.ChaCha20Engine_factoryConfig_closure, A.ChaCha7539Engine_factoryConfig_closure, A.CTRStreamCipher_factoryConfig_closure, A.EAX_factoryConfig_closure, A.SICStreamCipher_factoryConfig_closure, A._SwitchMapStreamSink_onData_closure, A.Highlighter__collateLines_closure0, A.DatabaseImplementation_createFunction_closure, A.WasmInstance_load_closure, A.WasmInstance_load__closure, A.AsynchronousIndexedDbFileSystem__write_writeBlock, A._InjectedValues_closure5, A._InjectedValues_closure6, A._InjectedValues_closure11, A._InjectedValues_closure12, A._InjectedValues_closure13, A._InjectedValues_closure14, A._InjectedValues_closure15, A._InjectedValues_closure16, A._InjectedValues_closure27, A._InjectedValues_closure28, A.Frame_Frame$parseV8_closure_parseJsLocation]);
+    _inheritMany(A.Closure, [A.Closure2Args, A.Closure0Args, A.CastMap_update_closure0, A.CastMap_entries_closure, A.Instantiation, A.TearOffClosure, A.JsLinkedHashMap_containsValue_closure, A.initHooks_closure, A.initHooks_closure1, A._AsyncRun__initializeScheduleImmediate_internalCallback, A._AsyncRun__initializeScheduleImmediate_closure, A._awaitOnObject_closure, A._asyncStarHelper_closure0, A._SyncBroadcastStreamController__sendData_closure, A._SyncBroadcastStreamController__sendError_closure, A._SyncBroadcastStreamController__sendDone_closure, A.Future_wait_closure, A._Future__propagateToListeners_handleWhenCompleteCallback_closure, A._Future_timeout_closure0, A.Stream_pipe_closure, A.Stream_join_closure0, A.Stream_length_closure, A.Stream_first_closure0, A._CustomZone_bindUnaryCallback_closure, A._CustomZone_bindUnaryCallbackGuarded_closure, A._RootZone_bindUnaryCallback_closure, A._RootZone_bindUnaryCallbackGuarded_closure, A._HashMap_values_closure, A._CustomHashMap_closure, A._LinkedCustomHashMap_closure, A.MapBase_entries_closure, A._JsonMap_values_closure, A.Converter_bind_closure, A._BigIntImpl_hashCode_finish, A._BigIntImpl_toDouble_readBits, A.DateTime_parse_parseIntOrZero, A.DateTime_parse_parseMilliAndMicroseconds, A._Uri__makePath_closure, A.jsify__convert, A.promiseToFuture_closure, A.promiseToFuture_closure0, A.dartify_convert, A.validateResponse_closure, A.FutureGroup_add_closure, A.SingleSubscriptionTransformer_bind_closure0, A.StreamQueue__ensureListening_closure, A.StreamSplitter__onPause_closure, A.CanonicalizedMap_entries_closure, A.CanonicalizedMap_keys_closure, A.CanonicalizedMap_update_closure, A.CanonicalizedMap_values_closure, A._MD5Sink_updateHash_round, A.DriftClient__handleRequest_closure, A._RemoteQueryExecutor_ensureOpen_closure, A._RemoteStreamQueryStore_handleTableUpdates_closure, A._RemoteStreamQueryStore_handleTableUpdates_closure0, A.DriftCommunication_setRequestHandler_closure, A.DriftProtocol_decodePayload_readInt, A.DriftProtocol_decodePayload_readNullableInt, A.WebProtocol__serializeRequest_closure, A.WebProtocol__deserializeRequest_readBatched_closure, A.WebProtocol__deserializeRequest_readBatched_closure0, A.WebProtocol__deserializeRequest_closure, A.WebProtocol__serializeSelectResult_closure, A.WebProtocol__deserializeResponse_closure, A.DatabaseConnectionUser_tableUpdates_closure, A.DatabaseConnectionUser_doWhenOpened_closure, A.DatabaseConnectionUser_customUpdate_closure, A.DatabaseConnectionUser_customInsert_closure, A.DatabaseConnectionUser__customWrite_closure, A.DatabaseConnectionUser__customWrite_closure0, A.DatabaseConnectionUser_customStatement_closure, A.DatabaseConnectionUser_transaction_closure, A.DatabaseConnectionUser_exclusively_closure, A.DatabaseConnectionUser_batch_closure, A.DriftRuntimeOptions_debugPrint_closure, A.DriftRuntimeOptions_debugPrint__closure, A.DriftServiceExtension__handle_closure, A.DriftServiceExtension__handle_closure0, A.DriftServiceExtension__handle_closure1, A.DriftServiceExtension__handle_closure2, A.DriftServiceExtension_registerIfNeeded__closure0, A.QueryResult_asMap_closure, A.StreamQueryStore_updatesForSync_closure, A.StreamQueryStore_updatesForSync_closure0, A.QueryStream__stream_closure, A.QueryStream__onListenOrResume_closure, A.QueryStream_fetchAndEmitData_closure, A.MultipleUpdateQuery_matches_closure, A.GeneratedColumn_constraintIsAlways_closure, A.InsertStatement_insert_closure, A.InsertStatement_insertOnConflictUpdate_closure, A.Query__writeInto_writeWithSpace, A.CustomSelectStatement__mapArgs_closure, A.CustomSelectStatement__executeRaw_closure, A.CustomSelectStatement__mapDbResponse_closure, A.SimpleSelectStatement__getRaw_closure, A.SimpleSelectStatement_orderBy_closure, A.JoinedSelectStatement__getRaw_closure, A.JoinedSelectStatement__mapWithStructure_closure, A.JoinedSelectStatement__mapResponse_closure, A.UpdateStatement__performQuery_closure, A.EnableNativeFunctions_useNativeFunctions_closure, A._unaryNumFunction_closure, A.MapAndAwait_mapAsyncAndAwait_closure, A.AsyncMapPerSubscription_asyncMapPerSubscription_closure, A.AsyncMapPerSubscription_asyncMapPerSubscription_closure_onData, A.Lock_synchronized_closure, A.WebPortToChannel_channel_closure, A.WebPortToChannel_channel_closure0, A._readMessages_closure, A._readMessages__closure, A._extension_0_get_nextNoError_closure, A.SharedWorkerCompatibilityResult_SharedWorkerCompatibilityResult$fromJsPayload_asBoolean, A.WasmDatabase_open_closure, A.WasmDatabase_open_closure0, A.FileLabelInfo$fromJson_closure, A.File$fromJson_closure0, A.File$fromJson_closure2, A.File$fromJson_closure3, A.File$fromJson_closure4, A.File$fromJson_closure5, A.File$fromJson_closure7, A.FileList$fromJson_closure, A.LabelField$fromJson_closure, A.LabelField$fromJson_closure0, A.LabelField$fromJson_closure1, A.LabelField$fromJson_closure2, A.LabelField$fromJson_closure3, A.LabelField_toJson_closure, A.Permission$fromJson_closure, A.Permission$fromJson_closure0, A.RetryClient_send_closure, A.RetryClient_send_closure0, A.BaseRequest_closure0, A.BrowserClient_send_closure0, A._bodyToStream_closure, A.ByteStream_toBytes_closure, A.MediaType_toString__closure, A.expectQuotedString_closure, A.ConfigBaseValidator__validateIndexConfigurations_closure, A.IndexItemData_IndexItemData$fromJson_closure, A.IndexItemData_toJson_closure, A.GroupIndexData_GroupIndexData$fromJson_closure, A.GroupIndexData_toJson_closure, A.DocumentIriTemplate_DocumentIriTemplate$fromJson_closure, A.ResourceConfigData_getIndexByName_closure, A.ResourceConfigData_toJson_closure, A.SyncEngineConfig_allIndicesInOrder_closure, A.SyncEngineConfig_allIndicesInOrder__closure, A.SyncEngineConfig_SyncEngineConfig$fromJson_closure, A.SyncEngineConfig_toJson_closure, A.SyncEngineConfig_getResourceConfig_closure, A.SyncEngineConfigValidator__baseValidator_closure, A.MergeResults_join__closure, A._RdfObjectComparison__max_closure, A._RdfObjectComparison__max_closure1, A._RdfObjectComparison__max_closure3, A.LwwRegister_remoteMerge_closure, A.addInlineTriples_closure, A.addInlineTriples_closure0, A.Immutable_remoteMerge_closure, A.OrSet_remoteMerge_closure, A.OrSet_localValueChange_closure, A.OrSet_localValueChange_closure0, A.OrSet_localValueChange_closure1, A.OrSet_localValueChange__closure, A.OrSet_localValueChange___closure, A._findStatementTriplesToRemove_closure, A._findStatementTriplesToRemove_closure0, A._findStatementTriplesToRemove_closure1, A._findStatementTriplesToRemove_closure2, A._handleIdenticalClocksTriples_closure, A._handleIdenticalClocksTriples_closure0, A._handleIdenticalClocksTriples_closure1, A._handleIdenticalClocksTriples_closure2, A._handleIdenticalClocksTriples_closure3, A._handleIdenticalClocksTriples_closure4, A._handleIdenticalClocksTriples_closure5, A._handleIdenticalClocksTriples_closure6, A._handleBothEmptyClocksTriples_closure, A._handleBothEmptyClocksTriples_closure0, A.objectsIfSubjectNonNull_closure, A._constructCrdtDocument_closure, A._constructCrdtDocument_closure0, A.HlcService__extractCrdtClock_closure, A.HlcService__extractCrdtClock_closure0, A.HlcService__getOurTime_closure, A.HlcService__getOurTime_closure0, A.HlcService__incrementClock_closure0, A.GroupKeyGenerator__extractAllValuesForProperty_closure, A.GroupKeyGenerator__generateCartesianProduct_closure, A.ItemFetchPolicy_fromMap_closure, A.PrefetchFiltered_toMap_closure, A.GroupingProperty_GroupingProperty$fromJson_closure, A.GroupingProperty_toJson_closure, A.IndexDiscovery__initializeWatches_closure, A.IndexDiscovery__initializeWatches_closure1, A.IndexDiscovery__updateIndexMetadataCache_closure0, A.IndexDiscovery__removeIndexFromCache_closure, A.IndexDiscovery__isConfiguredResourceType_closure, A.IndexDiscovery_discoverGroupIndexTemplate_closure, A.IndexManager__generateGroupIndex_closure, A.IndexManager__updateShardIndexEntries_closure, A.IndexManager__updateShardIndexEntries__closure, A.IndexManager__extractHeaderProperties_closure, A.IndexParser__parseGroupingProperties_closure, A.IndexParser__parseGroupingProperty_closure, A.IndexRdfGenerator_generateGroupIndexTemplate_closure, A.IndexRdfGenerator_generateGroupIndexTemplateIri_closure0, A.IndexRdfGenerator_generateGroupIndexTemplateIri__closure, A.IndexRdfGenerator__generateIndexedProperties_closure, A.RdfGroupExtractor_closure, A.RdfGroupExtractor__applyReplacement_closure, A.ShardDeterminer_calculateShards_closure, A.LocalDocumentMerger_replaceInDocument_closure, A.LocalDocumentMerger_replaceInDocument_closure0, A.LocalDocumentMerger__getIdentifiedSubjects_closure, A.LocalDocumentMerger__generateCrdtMetadataForChanges_closure, A.LocalDocumentMerger__valueEquals_closure, A.collectClassMappings_closure, A.collectClassMappings_closure0, A.mergeClassMappingGroups_closure, A.mergeClassMappingGroups_closure1, A.mergeClassMappingGroups__closure, A.collectPredicateMappings_closure, A.collectPredicateMappings_closure0, A.mergePredicateMappingGroups_closure, A.FrameworkIriGenerator_generateSimpleCanonicalIri_closure, A._buildIdentificationGraphWithLabels_processNode, A.IdentifiedBlankNode_hashCode_closure, A.IdentifiedBlankNode_operator$eq_closure, A.UnidentifiedBlankNodeWithContextException_toString_closure, A.UnidentifiedBlankNodeWithContextException_toString_closure0, A.IdentifiedBlankNodeBuilder_computeCanonicalBlankNodes_closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure1, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes__closure0, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure3, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure4, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes__closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes___closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes___closure0, A._sortByDependencies_closure, A._addIdentifiedBlankNodes_closure, A._addIdentifiedBlankNodes_closure0, A._addIdentifiedBlankNodes_closure1, A._addIdentifiedBlankNodes__closure, A.IdentifiedBlankNodeSubject_operator$eq_closure, A.BaseIriTranslator_translateGraphToInternal_closure, A.BaseIriTranslator_translateGraphToExternal_closure, A.ClassMergeRules__computeIdentifyingPredicates_closure, A.ClassMergeRules__computeIdentifyingPredicates_closure0, A.ClassMergeRules__computeNonIdentifyingPredicates_closure, A.ClassMergeRules__computeNonIdentifyingPredicates_closure0, A.MergeContract_getEffectivePredicateRule_closure, A.MergeContract__computeIdentifyingPredicates_closure, A.MergeContract__computeIdentifyingPredicates_closure0, A.MergeContract_getIdentifyingPredicates_closure, A.CachingMergeContractLoader__cacheKey_closure, A.CachingMergeContractLoader_load_closure, A.MergeContractLoader_getMergedGovernanceIris_closure, A.StandardMergeContractLoader_load_closure, A.StandardMergeContractLoader_load_closure0, A.StandardMergeContractLoader_load_closure1, A.StandardMergeContractLoader_load_closure2, A.StandardMergeContractLoader__parseDocumentMapping_closure, A.StandardMergeContractLoader__parseDocumentMapping_closure0, A.StandardMergeContractLoader__parseDocumentMapping_closure1, A.StandardMergeContractLoader__parseDocumentMapping_closure2, A.StandardMergeContractLoader__parseDocumentMapping_closure3, A.StandardMergeContractLoader__parseDocumentMapping_closure4, A.StandardMergeContractLoader__parseDocumentMapping_closure5, A.StandardMergeContractLoader__parseDocumentMapping_closure6, A.StandardMergeContractLoader__parseDocumentMapping_closure7, A.StandardMergeContractLoader__parseClassMappings_closure, A.StandardMergeContractLoader__parseClassMappings_closure0, A.StandardMergeContractLoader__parseClassMappings_closure1, A.StandardMergeContractLoader__parseClassMappings_closure2, A.StandardMergeContractLoader__parseClassMappings_closure3, A.StandardMergeContractLoader__parsePredicateMapping_closure, A.StandardMergeContractLoader__parsePredicateMapping_closure0, A.StandardMergeContractLoader__parsePredicateMapping_closure1, A.StandardMergeContractLoader__parsePredicateMapping_closure2, A.MetadataGenerator__createPropertyValueMetadata_closure, A.MetadataGenerator__createPropertyValueMetadata__closure, A.MetadataGenerator__createPropertyValueMetadata___closure, A.RecursiveRdfLoader__loadRecursivelySingle_closure, A.RecursiveRdfLoader__loadRecursivelyMulti_closure, A.RdfGraphExtensions_getMultiValueObjectList_closure, A.RdfGraphExtensions_getMultiValueObjects_closure, A.RdfGraphExtensions_traverseListObjects_closure0, A.RdfGraphIterableExtensions_mergeGraphs_closure, A.StandardSyncEngine_create_closure0, A.StandardSyncEngine_hydrateStream_closure, A.StandardSyncEngine__doHydrateIndexEntryStream_closure, A.StandardSyncEngine__doHydrateIndexEntryStream_closure0, A.StandardSyncEngine__hydrateRootResourceStream_closure, A.OrganizedStatements$__closure, A.OrganizedStatements$___closure, A.OrganizedStatements_OrganizedStatements$fromGraph_closure1, A.OrganizedStatements_getAllStatementsForSubject_closure, A.OrganizedStatements_getAllStatementsForSubject_closure0, A.OrganizedStatements_getStatement_closure, A.OrganizedStatements_getStatement__closure, A.OrganizedStatements_getStatement_closure0, A.MergeObject_createMergeObjects_closure, A.MergeObject_createMergeObjects_closure0, A.MergeObject_createMergeObjects_closure1, A.MergeSubject_createMergeSubjects_closure, A.OrganizedBlankNodeMappings_blankNodeIdentifiers_closure, A.IdentifiedBlankNodeKey_operator$eq_closure, A.OrganizedGraph_maxPhysicalTime_closure, A.OrganizedGraph_allSubjectKeys_closure, A.RemoteDocumentMerger__mergeSubjectsAndProperties_closure, A.RemoteDocumentMerger__buildResultDocument_closure, A.RemoteDocumentMerger__buildResultDocument_closure0, A.RemoteDocumentMerger__buildResultDocument__closure3, A.RemoteDocumentMerger__buildResultDocument_closure1, A.RemoteDocumentMerger__buildResultDocument__closure0, A.RemoteDocumentMerger__buildResultDocument__closure1, A.RemoteDocumentMerger__buildResultDocument__closure2, A.RemoteDocumentMerger__buildResultDocument_closure2, A.RemoteDocumentMerger__buildResultDocument__closure, A.RemoteDocumentMerger__convertToTriples_closure, A.RemoteDocumentMerger__convertToTriples__closure, A.RemoteDocumentMerger__convertToTriples__closure0, A.PartialIndexSync_toString_closure, A.PartialIndexSync_toString__closure, A.RemoteSyncOrchestrator_sync_closure, A.RemoteSyncOrchestrator__syncIndexDocuments_closure, A.RemoteSyncOrchestrator__syncIndexDocuments_closure0, A.RemoteSyncOrchestrator__syncIndexDocuments_closure1, A.RemoteSyncOrchestrator__syncIndexDocuments_closure2, A.RemoteSyncOrchestrator__syncIndexDocuments_closure3, A.RemoteSyncOrchestrator__buildShardSyncSpecs_closure, A.RemoteSyncOrchestrator__buildShardSyncSpecs_closure0, A.RemoteSyncOrchestrator__buildDocumentQueue_closure0, A.RemoteSyncOrchestrator__buildDocumentQueue_closure1, A.RemoteSyncOrchestrator__matchesFilter_closure, A.RemoteSyncOrchestrator__matchesFilter_closure0, A.RemoteSyncOrchestrator__getFinalEntrySet_closure, A.RemoteSyncOrchestrator__findForeignIndices_closure, A.RemoteSyncOrchestrator__findForeignIndices_closure0, A.RemoteSyncOrchestrator__syncResourceType_closure, A.RemoteSyncOrchestrator__syncIndex_closure, A.RemoteSyncOrchestrator__syncShard__closure, A.RemoteSyncOrchestrator__syncShard__closure0, A.RemoteSyncOrchestrator__syncShard__closure2, A.RemoteSyncOrchestrator_createSyncDocumentQueueTasks_closure, A.RemoteSyncOrchestrator_createSyncDocumentQueueTasks_closure0, A.RemoteSyncOrchestrator_createSyncDocumentQueueTasks_closure1, A._executeInChunks_closure, A.ShardDocumentGenerator__syncShardAttempt_closure0, A.ShardDocumentGenerator__syncShardAttempt_closure, A.StandardSyncManager__setupAutoSync_closure, A.StandardSyncManager_enableAutoSync_closure, A.buildEffectiveConfig_closure, A.DriftStorage_watchDocumentsModifiedSince_closure, A.DriftStorage_getSettings_closure, A.DriftStorage_getIndexEntries_closure, A.DriftStorage_getIndexEntries_closure0, A.DriftStorage_watchIndexEntries_closure, A.DriftStorage_watchIndexEntries_closure0, A.DriftStorage_watchIndexEntries__closure, A.DriftStorage_getSubscribedGroupIndices_closure, A.DriftStorage_watchSubscribedGroupIndexIris_closure, A.DriftStorage_ensureIndexSetVersion_closure, A.DriftStorage_getIndexIrisForVersion_closure, A.DriftStorage_getActiveIndexEntriesForShard_closure, A.DriftStorage_getShardsToUpdate_closure, A.DriftStorage_getForeignIndexShardsToSync_closure, A.DriftStorage__convertToStoredDocuments_closure, A.IriBatchLoader_getIrisBatch_closure, A.IriBatchLoader_getOrCreateIriIdsBatch_closure, A.IriBatchLoader__getExistingIriIds_closure, A.SyncDocumentDao_saveDocument_closure, A.SyncDocumentDao_saveDocument_closure0, A.SyncDocumentDao_saveDocument_closure1, A.SyncDocumentDao_getDocument_closure, A.SyncDocumentDao_getDocument_closure0, A.SyncDocumentDao_getDocumentsModifiedSince_closure, A.SyncDocumentDao_getDocumentsModifiedSince_closure0, A.SyncDocumentDao_watchDocumentsModifiedSince_closure, A.SyncDocumentDao_watchDocumentsModifiedSince_closure0, A.SyncDocumentDao__convertDocumentsWithIris_closure0, A.SyncDocumentDao__convertDocumentsWithIris_closure, A.SyncPropertyChangeDao_recordPropertyChangesBatch_closure0, A.SyncPropertyChangeDao_recordPropertyChangesBatch_closure, A.SyncPropertyChangeDao_recordPropertyChangesBatch_closure1, A.IndexDao_getIndexEntries_closure, A.IndexDao_getIndexEntries_closure0, A.IndexDao_getIndexEntries_closure1, A.IndexDao_getIndexEntries_closure3, A.IndexDao_getIndexEntries_closure2, A.IndexDao_watchIndexEntries_closure, A.IndexDao_watchIndexEntries_closure0, A.IndexDao_watchIndexEntries_closure2, A.IndexDao_watchIndexEntries__closure, A.IndexDao_watchIndexEntries__closure0, A.IndexDao_watchIndexEntries__closure3, A.IndexDao_watchIndexEntries__closure2, A.IndexDao_watchSubscribedGroupIndexIds_closure, A.IndexDao_watchSubscribedGroupIndexIds_closure0, A.IndexDao_watchSubscribedGroupIndexIds__closure, A.IndexDao_getSubscribedGroupIndices_closure, A.IndexDao_ensureIndexIdSetVersion_closure, A.IndexDao_getIndexIriIdsForVersion_closure, A.IndexDao_getActiveIndexEntriesForShard_closure, A.IndexDao_getShardsToUpdate_closure, A.RemoteSyncStateDao_getOrCreateRemoteId_closure, A.RemoteSyncStateDao_getRemoteLastSyncTimestamp_closure, A.RemoteSyncStateDao_updateRemoteLastSyncTimestamp_closure, A.RemoteSyncStateDao_getETag_closure, A.SyncDatabase_migration_closure, A.SyncDatabase_migration_closure0, A.GDriveTypeIndexManager_loadOrCreateTypeIndex_closure, A.GDriveTypeIndexManager__collectAllTypes_closure, A.GDriveTypeIndexManager__addMissingTypes_closure, A.GDriveTypeIndexManager__addMissingTypes_closure0, A.GDriveTypeIndexManager__addMissingTypes_closure1, A.GDriveTypeIndexManager__fillInDefaults_closure, A.RdfGraphExtensions_getMultiValueObjects_closure0, A.GDriveConfigMessage_fromJson_closure, A.WorkerGDriveAuthProvider_closure, A.WorkerGDriveConfigReceiver_closure, A.RdfDataset_namedGraphs_closure, A.RdfDataset__buildDefaultGraph_closure, A.RdfDataset__buildDefaultGraph_closure0, A.RdfDataset__buildNamedGraphs_closure, A.RdfDataset_operator$eq_closure, A.RdfDataset_hashCode_closure, A.RdfGraph_withoutTriples_closure, A.RdfGraph_subjects_closure, A.RdfGraph_predicates_closure, A.RdfGraph_predicates_closure0, A.RdfGraph_findTriples_closure, A.RdfGraph_findTriples_closure0, A.RdfGraph_findTriples_closure1, A.RdfGraph_findTriples_closure2, A.RdfGraph_findTriples_closure3, A.RdfGraph_hasTriples_closure, A.RdfGraph_hasTriples__closure, A.RdfGraph_hasTriples__closure0, A.RdfGraph_hasTriples__closure1, A.RdfGraph_hasTriples__closure2, A.RdfGraph_hasTriples__closure3, A.RdfGraph_hasTriples_closure0, A.RdfGraph_matching_closure, A.IriCompactionResult_compactIri_closure, A.IriCompactionResult_compactIri_closure0, A.IriCompactionResult_compactIri_closure1, A.IriCompaction_compactAllIris_closure0, A.JsonLdParser__addTripleForValue_closure, A.JsonLdEncoder_closure, A.JsonLdEncoder_convert_closure, A.JsonLdEncoder__createNodeObject_closure0, A.JsonLdEncoder__createNodeObject_closure1, A.NQuadsCodec_canParse_closure, A.NQuadsEncoder_encode_closure, A.NQuadsEncoder_encode_closure0, A.NQuadsEncoder_encode__closure, A.NTriplesCodec_canParse_closure, A.TurtleEncoder_closure, A.TurtleEncoder__extractCollection_closure, A.TurtleEncoder__extractCollection_closure0, A.TurtleEncoder__extractCollection_closure1, A.TurtleEncoder__extractCollection_closure2, A.TurtleEncoder__extractCollection_closure4, A.TurtleEncoder__markCollectionNodesAsProcessed_closure, A.TurtleEncoder__writeCollection_closure, A.TurtleEncoder__writeTriples_closure0, A.TurtleEncoder__isPartOfRdfCollection_closure, A.TurtleEncoder__isPartOfRdfCollection_closure0, A.RdfNamespaceMappings__extractDomainPrefix_closure, A.RdfNamespaceMappings__extractDomainPrefix_closure0, A.RdfNamespaceMappings__extractPathPrefix_closure, A.RdfNamespaceMappings__extractPathPrefix_closure0, A.RdfNamespaceMappings__extractPathPrefix_closure1, A.RdfNamespaceMappings__sanitizeComponentForPrefix_closure, A.RdfNamespaceMappings__sanitizeComponentForPrefix_closure0, A.SolidAuthReceiver_closure, A._createRetryClient_closure, A._createRetryClient_closure1, A.SolidRemoteStorage_isAvailable_closure, A.SolidRemoteStorage_isAvailable_closure0, A.HydrationBatchMessage_toJson_closure, A.HydrationBatchMessage_toJson_closure0, A.HydrationBatchMessage_HydrationBatchMessage$fromJson_closure, A.HydrationBatchMessage_HydrationBatchMessage$fromJson_closure0, A.SyncTriggerRequest_SyncTriggerRequest$fromJson_closure, A.GetSyncStateResponse_GetSyncStateResponse$fromJson_closure, A.SyncStateUpdateMessage_SyncStateUpdateMessage$fromJson_closure, A.startWebWorkerLoop_closure0, A.startWebWorkerLoop_closure, A.startWebWorkerLoop__closure0, A.WorkerHandlerChannel$__closure, A.WorkerHandlerChannel$__closure0, A.WorkerContext_setSyncSystem_closure, A.WorkerContext__handleHydrateStream_closure, A.WorkerContext__handleHydrateStream__closure, A.WorkerContext__handleHydrateStream__closure0, A.toEngineParams_closure, A.Context_joinAll_closure, A.Context_split_closure, A._validateArgList_closure, A.WindowsStyle_absolutePathToUri_closure, A._createLogHandler_closure, A._indentStackTrace_closure, A._wNafMultiplier_closure, A.HKDFKeyDerivator__getBlockLengthFromDigest_closure, A._escapeRegExp_closure, A._escapeRegExp_closure0, A._forward_closure_listenToUpstream, A.Highlighter$__closure, A.Highlighter$___closure, A.Highlighter$__closure0, A.Highlighter__collateLines_closure, A.Highlighter__collateLines_closure1, A.Highlighter__collateLines__closure, A.Highlighter_highlight_closure, A.SqliteException_toString_closure, A.disposeFinalizer_closure, A._CursorReader_moveNext_closure, A._CursorReader_moveNext_closure0, A.CompleteIdbRequest_complete_closure, A.CompleteIdbRequest_complete_closure0, A.CompleteOpenIdbRequest_completeOrBlocked_closure, A.CompleteOpenIdbRequest_completeOrBlocked_closure0, A.CompleteOpenIdbRequest_completeOrBlocked_closure1, A.AsynchronousIndexedDbFileSystem_open_closure, A.AsynchronousIndexedDbFileSystem__readFile_closure, A.AsynchronousIndexedDbFileSystem__write_closure, A.SimpleOpfsFileSystem_inDirectory_open, A._InjectedValues_closure, A._InjectedValues_closure0, A._InjectedValues_closure1, A._InjectedValues_closure2, A._InjectedValues_closure3, A._InjectedValues_closure4, A._InjectedValues_closure7, A._InjectedValues_closure8, A._InjectedValues_closure9, A._InjectedValues_closure10, A._InjectedValues_closure17, A._InjectedValues_closure18, A._InjectedValues_closure19, A._InjectedValues_closure20, A._InjectedValues_closure21, A._InjectedValues_closure22, A._InjectedValues_closure23, A._InjectedValues_closure24, A._InjectedValues_closure25, A._InjectedValues_closure26, A._InjectedValues_closure29, A.Chain_Chain$parse_closure, A.Chain_toTrace_closure, A.Chain_toString_closure0, A.Chain_toString__closure0, A.Chain_toString_closure, A.Chain_toString__closure, A.Trace__parseVM_closure, A.Trace$parseV8_closure, A.Trace$parseJSCore_closure, A.Trace$parseFirefox_closure, A.Trace$parseFriendly_closure, A.Trace_toString_closure0, A.Trace_toString_closure, A._EventStreamSubscription_closure, A._EventStreamSubscription_onData_closure]);
+    _inheritMany(A.Closure2Args, [A._CastListBase_sort_closure, A.CastMap_forEach_closure, A.ConstantMap_map_closure, A.JsLinkedHashMap_addAll_closure, A.initHooks_closure0, A._awaitOnObject_closure0, A._wrapJsFunctionForAsync_closure, A.Future_wait_handleError, A.FutureExtensions_onError_onError, A._Future__propagateToListeners_handleWhenCompleteCallback_closure0, A._Future_timeout_closure1, A._AddStreamState_makeErrorHandler_closure, A._CustomZone_bindBinaryCallback_closure, A._RootZone_bindBinaryCallback_closure, A.HashMap_HashMap$from_closure, A.LinkedHashMap_LinkedHashMap$from_closure, A.MapBase_mapToString_closure, A._JsonStringifier_writeMap_closure, A._JsonPrettyPrintMixin_writeMap_closure, A._BigIntImpl_hashCode_combine, A.Uri_parseIPv6Address_error, A.ApiRequester__request_addQueryParameter, A.ApiRequester__request_closure, A.FutureGroup_add_closure0, A.StreamQueue__ensureListening_closure1, A._CancelOnErrorSubscriptionWrapper_onError_closure, A.CanonicalizedMap_addAll_closure, A.CanonicalizedMap_forEach_closure, A.CanonicalizedMap_map_closure, A._BaseExecutor__runRequest__closure, A.VerificationContext_throwIfInvalid_closure, A.DriftServiceExtension_registerIfNeeded_closure, A.DriftServiceExtension_registerIfNeeded__closure1, A.InsertStatement__writeOnConflict_writeOnConflictConstraint, A.DoUpdate_closure, A.UpdateStatement_writeStartPart_closure, A.WasmInitializationMessage_sendToWorker_closure, A.WasmInitializationMessage_sendToPort_closure, A.File$fromJson_closure, A.File$fromJson_closure1, A.File$fromJson_closure6, A.Label$fromJson_closure, A.BaseRequest_closure, A.MediaType_toString_closure, A.ResourceConfigData_indicesInOrder_closure, A.SyncEngineConfig_resourcesInSyncOrder_closure, A.MetadataStatement_merge_closure1, A.MergeResults_join_closure, A.subjectAndInlineTriples_closure, A._RdfObjectComparison__max_closure0, A._RdfObjectComparison__max_closure2, A._RdfObjectComparison__max_closure4, A._constructCrdtDocument_closure1, A.HlcService__incrementClock_closure, A.GroupKeyGenerator__organizeExtractorsByLevel_closure0, A.IndexDiscovery__initializeWatches_closure0, A.IndexDiscovery__initializeWatches_closure2, A.IndexDiscovery__removeIndexFromCache_closure0, A.IndexDiscovery__loadAndParseFullIndex_closure, A.IndexDiscovery__loadAndParseTemplate_closure, A.IndexParser__parseGroupingProperties_closure0, A.IndexRdfGenerator_generateGroupIndexTemplateIri_closure, A.mergeClassMappingGroups_closure0, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure0, A.MergeContract__classMappingsByPredicate_closure, A.MergeContractLoader_getMergedGovernanceIris_closure0, A.RdfGraphExtensions_traverseListObjects_closure, A.splitDocument_closure, A.StandardSyncEngine_create_closure, A.StandardSyncEngine__hydrateRootResourceStream_convertResult, A.StandardSyncEngine__hydrateRootResourceStream_convertResult_closure, A.OrganizedStatements_OrganizedStatements$fromGraph__closure, A.OrganizedBlankNodeMappings__buildBlankNodeToCanonicalMap_closure, A.OrganizedGraph_maxPhysicalTime_closure0, A.RemoteDocumentMerger_merge_closure, A.RemoteDocumentMerger__mergeSubjectProperties_closure, A.RemoteSyncOrchestrator__buildDocumentQueue_closure, A.RemoteSyncOrchestrator__findForeignIndices_closure1, A.RemoteSyncOrchestrator__syncShard__closure1, A.buildShardAppData_closure, A.IndexDao_watchIndexEntries__closure1, A.GDriveTypeIndexManager__sortTypesForProcessing_closure, A.GDriveTypeIndexManager__sortTypesForProcessing_closure0, A.GDriveConfigMessage_toJson_closure, A.GDriveConfigMessage_fromJson_closure0, A.RdfDataset__buildNamedGraphs_closure1, A.RdfGraph__effectiveIndex_closure, A.IriCompaction_compactAllIris_closure, A.TurtleEncoder__writePrefixes_closure, A.TurtleEncoder__writeTriples_closure1, A.TurtleEncoder__writeSubjectGroup_closure0, A._createRetryClient_closure0, A._deepConvertJsObject_closure, A.startWebWorkerLoop__closure2, A.WorkerContext__handleHydrateStream_closure1, A.OAEPEncoding_factoryConfig_closure, A.PKCS1Encoding_factoryConfig_closure, A.CBCBlockCipher_factoryConfig_closure, A.CCMBlockCipher_factoryConfig_closure, A.CFBBlockCipher_factoryConfig_closure, A.CTRBlockCipher_factoryConfig_closure, A.ECBBlockCipher_factoryConfig_closure, A.GCMBlockCipher_factoryConfig_closure, A.GCTRBlockCipher_factoryConfig_closure, A.IGEBlockCipher_factoryConfig_closure, A.OFBBlockCipher_factoryConfig_closure, A.SICBlockCipher_factoryConfig_closure, A.CSHAKEDigest_factoryConfig_closure, A.KeccakDigest_factoryConfig_closure, A.SHA3Digest_factoryConfig_closure, A.SHA512tDigest_factoryConfig_closure, A.SHAKEDigest_factoryConfig_closure, A.ConcatKDFDerivator_factoryConfig_closure, A.HKDFKeyDerivator_factoryConfig_closure, A.PBKDF2KeyDerivator_factoryConfig_closure, A.PKCS12ParametersGenerator_factoryConfig_closure, A.PKCS5S1ParameterGenerator_factoryConfig_closure, A.CBCBlockCipherMac_factoryConfig_closure, A.CMac_factoryConfig_closure, A.HMac_factoryConfig_closure, A.Poly1305_factoryConfig_closure, A.PaddedBlockCipherImpl_factoryConfig_closure, A.AutoSeedBlockCtrRandom_factoryConfig_closure, A.BlockCtrRandom_factoryConfig_closure, A.ECDSASigner_factoryConfig_closure, A.PSSSigner_factoryConfig_closure, A.RSASigner_factoryConfig_closure, A.ChaCha20Engine_factoryConfig_closure, A.ChaCha7539Engine_factoryConfig_closure, A.CTRStreamCipher_factoryConfig_closure, A.EAX_factoryConfig_closure, A.SICStreamCipher_factoryConfig_closure, A._SwitchMapStreamSink_onData_closure, A.Highlighter__collateLines_closure0, A.DatabaseImplementation_createFunction_closure, A.WasmInstance_load_closure, A.WasmInstance_load__closure, A.AsynchronousIndexedDbFileSystem__write_writeBlock, A._InjectedValues_closure5, A._InjectedValues_closure6, A._InjectedValues_closure11, A._InjectedValues_closure12, A._InjectedValues_closure13, A._InjectedValues_closure14, A._InjectedValues_closure15, A._InjectedValues_closure16, A._InjectedValues_closure27, A._InjectedValues_closure28, A.Frame_Frame$parseV8_closure_parseJsLocation]);
     _inherit(A.CastList, A._CastListBase);
     _inheritMany(A.MapBase, [A.CastMap, A.JsLinkedHashMap, A._HashMap, A.UnmodifiableMapBase, A._JsonMap]);
-    _inheritMany(A.Closure0Args, [A.CastMap_putIfAbsent_closure, A.CastMap_update_closure, A.nullFuture_closure, A._AsyncRun__scheduleImmediateJsOverride_internalCallback, A._AsyncRun__scheduleImmediateWithSetImmediate_internalCallback, A._TimerImpl_internalCallback, A._TimerImpl$periodic_closure, A._asyncStarHelper_closure, A._AsyncStarStreamController__resumeBody, A._AsyncStarStreamController__resumeBody_closure, A._AsyncStarStreamController_closure0, A._AsyncStarStreamController_closure1, A._AsyncStarStreamController_closure, A._AsyncStarStreamController__closure, A.Future_Future_closure, A.Future_Future$microtask_closure, A.Future_Future$delayed_closure, A._Future__addListener_closure, A._Future__prependListeners_closure, A._Future__chainCoreFuture_closure, A._Future__asyncCompleteWithValue_closure, A._Future__asyncCompleteErrorObject_closure, A._Future__propagateToListeners_handleWhenCompleteCallback, A._Future__propagateToListeners_handleValueCallback, A._Future__propagateToListeners_handleError, A._Future_timeout_closure, A.Stream_join_closure, A.Stream_length_closure0, A.Stream_first_closure, A._StreamController__subscribe_closure, A._StreamController__recordCancel_complete, A._AddStreamState_cancel_closure, A._BufferingStreamSubscription__sendError_sendError, A._BufferingStreamSubscription__sendDone_sendDone, A._PendingEvents_schedule_closure, A._MultiStream_listen_closure, A._cancelAndError_closure, A._cancelAndValue_closure, A._CustomZone_bindCallback_closure, A._CustomZone_bindCallbackGuarded_closure, A._rootHandleError_closure, A._RootZone_bindCallback_closure, A._RootZone_bindCallbackGuarded_closure, A._Utf8Decoder__decoder_closure, A._Utf8Decoder__decoderNonfatal_closure, A._BigIntImpl_toDouble_roundUp, A.ApiRequester__request_simpleUpload, A.ApiRequester__request_simpleRequest, A.MultipartMediaUploader_upload_closure, A.SingleSubscriptionTransformer_bind_closure, A.StreamQueue__ensureListening_closure0, A.StreamSplitter_split_closure, A._CancelOnErrorSubscriptionWrapper_onError__closure, A.CanonicalizedMap_putIfAbsent_closure, A.CanonicalizedMap_update_closure0, A._BaseExecutor__runRequest_closure, A._RemoteStreamQueryStore_handleTableUpdates_closure1, A.DriftCommunication_closure, A.WebProtocol_deserialize_decodeRequest, A.WebProtocol_deserialize_decodeSuccess, A.WebProtocol__deserializeRequest_readBatched, A.Batch__addSqlAndArguments_closure, A.DatabaseConnectionUser_transaction__closure, A.DatabaseConnectionUser_exclusively__closure, A.GeneratedDatabase_beforeOpen_closure, A.runCancellable_closure, A.DriftServiceExtension__handle_closure3, A.DriftServiceExtension__handle_closure4, A.DriftServiceExtension_registerIfNeeded__closure, A._BaseExecutor__synchronized_closure, A._BaseExecutor_runSelect_closure, A._BaseExecutor_runUpdate_closure, A._BaseExecutor_runInsert_closure, A._BaseExecutor_runCustom_closure, A._BaseExecutor_runBatched_closure, A._StatementBasedTransactionExecutor_ensureOpen_closure, A._StatementBasedTransactionExecutor_ensureOpen_closure0, A.DelegatedDatabase_ensureOpen_closure, A.DelegatedDatabase_close_closure, A._ExclusiveExecutor_ensureOpen_closure, A.StreamQueryStore_markAsClosed_closure, A.QueryStream__stream__closure, A.QueryStream__stream__closure0, A.QueryStream__stream__closure1, A.QueryStream__onCancelOrPause_closure, A.SimpleSelectStatement_watch_closure, A.JoinedSelectStatement_addColumns_closure, A._LazyExpressionMap_operator$index_closure, A.DriftSqlType__dartToDrift_closure, A.MapAndAwait_mapAsyncAndAwait__closure, A.AsyncMapPerSubscription_asyncMapPerSubscription__onData_closure, A.Lock_synchronized_callBlockAndComplete, A.Lock_synchronized_callBlockAndComplete_closure, A.WebPortToChannel_channel_closure1, A._readMessages_closure_stop, A._readMessages__closure0, A.BrowserClient_send_closure, A._readStreamBody_closure, A._readStreamBody_closure0, A.MediaType_MediaType$parse_closure, A.ResourceConfigData_getIndexByName_closure0, A.SyncEngineConfig_getResourceConfig_closure0, A.MetadataStatement_merge_closure, A.MetadataStatement_merge_closure0, A.MergeResults_join__closure0, A.computeMergeInstructions_closure, A.GroupKeyGenerator__organizeExtractorsByLevel_closure, A.IndexDiscovery__updateIndexMetadataCache_closure, A.IndexManager__saveWithRetry_closure, A.InstallationService_create_closure, A.mergeClassMappingGroups__closure0, A.mergePredicateRuleGroups_closure, A._buildIdentificationGraphWithLabels_processNode_closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes__closure1, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure2, A.MergeContract__classMappingsByPredicate__closure, A.splitDocument__closure, A.StandardSyncEngine_save_closure, A.StandardSyncEngine__loadExistingEntriesAsStream_loadEntries, A.OrganizedStatements_OrganizedStatements$fromGraph_closure, A.OrganizedStatements_OrganizedStatements$fromGraph_closure0, A.OrganizedStatements_OrganizedStatements$fromGraph___closure, A.OrganizedStatements_getStatement_closure1, A.OrganizedBlankNodeMappings__buildBlankNodeToCanonicalMap__closure, A.RemoteSyncOrchestrator__syncDocument_closure, A.RemoteSyncOrchestrator__syncShard_closure, A.ShardDocumentGenerator_syncShard_closure, A.ShardDocumentGenerator_generateShardNodes_closure, A.StandardSyncManager__initialize_closure, A.DriftStorage_saveDocument_closure, A.IndexDao_watchIndexEntries_closure1, A.IndexDao__groupResults_closure, A.IndexDao__groupResults_closure0, A.WorkerGDriveAuthProvider_refreshToken_closure, A.RdfDataset__buildNamedGraphs_closure0, A.JsonLdParser__getOrCreateBlankNode_closure, A.JsonLdEncoder__groupTriplesBySubject_closure, A.JsonLdEncoder__createNodeObject_closure, A.JsonLdEncoder__renderIri_closure, A.NQuadsDecoder__parseSubject_closure, A.NQuadsDecoder__parseObject_closure, A.NQuadsDecoder__parseGraphName_closure, A.NQuadsEncoder__writeTerm_closure, A.TurtleEncoder__extractCollection_closure3, A.TurtleEncoder__extractCollection_closure5, A.TurtleEncoder__writeTriples_closure, A.TurtleEncoder__writeSubjectGroup_closure, A.TurtleEncoder__writeInlineBlankNode_closure, A.SolidAuthReceiver__requestTokenRefresh_closure, A.SyncTriggerRequest_SyncTriggerRequest$fromJson_closure0, A.GetSyncStateResponse_GetSyncStateResponse$fromJson_closure0, A.SyncStateUpdateMessage_SyncStateUpdateMessage$fromJson_closure0, A.startWebWorkerLoop_resetInitializing, A.startWebWorkerLoop_markAsInitializing, A.startWebWorkerLoop__closure, A.startWebWorkerLoop__closure1, A.WorkerContext__handleHydrateStream_closure0, A.Logger_Logger_closure, A.OAEPEncoding_factoryConfig__closure, A.OAEPEncoding_OAEPEncoding$withSHA1_closure, A.PKCS1Encoding_factoryConfig__closure, A.RSAEngine_factoryConfig_closure, A.AESEngine_factoryConfig_closure, A.DESedeEngine_factoryConfig_closure, A.CBCBlockCipher_factoryConfig__closure, A.CCMBlockCipher_factoryConfig__closure, A.CFBBlockCipher_factoryConfig__closure, A.CTRBlockCipher_factoryConfig__closure, A.ECBBlockCipher_factoryConfig__closure, A.GCMBlockCipher_factoryConfig__closure, A.GCTRBlockCipher_factoryConfig__closure, A.IGEBlockCipher_factoryConfig__closure, A.OFBBlockCipher_factoryConfig__closure, A.SICBlockCipher_factoryConfig__closure, A.RC2Engine_factoryConfig_closure, A.Blake2bDigest_factoryConfig_closure, A.CSHAKEDigest_factoryConfig__closure, A.KeccakDigest_factoryConfig__closure, A.MD2Digest_factoryConfig_closure, A.MD4Digest_factoryConfig_closure, A.MD5Digest_factoryConfig_closure, A.RIPEMD128Digest_factoryConfig_closure, A.RIPEMD160Digest_factoryConfig_closure, A.RIPEMD256Digest_factoryConfig_closure, A.RIPEMD320Digest_factoryConfig_closure, A.SHA1Digest_factoryConfig_closure, A.SHA224Digest_factoryConfig_closure, A.SHA256Digest_factoryConfig_closure, A.SHA3Digest_factoryConfig__closure, A.SHA384Digest_factoryConfig_closure, A.SHA512Digest_factoryConfig_closure, A.SHA512tDigest_factoryConfig__closure, A.SHAKEDigest_factoryConfig__closure, A.SM3Digest_factoryConfig_closure, A.TigerDigest_factoryConfig_closure, A.WhirlpoolDigest_factoryConfig_closure, A.ECCurve_brainpoolp160r1_factoryConfig_closure, A.ECCurve_brainpoolp160t1_factoryConfig_closure, A.ECCurve_brainpoolp192r1_factoryConfig_closure, A.ECCurve_brainpoolp192t1_factoryConfig_closure, A.ECCurve_brainpoolp224r1_factoryConfig_closure, A.ECCurve_brainpoolp224t1_factoryConfig_closure, A.ECCurve_brainpoolp256r1_factoryConfig_closure, A.ECCurve_brainpoolp256t1_factoryConfig_closure, A.ECCurve_brainpoolp320r1_factoryConfig_closure, A.ECCurve_brainpoolp320t1_factoryConfig_closure, A.ECCurve_brainpoolp384r1_factoryConfig_closure, A.ECCurve_brainpoolp384t1_factoryConfig_closure, A.ECCurve_brainpoolp512r1_factoryConfig_closure, A.ECCurve_brainpoolp512t1_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_a_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_b_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_c_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_xcha_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_xchb_factoryConfig_closure, A.ECCurve_prime192v1_factoryConfig_closure, A.ECCurve_prime192v2_factoryConfig_closure, A.ECCurve_prime192v3_factoryConfig_closure, A.ECCurve_prime239v1_factoryConfig_closure, A.ECCurve_prime239v2_factoryConfig_closure, A.ECCurve_prime239v3_factoryConfig_closure, A.ECCurve_prime256v1_factoryConfig_closure, A.ECCurve_secp112r1_factoryConfig_closure, A.ECCurve_secp112r2_factoryConfig_closure, A.ECCurve_secp128r1_factoryConfig_closure, A.ECCurve_secp128r2_factoryConfig_closure, A.ECCurve_secp160k1_factoryConfig_closure, A.ECCurve_secp160r1_factoryConfig_closure, A.ECCurve_secp160r2_factoryConfig_closure, A.ECCurve_secp192k1_factoryConfig_closure, A.ECCurve_secp192r1_factoryConfig_closure, A.ECCurve_secp224k1_factoryConfig_closure, A.ECCurve_secp224r1_factoryConfig_closure, A.ECCurve_secp256k1_factoryConfig_closure, A.ECCurve_secp256r1_factoryConfig_closure, A.ECCurve_secp384r1_factoryConfig_closure, A.ECCurve_secp521r1_factoryConfig_closure, A.Argon2BytesGenerator_factoryConfig_closure, A.ConcatKDFDerivator_factoryConfig__closure, A.ECDHKeyDerivator_factoryConfig_closure, A.HKDFKeyDerivator_factoryConfig__closure, A.PBKDF2KeyDerivator_factoryConfig__closure, A.PKCS12ParametersGenerator_factoryConfig__closure, A.PKCS5S1ParameterGenerator_factoryConfig__closure, A.Scrypt_factoryConfig_closure, A.ECKeyGenerator_factoryConfig_closure, A.RSAKeyGenerator_factoryConfig_closure, A.CBCBlockCipherMac_factoryConfig__closure, A.CMac_factoryConfig__closure, A.HMac_factoryConfig__closure, A.Poly1305_factoryConfig__closure, A.PaddedBlockCipherImpl_factoryConfig__closure, A.ISO7816d4Padding_factoryConfig_closure, A.PKCS7Padding_factoryConfig_closure, A.AutoSeedBlockCtrRandom_factoryConfig__closure, A.AutoSeedBlockCtrRandom_nextUint8_closure, A.AutoSeedBlockCtrRandom_nextBigInteger_closure, A.AutoSeedBlockCtrRandom_nextBytes_closure, A.BlockCtrRandom_factoryConfig__closure, A.FortunaRandom_factoryConfig_closure, A.ECDSASigner_factoryConfig__closure, A.PSSSigner_factoryConfig__closure, A.RSASigner_factoryConfig__closure, A._RegistryImpl__addStaticFactoryConfig_closure, A._RegistryImpl__addDynamicFactoryConfig_closure, A.ChaCha20Engine_factoryConfig__closure, A.ChaCha20Poly1305_factoryConfig_closure, A.ChaCha7539Engine_factoryConfig__closure, A.CTRStreamCipher_factoryConfig__closure, A.EAX_factoryConfig__closure, A.RC4Engine_factoryConfig_closure, A.Salsa20Engine_factoryConfig_closure, A.SICStreamCipher_factoryConfig__closure, A._SwitchMapStreamSink_onData_closure0, A._SwitchMapStreamSink_listenToInner_closure, A.SwitchMapStreamTransformer_bind_closure, A._forward_closure, A._forward_closure0, A._forward__listenToUpstream_closure, A._forward__listenToUpstream_closure0, A._forward_closure1, A.Highlighter_closure, A.Highlighter__writeFileStart_closure, A.Highlighter__writeMultilineHighlights_closure, A.Highlighter__writeMultilineHighlights_closure0, A.Highlighter__writeMultilineHighlights_closure1, A.Highlighter__writeMultilineHighlights_closure2, A.Highlighter__writeMultilineHighlights__closure, A.Highlighter__writeMultilineHighlights__closure0, A.Highlighter__writeHighlightedText_closure, A.Highlighter__writeIndicator_closure, A.Highlighter__writeIndicator_closure0, A.Highlighter__writeIndicator_closure1, A.Highlighter__writeSidebar_closure, A._Highlight_closure, A.DatabaseImplementation__prepareInternal_freeIntermediateResults, A.AsynchronousIndexedDbFileSystem_readFully_closure, A._FileWriteRequest__updateBlock_closure, A.IndexedDbFileSystem__startWorkingIfNeeded_closure, A._IndexedDbFile_xTruncate_closure, A._InjectedValues__closure13, A._InjectedValues__closure12, A._InjectedValues__closure11, A._InjectedValues__closure10, A._InjectedValues__closure9, A._InjectedValues__closure8, A._InjectedValues__closure7, A._InjectedValues__closure6, A._InjectedValues__closure5, A._InjectedValues__closure4, A._InjectedValues__closure3, A._InjectedValues__closure2, A._InjectedValues__closure1, A._InjectedValues__closure0, A._InjectedValues__closure, A.Frame_Frame$parseVM_closure, A.Frame_Frame$parseV8_closure, A.Frame_Frame$_parseFirefoxEval_closure, A.Frame_Frame$parseFirefox_closure, A.Frame_Frame$parseFriendly_closure, A.Trace_Trace$from_closure, A.GuaranteeChannel_closure, A.GuaranteeChannel__closure]);
+    _inheritMany(A.Closure0Args, [A.CastMap_putIfAbsent_closure, A.CastMap_update_closure, A.nullFuture_closure, A._AsyncRun__scheduleImmediateJsOverride_internalCallback, A._AsyncRun__scheduleImmediateWithSetImmediate_internalCallback, A._TimerImpl_internalCallback, A._TimerImpl$periodic_closure, A._asyncStarHelper_closure, A._AsyncStarStreamController__resumeBody, A._AsyncStarStreamController__resumeBody_closure, A._AsyncStarStreamController_closure0, A._AsyncStarStreamController_closure1, A._AsyncStarStreamController_closure, A._AsyncStarStreamController__closure, A.Future_Future_closure, A.Future_Future$microtask_closure, A.Future_Future$delayed_closure, A._Future__addListener_closure, A._Future__prependListeners_closure, A._Future__chainCoreFuture_closure, A._Future__asyncCompleteWithValue_closure, A._Future__asyncCompleteErrorObject_closure, A._Future__propagateToListeners_handleWhenCompleteCallback, A._Future__propagateToListeners_handleValueCallback, A._Future__propagateToListeners_handleError, A._Future_timeout_closure, A.Stream_join_closure, A.Stream_length_closure0, A.Stream_first_closure, A._StreamController__subscribe_closure, A._StreamController__recordCancel_complete, A._AddStreamState_cancel_closure, A._BufferingStreamSubscription__sendError_sendError, A._BufferingStreamSubscription__sendDone_sendDone, A._PendingEvents_schedule_closure, A._MultiStream_listen_closure, A._cancelAndError_closure, A._cancelAndValue_closure, A._CustomZone_bindCallback_closure, A._CustomZone_bindCallbackGuarded_closure, A._rootHandleError_closure, A._RootZone_bindCallback_closure, A._RootZone_bindCallbackGuarded_closure, A._Utf8Decoder__decoder_closure, A._Utf8Decoder__decoderNonfatal_closure, A._BigIntImpl_toDouble_roundUp, A.ApiRequester__request_simpleUpload, A.ApiRequester__request_simpleRequest, A.MultipartMediaUploader_upload_closure, A.SingleSubscriptionTransformer_bind_closure, A.StreamQueue__ensureListening_closure0, A.StreamSplitter_split_closure, A._CancelOnErrorSubscriptionWrapper_onError__closure, A.CanonicalizedMap_putIfAbsent_closure, A.CanonicalizedMap_update_closure0, A._BaseExecutor__runRequest_closure, A._RemoteStreamQueryStore_handleTableUpdates_closure1, A.DriftCommunication_closure, A.WebProtocol_deserialize_decodeRequest, A.WebProtocol_deserialize_decodeSuccess, A.WebProtocol__deserializeRequest_readBatched, A.Batch__addSqlAndArguments_closure, A.DatabaseConnectionUser_transaction__closure, A.DatabaseConnectionUser_exclusively__closure, A.GeneratedDatabase_beforeOpen_closure, A.runCancellable_closure, A.DriftServiceExtension__handle_closure3, A.DriftServiceExtension__handle_closure4, A.DriftServiceExtension_registerIfNeeded__closure, A._BaseExecutor__synchronized_closure, A._BaseExecutor_runSelect_closure, A._BaseExecutor_runUpdate_closure, A._BaseExecutor_runInsert_closure, A._BaseExecutor_runCustom_closure, A._BaseExecutor_runBatched_closure, A._StatementBasedTransactionExecutor_ensureOpen_closure, A._StatementBasedTransactionExecutor_ensureOpen_closure0, A.DelegatedDatabase_ensureOpen_closure, A.DelegatedDatabase_close_closure, A._ExclusiveExecutor_ensureOpen_closure, A.StreamQueryStore_markAsClosed_closure, A.QueryStream__stream__closure, A.QueryStream__stream__closure0, A.QueryStream__stream__closure1, A.QueryStream__onCancelOrPause_closure, A.SimpleSelectStatement_watch_closure, A.JoinedSelectStatement_addColumns_closure, A._LazyExpressionMap_operator$index_closure, A.DriftSqlType__dartToDrift_closure, A.MapAndAwait_mapAsyncAndAwait__closure, A.AsyncMapPerSubscription_asyncMapPerSubscription__onData_closure, A.Lock_synchronized_callBlockAndComplete, A.Lock_synchronized_callBlockAndComplete_closure, A.WebPortToChannel_channel_closure1, A._readMessages_closure_stop, A._readMessages__closure0, A.BrowserClient_send_closure, A._readStreamBody_closure, A._readStreamBody_closure0, A.MediaType_MediaType$parse_closure, A.ResourceConfigData_getIndexByName_closure0, A.SyncEngineConfig_getResourceConfig_closure0, A.MetadataStatement_merge_closure, A.MetadataStatement_merge_closure0, A.MergeResults_join__closure0, A.computeMergeInstructions_closure, A.GroupKeyGenerator__organizeExtractorsByLevel_closure, A.IndexDiscovery__updateIndexMetadataCache_closure, A.IndexManager__saveWithRetry_closure, A.InstallationService_create_closure, A.mergeClassMappingGroups__closure0, A.mergePredicateRuleGroups_closure, A._buildIdentificationGraphWithLabels_processNode_closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes__closure1, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure2, A.MergeContract__classMappingsByPredicate__closure, A.splitDocument__closure, A.StandardSyncEngine_save_closure, A.StandardSyncEngine__loadExistingEntriesAsStream_loadEntries, A.AuthAwareRemoteStorage_createSyncStorage_closure, A.AuthAwareSyncStorage_upload_closure, A.AuthAwareSyncStorage_download_closure, A.OrganizedStatements_OrganizedStatements$fromGraph_closure, A.OrganizedStatements_OrganizedStatements$fromGraph_closure0, A.OrganizedStatements_OrganizedStatements$fromGraph___closure, A.OrganizedStatements_getStatement_closure1, A.OrganizedBlankNodeMappings__buildBlankNodeToCanonicalMap__closure, A.RemoteSyncOrchestrator__syncDocument_closure, A.RemoteSyncOrchestrator__syncResourceType__closure, A.RemoteSyncOrchestrator__syncIndex__closure, A.RemoteSyncOrchestrator__syncShard_closure, A.RemoteSyncOrchestrator_createSyncDocumentQueueTasks__closure, A.ShardDocumentGenerator_syncShard_closure, A.ShardDocumentGenerator_generateShardNodes_closure, A.StandardSyncManager__initialize_closure, A.DriftStorage_saveDocument_closure, A.IndexDao_watchIndexEntries_closure1, A.IndexDao__groupResults_closure, A.IndexDao__groupResults_closure0, A.GDriveBackend__authStateChanged_closure, A.WorkerGDriveAuthProvider_refreshToken_closure, A.RdfDataset__buildNamedGraphs_closure0, A.JsonLdParser__getOrCreateBlankNode_closure, A.JsonLdEncoder__groupTriplesBySubject_closure, A.JsonLdEncoder__createNodeObject_closure, A.JsonLdEncoder__renderIri_closure, A.NQuadsDecoder__parseSubject_closure, A.NQuadsDecoder__parseObject_closure, A.NQuadsDecoder__parseGraphName_closure, A.NQuadsEncoder__writeTerm_closure, A.TurtleEncoder__extractCollection_closure3, A.TurtleEncoder__extractCollection_closure5, A.TurtleEncoder__writeTriples_closure, A.TurtleEncoder__writeSubjectGroup_closure, A.TurtleEncoder__writeInlineBlankNode_closure, A.SolidAuthReceiver__requestTokenRefresh_closure, A.SolidBackend__authStateChanged_closure, A.SyncTriggerRequest_SyncTriggerRequest$fromJson_closure0, A.GetSyncStateResponse_GetSyncStateResponse$fromJson_closure0, A.SyncStateUpdateMessage_SyncStateUpdateMessage$fromJson_closure0, A.startWebWorkerLoop_resetInitializing, A.startWebWorkerLoop_markAsInitializing, A.startWebWorkerLoop__closure, A.startWebWorkerLoop__closure1, A.WorkerChannel__getOrCreateChannel_closure, A.WorkerContext__handleHydrateStream_closure0, A.Logger_Logger_closure, A.OAEPEncoding_factoryConfig__closure, A.OAEPEncoding_OAEPEncoding$withSHA1_closure, A.PKCS1Encoding_factoryConfig__closure, A.RSAEngine_factoryConfig_closure, A.AESEngine_factoryConfig_closure, A.DESedeEngine_factoryConfig_closure, A.CBCBlockCipher_factoryConfig__closure, A.CCMBlockCipher_factoryConfig__closure, A.CFBBlockCipher_factoryConfig__closure, A.CTRBlockCipher_factoryConfig__closure, A.ECBBlockCipher_factoryConfig__closure, A.GCMBlockCipher_factoryConfig__closure, A.GCTRBlockCipher_factoryConfig__closure, A.IGEBlockCipher_factoryConfig__closure, A.OFBBlockCipher_factoryConfig__closure, A.SICBlockCipher_factoryConfig__closure, A.RC2Engine_factoryConfig_closure, A.Blake2bDigest_factoryConfig_closure, A.CSHAKEDigest_factoryConfig__closure, A.KeccakDigest_factoryConfig__closure, A.MD2Digest_factoryConfig_closure, A.MD4Digest_factoryConfig_closure, A.MD5Digest_factoryConfig_closure, A.RIPEMD128Digest_factoryConfig_closure, A.RIPEMD160Digest_factoryConfig_closure, A.RIPEMD256Digest_factoryConfig_closure, A.RIPEMD320Digest_factoryConfig_closure, A.SHA1Digest_factoryConfig_closure, A.SHA224Digest_factoryConfig_closure, A.SHA256Digest_factoryConfig_closure, A.SHA3Digest_factoryConfig__closure, A.SHA384Digest_factoryConfig_closure, A.SHA512Digest_factoryConfig_closure, A.SHA512tDigest_factoryConfig__closure, A.SHAKEDigest_factoryConfig__closure, A.SM3Digest_factoryConfig_closure, A.TigerDigest_factoryConfig_closure, A.WhirlpoolDigest_factoryConfig_closure, A.ECCurve_brainpoolp160r1_factoryConfig_closure, A.ECCurve_brainpoolp160t1_factoryConfig_closure, A.ECCurve_brainpoolp192r1_factoryConfig_closure, A.ECCurve_brainpoolp192t1_factoryConfig_closure, A.ECCurve_brainpoolp224r1_factoryConfig_closure, A.ECCurve_brainpoolp224t1_factoryConfig_closure, A.ECCurve_brainpoolp256r1_factoryConfig_closure, A.ECCurve_brainpoolp256t1_factoryConfig_closure, A.ECCurve_brainpoolp320r1_factoryConfig_closure, A.ECCurve_brainpoolp320t1_factoryConfig_closure, A.ECCurve_brainpoolp384r1_factoryConfig_closure, A.ECCurve_brainpoolp384t1_factoryConfig_closure, A.ECCurve_brainpoolp512r1_factoryConfig_closure, A.ECCurve_brainpoolp512t1_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_a_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_b_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_c_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_xcha_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_xchb_factoryConfig_closure, A.ECCurve_prime192v1_factoryConfig_closure, A.ECCurve_prime192v2_factoryConfig_closure, A.ECCurve_prime192v3_factoryConfig_closure, A.ECCurve_prime239v1_factoryConfig_closure, A.ECCurve_prime239v2_factoryConfig_closure, A.ECCurve_prime239v3_factoryConfig_closure, A.ECCurve_prime256v1_factoryConfig_closure, A.ECCurve_secp112r1_factoryConfig_closure, A.ECCurve_secp112r2_factoryConfig_closure, A.ECCurve_secp128r1_factoryConfig_closure, A.ECCurve_secp128r2_factoryConfig_closure, A.ECCurve_secp160k1_factoryConfig_closure, A.ECCurve_secp160r1_factoryConfig_closure, A.ECCurve_secp160r2_factoryConfig_closure, A.ECCurve_secp192k1_factoryConfig_closure, A.ECCurve_secp192r1_factoryConfig_closure, A.ECCurve_secp224k1_factoryConfig_closure, A.ECCurve_secp224r1_factoryConfig_closure, A.ECCurve_secp256k1_factoryConfig_closure, A.ECCurve_secp256r1_factoryConfig_closure, A.ECCurve_secp384r1_factoryConfig_closure, A.ECCurve_secp521r1_factoryConfig_closure, A.Argon2BytesGenerator_factoryConfig_closure, A.ConcatKDFDerivator_factoryConfig__closure, A.ECDHKeyDerivator_factoryConfig_closure, A.HKDFKeyDerivator_factoryConfig__closure, A.PBKDF2KeyDerivator_factoryConfig__closure, A.PKCS12ParametersGenerator_factoryConfig__closure, A.PKCS5S1ParameterGenerator_factoryConfig__closure, A.Scrypt_factoryConfig_closure, A.ECKeyGenerator_factoryConfig_closure, A.RSAKeyGenerator_factoryConfig_closure, A.CBCBlockCipherMac_factoryConfig__closure, A.CMac_factoryConfig__closure, A.HMac_factoryConfig__closure, A.Poly1305_factoryConfig__closure, A.PaddedBlockCipherImpl_factoryConfig__closure, A.ISO7816d4Padding_factoryConfig_closure, A.PKCS7Padding_factoryConfig_closure, A.AutoSeedBlockCtrRandom_factoryConfig__closure, A.AutoSeedBlockCtrRandom_nextUint8_closure, A.AutoSeedBlockCtrRandom_nextBigInteger_closure, A.AutoSeedBlockCtrRandom_nextBytes_closure, A.BlockCtrRandom_factoryConfig__closure, A.FortunaRandom_factoryConfig_closure, A.ECDSASigner_factoryConfig__closure, A.PSSSigner_factoryConfig__closure, A.RSASigner_factoryConfig__closure, A._RegistryImpl__addStaticFactoryConfig_closure, A._RegistryImpl__addDynamicFactoryConfig_closure, A.ChaCha20Engine_factoryConfig__closure, A.ChaCha20Poly1305_factoryConfig_closure, A.ChaCha7539Engine_factoryConfig__closure, A.CTRStreamCipher_factoryConfig__closure, A.EAX_factoryConfig__closure, A.RC4Engine_factoryConfig_closure, A.Salsa20Engine_factoryConfig_closure, A.SICStreamCipher_factoryConfig__closure, A._SwitchMapStreamSink_onData_closure0, A._SwitchMapStreamSink_listenToInner_closure, A.SwitchMapStreamTransformer_bind_closure, A._forward_closure, A._forward_closure0, A._forward__listenToUpstream_closure, A._forward__listenToUpstream_closure0, A._forward_closure1, A.Highlighter_closure, A.Highlighter__writeFileStart_closure, A.Highlighter__writeMultilineHighlights_closure, A.Highlighter__writeMultilineHighlights_closure0, A.Highlighter__writeMultilineHighlights_closure1, A.Highlighter__writeMultilineHighlights_closure2, A.Highlighter__writeMultilineHighlights__closure, A.Highlighter__writeMultilineHighlights__closure0, A.Highlighter__writeHighlightedText_closure, A.Highlighter__writeIndicator_closure, A.Highlighter__writeIndicator_closure0, A.Highlighter__writeIndicator_closure1, A.Highlighter__writeSidebar_closure, A._Highlight_closure, A.DatabaseImplementation__prepareInternal_freeIntermediateResults, A.AsynchronousIndexedDbFileSystem_readFully_closure, A._FileWriteRequest__updateBlock_closure, A.IndexedDbFileSystem__startWorkingIfNeeded_closure, A._IndexedDbFile_xTruncate_closure, A._InjectedValues__closure13, A._InjectedValues__closure12, A._InjectedValues__closure11, A._InjectedValues__closure10, A._InjectedValues__closure9, A._InjectedValues__closure8, A._InjectedValues__closure7, A._InjectedValues__closure6, A._InjectedValues__closure5, A._InjectedValues__closure4, A._InjectedValues__closure3, A._InjectedValues__closure2, A._InjectedValues__closure1, A._InjectedValues__closure0, A._InjectedValues__closure, A.Frame_Frame$parseVM_closure, A.Frame_Frame$parseV8_closure, A.Frame_Frame$_parseFirefoxEval_closure, A.Frame_Frame$parseFirefox_closure, A.Frame_Frame$parseFriendly_closure, A.Trace_Trace$from_closure, A.GuaranteeChannel_closure, A.GuaranteeChannel__closure]);
     _inheritMany(A.Error, [A.LateError, A.TypeError, A.JsNoSuchMethodError, A.UnknownJsTypeError, A.RuntimeError, A._Error, A.JsonUnsupportedObjectError, A.AssertionError, A.ArgumentError, A.UnsupportedError, A.UnimplementedError, A.StateError, A.ConcurrentModificationError, A.JWTError]);
     _inheritMany(A.ListBase, [A.UnmodifiableListBase, A.ValueList, A.WasmValueList, A.TypedDataBuffer]);
     _inherit(A.CodeUnits, A.UnmodifiableListBase);
@@ -89202,7 +89778,7 @@
     _inheritMany(A._Record, [A._Record2, A._Record3, A._RecordN]);
     _inheritMany(A._Record2, [A._Record_2, A._Record_2_accessToken_dPoP, A._Record_2_appGraph_frameworkGraph, A._Record_2_blankNodeLabels_dataset, A._Record_2_compactedIris_contex78t, A._Record_2_etag_fileId, A._Record_2_file_outFlags, A._Record_2_folderId_folderName, A._Record_2_lastCursor_stream, A._Record_2_logicalTime_physicalTime, A._Record_2_object_predicate, A._Record_2_ours_theirs, A._Record_2_statementsToAdd_triplesToRemove]);
     _inheritMany(A._Record3, [A._Record_3, A._Record_3_cursor_deletions_updates, A._Record_3_etag_graph_notModified, A._Record_3_metadata_newBlankNodes_oldBlankNodes]);
-    _inheritMany(A._RecordN, [A._Record_4, A._Record_4_fullClock_hash_logicalTime_physicalTime, A._Record_4_index78Iri_max78PhysicalClock_resourceTypeIri_shardIri, A._Record_4_newObjects_predicate_subject_subjectTypeIri, A._Record_5_governedByFiles_mergeContract_oldAppData_oldFrameworkGraph_oldUpdatedAt, A._Record_6_appData_blankNodes_documentIri_predicate_subject_values, A._Record_6_etag_localUpdatedAt_mergeContract_mergedDocument_originalLocalDocument_originalRemoteDocument, A._Record_9_appData_crdtDocument_currentCursor_documentIri_missingGroupIndices_physicalTime_previousCursor_resourceIri_updatedAt]);
+    _inheritMany(A._RecordN, [A._Record_4, A._Record_4_documentIri_lastSyncTimestamp_shouldSync_syncTime, A._Record_4_fullClock_hash_logicalTime_physicalTime, A._Record_4_index78Iri_max78PhysicalClock_resourceTypeIri_shardIri, A._Record_4_newObjects_predicate_subject_subjectTypeIri, A._Record_5_governedByFiles_mergeContract_oldAppData_oldFrameworkGraph_oldUpdatedAt, A._Record_6_appData_blankNodes_documentIri_predicate_subject_values, A._Record_6_etag_localUpdatedAt_mergeContract_mergedDocument_originalLocalDocument_originalRemoteDocument, A._Record_9_appData_crdtDocument_currentCursor_documentIri_missingGroupIndices_physicalTime_previousCursor_resourceIri_updatedAt]);
     _inherit(A._UnmodifiableMapView_MapView__UnmodifiableMapMixin, A.MapView);
     _inherit(A.UnmodifiableMapView, A._UnmodifiableMapView_MapView__UnmodifiableMapMixin);
     _inherit(A.ConstantMapView, A.UnmodifiableMapView);
@@ -89223,7 +89799,6 @@
     _inheritMany(A.NativeTypedArrayOfDouble, [A.NativeFloat32List, A.NativeFloat64List]);
     _inheritMany(A.NativeTypedArrayOfInt, [A.NativeInt16List, A.NativeInt32List, A.NativeInt8List, A.NativeUint16List, A.NativeUint32List, A.NativeUint8ClampedList, A.NativeUint8List]);
     _inherit(A._TypeError, A._Error);
-    _inheritMany(A.Stream, [A._StreamImpl, A.StreamView, A._EmptyStream, A._MultiStream, A._ForwardingStream, A._BoundSinkStream, A.SubscriptionStream, A._EventStream]);
     _inherit(A._ControllerStream, A._StreamImpl);
     _inherit(A._BroadcastStream, A._ControllerStream);
     _inheritMany(A._BufferingStreamSubscription, [A._ControllerSubscription, A._ForwardingStreamSubscription, A._SinkTransformerStreamSubscription]);
@@ -89277,7 +89852,7 @@
     _inheritMany(A._BaseExecutor, [A._RemoteQueryExecutor, A._RemoteTransactionExecutor, A._RemoteExclusiveExecutor]);
     _inheritMany(A.StreamQueryStore, [A._RemoteStreamQueryStore, A._TransactionStreamStore, A.BroadcastStreamQueryStore]);
     _inheritMany(A.Message, [A.Request0, A.SuccessResponse, A.ErrorResponse, A.CancelledResponse]);
-    _inheritMany(A._Enum, [A.NoArgsRequest, A.StatementMethod, A.NestedExecutorControl, A.UpdateKind, A._JoinType, A.OrderingMode, A.Precedence, A._ComparisonOperator, A.SqlDialect, A.InsertMode, A.DriftSqlType, A.ProtocolVersion, A.WasmStorageImplementation, A.WebStorageApi, A.MissingBrowserFeature, A._RdfObjectComparison, A.MergeInstruction, A.MergeObjectState, A.ShardDeterminationMode, A.IndexType, A.MergeSubjectType, A.ClockComparison, A.SyncTrigger, A.SyncStatus, A.ExpectationSeverity, A.TraversalDecision, A.IriRole, A.IriCompactionType, A.TurtleParsingFlag, A.TokenType, A.TimestampFormat, A.LogFormat, A.OpenMode, A.WorkerOperation, A.FileType]);
+    _inheritMany(A._Enum, [A.NoArgsRequest, A.StatementMethod, A.NestedExecutorControl, A.UpdateKind, A._JoinType, A.OrderingMode, A.Precedence, A._ComparisonOperator, A.SqlDialect, A.InsertMode, A.DriftSqlType, A.ProtocolVersion, A.WasmStorageImplementation, A.WebStorageApi, A.MissingBrowserFeature, A._RdfObjectComparison, A.MergeInstruction, A.MergeObjectState, A.ShardDeterminationMode, A.IndexType, A.MergeSubjectType, A.ClockComparison, A.SyncTrigger, A.SyncStatus, A.ExpectationSeverity, A.GDriveFolderMode, A.TraversalDecision, A.IriRole, A.IriCompactionType, A.TurtleParsingFlag, A.TokenType, A.TimestampFormat, A.LogFormat, A.OpenMode, A.WorkerOperation, A.FileType]);
     _inheritMany(A.DatabaseConnectionUser, [A._ExclusiveExecutor, A.DatabaseAccessor, A.GeneratedDatabase, A.Transaction, A.BeforeOpenRunner]);
     _inherit(A._DefaultValueSerializer, A.ValueSerializer);
     _inherit(A.DatabaseDelegate, A.QueryDelegate);
@@ -89363,6 +89938,7 @@
     _inherit(A._$RemoteSyncStateTable_RemoteSyncState_TableInfo, A.RemoteSyncState);
     _inherit(A.$RemoteSyncStateTable, A._$RemoteSyncStateTable_RemoteSyncState_TableInfo);
     _inherit(A.DriftWorkerHandler, A.StorageWorkerHandler);
+    _inheritMany(A.RemoteSyncStorage, [A.GDriveSyncStorage, A.SolidSyncStorage]);
     _inheritMany(A.GDriveAuthMessage, [A.UpdateAuthMessage, A.TokenRefreshRequest, A.TokenRefreshResponse]);
     _inheritMany(A.RdfException, [A.RdfDecoderException, A.RdfValidationException]);
     _inheritMany(A.RdfDecoderException, [A.RdfSyntaxException, A.RdfInvalidIriException, A.BaseIriRequiredException]);
@@ -89502,7 +90078,7 @@
     typeUniverse: {eC: new Map(), tR: {}, eT: {}, tPV: {}, sEA: []},
     mangledGlobalNames: {int: "int", double: "double", num: "num", String: "String", bool: "bool", Null: "Null", List: "List", Object: "Object", Map: "Map", JSObject: "JSObject"},
     mangledNames: {},
-    types: ["~()", "bool(Triple)", "bool(String)", "Future<~>()", "Null()", "~(Object?)", "String(String)", "int(int,int)", "~(JSObject)", "RdfObject(Triple)", "String(IriTerm)", "bool(Object?)", "~(Object,StackTrace)", "double(num)", "Future<Null>()", "Expression<bool>($SyncDocumentsTable)", "bool(IriTerm)", "Null(Object,StackTrace)", "bool(RdfObject)", "String(@)", "0&()", "TraversalDecision(Triple,int)", "Null(int)", "Frame()", "int()", "int(int)", "bool(ValidationResult)", "Future<@>()", "Triple(RdfObject)", "RdfSubject(Triple)", "Null(@)", "~(Object[StackTrace?])", "BlankNodeTerm()", "~(@)", "IriTerm(String)", "String()", "List<RdfObject>()", "Null(JSObject)", "String(Match)", "Frame(String)", "List<Triple>()", "List<Triple>(List<Triple>)", "Object?(Object?)", "Null(@,@)", "String(Triple)", "int(IriTerm,IriTerm)", "Future<+appData,crdtDocument,currentCursor,documentIri,missingGroupIndices,physicalTime,previousCursor,resourceIri,updatedAt(RdfGraph,RdfGraph,String,IriTerm,List<MissingGroupIndex>,int,String?,RdfSubject,int)?>()", "bool(_IndexMetadata)", "List<Triple>(RdfGraph)", "Triple(Triple)", "bool(PredicateMergeRule)", "RdfPredicate(PredicateMergeRule)", "Set<RdfObject>()", "bool(ResourceConfigData)", "int(IndexEntry)", "Iterable<Triple>(RdfSubject)", "IriTerm(ResourceConfigData)", "String(int)", "IndexEntryWithIri(DriftIndexEntry)", "Future<List<Map<String,Object?>>>(QueryExecutor)", "~(Object?,Object?)", "int(Object?)", "Expression<bool>($IndexEntriesTable)", "Expression<bool>($RemoteSettingsTable)", "bool(SyncTrigger)", "SyncTrigger()", "bool(_Highlight)", "bool(Object?,Object?)", "int(int,int,int)", "Null(int,int,int)", "@(@)", "~(~())", "List<Triple>(RdfSubject)", "User(@)", "List<DocumentMapping>(DocumentMapping)", "@(String)", "~(List<int>)", "bool(String,String)", "int?(int)", "@()", "Future<int>(QueryExecutor,String,List<@>)", "DocumentMapping(+(DocumentMapping,ValidationResult))", "ValidationResult(+(DocumentMapping,ValidationResult))", "@(Variable<Object>)", "bool(RdfSubject)", "+(PredicateRule?,ValidationResult)(RdfSubject)", "PredicateRule?(+(PredicateRule?,ValidationResult))", "ValidationResult(+(PredicateRule?,ValidationResult))", "~(String)", "~(Set<TableUpdate>)", "Future<int>()", "List<Triple>(+(RdfSubject,RdfGraph))", "Iterable<Triple>(BlankNodeTerm)", "bool(IndexEntryWithIri)", "IriTerm(_DocumentQueueEntry)", "bool(TableUpdate)", "~(Timer)", "Object(RdfObject)", "Future<int>(QueryExecutor)", "Expression<bool>($SyncIrisTable)", "~([Future<~>?])", "Future<StreamedResponse>()", "OrderingTerm($SyncDocumentsTable)", "num?(List<Object?>)", "OrderingTerm($IndexEntriesTable)", "DriftIndexEntry(IndexEntry)", "Expression<bool>($IndexIriIdSetVersionsTable)", "RdfGraph(RdfSubject)", "bool(Quad)", "List<Triple>?(RdfPredicate)", "RdfObjectKey(RdfObject)", "Map<String,String>(+(String,String))", "+(String,String)(@)", "~(@,@)", "~([Future<@>?])", "+(String,String)(+(IriTerm,RdfGraph))", "SHA1Digest()", "Uint8List()", "RdfPredicate(Triple)", "~(List<IndexEntryWithIri>)", "int(int,int,int,int,int)", "~(JSObject?,List<JSObject>?)", "int(int,int,int,int)", "int(int,int,int,JavaScriptBigInt)", "MapEntry<String,String?>(String,@)", "int(Frame)", "String(Frame)", "Trace(String)", "int(@,@)", "int(GroupingProperty,GroupingProperty)", "int(String?)", "bool(@)", "~(String,String)", "List<BlankNodeTerm>()", "int(ResourceConfigData,ResourceConfigData)", "Iterable<+(CrdtIndexData,IriTerm)>(ResourceConfigData)", "+(CrdtIndexData,IriTerm)(CrdtIndexData)", "ResourceConfigData(@)", "Map<String,@>(ResourceConfigData)", "TableUpdate(Object?)", "String(ResourceConfigBase)", "0&(String,int?)", "MapEntry<RdfPredicate,Iterable<RdfObject>>(RdfPredicate,Set<RdfObject>)", "MergeResults(MergeResults,MergeResults)", "MetadataStatement(MetadataStatement)", "MetadataStatement()", "~(MultiStreamController<Set<TableUpdate>>)", "+(RdfObject,num)(RdfObject)", "+(RdfObject,num)(+(RdfObject,num),+(RdfObject,num))", "+(RdfObject,DateTime)(RdfObject)", "+(RdfObject,DateTime)(+(RdfObject,DateTime),+(RdfObject,DateTime))", "+(RdfObject,String)(RdfObject)", "+(RdfObject,String)(+(RdfObject,String),+(RdfObject,String))", "~(@,StackTrace)", "@(@,String)", "Future<~>(QueryExecutor)", "Future<~>(@)", "Iterable<+(RdfSubject,RdfGraph)>(RdfObject)", "Null(@,StackTrace)", "Triple(Object)", "String?(RegExpMatch)", "~(VerificationMeta,VerificationResult)", "bool(TrackedDatabase)", "~(String,List<String>)", "SelectResult(List<QueryRow>)", "MergeInstruction()", "int(~)", "Future<ServiceExtensionResponse>(String,Map<String,String>)", "+(RdfSubject,RdfGraph)(RdfSubject)", "bool(+(RdfSubject,RdfGraph))", "RdfGraph(+(RdfSubject,RdfGraph))", "+ours,theirs(List<+(RdfSubject,RdfGraph)>,List<+(RdfSubject,RdfGraph)>)(+ours,theirs(List<+(RdfSubject,RdfGraph)>,List<+(RdfSubject,RdfGraph)>),+(RdfSubject,RdfGraph))", "~(List<String>)", "List<_PropertyExtractor>()", "int(_PropertyExtractor,_PropertyExtractor)", "RdfObject(@)", "Map<String,@>(RdfObject)", "RegexTransform(@)", "Map<String,@>(RegexTransform)", "Future<FullIndexData?>(IriTerm,ShardDeterminationMode)", "Future<GroupIndexData?>(IriTerm,ShardDeterminationMode)", "Future<Object?>()", "ServiceExtensionResponse(Object?)", "Set<_IndexMetadata>()", "ServiceExtensionResponse(Object?,StackTrace)", "bool(IriTerm,Set<_IndexMetadata>)", "FullIndexData?(RdfGraph,IriTerm)", "GroupIndexData?(RdfGraph,IriTerm)", "Future<QueryResult>()", "Triple(IriTerm)", "Iterable<Triple>(MapEntry<IriTerm,List<RdfObject>>)", "GroupingProperty?(RdfSubject)", "Future<@>(@)", "RegexTransform(RdfSubject)", "RdfObject(RegexTransform)", "String(GroupingProperty)", "String(RegexTransform)", "+(BlankNodeTerm,RdfGraph)(IriTerm)", "RegExp(RegexTransform)", "Future<bool>()", "IdentifiedRdfSubject?(RdfSubject)", "Map<String,@>(List<Object?>)", "Set<TableUpdate>(Set<TableUpdate>)", "Map<IriTerm,ClassMapping>(DocumentMapping)", "Iterable<ClassMapping>(Map<IriTerm,ClassMapping>)", "Map<IriTerm,List<ClassMapping>>(Map<IriTerm,List<ClassMapping>>,ClassMapping)", "List<ClassMapping>()", "ClassMapping(MapEntry<IriTerm,List<ClassMapping>>)", "Map<RdfPredicate,PredicateRule>(ClassMapping)", "List<PredicateMapping>(DocumentMapping)", "Map<RdfPredicate,PredicateRule>(PredicateMapping)", "PredicateRule()", "Iterable<Triple>(IdentifiedBlankNode)", "bool(Set<TableUpdate>)", "int(MapEntry<RdfPredicate,List<RdfObject>>)", "bool(MapEntry<RdfPredicate,List<RdfObject>>)", "Null(QueryExecutor)", "IriTerm(IdentifiedBlankNode)", "Map<BlankNodeTerm,List<Triple>>(Map<BlankNodeTerm,List<Triple>>,Triple)", "ApiRequestErrorDetail(@)", "Iterable<BlankNodeTerm>(List<IdentifiedBlankNode>)", "Set<BlankNodeTerm>(IdentifiedBlankNode)", "bool(TableUpdateQuery)", "List<String>(IdentifiedBlankNode)", "bool(IdentifiedBlankNode)", "BlankNodeTerm(IdentifiedBlankNode)", "bool(BlankNodeTerm)", "List<IdentifiedBlankNode>(Triple)", "IdentifiedBlankNode(IdentifiedBlankNode)", "~(GenerationContext)", "_ConverterStreamEventSink<@,@>(EventSink<@>)", "Map<RdfPredicate,List<ClassMergeRules>>(Map<RdfPredicate,List<ClassMergeRules>>,MapEntry<IriTerm,ClassMergeRules>)", "List<ClassMergeRules>()", "String(ClassMergeRules)", "bool(RdfPredicate)", "Future<MergeContract>(@)", "List<IriTerm>(RdfGraph)", "+(List<IriTerm>,Set<IriTerm>)(+(List<IriTerm>,Set<IriTerm>),List<IriTerm>)", "+(DocumentMapping,ValidationResult)(IriTerm)", "~(List<Column<Object>>?,Expression<bool>?)", "~(Component?)", "List<QueryRow>(List<Map<String,Object?>>)", "+(PredicateMapping?,ValidationResult)(RdfSubject)", "PredicateMapping?(+(PredicateMapping?,ValidationResult))", "ValidationResult(+(PredicateMapping?,ValidationResult))", "~(Uint8List,int,int)", "+(DocumentMapping,ValidationResult)(RdfSubject)", "QueryRow(Map<String,Object?>)", "Future<List<Map<String,Object?>>>()", "~(int,@)", "bool(MapEntry<RdfSubject,ValidationResult>)", "Iterable<+(IriTerm,RdfGraph)>(IriTerm)", "+(IriTerm,RdfGraph)(RdfObject?)", "IriTerm(IriTerm)", "Future<~>(IriTerm)", "IriTerm?()", "RemoteSyncOrchestrator(RemoteSyncStorage,RemoteId)", "Future<~>()(Backend)", "Stream<+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)>(Set<IriTerm>)", "bool(List<IndexEntryWithIri>)", "+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(List<IndexEntryWithIri>)", "+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(List<StoredDocument>,String?)", "+(List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(+(List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>),StoredDocument)", "+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(DocumentsResult)", "Iterable<MapEntry<MetadataStatementKey,MetadataStatement>>(MetadataStatement)", "MapEntry<MetadataStatementKey,MetadataStatement>(MetadataStatementKey)", "Set<+(RdfSubject,RdfGraph)>()", "Set<MetadataStatementKey>()", "MetadataStatement(MapEntry<MetadataStatementKey,Set<+(RdfSubject,RdfGraph)>>)", "Map<RdfPredicate,Set<RdfObject>>(Map<RdfPredicate,Set<RdfObject>>,+(RdfSubject,RdfGraph))", "bool(MapEntry<MetadataStatementKey,MetadataStatement>)", "MetadataStatement(MapEntry<MetadataStatementKey,MetadataStatement>)", "Iterable<MetadataStatement?>(RdfSubject)", "MetadataStatement?(RdfObject)", "bool(MetadataStatement?)", "bool(GeneratedColumn<Object>)", "MergeObject(RdfObjectKey)", "MergeSubject(RdfObjectKey)", "Iterable<IriTerm>(Iterable<IriTerm>)", "Map<BlankNodeTerm,Set<IriTerm>>(Map<BlankNodeTerm,Set<IriTerm>>,Triple)", "Set<IriTerm>()", "int(+(int,int))", "RdfObjectKey(RdfSubject)", "Future<TypedResult>(Map<String,Object?>)", "MergeResults(MergeSubject)", "Iterable<Triple>(MapEntry<BlankNodeTerm,List<IriTerm>>)", "List<Triple>(IriTerm)", "Iterable<+(RdfSubject,RdfGraph)>(MetadataStatement)", "Object?()", "Iterable<Triple>(Iterable<+(RdfSubject,RdfGraph)>)", "~(String,Expression<Object>)", "Iterable<Triple>(MapEntry<RdfPredicate,Iterable<RdfObject>>)", "Iterable<RdfObject>(RdfObject)", "String(MapEntry<IriTerm,Map<IriTerm,String>>)", "String(MapEntry<IriTerm,String>)", "Map<Type,DriftSqlType<Object>>()", "FullIndexSync(FullIndexData)", "FullIndexSync(+(IriTerm,IriTerm,ItemFetchPolicy))", "IriTerm(+(IriTerm,IriTerm,ItemFetchPolicy))", "IriTerm(IndexSyncSpec)", "FullShardSync(IriTerm)", "PartialShardSync(MapEntry<IriTerm,Map<IriTerm,String>>)", "MapEntry<IriTerm,String>(IriTerm,+(String,Set<RdfObject>?))", "_DocumentQueueEntry(MapEntry<IriTerm,String>)", "_DocumentQueueEntry(IriTerm)", "int(List<Object?>)", "PartialIndexSync(MapEntry<IriTerm,Map<IriTerm,Map<IriTerm,String>>>)", "int(PartialIndexSync)", "_Future<@>?()", "RdfGraph(RdfGraph)", "~(int)", "ResponsePayload?/(Request0)", "Future<~>(DateTime)", "Future<SaveDocumentResult>()", "DocumentsResult(List<DocumentWithIri>)", "Expression<bool>($SyncSettingsTable)", "~(Object?,List<JSObject>?)", "List<IndexEntryWithIri>(List<DriftIndexEntry>)", "+(IriTerm,IriTerm,ItemFetchPolicy)(SubscribedGroupIndexData)", "~(MultiStreamController<WasmInitializationMessage>)", "+indexIri,maxPhysicalClock,resourceTypeIri,shardIri(IriTerm,int,IriTerm,IriTerm)(+indexIri,maxPhysicalClock,resourceTypeIri,shardIri(String,int,String,String))", "StoredDocument(DocumentWithIri)", "WasmInitializationMessage(WasmInitializationMessage)", "Null(~)", "bool(int)", "int(WasmStorageImplementation)", "int(SyncDocument)", "DocumentWithIri(SyncDocument)", "List<String>(PropertyChange)", "SyncPropertyChangesCompanion(PropertyChange)", "Null(Batch)", "bool(WasmStorageImplementation)", "Label(@)", "File(@)", "Null(Object?,StackTrace)", "Future<~>(List<IndexEntry>)", "bool(IndexEntry)", "Expression<bool>($GroupIndexSubscriptionsTable)", "Set<int>(List<GroupIndexSubscription>)", "int(GroupIndexSubscription)", "SubscribedGroupIndexData(TypedResult)", "ContentRestriction(@)", "DriftIndexEntry(TypedResult)", "+indexIri,maxPhysicalClock,resourceTypeIri,shardIri(String,int,String,String)(QueryRow)", "Map<String,Map<String,String>>()", "Map<String,String>()", "MapEntry<String,String>(String,@)", "Expression<bool>($RemoteSyncStateTable)", "Future<~>(Migrator)", "Future<~>(Migrator,int,int)", "SyncIri(Map<String,@>{tablePrefix:String?})", "SyncDocument(Map<String,@>{tablePrefix:String?})", "SyncPropertyChange(Map<String,@>{tablePrefix:String?})", "SyncSetting(Map<String,@>{tablePrefix:String?})", "IndexEntry(Map<String,@>{tablePrefix:String?})", "GroupIndexSubscription(Map<String,@>{tablePrefix:String?})", "IndexIriIdSetVersion(Map<String,@>{tablePrefix:String?})", "RemoteSetting(Map<String,@>{tablePrefix:String?})", "RemoteSyncStateData(Map<String,@>{tablePrefix:String?})", "String(TypeMapping)", "RdfNamedGraph(MapEntry<RdfGraphName,RdfGraph>)", "bool(PrimitiveResponsePayload)", "Triple(Quad)", "MapEntry<RdfGraphName,RdfGraph>(RdfGraphName,List<Triple>)", "bool(MapEntry<RdfGraphName,RdfGraph>)", "int(MapEntry<RdfGraphName,RdfGraph>)", "Map<RdfSubject,Map<RdfPredicate,List<Triple>>>(Map<RdfSubject,Map<RdfPredicate,List<Triple>>>,Triple)", "Iterable<RdfPredicate>(Map<RdfPredicate,List<Triple>>)", "bool(Object)", "Permission(@)", "bool(List<Triple>?)", "List<Triple>(List<Triple>?)", "bool(MapEntry<+(IriTerm,IriRole),CompactIri>)", "IriRole(MapEntry<+(IriTerm,IriRole),CompactIri>)", "String(IriRole)", "List<+(IriTerm,IriRole)>(Triple)", "Map<String,@>(MapEntry<RdfSubject,List<Triple>>)", "String(RdfObject)", "@(RdfObject)", "Iterable<String>(RdfNamedGraph)", "int(MapEntry<String,String>,MapEntry<String,String>)", "int(RdfSubject,RdfSubject)", "int(RdfPredicate,RdfPredicate)", "bool(BaseResponse)", "bool(Object,StackTrace)", "Duration(int)", "MapEntry<String,@>(@,@)", "Future<~>(Request0)", "MapEntry<String,LabelField>(String,@)", "DateTime(@)", "String(DateTime)", "~(WorkerChannelMessage)", "WorkerContext?()", "~(WorkerContext)", "bool()", "bool(WorkerChannelMessage)", "Object?(WorkerChannelMessage)", "~(SyncState)", "~(+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>))", "PermissionPermissionDetails(@)", "Future<Backend>(RemoteWorkerHandler)", "Logger()", "String(String?)", "~(LogRecord)", "OAEPEncoding()(String,Match)", "OAEPEncoding()", "PermissionTeamDrivePermissionDetails(@)", "PKCS1Encoding()(String,Match)", "PKCS1Encoding()", "RSAEngine()", "AESEngine()", "DESedeEngine()", "CBCBlockCipher()(String,Match)", "CBCBlockCipher()", "CCMBlockCipher()(String,Match)", "CCMBlockCipher()", "CFBBlockCipher()(String,Match)", "CFBBlockCipher()", "CTRBlockCipher()(String,Match)", "CTRBlockCipher()", "ECBBlockCipher()(String,Match)", "ECBBlockCipher()", "GCMBlockCipher()(String,Match)", "GCMBlockCipher()", "GCTRBlockCipher()(String,Match)", "GCTRBlockCipher()", "IGEBlockCipher()(String,Match)", "IGEBlockCipher()", "OFBBlockCipher()(String,Match)", "OFBBlockCipher()", "SICBlockCipher()(String,Match)", "SICBlockCipher()", "RC2Engine()", "Blake2bDigest()", "CSHAKEDigest()(String,Match)", "CSHAKEDigest()", "KeccakDigest()(String,Match)", "KeccakDigest()", "MD2Digest()", "MD4Digest()", "MD5Digest()", "RIPEMD128Digest()", "RIPEMD160Digest()", "RIPEMD256Digest()", "Future<WorkerParams>()", "SHA224Digest()", "SHA256Digest()", "SHA3Digest()(String,Match)", "SHA3Digest()", "SHA384Digest()", "SHA512Digest()", "SHA512tDigest()(String,Match)", "SHA512tDigest()", "SHAKEDigest()(String,Match)", "SHAKEDigest()", "SM3Digest()", "TigerDigest()", "WhirlpoolDigest()", "ECCurve_brainpoolp160r1()", "ECCurve_brainpoolp160t1()", "ECCurve_brainpoolp192r1()", "ECCurve_brainpoolp192t1()", "ECCurve_brainpoolp224r1()", "ECCurve_brainpoolp224t1()", "ECCurve_brainpoolp256r1()", "ECCurve_brainpoolp256t1()", "ECCurve_brainpoolp320r1()", "ECCurve_brainpoolp320t1()", "ECCurve_brainpoolp384r1()", "ECCurve_brainpoolp384t1()", "ECCurve_brainpoolp512r1()", "ECCurve_brainpoolp512t1()", "ECCurve_gostr3410_2001_cryptopro_a()", "ECCurve_gostr3410_2001_cryptopro_b()", "ECCurve_gostr3410_2001_cryptopro_c()", "ECCurve_gostr3410_2001_cryptopro_xcha()", "ECCurve_gostr3410_2001_cryptopro_xchb()", "ECCurve_prime192v1()", "ECCurve_prime192v2()", "ECCurve_prime192v3()", "ECCurve_prime239v1()", "ECCurve_prime239v2()", "ECCurve_prime239v3()", "ECCurve_prime256v1()", "ECCurve_secp112r1()", "ECCurve_secp112r2()", "ECCurve_secp128r1()", "ECCurve_secp128r2()", "ECCurve_secp160k1()", "ECCurve_secp160r1()", "ECCurve_secp160r2()", "ECCurve_secp192k1()", "ECCurve_secp192r1()", "ECCurve_secp224k1()", "ECCurve_secp224r1()", "ECCurve_secp256k1()", "ECCurve_secp256r1()", "ECCurve_secp384r1()", "ECCurve_secp521r1()", "ECPoint(ECPoint?)", "Argon2BytesGenerator()", "ConcatKDFDerivator()(String,Match)", "ConcatKDFDerivator()", "ECDHKeyDerivator()", "HKDFKeyDerivator()(String,Match)", "HKDFKeyDerivator()", "bool(MapEntry<String,int>)", "PBKDF2KeyDerivator()(String,Match)", "PBKDF2KeyDerivator()", "PKCS12ParametersGenerator()(String,Match)", "PKCS12ParametersGenerator()", "PKCS5S1ParameterGenerator()(String,Match)", "PKCS5S1ParameterGenerator()", "Scrypt()", "ECKeyGenerator()", "RSAKeyGenerator()", "CBCBlockCipherMac()(String,Match)", "CBCBlockCipherMac()", "CMac()(String,Match)", "CMac()", "HMac()(String,Match)", "HMac()", "Poly1305()(String,Match)", "Poly1305()", "PaddedBlockCipherImpl()(String,Match)", "PaddedBlockCipherImpl()", "ISO7816d4Padding()", "PKCS7Padding()", "AutoSeedBlockCtrRandom()(String,Match)", "AutoSeedBlockCtrRandom()", "BigInt()", "Null(~())", "BlockCtrRandom()(String,Match)", "BlockCtrRandom()", "FortunaRandom()", "ECDSASigner()(String,Match)", "ECDSASigner()", "PSSSigner()(String,Match)", "PSSSigner()", "RSASigner()(String,Match)", "RSASigner()", "Map<String,@()>()", "Set<DynamicFactoryConfig>()", "ChaCha20Engine()(String,Match)", "ChaCha20Engine()", "ChaCha20Poly1305()", "ChaCha7539Engine()(String,Match)", "ChaCha7539Engine()", "CTRStreamCipher()(String,Match)", "CTRStreamCipher()", "EAX()(String,Match)", "EAX()", "RC4Engine()", "Salsa20Engine()", "SICStreamCipher()(String,Match)", "SICStreamCipher()", "~([~])", "String?()", "int(_Line)", "Request0()", "Object(_Line)", "Object(_Highlight)", "int(_Highlight,_Highlight)", "List<_Line>(MapEntry<Object,List<_Highlight>>)", "SourceSpanWithContext()", "String(Object?)", "~(RawSqliteContext,List<RawSqliteValue>)", "~(FinalizablePart)", "~(String,Map<String,Object?>)", "~(String,Object?)", "JSObject(JSObject?)", "Future<~>(int,Uint8List)", "Future<~>(int)", "Future<JSObject>(String)", "int(String)", "Null(String,String[Object?])", "~(MultiStreamController<List<int>>)", "MediaType()", "Null(int,int)", "SuccessResponse()", "int(int,JavaScriptBigInt)", "int(GroupingProperty)", "Null(int,int,int,int,JavaScriptBigInt)", "Null(JavaScriptBigInt,int)", "List<Frame>(Trace)", "int(Trace)", "IriTerm(@)", "String(Trace)", "ExecuteBatchedStatement()", "GroupingProperty(@)", "Frame(String,String)", "Trace()", "Map<String,@>(GroupingProperty)", "String(RegExpMatch)", "~(Zone?,ZoneDelegate?,Zone,Object,StackTrace)", "0^(Zone?,ZoneDelegate?,Zone,0^())<Object?>", "0^(Zone?,ZoneDelegate?,Zone,0^(1^),1^)<Object?,Object?>", "0^(Zone?,ZoneDelegate?,Zone,0^(1^,2^),1^,2^)<Object?,Object?,Object?>", "0^()(Zone,ZoneDelegate,Zone,0^())<Object?>", "0^(1^)(Zone,ZoneDelegate,Zone,0^(1^))<Object?,Object?>", "0^(1^,2^)(Zone,ZoneDelegate,Zone,0^(1^,2^))<Object?,Object?,Object?>", "AsyncError?(Zone,ZoneDelegate,Zone,Object,StackTrace?)", "~(Zone?,ZoneDelegate?,Zone,~())", "Timer(Zone,ZoneDelegate,Zone,Duration,~())", "Timer(Zone,ZoneDelegate,Zone,Duration,~(Timer))", "~(Zone,ZoneDelegate,Zone,String)", "Zone(Zone?,ZoneDelegate?,Zone,ZoneSpecification?,Map<Object?,Object?>?)", "int(String{onError:int(String)?,radix:int?})", "0^(0^,0^)<num>", "int(CrdtIndexData,CrdtIndexData)", "bool(CrdtIndexData)", "bool?(List<Object?>)", "bool?(List<@>)", "WasmInitializationMessage(JSObject)", "_RdfObjectComparison(RdfObject)", "List<RdfObject>(@)", "DateTime()", "ECCurve_brainpoolp160r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp160t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp192r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp192t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp224r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp224t1(String,ECCurve0,ECPoint0,BigInt,BigInt?,List<int>?)", "ECCurve_brainpoolp256r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp256t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp320r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp320t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp384r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp384t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp512r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp512t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_a(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_b(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_c(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_xcha(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_xchb(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_prime192v1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime192v2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime192v3(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime239v1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime239v2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime239v3(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime256v1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp112r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp112r2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp128r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp128r2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp160k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp160r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp160r2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp192k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp192r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp224k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp224r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp256k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp256r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp384r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp521r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECPointBase?(ECPointBase,BigInt?,PreCompInfo?)", "EmptyMessage(MessageSerializer)", "Flags(MessageSerializer)", "NameAndInt32Flags(MessageSerializer)", "List<Object?>(JSArray<Object?>)", "Map<String,@>(CrdtIndexData)", "int(0^,0^)<Comparable<0^>>", "ValidationResult(RegexTransform)", "RIPEMD320Digest()"],
+    types: ["~()", "Future<~>()", "bool(Triple)", "bool(String)", "~(Object?)", "Null()", "String(String)", "int(int,int)", "~(JSObject)", "RdfObject(Triple)", "bool(Object?)", "String(IriTerm)", "~(Object,StackTrace)", "double(num)", "Null(Object,StackTrace)", "Future<Null>()", "bool(IriTerm)", "Expression<bool>($SyncDocumentsTable)", "Future<@>()", "String(@)", "0&()", "TraversalDecision(Triple,int)", "bool(RdfObject)", "Null(@)", "~(Object[StackTrace?])", "int(int)", "int()", "Triple(RdfObject)", "RdfSubject(Triple)", "BlankNodeTerm()", "bool(ValidationResult)", "Null(int)", "Frame()", "Object?(Object?)", "IriTerm(String)", "String()", "Null(JSObject)", "String(Match)", "~(@)", "List<Triple>(List<Triple>)", "Null(@,@)", "String(Triple)", "int(IriTerm,IriTerm)", "List<RdfObject>()", "Frame(String)", "List<Triple>()", "IndexEntryWithIri(DriftIndexEntry)", "Expression<bool>($IndexEntriesTable)", "int(IndexEntry)", "String(int)", "Null(int,int,int)", "Future<List<Map<String,Object?>>>(QueryExecutor)", "~(Object?,Object?)", "bool(ResourceConfigData)", "Set<RdfObject>()", "bool(_Highlight)", "Triple(Triple)", "IriTerm(ResourceConfigData)", "~([Future<@>?])", "Iterable<Triple>(RdfSubject)", "List<Triple>(RdfSubject)", "@(@)", "bool(Object?,Object?)", "SyncTrigger()", "RdfPredicate(PredicateMergeRule)", "List<Triple>(RdfGraph)", "Future<bool>()", "bool(PredicateMergeRule)", "int(Object?)", "int(int,int,int)", "bool(_IndexMetadata)", "Future<+appData,crdtDocument,currentCursor,documentIri,missingGroupIndices,physicalTime,previousCursor,resourceIri,updatedAt(RdfGraph,RdfGraph,String,IriTerm,List<MissingGroupIndex>,int,String?,RdfSubject,int)?>()", "bool(SyncTrigger)", "~(~())", "Expression<bool>($RemoteSettingsTable)", "List<DocumentMapping>(DocumentMapping)", "bool(@)", "~([Future<~>?])", "int(GroupingProperty,GroupingProperty)", "~(List<IndexEntryWithIri>)", "Future<int>()", "RdfGraph(RdfSubject)", "DocumentMapping(+(DocumentMapping,ValidationResult))", "RdfPredicate(Triple)", "int?(int)", "bool(RdfSubject)", "+(PredicateRule?,ValidationResult)(RdfSubject)", "PredicateRule?(+(PredicateRule?,ValidationResult))", "Future<StreamedResponse>()", "RdfObjectKey(RdfObject)", "~(String,String)", "Object(RdfObject)", "List<Triple>(+(RdfSubject,RdfGraph))", "Iterable<Triple>(BlankNodeTerm)", "bool(IndexEntryWithIri)", "IriTerm(_DocumentQueueEntry)", "int(String?)", "~(Timer)", "@(String)", "bool(String,String)", "Expression<bool>($SyncIrisTable)", "~(@,@)", "Future<int>(QueryExecutor,String,List<@>)", "OrderingTerm($SyncDocumentsTable)", "OrderingTerm($IndexEntriesTable)", "~(List<int>)", "DriftIndexEntry(IndexEntry)", "Expression<bool>($IndexIriIdSetVersionsTable)", "@()", "bool(Quad)", "List<Triple>?(RdfPredicate)", "ValidationResult(+(PredicateRule?,ValidationResult))", "Map<String,String>(+(String,String))", "+(String,String)(@)", "User(@)", "Trace(String)", "+(String,String)(+(IriTerm,RdfGraph))", "SHA1Digest()", "Uint8List()", "~(JSObject?,List<JSObject>?)", "@(Variable<Object>)", "int(int,int,int,int,int)", "num?(List<Object?>)", "int(int,int,int,int)", "int(int,int,int,JavaScriptBigInt)", "Future<int>(QueryExecutor)", "int(Frame)", "String(Frame)", "~(String)", "int(@,@)", "bool(TableUpdate)", "~(Set<TableUpdate>)", "ValidationResult(+(DocumentMapping,ValidationResult))", "MapEntry<String,String?>(String,@)", "bool(BlankNodeTerm)", "Iterable<+(CrdtIndexData,IriTerm)>(ResourceConfigData)", "+(CrdtIndexData,IriTerm)(CrdtIndexData)", "ResourceConfigData(@)", "Map<String,@>(ResourceConfigData)", "~(int,@)", "String(ResourceConfigBase)", "~(MultiStreamController<Set<TableUpdate>>)", "MapEntry<RdfPredicate,Iterable<RdfObject>>(RdfPredicate,Set<RdfObject>)", "MergeResults(MergeResults,MergeResults)", "MetadataStatement(MetadataStatement)", "MetadataStatement()", "0&(String,int?)", "+(RdfObject,num)(RdfObject)", "+(RdfObject,num)(+(RdfObject,num),+(RdfObject,num))", "+(RdfObject,DateTime)(RdfObject)", "+(RdfObject,DateTime)(+(RdfObject,DateTime),+(RdfObject,DateTime))", "+(RdfObject,String)(RdfObject)", "+(RdfObject,String)(+(RdfObject,String),+(RdfObject,String))", "~(@,StackTrace)", "Future<~>(QueryExecutor)", "Future<~>(@)", "_Future<@>?()", "Iterable<+(RdfSubject,RdfGraph)>(RdfObject)", "String?(RegExpMatch)", "Triple(Object)", "~(VerificationMeta,VerificationResult)", "bool(TrackedDatabase)", "@(@,String)", "SelectResult(List<QueryRow>)", "int(~)", "MergeInstruction()", "Future<ServiceExtensionResponse>(String,Map<String,String>)", "Future<Object?>()", "+(RdfSubject,RdfGraph)(RdfSubject)", "bool(+(RdfSubject,RdfGraph))", "RdfGraph(+(RdfSubject,RdfGraph))", "+ours,theirs(List<+(RdfSubject,RdfGraph)>,List<+(RdfSubject,RdfGraph)>)(+ours,theirs(List<+(RdfSubject,RdfGraph)>,List<+(RdfSubject,RdfGraph)>),+(RdfSubject,RdfGraph))", "~(List<String>)", "List<_PropertyExtractor>()", "int(_PropertyExtractor,_PropertyExtractor)", "RdfObject(@)", "Map<String,@>(RdfObject)", "RegexTransform(@)", "Map<String,@>(RegexTransform)", "Future<FullIndexData?>(IriTerm,ShardDeterminationMode)", "Future<GroupIndexData?>(IriTerm,ShardDeterminationMode)", "ServiceExtensionResponse(Object?)", "ServiceExtensionResponse(Object?,StackTrace)", "Set<_IndexMetadata>()", "Future<QueryResult>()", "bool(IriTerm,Set<_IndexMetadata>)", "FullIndexData?(RdfGraph,IriTerm)", "GroupIndexData?(RdfGraph,IriTerm)", "~(String,List<String>)", "Triple(IriTerm)", "Iterable<Triple>(MapEntry<IriTerm,List<RdfObject>>)", "GroupingProperty?(RdfSubject)", "Null(~())", "RegexTransform(RdfSubject)", "RdfObject(RegexTransform)", "String(GroupingProperty)", "String(RegexTransform)", "+(BlankNodeTerm,RdfGraph)(IriTerm)", "RegExp(RegexTransform)", "Map<String,@>(List<Object?>)", "IdentifiedRdfSubject?(RdfSubject)", "Set<TableUpdate>(Set<TableUpdate>)", "bool(Set<TableUpdate>)", "Map<IriTerm,ClassMapping>(DocumentMapping)", "Iterable<ClassMapping>(Map<IriTerm,ClassMapping>)", "Map<IriTerm,List<ClassMapping>>(Map<IriTerm,List<ClassMapping>>,ClassMapping)", "List<ClassMapping>()", "ClassMapping(MapEntry<IriTerm,List<ClassMapping>>)", "Map<RdfPredicate,PredicateRule>(ClassMapping)", "List<PredicateMapping>(DocumentMapping)", "Map<RdfPredicate,PredicateRule>(PredicateMapping)", "PredicateRule()", "Iterable<Triple>(IdentifiedBlankNode)", "Null(QueryExecutor)", "int(MapEntry<RdfPredicate,List<RdfObject>>)", "bool(MapEntry<RdfPredicate,List<RdfObject>>)", "ApiRequestErrorDetail(@)", "IriTerm(IdentifiedBlankNode)", "Map<BlankNodeTerm,List<Triple>>(Map<BlankNodeTerm,List<Triple>>,Triple)", "bool(TableUpdateQuery)", "Iterable<BlankNodeTerm>(List<IdentifiedBlankNode>)", "Set<BlankNodeTerm>(IdentifiedBlankNode)", "List<BlankNodeTerm>()", "List<String>(IdentifiedBlankNode)", "bool(IdentifiedBlankNode)", "BlankNodeTerm(IdentifiedBlankNode)", "~(GenerationContext)", "List<IdentifiedBlankNode>(Triple)", "IdentifiedBlankNode(IdentifiedBlankNode)", "_ConverterStreamEventSink<@,@>(EventSink<@>)", "~(List<Column<Object>>?,Expression<bool>?)", "Map<RdfPredicate,List<ClassMergeRules>>(Map<RdfPredicate,List<ClassMergeRules>>,MapEntry<IriTerm,ClassMergeRules>)", "List<ClassMergeRules>()", "String(ClassMergeRules)", "bool(RdfPredicate)", "Future<MergeContract>(@)", "List<IriTerm>(RdfGraph)", "+(List<IriTerm>,Set<IriTerm>)(+(List<IriTerm>,Set<IriTerm>),List<IriTerm>)", "+(DocumentMapping,ValidationResult)(IriTerm)", "~(Component?)", "List<QueryRow>(List<Map<String,Object?>>)", "~(Uint8List,int,int)", "+(PredicateMapping?,ValidationResult)(RdfSubject)", "PredicateMapping?(+(PredicateMapping?,ValidationResult))", "ValidationResult(+(PredicateMapping?,ValidationResult))", "QueryRow(Map<String,Object?>)", "+(DocumentMapping,ValidationResult)(RdfSubject)", "Future<List<Map<String,Object?>>>()", "Null(@,StackTrace)", "bool(GeneratedColumn<Object>)", "bool(MapEntry<RdfSubject,ValidationResult>)", "Iterable<+(IriTerm,RdfGraph)>(IriTerm)", "+(IriTerm,RdfGraph)(RdfObject?)", "IriTerm(IriTerm)", "Future<~>(IriTerm)", "IriTerm?()", "RemoteSyncOrchestrator(RemoteSyncStorage,RemoteId)", "Future<~>()(Backend)", "Stream<+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)>(Set<IriTerm>)", "bool(List<IndexEntryWithIri>)", "+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(List<IndexEntryWithIri>)", "+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(List<StoredDocument>,String?)", "+(List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(+(List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>),StoredDocument)", "+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(DocumentsResult)", "Future<RemoteSyncStorage>()", "Future<RemoteUploadResult>()", "Future<RemoteDownloadResult>()", "Iterable<MapEntry<MetadataStatementKey,MetadataStatement>>(MetadataStatement)", "MapEntry<MetadataStatementKey,MetadataStatement>(MetadataStatementKey)", "Set<+(RdfSubject,RdfGraph)>()", "Set<MetadataStatementKey>()", "MetadataStatement(MapEntry<MetadataStatementKey,Set<+(RdfSubject,RdfGraph)>>)", "Map<RdfPredicate,Set<RdfObject>>(Map<RdfPredicate,Set<RdfObject>>,+(RdfSubject,RdfGraph))", "bool(MapEntry<MetadataStatementKey,MetadataStatement>)", "MetadataStatement(MapEntry<MetadataStatementKey,MetadataStatement>)", "Iterable<MetadataStatement?>(RdfSubject)", "MetadataStatement?(RdfObject)", "bool(MetadataStatement?)", "Future<TypedResult>(Map<String,Object?>)", "MergeObject(RdfObjectKey)", "MergeSubject(RdfObjectKey)", "Iterable<IriTerm>(Iterable<IriTerm>)", "Map<BlankNodeTerm,Set<IriTerm>>(Map<BlankNodeTerm,Set<IriTerm>>,Triple)", "Set<IriTerm>()", "int(+(int,int))", "RdfObjectKey(RdfSubject)", "Object?()", "MergeResults(MergeSubject)", "Iterable<Triple>(MapEntry<BlankNodeTerm,List<IriTerm>>)", "List<Triple>(IriTerm)", "Iterable<+(RdfSubject,RdfGraph)>(MetadataStatement)", "~(String,Expression<Object>)", "Iterable<Triple>(Iterable<+(RdfSubject,RdfGraph)>)", "Map<Type,DriftSqlType<Object>>()", "Iterable<Triple>(MapEntry<RdfPredicate,Iterable<RdfObject>>)", "Iterable<RdfObject>(RdfObject)", "String(MapEntry<IriTerm,Map<IriTerm,String>>)", "String(MapEntry<IriTerm,String>)", "int(List<Object?>)", "FullIndexSync(FullIndexData)", "FullIndexSync(+(IriTerm,IriTerm,ItemFetchPolicy))", "IriTerm(+(IriTerm,IriTerm,ItemFetchPolicy))", "IriTerm(IndexSyncSpec)", "FullShardSync(IriTerm)", "PartialShardSync(MapEntry<IriTerm,Map<IriTerm,String>>)", "MapEntry<IriTerm,String>(IriTerm,+(String,Set<RdfObject>?))", "_DocumentQueueEntry(MapEntry<IriTerm,String>)", "_DocumentQueueEntry(IriTerm)", "~(int)", "PartialIndexSync(MapEntry<IriTerm,Map<IriTerm,Map<IriTerm,String>>>)", "int(PartialIndexSync)", "Future<~>()(IndexSyncSpec)", "Future<~>()(ShardSyncSpec)", "ResponsePayload?/(Request0)", "+documentIri,lastSyncTimestamp,shouldSync,syncTime(IriTerm,int,bool,DateTime)(_DocumentQueueEntry)", "bool(+documentIri,lastSyncTimestamp,shouldSync,syncTime(IriTerm,int,bool,DateTime))", "Future<~>()(+documentIri,lastSyncTimestamp,shouldSync,syncTime(IriTerm,int,bool,DateTime))", "RdfGraph(RdfGraph)", "Null(~)", "~(Object?,List<JSObject>?)", "Future<~>(DateTime)", "Future<SaveDocumentResult>()", "DocumentsResult(List<DocumentWithIri>)", "Expression<bool>($SyncSettingsTable)", "~(MultiStreamController<WasmInitializationMessage>)", "List<IndexEntryWithIri>(List<DriftIndexEntry>)", "+(IriTerm,IriTerm,ItemFetchPolicy)(SubscribedGroupIndexData)", "WasmInitializationMessage(WasmInitializationMessage)", "+indexIri,maxPhysicalClock,resourceTypeIri,shardIri(IriTerm,int,IriTerm,IriTerm)(+indexIri,maxPhysicalClock,resourceTypeIri,shardIri(String,int,String,String))", "StoredDocument(DocumentWithIri)", "Null(Object?,StackTrace)", "bool(int)", "int(WasmStorageImplementation)", "bool(WasmStorageImplementation)", "int(SyncDocument)", "DocumentWithIri(SyncDocument)", "List<String>(PropertyChange)", "SyncPropertyChangesCompanion(PropertyChange)", "Null(Batch)", "DateTime(@)", "Label(@)", "bool(PrimitiveResponsePayload)", "ContentRestriction(@)", "Future<~>(List<IndexEntry>)", "bool(IndexEntry)", "Expression<bool>($GroupIndexSubscriptionsTable)", "Set<int>(List<GroupIndexSubscription>)", "int(GroupIndexSubscription)", "SubscribedGroupIndexData(TypedResult)", "MapEntry<String,String>(String,@)", "DriftIndexEntry(TypedResult)", "+indexIri,maxPhysicalClock,resourceTypeIri,shardIri(String,int,String,String)(QueryRow)", "Map<String,Map<String,String>>()", "Map<String,String>()", "bool(Object)", "Expression<bool>($RemoteSyncStateTable)", "Future<~>(Migrator)", "Future<~>(Migrator,int,int)", "SyncIri(Map<String,@>{tablePrefix:String?})", "SyncDocument(Map<String,@>{tablePrefix:String?})", "SyncPropertyChange(Map<String,@>{tablePrefix:String?})", "SyncSetting(Map<String,@>{tablePrefix:String?})", "IndexEntry(Map<String,@>{tablePrefix:String?})", "GroupIndexSubscription(Map<String,@>{tablePrefix:String?})", "IndexIriIdSetVersion(Map<String,@>{tablePrefix:String?})", "RemoteSetting(Map<String,@>{tablePrefix:String?})", "RemoteSyncStateData(Map<String,@>{tablePrefix:String?})", "String(TypeMapping)", "MapEntry<String,String>(IriTerm,String)", "bool(GDriveFolderMode)", "MapEntry<IriTerm,String>(String,@)", "~(Map<String,@>)", "RdfNamedGraph(MapEntry<RdfGraphName,RdfGraph>)", "Future<~>(Request0)", "Triple(Quad)", "MapEntry<RdfGraphName,RdfGraph>(RdfGraphName,List<Triple>)", "bool(MapEntry<RdfGraphName,RdfGraph>)", "int(MapEntry<RdfGraphName,RdfGraph>)", "Map<RdfSubject,Map<RdfPredicate,List<Triple>>>(Map<RdfSubject,Map<RdfPredicate,List<Triple>>>,Triple)", "Iterable<RdfPredicate>(Map<RdfPredicate,List<Triple>>)", "Permission(@)", "File(@)", "bool(List<Triple>?)", "List<Triple>(List<Triple>?)", "bool(MapEntry<+(IriTerm,IriRole),CompactIri>)", "IriRole(MapEntry<+(IriTerm,IriRole),CompactIri>)", "String(IriRole)", "List<+(IriTerm,IriRole)>(Triple)", "Map<String,@>(MapEntry<RdfSubject,List<Triple>>)", "String(RdfObject)", "@(RdfObject)", "Iterable<String>(RdfNamedGraph)", "int(MapEntry<String,String>,MapEntry<String,String>)", "int(RdfSubject,RdfSubject)", "int(RdfPredicate,RdfPredicate)", "bool(BaseResponse)", "bool(Object,StackTrace)", "Duration(int)", "MapEntry<String,@>(@,@)", "MapEntry<String,LabelField>(String,@)", "Future<@>(@)", "String(DateTime)", "PermissionPermissionDetails(@)", "~(WorkerChannelMessage)", "WorkerContext?()", "~(WorkerContext)", "bool()", "bool(WorkerChannelMessage)", "Object?(WorkerChannelMessage)", "WorkerHandlerChannel()", "~(SyncState)", "~(+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>))", "PermissionTeamDrivePermissionDetails(@)", "Future<Backend>(RemoteWorkerHandler)", "Logger()", "String(String?)", "~(LogRecord)", "OAEPEncoding()(String,Match)", "OAEPEncoding()", "Request0()", "PKCS1Encoding()(String,Match)", "PKCS1Encoding()", "RSAEngine()", "AESEngine()", "DESedeEngine()", "CBCBlockCipher()(String,Match)", "CBCBlockCipher()", "CCMBlockCipher()(String,Match)", "CCMBlockCipher()", "CFBBlockCipher()(String,Match)", "CFBBlockCipher()", "CTRBlockCipher()(String,Match)", "CTRBlockCipher()", "ECBBlockCipher()(String,Match)", "ECBBlockCipher()", "GCMBlockCipher()(String,Match)", "GCMBlockCipher()", "GCTRBlockCipher()(String,Match)", "GCTRBlockCipher()", "IGEBlockCipher()(String,Match)", "IGEBlockCipher()", "OFBBlockCipher()(String,Match)", "OFBBlockCipher()", "SICBlockCipher()(String,Match)", "SICBlockCipher()", "RC2Engine()", "Blake2bDigest()", "CSHAKEDigest()(String,Match)", "CSHAKEDigest()", "KeccakDigest()(String,Match)", "KeccakDigest()", "MD2Digest()", "Future<WorkerParams>()", "MD5Digest()", "RIPEMD128Digest()", "RIPEMD160Digest()", "RIPEMD256Digest()", "RIPEMD320Digest()", "SHA224Digest()", "SHA256Digest()", "SHA3Digest()(String,Match)", "SHA3Digest()", "SHA384Digest()", "SHA512Digest()", "SHA512tDigest()(String,Match)", "SHA512tDigest()", "SHAKEDigest()(String,Match)", "SHAKEDigest()", "SM3Digest()", "TigerDigest()", "WhirlpoolDigest()", "ECCurve_brainpoolp160r1()", "ECCurve_brainpoolp160t1()", "ECCurve_brainpoolp192r1()", "ECCurve_brainpoolp192t1()", "ECCurve_brainpoolp224r1()", "ECCurve_brainpoolp224t1()", "ECCurve_brainpoolp256r1()", "ECCurve_brainpoolp256t1()", "ECCurve_brainpoolp320r1()", "ECCurve_brainpoolp320t1()", "ECCurve_brainpoolp384r1()", "ECCurve_brainpoolp384t1()", "ECCurve_brainpoolp512r1()", "ECCurve_brainpoolp512t1()", "ECCurve_gostr3410_2001_cryptopro_a()", "ECCurve_gostr3410_2001_cryptopro_b()", "ECCurve_gostr3410_2001_cryptopro_c()", "ECCurve_gostr3410_2001_cryptopro_xcha()", "ECCurve_gostr3410_2001_cryptopro_xchb()", "ECCurve_prime192v1()", "ECCurve_prime192v2()", "ECCurve_prime192v3()", "ECCurve_prime239v1()", "ECCurve_prime239v2()", "ECCurve_prime239v3()", "ECCurve_prime256v1()", "ECCurve_secp112r1()", "ECCurve_secp112r2()", "ECCurve_secp128r1()", "ECCurve_secp128r2()", "ECCurve_secp160k1()", "ECCurve_secp160r1()", "ECCurve_secp160r2()", "ECCurve_secp192k1()", "ECCurve_secp192r1()", "ECCurve_secp224k1()", "ECCurve_secp224r1()", "ECCurve_secp256k1()", "ECCurve_secp256r1()", "ECCurve_secp384r1()", "ECCurve_secp521r1()", "ECPoint(ECPoint?)", "Argon2BytesGenerator()", "ConcatKDFDerivator()(String,Match)", "ConcatKDFDerivator()", "ECDHKeyDerivator()", "HKDFKeyDerivator()(String,Match)", "HKDFKeyDerivator()", "bool(MapEntry<String,int>)", "PBKDF2KeyDerivator()(String,Match)", "PBKDF2KeyDerivator()", "PKCS12ParametersGenerator()(String,Match)", "PKCS12ParametersGenerator()", "PKCS5S1ParameterGenerator()(String,Match)", "PKCS5S1ParameterGenerator()", "Scrypt()", "ECKeyGenerator()", "RSAKeyGenerator()", "CBCBlockCipherMac()(String,Match)", "CBCBlockCipherMac()", "CMac()(String,Match)", "CMac()", "HMac()(String,Match)", "HMac()", "Poly1305()(String,Match)", "Poly1305()", "PaddedBlockCipherImpl()(String,Match)", "PaddedBlockCipherImpl()", "ISO7816d4Padding()", "PKCS7Padding()", "AutoSeedBlockCtrRandom()(String,Match)", "AutoSeedBlockCtrRandom()", "BigInt()", "SuccessResponse()", "BlockCtrRandom()(String,Match)", "BlockCtrRandom()", "FortunaRandom()", "ECDSASigner()(String,Match)", "ECDSASigner()", "PSSSigner()(String,Match)", "PSSSigner()", "RSASigner()(String,Match)", "RSASigner()", "Map<String,@()>()", "Set<DynamicFactoryConfig>()", "ChaCha20Engine()(String,Match)", "ChaCha20Engine()", "ChaCha20Poly1305()", "ChaCha7539Engine()(String,Match)", "ChaCha7539Engine()", "CTRStreamCipher()(String,Match)", "CTRStreamCipher()", "EAX()(String,Match)", "EAX()", "RC4Engine()", "Salsa20Engine()", "SICStreamCipher()(String,Match)", "SICStreamCipher()", "~([~])", "String?()", "int(_Line)", "int(String)", "Object(_Line)", "Object(_Highlight)", "int(_Highlight,_Highlight)", "List<_Line>(MapEntry<Object,List<_Highlight>>)", "SourceSpanWithContext()", "String(Object?)", "~(RawSqliteContext,List<RawSqliteValue>)", "~(FinalizablePart)", "~(String,Map<String,Object?>)", "~(String,Object?)", "JSObject(JSObject?)", "Future<~>(int,Uint8List)", "Future<~>(int)", "Future<JSObject>(String)", "Null(String,String[Object?])", "~(MultiStreamController<List<int>>)", "MediaType()", "ExecuteBatchedStatement()", "Null(int,int)", "int(GroupingProperty)", "int(int,JavaScriptBigInt)", "IriTerm(@)", "Null(int,int,int,int,JavaScriptBigInt)", "Null(JavaScriptBigInt,int)", "List<Frame>(Trace)", "int(Trace)", "List<Object?>(JSArray<Object?>)", "String(Trace)", "GroupingProperty(@)", "Map<String,@>(GroupingProperty)", "Frame(String,String)", "Trace()", "String(RegExpMatch)", "int(CrdtIndexData,CrdtIndexData)", "~(Zone?,ZoneDelegate?,Zone,Object,StackTrace)", "0^(Zone?,ZoneDelegate?,Zone,0^())<Object?>", "0^(Zone?,ZoneDelegate?,Zone,0^(1^),1^)<Object?,Object?>", "0^(Zone?,ZoneDelegate?,Zone,0^(1^,2^),1^,2^)<Object?,Object?,Object?>", "0^()(Zone,ZoneDelegate,Zone,0^())<Object?>", "0^(1^)(Zone,ZoneDelegate,Zone,0^(1^))<Object?,Object?>", "0^(1^,2^)(Zone,ZoneDelegate,Zone,0^(1^,2^))<Object?,Object?,Object?>", "AsyncError?(Zone,ZoneDelegate,Zone,Object,StackTrace?)", "~(Zone?,ZoneDelegate?,Zone,~())", "Timer(Zone,ZoneDelegate,Zone,Duration,~())", "Timer(Zone,ZoneDelegate,Zone,Duration,~(Timer))", "~(Zone,ZoneDelegate,Zone,String)", "Zone(Zone?,ZoneDelegate?,Zone,ZoneSpecification?,Map<Object?,Object?>?)", "int(String{onError:int(String)?,radix:int?})", "0^(0^,0^)<num>", "bool(CrdtIndexData)", "TableUpdate(Object?)", "bool?(List<Object?>)", "bool?(List<@>)", "WasmInitializationMessage(JSObject)", "_RdfObjectComparison(RdfObject)", "List<RdfObject>(@)", "DateTime()", "ECCurve_brainpoolp160r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp160t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp192r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp192t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp224r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp224t1(String,ECCurve0,ECPoint0,BigInt,BigInt?,List<int>?)", "ECCurve_brainpoolp256r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp256t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp320r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp320t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp384r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp384t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp512r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp512t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_a(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_b(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_c(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_xcha(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_xchb(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_prime192v1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime192v2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime192v3(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime239v1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime239v2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime239v3(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime256v1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp112r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp112r2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp128r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp128r2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp160k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp160r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp160r2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp192k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp192r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp224k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp224r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp256k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp256r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp384r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp521r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECPointBase?(ECPointBase,BigInt?,PreCompInfo?)", "EmptyMessage(MessageSerializer)", "Flags(MessageSerializer)", "NameAndInt32Flags(MessageSerializer)", "Map<String,@>(CrdtIndexData)", "int(ResourceConfigData,ResourceConfigData)", "int(0^,0^)<Comparable<0^>>", "ValidationResult(RegexTransform)", "MD4Digest()"],
     interceptorsByTag: null,
     leafTags: null,
     arrayRti: Symbol("$ti"),
@@ -89525,6 +90101,7 @@
       "3;etag,graph,notModified": (t1, t2, t3) => o => o instanceof A._Record_3_etag_graph_notModified && t1._is(o._0) && t2._is(o._1) && t3._is(o._2),
       "3;metadata,newBlankNodes,oldBlankNodes": (t1, t2, t3) => o => o instanceof A._Record_3_metadata_newBlankNodes_oldBlankNodes && t1._is(o._0) && t2._is(o._1) && t3._is(o._2),
       "4;": types => o => o instanceof A._Record_4 && A.pairwiseIsTest(types, o._values),
+      "4;documentIri,lastSyncTimestamp,shouldSync,syncTime": types => o => o instanceof A._Record_4_documentIri_lastSyncTimestamp_shouldSync_syncTime && A.pairwiseIsTest(types, o._values),
       "4;fullClock,hash,logicalTime,physicalTime": types => o => o instanceof A._Record_4_fullClock_hash_logicalTime_physicalTime && A.pairwiseIsTest(types, o._values),
       "4;indexIri,maxPhysicalClock,resourceTypeIri,shardIri": types => o => o instanceof A._Record_4_index78Iri_max78PhysicalClock_resourceTypeIri_shardIri && A.pairwiseIsTest(types, o._values),
       "4;newObjects,predicate,subject,subjectTypeIri": types => o => o instanceof A._Record_4_newObjects_predicate_subject_subjectTypeIri && A.pairwiseIsTest(types, o._values),
@@ -89534,12 +90111,10 @@
       "9;appData,crdtDocument,currentCursor,documentIri,missingGroupIndices,physicalTime,previousCursor,resourceIri,updatedAt": types => o => o instanceof A._Record_9_appData_crdtDocument_currentCursor_documentIri_missingGroupIndices_physicalTime_previousCursor_resourceIri_updatedAt && A.pairwiseIsTest(types, o._values)
     }
   };
-  A._Universe_addRules(init.typeUniverse, JSON.parse('{"JavaScriptFunction":"LegacyJavaScriptObject","PlainJavaScriptObject":"LegacyJavaScriptObject","UnknownJavaScriptObject":"LegacyJavaScriptObject","NativeSharedArrayBuffer":"NativeByteBuffer","JSArray":{"List":["1"],"EfficientLengthIterable":["1"],"JSObject":[],"Iterable":["1"],"JSIndexable":["1"]},"JSBool":{"bool":[],"TrustedGetRuntimeType":[]},"JSNull":{"Null":[],"TrustedGetRuntimeType":[]},"JavaScriptObject":{"JSObject":[]},"LegacyJavaScriptObject":{"JSObject":[]},"JSArraySafeToStringHook":{"SafeToStringHook":[]},"JSUnmodifiableArray":{"JSArray":["1"],"List":["1"],"EfficientLengthIterable":["1"],"JSObject":[],"Iterable":["1"],"JSIndexable":["1"]},"ArrayIterator":{"Iterator":["1"]},"JSNumber":{"double":[],"num":[],"Comparable":["num"]},"JSInt":{"double":[],"int":[],"num":[],"Comparable":["num"],"TrustedGetRuntimeType":[]},"JSNumNotInt":{"double":[],"num":[],"Comparable":["num"],"TrustedGetRuntimeType":[]},"JSString":{"String":[],"Comparable":["String"],"Pattern":[],"JSIndexable":["@"],"TrustedGetRuntimeType":[]},"_CopyingBytesBuilder":{"BytesBuilder":[]},"_CastIterableBase":{"Iterable":["2"]},"CastIterator":{"Iterator":["2"]},"CastIterable":{"_CastIterableBase":["1","2"],"Iterable":["2"],"Iterable.E":"2"},"_EfficientLengthCastIterable":{"CastIterable":["1","2"],"_CastIterableBase":["1","2"],"EfficientLengthIterable":["2"],"Iterable":["2"],"Iterable.E":"2"},"_CastListBase":{"ListBase":["2"],"List":["2"],"_CastIterableBase":["1","2"],"EfficientLengthIterable":["2"],"Iterable":["2"]},"CastList":{"_CastListBase":["1","2"],"ListBase":["2"],"List":["2"],"_CastIterableBase":["1","2"],"EfficientLengthIterable":["2"],"Iterable":["2"],"ListBase.E":"2","Iterable.E":"2"},"CastMap":{"MapBase":["3","4"],"Map":["3","4"],"MapBase.K":"3","MapBase.V":"4"},"LateError":{"Error":[]},"CodeUnits":{"ListBase":["int"],"UnmodifiableListMixin":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"],"ListBase.E":"int","UnmodifiableListMixin.E":"int"},"EfficientLengthIterable":{"Iterable":["1"]},"ListIterable":{"EfficientLengthIterable":["1"],"Iterable":["1"]},"SubListIterable":{"ListIterable":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"],"ListIterable.E":"1","Iterable.E":"1"},"ListIterator":{"Iterator":["1"]},"MappedIterable":{"Iterable":["2"],"Iterable.E":"2"},"EfficientLengthMappedIterable":{"MappedIterable":["1","2"],"EfficientLengthIterable":["2"],"Iterable":["2"],"Iterable.E":"2"},"MappedIterator":{"Iterator":["2"]},"MappedListIterable":{"ListIterable":["2"],"EfficientLengthIterable":["2"],"Iterable":["2"],"ListIterable.E":"2","Iterable.E":"2"},"WhereIterable":{"Iterable":["1"],"Iterable.E":"1"},"WhereIterator":{"Iterator":["1"]},"ExpandIterable":{"Iterable":["2"],"Iterable.E":"2"},"ExpandIterator":{"Iterator":["2"]},"TakeIterable":{"Iterable":["1"],"Iterable.E":"1"},"EfficientLengthTakeIterable":{"TakeIterable":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"],"Iterable.E":"1"},"TakeIterator":{"Iterator":["1"]},"SkipIterable":{"Iterable":["1"],"Iterable.E":"1"},"EfficientLengthSkipIterable":{"SkipIterable":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"],"Iterable.E":"1"},"SkipIterator":{"Iterator":["1"]},"SkipWhileIterable":{"Iterable":["1"],"Iterable.E":"1"},"SkipWhileIterator":{"Iterator":["1"]},"EmptyIterable":{"EfficientLengthIterable":["1"],"Iterable":["1"],"Iterable.E":"1"},"EmptyIterator":{"Iterator":["1"]},"WhereTypeIterable":{"Iterable":["1"],"Iterable.E":"1"},"WhereTypeIterator":{"Iterator":["1"]},"NonNullsIterable":{"Iterable":["1"],"Iterable.E":"1"},"NonNullsIterator":{"Iterator":["1"]},"IndexedIterable":{"Iterable":["+(int,1)"],"Iterable.E":"+(int,1)"},"EfficientLengthIndexedIterable":{"IndexedIterable":["1"],"EfficientLengthIterable":["+(int,1)"],"Iterable":["+(int,1)"],"Iterable.E":"+(int,1)"},"IndexedIterator":{"Iterator":["+(int,1)"]},"UnmodifiableListBase":{"ListBase":["1"],"UnmodifiableListMixin":["1"],"List":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"ReversedListIterable":{"ListIterable":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"],"ListIterable.E":"1","Iterable.E":"1"},"_Record_2":{"_Record2":[],"_Record":[]},"_Record_2_accessToken_dPoP":{"_Record2":[],"_Record":[]},"_Record_2_appGraph_frameworkGraph":{"_Record2":[],"_Record":[]},"_Record_2_blankNodeLabels_dataset":{"_Record2":[],"_Record":[]},"_Record_2_compactedIris_contex78t":{"_Record2":[],"_Record":[]},"_Record_2_etag_fileId":{"_Record2":[],"_Record":[]},"_Record_2_file_outFlags":{"_Record2":[],"_Record":[]},"_Record_2_folderId_folderName":{"_Record2":[],"_Record":[]},"_Record_2_lastCursor_stream":{"_Record2":[],"_Record":[]},"_Record_2_logicalTime_physicalTime":{"_Record2":[],"_Record":[]},"_Record_2_object_predicate":{"_Record2":[],"_Record":[]},"_Record_2_ours_theirs":{"_Record2":[],"_Record":[]},"_Record_2_statementsToAdd_triplesToRemove":{"_Record2":[],"_Record":[]},"_Record_3":{"_Record3":[],"_Record":[]},"_Record_3_cursor_deletions_updates":{"_Record3":[],"_Record":[]},"_Record_3_etag_graph_notModified":{"_Record3":[],"_Record":[]},"_Record_3_metadata_newBlankNodes_oldBlankNodes":{"_Record3":[],"_Record":[]},"_Record_4":{"_RecordN":[],"_Record":[]},"_Record_4_fullClock_hash_logicalTime_physicalTime":{"_RecordN":[],"_Record":[]},"_Record_4_index78Iri_max78PhysicalClock_resourceTypeIri_shardIri":{"_RecordN":[],"_Record":[]},"_Record_4_newObjects_predicate_subject_subjectTypeIri":{"_RecordN":[],"_Record":[]},"_Record_5_governedByFiles_mergeContract_oldAppData_oldFrameworkGraph_oldUpdatedAt":{"_RecordN":[],"_Record":[]},"_Record_6_appData_blankNodes_documentIri_predicate_subject_values":{"_RecordN":[],"_Record":[]},"_Record_6_etag_localUpdatedAt_mergeContract_mergedDocument_originalLocalDocument_originalRemoteDocument":{"_RecordN":[],"_Record":[]},"_Record_9_appData_crdtDocument_currentCursor_documentIri_missingGroupIndices_physicalTime_previousCursor_resourceIri_updatedAt":{"_RecordN":[],"_Record":[]},"ConstantMapView":{"UnmodifiableMapView":["1","2"],"_UnmodifiableMapView_MapView__UnmodifiableMapMixin":["1","2"],"MapView":["1","2"],"_UnmodifiableMapMixin":["1","2"],"Map":["1","2"],"_UnmodifiableMapMixin.K":"1","_UnmodifiableMapMixin.V":"2"},"ConstantMap":{"Map":["1","2"]},"ConstantStringMap":{"ConstantMap":["1","2"],"Map":["1","2"]},"_KeysOrValues":{"Iterable":["1"],"Iterable.E":"1"},"_KeysOrValuesOrElementsIterator":{"Iterator":["1"]},"GeneralConstantMap":{"ConstantMap":["1","2"],"Map":["1","2"]},"ConstantSet":{"SetBase":["1"],"Set":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"ConstantStringSet":{"ConstantSet":["1"],"SetBase":["1"],"Set":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"Instantiation":{"Closure":[],"Function":[]},"Instantiation1":{"Closure":[],"Function":[]},"NullError":{"TypeError":[],"Error":[]},"JsNoSuchMethodError":{"Error":[]},"UnknownJsTypeError":{"Error":[]},"NullThrownFromJavaScriptException":{"Exception":[]},"_StackTrace":{"StackTrace":[]},"Closure":{"Function":[]},"Closure0Args":{"Closure":[],"Function":[]},"Closure2Args":{"Closure":[],"Function":[]},"TearOffClosure":{"Closure":[],"Function":[]},"StaticClosure":{"Closure":[],"Function":[]},"BoundClosure":{"Closure":[],"Function":[]},"RuntimeError":{"Error":[]},"JsLinkedHashMap":{"MapBase":["1","2"],"LinkedHashMap":["1","2"],"Map":["1","2"],"MapBase.K":"1","MapBase.V":"2"},"LinkedHashMapKeysIterable":{"EfficientLengthIterable":["1"],"Iterable":["1"],"Iterable.E":"1"},"LinkedHashMapKeyIterator":{"Iterator":["1"]},"LinkedHashMapValuesIterable":{"EfficientLengthIterable":["1"],"Iterable":["1"],"Iterable.E":"1"},"LinkedHashMapValueIterator":{"Iterator":["1"]},"LinkedHashMapEntriesIterable":{"EfficientLengthIterable":["MapEntry<1,2>"],"Iterable":["MapEntry<1,2>"],"Iterable.E":"MapEntry<1,2>"},"LinkedHashMapEntryIterator":{"Iterator":["MapEntry<1,2>"]},"JsIdentityLinkedHashMap":{"JsLinkedHashMap":["1","2"],"MapBase":["1","2"],"LinkedHashMap":["1","2"],"Map":["1","2"],"MapBase.K":"1","MapBase.V":"2"},"JsConstantLinkedHashMap":{"JsLinkedHashMap":["1","2"],"MapBase":["1","2"],"LinkedHashMap":["1","2"],"Map":["1","2"],"MapBase.K":"1","MapBase.V":"2"},"_Record2":{"_Record":[]},"_Record3":{"_Record":[]},"_RecordN":{"_Record":[]},"JSSyntaxRegExp":{"RegExp":[],"Pattern":[]},"_MatchImplementation":{"RegExpMatch":[],"Match":[]},"_AllMatchesIterable":{"Iterable":["RegExpMatch"],"Iterable.E":"RegExpMatch"},"_AllMatchesIterator":{"Iterator":["RegExpMatch"]},"StringMatch":{"Match":[]},"_StringAllMatchesIterable":{"Iterable":["Match"],"Iterable.E":"Match"},"_StringAllMatchesIterator":{"Iterator":["Match"]},"NativeArrayBuffer":{"NativeByteBuffer":[],"JSObject":[],"ByteBuffer":[],"TrustedGetRuntimeType":[]},"NativeByteData":{"ByteData":[],"JSObject":[],"TrustedGetRuntimeType":[]},"NativeInt32List":{"NativeTypedArrayOfInt":[],"Int32List":[],"ListBase":["int"],"TypedDataList":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int","FixedLengthListMixin.E":"int"},"NativeUint8List":{"NativeTypedArrayOfInt":[],"Uint8List":[],"ListBase":["int"],"TypedDataList":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int","FixedLengthListMixin.E":"int"},"NativeByteBuffer":{"JSObject":[],"ByteBuffer":[],"TrustedGetRuntimeType":[]},"NativeTypedData":{"JSObject":[]},"_UnmodifiableNativeByteBufferView":{"ByteBuffer":[]},"NativeTypedArray":{"JavaScriptIndexingBehavior":["1"],"JSObject":[],"JSIndexable":["1"]},"NativeTypedArrayOfDouble":{"ListBase":["double"],"NativeTypedArray":["double"],"List":["double"],"JavaScriptIndexingBehavior":["double"],"EfficientLengthIterable":["double"],"JSObject":[],"JSIndexable":["double"],"Iterable":["double"],"FixedLengthListMixin":["double"]},"NativeTypedArrayOfInt":{"ListBase":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"]},"NativeFloat32List":{"NativeTypedArrayOfDouble":[],"Float32List":[],"ListBase":["double"],"TypedDataList":["double"],"NativeTypedArray":["double"],"List":["double"],"JavaScriptIndexingBehavior":["double"],"EfficientLengthIterable":["double"],"JSObject":[],"JSIndexable":["double"],"Iterable":["double"],"FixedLengthListMixin":["double"],"TrustedGetRuntimeType":[],"ListBase.E":"double","FixedLengthListMixin.E":"double"},"NativeFloat64List":{"NativeTypedArrayOfDouble":[],"Float64List":[],"ListBase":["double"],"TypedDataList":["double"],"NativeTypedArray":["double"],"List":["double"],"JavaScriptIndexingBehavior":["double"],"EfficientLengthIterable":["double"],"JSObject":[],"JSIndexable":["double"],"Iterable":["double"],"FixedLengthListMixin":["double"],"TrustedGetRuntimeType":[],"ListBase.E":"double","FixedLengthListMixin.E":"double"},"NativeInt16List":{"NativeTypedArrayOfInt":[],"Int16List":[],"ListBase":["int"],"TypedDataList":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int","FixedLengthListMixin.E":"int"},"NativeInt8List":{"NativeTypedArrayOfInt":[],"Int8List":[],"ListBase":["int"],"TypedDataList":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int","FixedLengthListMixin.E":"int"},"NativeUint16List":{"NativeTypedArrayOfInt":[],"Uint16List":[],"ListBase":["int"],"TypedDataList":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int","FixedLengthListMixin.E":"int"},"NativeUint32List":{"NativeTypedArrayOfInt":[],"Uint32List":[],"ListBase":["int"],"TypedDataList":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int","FixedLengthListMixin.E":"int"},"NativeUint8ClampedList":{"NativeTypedArrayOfInt":[],"Uint8ClampedList":[],"ListBase":["int"],"TypedDataList":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int","FixedLengthListMixin.E":"int"},"_Type":{"Type":[]},"_Error":{"Error":[]},"_TypeError":{"TypeError":[],"Error":[]},"AsyncError":{"Error":[]},"_Future":{"Future":["1"]},"EventSink":{"Sink":["1"]},"MultiStreamController":{"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"]},"StreamController":{"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"]},"_BufferingStreamSubscription":{"StreamSubscription":["1"],"_EventSink":["1"],"_EventDispatch":["1"],"_BufferingStreamSubscription.T":"1"},"_TimerImpl":{"Timer":[]},"_AsyncAwaitCompleter":{"Completer":["1"]},"_SyncStarIterator":{"Iterator":["1"]},"_SyncStarIterable":{"Iterable":["1"],"Iterable.E":"1"},"_BroadcastStream":{"_ControllerStream":["1"],"_StreamImpl":["1"],"Stream":["1"],"Stream.T":"1"},"_BroadcastSubscription":{"_ControllerSubscription":["1"],"_BufferingStreamSubscription":["1"],"StreamSubscription":["1"],"_EventSink":["1"],"_EventDispatch":["1"],"_BufferingStreamSubscription.T":"1"},"_BroadcastStreamController":{"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"],"_StreamControllerLifecycle":["1"],"_EventSink":["1"],"_EventDispatch":["1"]},"_SyncBroadcastStreamController":{"_BroadcastStreamController":["1"],"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"],"_StreamControllerLifecycle":["1"],"_EventSink":["1"],"_EventDispatch":["1"]},"_AsyncBroadcastStreamController":{"_BroadcastStreamController":["1"],"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"],"_StreamControllerLifecycle":["1"],"_EventSink":["1"],"_EventDispatch":["1"]},"TimeoutException":{"Exception":[]},"_Completer":{"Completer":["1"]},"_AsyncCompleter":{"_Completer":["1"],"Completer":["1"]},"_SyncCompleter":{"_Completer":["1"],"Completer":["1"]},"StreamView":{"Stream":["1"]},"StreamTransformerBase":{"StreamTransformer":["1","2"]},"_StreamController":{"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"],"_StreamControllerLifecycle":["1"],"_EventSink":["1"],"_EventDispatch":["1"]},"_AsyncStreamController":{"_AsyncStreamControllerDispatch":["1"],"_StreamController":["1"],"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"],"_StreamControllerLifecycle":["1"],"_EventSink":["1"],"_EventDispatch":["1"]},"_SyncStreamController":{"_SyncStreamControllerDispatch":["1"],"_StreamController":["1"],"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"],"_StreamControllerLifecycle":["1"],"_EventSink":["1"],"_EventDispatch":["1"]},"_ControllerStream":{"_StreamImpl":["1"],"Stream":["1"],"Stream.T":"1"},"_ControllerSubscription":{"_BufferingStreamSubscription":["1"],"StreamSubscription":["1"],"_EventSink":["1"],"_EventDispatch":["1"],"_BufferingStreamSubscription.T":"1"},"_StreamSinkWrapper":{"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"]},"_StreamControllerAddStreamState":{"_AddStreamState":["1"]},"_StreamImpl":{"Stream":["1"]},"_DelayedData":{"_DelayedEvent":["1"]},"_DelayedError":{"_DelayedEvent":["@"]},"_DelayedDone":{"_DelayedEvent":["@"]},"_DoneStreamSubscription":{"StreamSubscription":["1"]},"_EmptyStream":{"Stream":["1"],"Stream.T":"1"},"_MultiStream":{"Stream":["1"],"Stream.T":"1"},"_MultiStreamController":{"_AsyncStreamController":["1"],"_AsyncStreamControllerDispatch":["1"],"_StreamController":["1"],"MultiStreamController":["1"],"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"],"_StreamControllerLifecycle":["1"],"_EventSink":["1"],"_EventDispatch":["1"]},"_ForwardingStream":{"Stream":["2"]},"_ForwardingStreamSubscription":{"_BufferingStreamSubscription":["2"],"StreamSubscription":["2"],"_EventSink":["2"],"_EventDispatch":["2"],"_BufferingStreamSubscription.T":"2"},"_WhereStream":{"_ForwardingStream":["1","1"],"Stream":["1"],"Stream.T":"1","_ForwardingStream.T":"1","_ForwardingStream.S":"1"},"_MapStream":{"_ForwardingStream":["1","2"],"Stream":["2"],"Stream.T":"2","_ForwardingStream.T":"2","_ForwardingStream.S":"1"},"_EventSinkWrapper":{"EventSink":["1"],"Sink":["1"]},"_SinkTransformerStreamSubscription":{"_BufferingStreamSubscription":["2"],"StreamSubscription":["2"],"_EventSink":["2"],"_EventDispatch":["2"],"_BufferingStreamSubscription.T":"2"},"_BoundSinkStream":{"Stream":["2"],"Stream.T":"2"},"_ZoneSpecification":{"ZoneSpecification":[]},"_ZoneDelegate":{"ZoneDelegate":[]},"_Zone":{"Zone":[]},"_CustomZone":{"_Zone":[],"Zone":[]},"_RootZone":{"_Zone":[],"Zone":[]},"_HashMap":{"MapBase":["1","2"],"Map":["1","2"],"MapBase.K":"1","MapBase.V":"2"},"_IdentityHashMap":{"_HashMap":["1","2"],"MapBase":["1","2"],"Map":["1","2"],"MapBase.K":"1","MapBase.V":"2"},"_CustomHashMap":{"_HashMap":["1","2"],"MapBase":["1","2"],"Map":["1","2"],"MapBase.K":"1","MapBase.V":"2"},"_HashMapKeyIterable":{"EfficientLengthIterable":["1"],"Iterable":["1"],"Iterable.E":"1"},"_HashMapKeyIterator":{"Iterator":["1"]},"_LinkedCustomHashMap":{"JsLinkedHashMap":["1","2"],"MapBase":["1","2"],"LinkedHashMap":["1","2"],"Map":["1","2"],"MapBase.K":"1","MapBase.V":"2"},"_HashSet":{"_SetBase":["1"],"SetBase":["1"],"HashSet":["1"],"Set":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"_HashSetIterator":{"Iterator":["1"]},"_LinkedHashSet":{"_SetBase":["1"],"SetBase":["1"],"LinkedHashSet":["1"],"Set":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"_LinkedHashSetIterator":{"Iterator":["1"]},"LinkedList":{"Iterable":["1"],"Iterable.E":"1"},"_LinkedListIterator":{"Iterator":["1"]},"ListBase":{"List":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"MapBase":{"Map":["1","2"]},"UnmodifiableMapBase":{"MapBase":["1","2"],"_UnmodifiableMapMixin":["1","2"],"Map":["1","2"]},"_MapBaseValueIterable":{"EfficientLengthIterable":["2"],"Iterable":["2"],"Iterable.E":"2"},"_MapBaseValueIterator":{"Iterator":["2"]},"MapView":{"Map":["1","2"]},"UnmodifiableMapView":{"_UnmodifiableMapView_MapView__UnmodifiableMapMixin":["1","2"],"MapView":["1","2"],"_UnmodifiableMapMixin":["1","2"],"Map":["1","2"],"_UnmodifiableMapMixin.K":"1","_UnmodifiableMapMixin.V":"2"},"ListQueue":{"Queue":["1"],"ListIterable":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"],"ListIterable.E":"1","Iterable.E":"1"},"_ListQueueIterator":{"Iterator":["1"]},"SetBase":{"Set":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"_SetBase":{"SetBase":["1"],"Set":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"UnmodifiableSetView":{"SetBase":["1"],"_UnmodifiableSetMixin":["1"],"Set":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"_ConverterStreamEventSink":{"EventSink":["1"],"Sink":["1"]},"Encoding":{"Codec":["String","List<int>"]},"_JsonMap":{"MapBase":["String","@"],"Map":["String","@"],"MapBase.K":"String","MapBase.V":"@"},"_JsonMapKeyIterable":{"ListIterable":["String"],"EfficientLengthIterable":["String"],"Iterable":["String"],"ListIterable.E":"String","Iterable.E":"String"},"_JsonDecoderSink":{"_StringSinkConversionSink":["StringBuffer"],"StringConversionSink":[],"Sink":["String"],"_StringSinkConversionSink.0":"StringBuffer"},"AsciiCodec":{"Encoding":[],"Codec":["String","List<int>"],"Codec.S":"String","Codec.T":"List<int>"},"_UnicodeSubsetEncoder":{"Converter":["String","List<int>"],"StreamTransformer":["String","List<int>"]},"AsciiEncoder":{"Converter":["String","List<int>"],"StreamTransformer":["String","List<int>"],"Converter.T":"List<int>","Converter.S":"String"},"_UnicodeSubsetEncoderSink":{"StringConversionSink":[],"Sink":["String"]},"_UnicodeSubsetDecoder":{"Converter":["List<int>","String"],"StreamTransformer":["List<int>","String"]},"AsciiDecoder":{"Converter":["List<int>","String"],"StreamTransformer":["List<int>","String"],"Converter.T":"String","Converter.S":"List<int>"},"_ErrorHandlingAsciiDecoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"_SimpleAsciiDecoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"Base64Codec":{"Codec":["List<int>","String"],"Codec.S":"List<int>","Codec.T":"String"},"Base64Encoder":{"Converter":["List<int>","String"],"StreamTransformer":["List<int>","String"],"Converter.T":"String","Converter.S":"List<int>"},"_BufferCachingBase64Encoder":{"_Base64Encoder":[]},"_Base64EncoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"_AsciiBase64EncoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"_Utf8Base64EncoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"Base64Decoder":{"Converter":["String","List<int>"],"StreamTransformer":["String","List<int>"],"Converter.T":"List<int>","Converter.S":"String"},"_Base64DecoderSink":{"StringConversionSink":[],"Sink":["String"]},"ByteConversionSink":{"Sink":["List<int>"]},"_ByteAdapterSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"_ByteCallbackSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"ChunkedConversionSink":{"Sink":["1"]},"_FusedCodec":{"Codec":["1","3"],"Codec.S":"1","Codec.T":"3"},"Converter":{"StreamTransformer":["1","2"]},"_FusedConverter":{"Converter":["1","3"],"StreamTransformer":["1","3"],"Converter.T":"3","Converter.S":"1"},"JsonUnsupportedObjectError":{"Error":[]},"JsonCyclicError":{"Error":[]},"JsonCodec":{"Codec":["Object?","String"],"Codec.S":"Object?","Codec.T":"String"},"JsonEncoder":{"Converter":["Object?","String"],"StreamTransformer":["Object?","String"],"Converter.T":"String","Converter.S":"Object?"},"_JsonEncoderSink":{"Sink":["Object?"]},"_JsonUtf8EncoderSink":{"Sink":["Object?"]},"JsonDecoder":{"Converter":["String","Object?"],"StreamTransformer":["String","Object?"],"Converter.T":"Object?","Converter.S":"String"},"Latin1Codec":{"Encoding":[],"Codec":["String","List<int>"],"Codec.S":"String","Codec.T":"List<int>"},"Latin1Encoder":{"Converter":["String","List<int>"],"StreamTransformer":["String","List<int>"],"Converter.T":"List<int>","Converter.S":"String"},"Latin1Decoder":{"Converter":["List<int>","String"],"StreamTransformer":["List<int>","String"],"Converter.T":"String","Converter.S":"List<int>"},"_Latin1DecoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"_Latin1AllowInvalidDecoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"StringConversionSink":{"Sink":["String"]},"_ClosableStringSink":{"StringSink":[]},"_StringConversionSinkAsStringSinkAdapter":{"StringSink":[]},"_StringSinkConversionSink":{"StringConversionSink":[],"Sink":["String"]},"_StringAdapterSink":{"StringConversionSink":[],"Sink":["String"]},"_Utf8StringSinkAdapter":{"ByteConversionSink":[],"Sink":["List<int>"]},"_Utf8ConversionSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"Utf8Codec":{"Encoding":[],"Codec":["String","List<int>"],"Codec.S":"String","Codec.T":"List<int>"},"Utf8Encoder":{"Converter":["String","List<int>"],"StreamTransformer":["String","List<int>"],"Converter.T":"List<int>","Converter.S":"String"},"_Utf8EncoderSink":{"StringConversionSink":[],"Sink":["String"]},"Utf8Decoder":{"Converter":["List<int>","String"],"StreamTransformer":["List<int>","String"],"Converter.T":"String","Converter.S":"List<int>"},"BigInt":{"Comparable":["BigInt"]},"DateTime":{"Comparable":["DateTime"]},"double":{"num":[],"Comparable":["num"]},"Duration":{"Comparable":["Duration"]},"int":{"num":[],"Comparable":["num"]},"List":{"EfficientLengthIterable":["1"],"Iterable":["1"]},"num":{"Comparable":["num"]},"RegExp":{"Pattern":[]},"RegExpMatch":{"Match":[]},"Set":{"EfficientLengthIterable":["1"],"Iterable":["1"]},"String":{"Comparable":["String"],"Pattern":[]},"StringBuffer":{"StringSink":[]},"_BigIntImpl":{"BigInt":[],"Comparable":["BigInt"]},"_Enum":{"Enum":[]},"AssertionError":{"Error":[]},"TypeError":{"Error":[]},"ArgumentError":{"Error":[]},"RangeError":{"Error":[]},"IndexError":{"Error":[]},"UnsupportedError":{"Error":[]},"UnimplementedError":{"UnsupportedError":[],"Error":[]},"StateError":{"Error":[]},"ConcurrentModificationError":{"Error":[]},"OutOfMemoryError":{"Error":[]},"StackOverflowError":{"Error":[]},"_Exception":{"Exception":[]},"FormatException":{"Exception":[]},"IntegerDivisionByZeroException":{"UnsupportedError":[],"Exception":[],"Error":[]},"_StringStackTrace":{"StackTrace":[]},"_Uri":{"Uri":[]},"_SimpleUri":{"Uri":[]},"_DataUri":{"Uri":[]},"NullRejectionException":{"Exception":[]},"_JSRandom":{"Random":[]},"_JSSecureRandom":{"Random":[]},"Int8List":{"TypedDataList":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"Uint8List":{"TypedDataList":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"Uint8ClampedList":{"TypedDataList":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"Int16List":{"TypedDataList":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"Uint16List":{"TypedDataList":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"Int32List":{"TypedDataList":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"Uint32List":{"TypedDataList":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"Float32List":{"TypedDataList":["double"],"List":["double"],"EfficientLengthIterable":["double"],"Iterable":["double"]},"Float64List":{"TypedDataList":["double"],"List":["double"],"EfficientLengthIterable":["double"],"Iterable":["double"]},"RequestImpl":{"BaseRequest":[]},"PartialDownloadOptions":{"DownloadOptions":[]},"ApiRequestError":{"Exception":[]},"DetailedApiRequestError":{"Exception":[]},"DelegatingStreamSubscription":{"StreamSubscription":["1"]},"FutureGroup":{"Sink":["Future<1>"]},"ErrorResult":{"Result":["0&"]},"ValueResult":{"Result":["1"]},"SingleSubscriptionTransformer":{"StreamTransformer":["1","2"]},"_NextRequest":{"_EventRequest":["1"]},"_CancelRequest":{"_EventRequest":["1"]},"SubscriptionStream":{"Stream":["1"],"Stream.T":"1"},"_CancelOnErrorSubscriptionWrapper":{"DelegatingStreamSubscription":["1"],"StreamSubscription":["1"]},"CanonicalizedMap":{"Map":["2","3"]},"DefaultEquality":{"Equality":["1"]},"ListEquality":{"Equality":["List<1>"]},"_UnorderedEquality":{"Equality":["2"]},"UnorderedIterableEquality":{"_UnorderedEquality":["1","Iterable<1>"],"Equality":["Iterable<1>"],"_UnorderedEquality.E":"1","_UnorderedEquality.T":"Iterable<1>"},"SetEquality":{"_UnorderedEquality":["1","Set<1>"],"Equality":["Set<1>"],"_UnorderedEquality.E":"1","_UnorderedEquality.T":"Set<1>"},"MapEquality":{"Equality":["Map<1,2>"]},"QueueList":{"ListBase":["1"],"List":["1"],"Queue":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"],"ListBase.E":"1","QueueList.E":"1"},"_CastQueueList":{"QueueList":["2"],"ListBase":["2"],"List":["2"],"Queue":["2"],"EfficientLengthIterable":["2"],"Iterable":["2"],"ListBase.E":"2","QueueList.E":"2"},"HexCodec":{"Codec":["List<int>","String"],"Codec.S":"List<int>","Codec.T":"String"},"HexEncoder":{"Converter":["List<int>","String"],"StreamTransformer":["List<int>","String"],"Converter.T":"String","Converter.S":"List<int>"},"_HexEncoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"DigestSink":{"Sink":["Digest"]},"Hash":{"Converter":["List<int>","Digest"],"StreamTransformer":["List<int>","Digest"]},"HashSink":{"Sink":["List<int>"]},"_MD5":{"Converter":["List<int>","Digest"],"StreamTransformer":["List<int>","Digest"],"Converter.T":"Digest","Converter.S":"List<int>"},"_MD5Sink":{"Sink":["List<int>"]},"Column":{"Expression":["1"],"FunctionParameter":[],"Component":[]},"Table":{"HasResultSet":[]},"_BaseExecutor":{"QueryExecutor":[]},"_RemoteQueryExecutor":{"QueryExecutor":[]},"_RemoteTransactionExecutor":{"TransactionExecutor":[],"QueryExecutor":[]},"_RemoteExclusiveExecutor":{"QueryExecutor":[]},"_RemoteStreamQueryStore":{"StreamQueryStore":[]},"ConnectionClosedException":{"Exception":[]},"DriftRemoteException":{"Exception":[]},"Request0":{"Message":[]},"SuccessResponse":{"Message":[]},"PrimitiveResponsePayload":{"ResponsePayload":[]},"StatementMethod":{"Enum":[]},"ExecuteBatchedStatement":{"RequestPayload":[]},"NestedExecutorControl":{"Enum":[]},"ServerInfo":{"RequestPayload":[]},"SelectResult":{"ResponsePayload":[]},"ErrorResponse":{"Message":[]},"CancelledResponse":{"Message":[]},"NoArgsRequest":{"Enum":[],"RequestPayload":[]},"ExecuteQuery":{"RequestPayload":[]},"RequestCancellation":{"RequestPayload":[]},"RunNestedExecutorControl":{"RequestPayload":[]},"EnsureOpen":{"RequestPayload":[]},"RunBeforeOpen":{"RequestPayload":[]},"NotifyTablesUpdated":{"RequestPayload":[]},"DatabaseConnection":{"QueryExecutor":[]},"UpdateKind":{"Enum":[]},"_ExclusiveExecutor":{"DatabaseConnectionUser":[]},"DatabaseAccessor":{"DatabaseConnectionUser":[]},"GeneratedDatabase":{"DatabaseConnectionUser":[],"QueryExecutorUser":[]},"CancellationException":{"Exception":[]},"UpdateCompanion":{"Insertable":["1"]},"CollectCreateStatements":{"QueryExecutor":[]},"InvalidDataException":{"Exception":[]},"DriftWrappedException":{"Exception":[]},"CouldNotRollBackException":{"Exception":[]},"DynamicVersionDelegate":{"DbVersionDelegate":[]},"_BaseExecutor0":{"QueryExecutor":[]},"_TransactionExecutor":{"_BaseExecutor0":[],"TransactionExecutor":[],"QueryExecutor":[]},"_StatementBasedTransactionExecutor":{"_BaseExecutor0":[],"TransactionExecutor":[],"QueryExecutor":[]},"DelegatedDatabase":{"_BaseExecutor0":[],"QueryExecutor":[]},"_BeforeOpeningExecutor":{"_BaseExecutor0":[],"QueryExecutor":[]},"_ExclusiveExecutor0":{"_BaseExecutor0":[],"QueryExecutor":[]},"_InterceptedExecutor":{"QueryExecutor":[]},"_InterceptedTransactionExecutor":{"TransactionExecutor":[],"QueryExecutor":[]},"AnyUpdateQuery":{"TableUpdateQuery":[]},"MultipleUpdateQuery":{"TableUpdateQuery":[]},"SpecificUpdateQuery":{"TableUpdateQuery":[]},"Transaction":{"DatabaseConnectionUser":[]},"_TransactionStreamStore":{"StreamQueryStore":[]},"BeforeOpenRunner":{"DatabaseConnectionUser":[]},"InfixOperator":{"Expression":["1"],"FunctionParameter":[],"Component":[]},"BaseInfixOperator":{"InfixOperator":["1"],"Expression":["1"],"FunctionParameter":[],"Component":[],"Expression.D":"1"},"Join":{"Component":[]},"OrderingTerm":{"Component":[]},"Where":{"Component":[]},"FunctionParameter":{"Component":[]},"Expression":{"FunctionParameter":[],"Component":[]},"Precedence":{"Enum":[],"Comparable":["Precedence"]},"Variable":{"Expression":["1"],"FunctionParameter":[],"Component":[],"Expression.D":"1"},"SqlDialect":{"Enum":[]},"GeneratedColumn":{"Column":["1"],"Expression":["1"],"FunctionParameter":[],"Component":[],"Expression.D":"1"},"ResultSetImplementation":{"DatabaseSchemaEntity":[]},"TableInfo":{"Table":[],"ResultSetImplementation":["1","2"],"HasResultSet":[],"DatabaseSchemaEntity":[]},"InsertMode":{"Enum":[],"Component":[]},"BaseSelectStatement":{"Component":[]},"_CompoundOperator":{"Enum":[]},"_JoinType":{"Enum":[]},"Limit":{"Component":[]},"OrderingMode":{"Enum":[]},"OrderBy":{"Component":[]},"AggregateFunctionExpression":{"Expression":["1"],"FunctionParameter":[],"Component":[],"Expression.D":"1"},"_ComparisonOperator":{"Enum":[]},"_Comparison":{"InfixOperator":["bool"],"Expression":["bool"],"FunctionParameter":[],"Component":[],"Expression.D":"bool"},"_BaseInExpression":{"Expression":["bool"],"FunctionParameter":[],"Component":[]},"_InExpression":{"Expression":["bool"],"FunctionParameter":[],"Component":[],"Expression.D":"bool"},"Constant":{"Expression":["1"],"FunctionParameter":[],"Component":[],"Expression.D":"1","Constant.T":"1"},"DoUpdate":{"UpsertClause":["1","2"]},"Query":{"Component":[]},"CustomSelectStatement":{"Selectable":["QueryRow"],"Selectable.T":"QueryRow"},"SimpleSelectStatement":{"_SimpleSelectStatement_Query_SingleTableQueryMixin_LimitContainerMixin_Selectable":["1","2"],"_SimpleSelectStatement_Query_SingleTableQueryMixin_LimitContainerMixin":["1","2"],"_SimpleSelectStatement_Query_SingleTableQueryMixin":["1","2"],"BaseSelectStatement":["2"],"SingleTableQueryMixin":["1","2"],"Query":["1","2"],"Selectable":["2"],"Component":[],"Selectable.T":"2"},"JoinedSelectStatement":{"_JoinedSelectStatement_Query_LimitContainerMixin_Selectable":["1","2"],"_JoinedSelectStatement_Query_LimitContainerMixin":["1","2"],"BaseSelectStatement":["TypedResult"],"Query":["1","2"],"Selectable":["TypedResult"],"Component":[],"Selectable.T":"TypedResult"},"_LazyExpressionMap":{"MapBase":["Expression<Object>","Object?"],"_UnmodifiableMapMixin":["Expression<Object>","Object?"],"Map":["Expression<Object>","Object?"],"MapBase.K":"Expression<Object>","MapBase.V":"Object?","_UnmodifiableMapMixin.K":"Expression<Object>","_UnmodifiableMapMixin.V":"Object?"},"UpdateStatement":{"_UpdateStatement_Query_SingleTableQueryMixin":["1","2"],"SingleTableQueryMixin":["1","2"],"Query":["1","2"],"Component":[]},"DriftSqlType":{"Enum":[],"BaseSqlType":["1"]},"Sqlite3Delegate":{"DatabaseDelegate":[]},"_SqliteVersionDelegate":{"DbVersionDelegate":[]},"BroadcastStreamQueryStore":{"StreamQueryStore":[]},"_ProbeResult":{"WasmProbeResult":[]},"ProtocolVersion":{"Enum":[]},"CompatibilityResult":{"WasmInitializationMessage":[]},"SharedWorkerCompatibilityResult":{"CompatibilityResult":[],"WasmInitializationMessage":[]},"WorkerError":{"WasmInitializationMessage":[],"Exception":[]},"ServeDriftDatabase":{"WasmInitializationMessage":[]},"RequestCompatibilityCheck":{"WasmInitializationMessage":[]},"DedicatedWorkerCompatibilityResult":{"CompatibilityResult":[],"WasmInitializationMessage":[]},"StartFileSystemServer":{"WasmInitializationMessage":[]},"DeleteDatabase":{"WasmInitializationMessage":[]},"_CloseVfsOnClose":{"QueryInterceptor":[]},"WasmStorageImplementation":{"Enum":[]},"WebStorageApi":{"Enum":[]},"MissingBrowserFeature":{"Enum":[]},"WasmDatabase":{"DelegatedDatabase":[],"_BaseExecutor0":[],"QueryExecutor":[]},"_WasmDelegate":{"Sqlite3Delegate":["CommonDatabase"],"DatabaseDelegate":[],"Sqlite3Delegate.0":"CommonDatabase"},"RetryClient":{"Client":[]},"RequestAbortedException":{"Exception":[]},"BaseClient":{"Client":[]},"BrowserClient":{"Client":[]},"ByteStream":{"StreamView":["List<int>"],"Stream":["List<int>"],"Stream.T":"List<int>","StreamView.T":"List<int>"},"ClientException":{"Exception":[]},"Request":{"BaseRequest":[]},"Response":{"BaseResponse":[]},"StreamedRequest":{"BaseRequest":[]},"StreamedResponse":{"BaseResponse":[]},"StreamedResponseV2":{"StreamedResponse":[],"BaseResponse":[]},"CaseInsensitiveMap":{"CanonicalizedMap":["String","String","1"],"Map":["String","1"],"CanonicalizedMap.V":"1","CanonicalizedMap.K":"String","CanonicalizedMap.C":"String"},"CrdtIndexData":{"CrdtIndexConfigBase":[]},"FullIndexData":{"CrdtIndexData":[],"CrdtIndexConfigBase":[]},"GroupIndexData":{"CrdtIndexData":[],"CrdtIndexConfigBase":[]},"ResourceConfigData":{"ResourceConfigBase":[]},"IndexItemData":{"IndexItemConfigBase":[]},"SyncEngineConfig":{"ConfigBase":[]},"SyncConfigValidationException":{"Exception":[]},"_RdfObjectComparison":{"Enum":[]},"MergeInstruction":{"Enum":[]},"SubjectMetadataStatement":{"MetadataStatementKey":[]},"SubjectPredicateMetadataStatement":{"MetadataStatementKey":[]},"TripleMetadataStatement":{"MetadataStatementKey":[]},"GRegister":{"CrdtType":[]},"LwwRegister":{"CrdtType":[]},"Immutable":{"CrdtType":[]},"OrSet":{"CrdtType":[]},"MergeObjectState":{"Enum":[]},"GroupIndexGraphSubscriptionException":{"Exception":[]},"Prefetch":{"ItemFetchPolicy":[]},"OnRequest":{"ItemFetchPolicy":[]},"PrefetchFiltered":{"ItemFetchPolicy":[]},"GroupIndexConfigBase":{"CrdtIndexConfigBase":[]},"FullIndexConfigBase":{"CrdtIndexConfigBase":[]},"ShardDeterminationMode":{"Enum":[]},"IndexType":{"Enum":[]},"UnidentifiedBlankNodeException":{"Exception":[]},"UnidentifiedBlankNodeWithContextException":{"Exception":[]},"IdentifiedIriSubject":{"IdentifiedRdfSubject":[]},"IdentifiedBlankNodeSubject":{"IdentifiedRdfSubject":[]},"NoOpIriTranslator":{"IriTranslator":[]},"BaseIriTranslator":{"IriTranslator":[]},"AppResourceLocator":{"ResourceLocator":[]},"DocumentMappingDependencyExtractor":{"DependencyExtractor":[]},"CachingMergeContractLoader":{"MergeContractLoader":[]},"StandardMergeContractLoader":{"MergeContractLoader":[]},"HttpFetcher":{"Fetcher":[]},"StandardRdfGraphFetcher":{"RdfGraphFetcher":[]},"UnsupportedIriException":{"Exception":[]},"LocalResourceLocator":{"ResourceLocator":[]},"StandardSyncEngine":{"SyncEngine":[]},"ConcurrentUpdateException":{"Exception":[]},"ConflictUploadResult":{"RemoteUploadResult":[]},"SuccessUploadResult":{"RemoteUploadResult":[]},"MergeSubjectType":{"Enum":[]},"LiteralKey":{"RdfObjectKey":[]},"IriSubjectKey":{"RdfObjectKey":[]},"IdentifiedBlankNodeKey":{"RdfObjectKey":[]},"UnIdentifiedBlankNodeKey":{"RdfObjectKey":[]},"ClockComparison":{"Enum":[]},"FullIndexSync":{"IndexSyncSpec":[]},"PartialIndexSync":{"IndexSyncSpec":[]},"FullShardSync":{"ShardSyncSpec":[]},"PartialShardSync":{"ShardSyncSpec":[]},"StandardSyncManager":{"SyncManager":[]},"SyncTrigger":{"Enum":[]},"SyncStatus":{"Enum":[]},"ExpectationSeverity":{"Enum":[]},"DriftStorage":{"Storage":[]},"SyncDatabase":{"GeneratedDatabase":[],"DatabaseConnectionUser":[],"QueryExecutorUser":[]},"$SyncIrisTable":{"TableInfo":["$SyncIrisTable","SyncIri"],"Table":[],"ResultSetImplementation":["$SyncIrisTable","SyncIri"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$SyncIrisTable","TableInfo.D":"SyncIri"},"SyncIri":{"Insertable":["SyncIri"]},"$SyncDocumentsTable":{"TableInfo":["$SyncDocumentsTable","SyncDocument"],"Table":[],"ResultSetImplementation":["$SyncDocumentsTable","SyncDocument"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$SyncDocumentsTable","TableInfo.D":"SyncDocument"},"SyncDocument":{"Insertable":["SyncDocument"]},"$SyncPropertyChangesTable":{"TableInfo":["$SyncPropertyChangesTable","SyncPropertyChange"],"Table":[],"ResultSetImplementation":["$SyncPropertyChangesTable","SyncPropertyChange"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$SyncPropertyChangesTable","TableInfo.D":"SyncPropertyChange"},"SyncPropertyChange":{"Insertable":["SyncPropertyChange"]},"SyncPropertyChangesCompanion":{"UpdateCompanion":["SyncPropertyChange"],"Insertable":["SyncPropertyChange"],"UpdateCompanion.D":"SyncPropertyChange"},"$SyncSettingsTable":{"TableInfo":["$SyncSettingsTable","SyncSetting"],"Table":[],"ResultSetImplementation":["$SyncSettingsTable","SyncSetting"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$SyncSettingsTable","TableInfo.D":"SyncSetting"},"SyncSetting":{"Insertable":["SyncSetting"]},"$IndexEntriesTable":{"TableInfo":["$IndexEntriesTable","IndexEntry"],"Table":[],"ResultSetImplementation":["$IndexEntriesTable","IndexEntry"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$IndexEntriesTable","TableInfo.D":"IndexEntry"},"IndexEntry":{"Insertable":["IndexEntry"]},"$GroupIndexSubscriptionsTable":{"TableInfo":["$GroupIndexSubscriptionsTable","GroupIndexSubscription"],"Table":[],"ResultSetImplementation":["$GroupIndexSubscriptionsTable","GroupIndexSubscription"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$GroupIndexSubscriptionsTable","TableInfo.D":"GroupIndexSubscription"},"GroupIndexSubscription":{"Insertable":["GroupIndexSubscription"]},"$IndexIriIdSetVersionsTable":{"TableInfo":["$IndexIriIdSetVersionsTable","IndexIriIdSetVersion"],"Table":[],"ResultSetImplementation":["$IndexIriIdSetVersionsTable","IndexIriIdSetVersion"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$IndexIriIdSetVersionsTable","TableInfo.D":"IndexIriIdSetVersion"},"IndexIriIdSetVersion":{"Insertable":["IndexIriIdSetVersion"]},"$RemoteSettingsTable":{"TableInfo":["$RemoteSettingsTable","RemoteSetting"],"Table":[],"ResultSetImplementation":["$RemoteSettingsTable","RemoteSetting"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$RemoteSettingsTable","TableInfo.D":"RemoteSetting"},"RemoteSetting":{"Insertable":["RemoteSetting"]},"$RemoteSyncStateTable":{"TableInfo":["$RemoteSyncStateTable","RemoteSyncStateData"],"Table":[],"ResultSetImplementation":["$RemoteSyncStateTable","RemoteSyncStateData"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$RemoteSyncStateTable","TableInfo.D":"RemoteSyncStateData"},"RemoteSyncStateData":{"Insertable":["RemoteSyncStateData"]},"SyncIris":{"Table":[],"HasResultSet":[]},"SyncDocuments":{"Table":[],"HasResultSet":[]},"SyncPropertyChanges":{"Table":[],"HasResultSet":[]},"SyncSettings":{"Table":[],"HasResultSet":[]},"IndexEntries":{"Table":[],"HasResultSet":[]},"GroupIndexSubscriptions":{"Table":[],"HasResultSet":[]},"RemoteSettings":{"Table":[],"HasResultSet":[]},"RemoteSyncState":{"Table":[],"HasResultSet":[]},"IndexIriIdSetVersions":{"Table":[],"HasResultSet":[]},"SyncDocumentDao":{"DatabaseAccessor":["SyncDatabase"],"DatabaseConnectionUser":[],"DatabaseAccessor.T":"SyncDatabase"},"SyncPropertyChangeDao":{"DatabaseAccessor":["SyncDatabase"],"DatabaseConnectionUser":[],"DatabaseAccessor.T":"SyncDatabase"},"IndexDao":{"DatabaseAccessor":["SyncDatabase"],"DatabaseConnectionUser":[],"DatabaseAccessor.T":"SyncDatabase"},"RemoteSyncStateDao":{"DatabaseAccessor":["SyncDatabase"],"DatabaseConnectionUser":[],"DatabaseAccessor.T":"SyncDatabase"},"SyncIrisCompanion":{"UpdateCompanion":["SyncIri"],"Insertable":["SyncIri"],"UpdateCompanion.D":"SyncIri"},"SyncDocumentsCompanion":{"UpdateCompanion":["SyncDocument"],"Insertable":["SyncDocument"],"UpdateCompanion.D":"SyncDocument"},"SyncSettingsCompanion":{"UpdateCompanion":["SyncSetting"],"Insertable":["SyncSetting"],"UpdateCompanion.D":"SyncSetting"},"IndexEntriesCompanion":{"UpdateCompanion":["IndexEntry"],"Insertable":["IndexEntry"],"UpdateCompanion.D":"IndexEntry"},"GroupIndexSubscriptionsCompanion":{"UpdateCompanion":["GroupIndexSubscription"],"Insertable":["GroupIndexSubscription"],"UpdateCompanion.D":"GroupIndexSubscription"},"IndexIriIdSetVersionsCompanion":{"UpdateCompanion":["IndexIriIdSetVersion"],"Insertable":["IndexIriIdSetVersion"],"UpdateCompanion.D":"IndexIriIdSetVersion"},"RemoteSettingsCompanion":{"UpdateCompanion":["RemoteSetting"],"Insertable":["RemoteSetting"],"UpdateCompanion.D":"RemoteSetting"},"RemoteSyncStateCompanion":{"UpdateCompanion":["RemoteSyncStateData"],"Insertable":["RemoteSyncStateData"],"UpdateCompanion.D":"RemoteSyncStateData"},"_$SyncDatabase":{"GeneratedDatabase":[],"DatabaseConnectionUser":[],"QueryExecutorUser":[]},"DriftWorkerHandler":{"StorageWorkerHandler":[]},"_GoogleAuthClient":{"Client":[]},"GDriveClientException":{"Exception":[]},"GDriveSyncStorage":{"RemoteSyncStorage":[]},"GDriveRemoteStorage":{"RemoteStorage":[]},"GDriveBackend":{"Backend":[]},"GDriveWorkerHandler":{"RemoteWorkerHandler":[]},"WorkerGDriveAuthProvider":{"GDriveAuthProvider":[]},"RdfDecoderException":{"Exception":[]},"RdfSyntaxException":{"Exception":[]},"RdfInvalidIriException":{"Exception":[]},"RdfException":{"Exception":[]},"RdfValidationException":{"Exception":[]},"RdfConstraintViolationException":{"Exception":[]},"TraversalDecision":{"Enum":[]},"RdfObject":{"RdfTerm":[]},"RdfSubject":{"RdfObject":[],"RdfTerm":[]},"RdfGraphName":{"RdfSubject":[],"RdfObject":[],"RdfTerm":[]},"RdfPredicate":{"RdfTerm":[]},"IriTerm":{"RdfGraphName":[],"RdfSubject":[],"RdfPredicate":[],"RdfObject":[],"RdfTerm":[]},"BlankNodeTerm":{"RdfGraphName":[],"RdfSubject":[],"RdfObject":[],"RdfTerm":[]},"LiteralTerm":{"RdfObject":[],"RdfTerm":[]},"IriRole":{"Enum":[]},"IriCompactionType":{"Enum":[]},"PrefixedIri":{"CompactIri":[]},"FullIri":{"CompactIri":[]},"RelativeIri":{"CompactIri":[]},"SpecialIri":{"CompactIri":[]},"BaseIriRequiredException":{"Exception":[]},"JsonLdGraphCodec":{"RdfGraphCodec":[],"RdfCodec":["RdfGraph"],"Codec":["RdfGraph","String"],"RdfCodec.G":"RdfGraph","Codec.S":"RdfGraph","Codec.T":"String"},"JsonLdDecoderOptions":{"RdfGraphDecoderOptions":[]},"JsonLdDecoder":{"RdfGraphDecoder":[],"RdfDecoder":["RdfGraph"],"Converter":["String","RdfGraph"],"StreamTransformer":["String","RdfGraph"],"Converter.T":"RdfGraph","Converter.S":"String"},"JsonLdEncoderOptions":{"RdfGraphEncoderOptions":[]},"JsonLdEncoder":{"RdfGraphEncoder":[],"RdfEncoder":["RdfGraph"],"Converter":["RdfGraph","String"],"StreamTransformer":["RdfGraph","String"],"Converter.T":"String","Converter.S":"RdfGraph"},"NQuadsCodec":{"RdfDatasetCodec":[],"RdfCodec":["RdfDataset"],"Codec":["RdfDataset","String"],"RdfCodec.G":"RdfDataset","Codec.S":"RdfDataset","Codec.T":"String"},"NQuadsDecoderOptions":{"RdfGraphDecoderOptions":[]},"NQuadsDecoder":{"RdfDecoder":["RdfDataset"],"Converter":["String","RdfDataset"],"StreamTransformer":["String","RdfDataset"],"Converter.T":"RdfDataset","Converter.S":"String"},"NQuadsEncoderOptions":{"RdfGraphEncoderOptions":[]},"NQuadsEncoder":{"RdfEncoder":["RdfDataset"],"Converter":["RdfDataset","String"],"StreamTransformer":["RdfDataset","String"],"Converter.T":"String","Converter.S":"RdfDataset"},"_BlankNodeLabelFactoryImpl":{"_BlankNodeLabelFactory":[]},"_NoOpBlankNodeCounter":{"_BlankNodeLabelFactory":[]},"NTriplesCodec":{"RdfGraphCodec":[],"RdfCodec":["RdfGraph"],"Codec":["RdfGraph","String"],"RdfCodec.G":"RdfGraph","Codec.S":"RdfGraph","Codec.T":"String"},"NTriplesDecoderOptions":{"RdfGraphDecoderOptions":[]},"NTriplesDecoder":{"RdfGraphDecoder":[],"RdfDecoder":["RdfGraph"],"Converter":["String","RdfGraph"],"StreamTransformer":["String","RdfGraph"],"Converter.T":"RdfGraph","Converter.S":"String"},"NTriplesEncoderOptions":{"RdfGraphEncoderOptions":[]},"NTriplesEncoder":{"RdfGraphEncoder":[],"RdfEncoder":["RdfGraph"],"Converter":["RdfGraph","String"],"StreamTransformer":["RdfGraph","String"],"Converter.T":"String","Converter.S":"RdfGraph"},"CodecNotSupportedException":{"Exception":[]},"RdfCodec":{"Codec":["1","String"]},"BaseRdfCodecRegistry":{"BaseRdfCodecRegistry.G":"1"},"AutoDetectingRdfCodec":{"RdfCodec":["1"],"Codec":["1","String"],"RdfCodec.G":"1","Codec.S":"1","Codec.T":"String"},"AutoDetectingRdfDecoder":{"RdfDecoder":["1"],"Converter":["String","1"],"StreamTransformer":["String","1"],"Converter.T":"1","Converter.S":"String"},"RdfDatasetCodec":{"RdfCodec":["RdfDataset"],"Codec":["RdfDataset","String"]},"RdfDatasetCodecRegistry":{"BaseRdfCodecRegistry":["RdfDataset"],"BaseRdfCodecRegistry.G":"RdfDataset"},"RdfGraphCodec":{"RdfCodec":["RdfGraph"],"Codec":["RdfGraph","String"]},"_RdfGraphCodecWrapper":{"RdfGraphCodec":[],"RdfCodec":["RdfGraph"],"Codec":["RdfGraph","String"],"RdfCodec.G":"RdfGraph","Codec.S":"RdfGraph","Codec.T":"String"},"_RdfGraphDecoderWrapper":{"RdfGraphDecoder":[],"RdfDecoder":["RdfGraph"],"Converter":["String","RdfGraph"],"StreamTransformer":["String","RdfGraph"],"Converter.T":"RdfGraph","Converter.S":"String"},"_RdfGraphEncoderWrapper":{"RdfGraphEncoder":[],"RdfEncoder":["RdfGraph"],"Converter":["RdfGraph","String"],"StreamTransformer":["RdfGraph","String"],"Converter.T":"String","Converter.S":"RdfGraph"},"RdfDatasetDecoderOptions":{"RdfGraphDecoderOptions":[]},"RdfDatasetDecoder":{"RdfDecoder":["RdfDataset"],"Converter":["String","RdfDataset"],"StreamTransformer":["String","RdfDataset"]},"RdfDatasetEncoderOptions":{"RdfGraphEncoderOptions":[]},"RdfDatasetEncoder":{"RdfEncoder":["RdfDataset"],"Converter":["RdfDataset","String"],"StreamTransformer":["RdfDataset","String"]},"RdfDecoder":{"Converter":["String","1"],"StreamTransformer":["String","1"]},"RdfEncoder":{"Converter":["1","String"],"StreamTransformer":["1","String"]},"RdfGraphDecoder":{"RdfDecoder":["RdfGraph"],"Converter":["String","RdfGraph"],"StreamTransformer":["String","RdfGraph"]},"RdfGraphEncoder":{"RdfEncoder":["RdfGraph"],"Converter":["RdfGraph","String"],"StreamTransformer":["RdfGraph","String"]},"TurtleCodec":{"RdfGraphCodec":[],"RdfCodec":["RdfGraph"],"Codec":["RdfGraph","String"],"RdfCodec.G":"RdfGraph","Codec.S":"RdfGraph","Codec.T":"String"},"TurtleDecoderOptions":{"RdfGraphDecoderOptions":[]},"TurtleDecoder":{"RdfGraphDecoder":[],"RdfDecoder":["RdfGraph"],"Converter":["String","RdfGraph"],"StreamTransformer":["String","RdfGraph"],"Converter.T":"RdfGraph","Converter.S":"String"},"TurtleEncoderOptions":{"RdfGraphEncoderOptions":[]},"TurtleEncoder":{"RdfGraphEncoder":[],"RdfEncoder":["RdfGraph"],"Converter":["RdfGraph","String"],"StreamTransformer":["RdfGraph","String"],"Converter.T":"String","Converter.S":"RdfGraph"},"TurtleParsingFlag":{"Enum":[]},"TokenType":{"Enum":[]},"SolidWorkerHandler":{"RemoteWorkerHandler":[]},"SolidAuthReceiver":{"SolidAuthProvider":[]},"SolidBackend":{"Backend":[]},"SolidClientException":{"Exception":[]},"NotFoundException":{"SolidClientException":[],"Exception":[]},"SolidResourceLocator":{"ResourceLocator":[]},"SolidRemoteStorage":{"RemoteStorage":[]},"SolidSyncStorage":{"RemoteSyncStorage":[]},"WorkerRequest":{"WorkerMessage":[]},"WorkerResponse":{"WorkerMessage":[]},"SaveRequest":{"WorkerMessage":[]},"SaveResponse":{"WorkerMessage":[]},"DeleteDocumentRequest":{"WorkerMessage":[]},"DeleteDocumentResponse":{"WorkerMessage":[]},"ConfigureGroupIndexSubscriptionRequest":{"WorkerMessage":[]},"ConfigureGroupIndexSubscriptionResponse":{"WorkerMessage":[]},"HydrateStreamRequest":{"WorkerMessage":[]},"HydrationBatchMessage":{"WorkerMessage":[]},"SyncTriggerRequest":{"WorkerMessage":[]},"SyncTriggerResponse":{"WorkerMessage":[]},"EnableAutoSyncRequest":{"WorkerMessage":[]},"EnableAutoSyncResponse":{"WorkerMessage":[]},"DisableAutoSyncRequest":{"WorkerMessage":[]},"DisableAutoSyncResponse":{"WorkerMessage":[]},"GetSyncStateRequest":{"WorkerMessage":[]},"GetSyncStateResponse":{"WorkerMessage":[]},"SyncStateUpdateMessage":{"WorkerMessage":[]},"WebWorkerSender":{"WorkerMessageSender":[]},"WorkerHandlerContextImpl":{"WorkerHandlerContext":[]},"Level":{"Comparable":["Level"]},"PathException":{"Exception":[]},"PosixStyle":{"InternalStyle":[]},"UrlStyle":{"InternalStyle":[]},"WindowsStyle":{"InternalStyle":[]},"TimestampFormat":{"Enum":[]},"LogFormat":{"Enum":[]},"StreamCipherAsBlockCipher":{"BlockCipher":[]},"KeyParameter":{"CipherParameters":[]},"PaddedBlockCipher":{"BlockCipher":[]},"PrivateKey":{"AsymmetricKey":[]},"AsymmetricKeyParameter":{"CipherParameters":[]},"ParametersWithIV":{"CipherParameters":[]},"PrivateKeyParameter":{"AsymmetricKeyParameter":["1"],"CipherParameters":[]},"RegistryFactoryException":{"Exception":[]},"ASN1BitString":{"ASN1Object":[]},"ASN1BMPString":{"ASN1Object":[]},"ASN1Boolean":{"ASN1Object":[]},"ASN1GeneralizedTime":{"ASN1Object":[]},"ASN1IA5String":{"ASN1Object":[]},"ASN1Integer":{"ASN1Object":[]},"ASN1Null":{"ASN1Object":[]},"ASN1ObjectIdentifier":{"ASN1Object":[]},"ASN1OctetString":{"ASN1Object":[]},"ASN1PrintableString":{"ASN1Object":[]},"ASN1Sequence":{"ASN1Object":[]},"ASN1Set":{"ASN1Object":[]},"ASN1TeletextString":{"ASN1Object":[]},"ASN1UtcTime":{"ASN1Object":[]},"ASN1UTF8String":{"ASN1Object":[]},"UnsupportedASN1TagException":{"Exception":[]},"RSAAsymmetricKey":{"AsymmetricKey":[]},"RSAPrivateKey0":{"RSAAsymmetricKey":[],"PrivateKey":[],"AsymmetricKey":[]},"OAEPEncoding":{"AsymmetricBlockCipher":[]},"PKCS1Encoding":{"AsymmetricBlockCipher":[]},"RSAEngine":{"AsymmetricBlockCipher":[]},"AESEngine":{"BlockCipher":[]},"DESedeEngine":{"BlockCipher":[]},"CBCBlockCipher":{"BlockCipher":[]},"CCMBlockCipher":{"BlockCipher":[]},"CFBBlockCipher":{"BlockCipher":[]},"CTRBlockCipher":{"BlockCipher":[]},"ECBBlockCipher":{"BlockCipher":[]},"GCMBlockCipher":{"BlockCipher":[]},"GCTRBlockCipher":{"BlockCipher":[]},"IGEBlockCipher":{"BlockCipher":[]},"OFBBlockCipher":{"BlockCipher":[]},"SICBlockCipher":{"BlockCipher":[]},"RC2Engine":{"BlockCipher":[]},"Blake2bDigest":{"Digest0":[]},"CSHAKEDigest":{"Digest0":[]},"KeccakDigest":{"Digest0":[]},"MD2Digest":{"Digest0":[]},"MD4Digest":{"Digest0":[]},"MD5Digest":{"Digest0":[]},"RIPEMD128Digest":{"Digest0":[]},"RIPEMD160Digest":{"Digest0":[]},"RIPEMD256Digest":{"Digest0":[]},"RIPEMD320Digest":{"Digest0":[]},"SHA1Digest":{"Digest0":[]},"SHA224Digest":{"Digest0":[]},"SHA256Digest":{"Digest0":[]},"SHA3Digest":{"Digest0":[]},"SHA384Digest":{"Digest0":[]},"SHA512Digest":{"Digest0":[]},"SHA512tDigest":{"Digest0":[]},"SHAKEDigest":{"Digest0":[]},"SM3Digest":{"Digest0":[]},"TigerDigest":{"Digest0":[]},"WhirlpoolDigest":{"Digest0":[]},"ECCurve_brainpoolp160r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp160t1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp192r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp192t1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp224r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp224t1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp256r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp256t1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp320r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp320t1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp384r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp384t1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp512r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp512t1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_gostr3410_2001_cryptopro_a":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_gostr3410_2001_cryptopro_b":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_gostr3410_2001_cryptopro_c":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_gostr3410_2001_cryptopro_xcha":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_gostr3410_2001_cryptopro_xchb":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_prime192v1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_prime192v2":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_prime192v3":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_prime239v1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_prime239v2":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_prime239v3":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_prime256v1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp112r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp112r2":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp128r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp128r2":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp160k1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp160r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp160r2":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp192k1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp192r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp224k1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp224r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp256k1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp256r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp384r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp521r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECPointBase":{"ECPoint0":[]},"ECDomainParametersImpl":{"ECDomainParameters":[]},"ECCurveBase":{"ECCurve0":[]},"ECPoint":{"ECPointBase":[],"ECPoint0":[]},"ECFieldElement":{"ECFieldElementBase":[]},"ECCurve":{"ECCurveBase":[],"ECCurve0":[]},"_WNafPreCompInfo":{"PreCompInfo":[]},"CBCBlockCipherMac":{"Mac":[]},"CMac":{"Mac":[]},"HMac":{"Mac":[]},"Poly1305":{"Mac":[]},"PaddedBlockCipherImpl":{"BlockCipher":[]},"ISO7816d4Padding":{"Padding":[]},"PKCS7Padding":{"Padding":[]},"AutoSeedBlockCtrRandom":{"SecureRandom":[]},"BlockCtrRandom":{"SecureRandom":[]},"FortunaRandom":{"SecureRandom":[]},"ECDSASigner":{"Signer":[]},"PSSSigner":{"Signer":[]},"RSASigner":{"Signer":[]},"BaseAEADBlockCipher":{"BlockCipher":[]},"BaseAsymmetricBlockCipher":{"AsymmetricBlockCipher":[]},"BaseBlockCipher":{"BlockCipher":[]},"BaseDigest":{"Digest0":[]},"BaseMac":{"Mac":[]},"BasePadding":{"Padding":[]},"BaseStreamCipher":{"StreamCipher":[]},"KeccakEngine":{"Digest0":[]},"LongSHA2FamilyDigest":{"Digest0":[]},"MD4FamilyDigest":{"Digest0":[]},"SecureRandomBase":{"SecureRandom":[]},"PlatformException":{"Exception":[]},"DynamicFactoryConfig":{"FactoryConfig":[]},"StaticFactoryConfig":{"FactoryConfig":[]},"ChaCha20Engine":{"StreamCipher":[]},"ChaCha7539Engine":{"StreamCipher":[]},"CTRStreamCipher":{"StreamCipher":[]},"RC4Engine":{"StreamCipher":[]},"Salsa20Engine":{"StreamCipher":[]},"SICStreamCipher":{"StreamCipher":[]},"_SwitchMapStreamSink":{"ForwardingSink":["1","2"]},"SwitchMapStreamTransformer":{"StreamTransformer":["1","2"]},"_EnhancedEventSink":{"EnhancedEventSink":["1"],"EventSink":["1"],"Sink":["1"]},"_HMACAlgorithm":{"JWTAlgorithm":[]},"_RSAAlgorithm":{"JWTAlgorithm":[]},"JWTError":{"Error":[]},"JWTParseError":{"Error":[]},"JWTUndefinedError":{"Error":[]},"RSAPrivateKey":{"JWTKey":[]},"FileLocation":{"SourceLocation0":[],"Comparable":["SourceLocation0"]},"_FileSpan":{"SourceSpanWithContext":[],"SourceSpan":[],"Comparable":["SourceSpan"]},"SourceLocation0":{"Comparable":["SourceLocation0"]},"SourceLocationMixin":{"SourceLocation0":[],"Comparable":["SourceLocation0"]},"SourceSpan":{"Comparable":["SourceSpan"]},"SourceSpanBase":{"SourceSpan":[],"Comparable":["SourceSpan"]},"SourceSpanException":{"Exception":[]},"SourceSpanFormatException":{"FormatException":[],"Exception":[]},"SourceSpanMixin":{"SourceSpan":[],"Comparable":["SourceSpan"]},"SourceSpanWithContext":{"SourceSpan":[],"Comparable":["SourceSpan"]},"SqliteException":{"Exception":[]},"SqliteArguments":{"List":["Object?"],"EfficientLengthIterable":["Object?"],"Iterable":["Object?"]},"FinalizableDatabase":{"FinalizablePart":[]},"DatabaseImplementation":{"CommonDatabase":[]},"ValueList":{"ListBase":["Object?"],"List":["Object?"],"EfficientLengthIterable":["Object?"],"Iterable":["Object?"],"ListBase.E":"Object?"},"Sqlite3Implementation":{"CommonSqlite3":[]},"FinalizableStatement":{"FinalizablePart":[]},"StatementImplementation":{"CommonPreparedStatement":[]},"InMemoryFileSystem":{"VirtualFileSystem":[]},"_InMemoryFile":{"VirtualFileSystemFile":[]},"Row":{"UnmodifiableMapMixin":["String","@"],"MapBase":["String","@"],"Map":["String","@"],"MapBase.K":"String","MapBase.V":"@","UnmodifiableMapMixin.K":"String","UnmodifiableMapMixin.V":"@"},"ResultSet":{"ListBase":["Row"],"NonGrowableListMixin":["Row"],"List":["Row"],"EfficientLengthIterable":["Row"],"Cursor":[],"Iterable":["Row"],"ListBase.E":"Row","NonGrowableListMixin.E":"Row"},"_ResultIterator":{"Iterator":["Row"]},"OpenMode":{"Enum":[]},"IndexedParameters":{"StatementParameters":[]},"VfsException":{"Exception":[]},"BaseVirtualFileSystem":{"VirtualFileSystem":[]},"BaseVfsFile":{"VirtualFileSystemFile":[]},"WasmValue":{"RawSqliteValue":[]},"WasmSqliteBindings":{"RawSqliteBindings":[]},"WasmDatabase0":{"RawSqliteDatabase":[]},"WasmStatement":{"RawSqliteStatement":[]},"WasmContext":{"RawSqliteContext":[]},"WasmValueList":{"ListBase":["WasmValue"],"List":["WasmValue"],"EfficientLengthIterable":["WasmValue"],"Iterable":["WasmValue"],"ListBase.E":"WasmValue"},"WasmSqlite3":{"CommonSqlite3":[]},"WasmVfs":{"VirtualFileSystem":[]},"WasmFile":{"VirtualFileSystemFile":[]},"EmptyMessage":{"Message0":[]},"Flags":{"Message0":[]},"NameAndInt32Flags":{"Flags":[],"Message0":[]},"WorkerOperation":{"Enum":[]},"IndexedDbFileSystem":{"VirtualFileSystem":[]},"_IndexedDbWorkItem":{"LinkedListEntry":["_IndexedDbWorkItem"]},"_IndexedDbFile":{"VirtualFileSystemFile":[]},"_FunctionWorkItem":{"_IndexedDbWorkItem":[],"LinkedListEntry":["_IndexedDbWorkItem"],"LinkedListEntry.E":"_IndexedDbWorkItem"},"_DeleteFileWorkItem":{"_IndexedDbWorkItem":[],"LinkedListEntry":["_IndexedDbWorkItem"],"LinkedListEntry.E":"_IndexedDbWorkItem"},"_CreateFileWorkItem":{"_IndexedDbWorkItem":[],"LinkedListEntry":["_IndexedDbWorkItem"],"LinkedListEntry.E":"_IndexedDbWorkItem"},"_WriteFileWorkItem":{"_IndexedDbWorkItem":[],"LinkedListEntry":["_IndexedDbWorkItem"],"LinkedListEntry.E":"_IndexedDbWorkItem"},"FileType":{"Enum":[]},"SimpleOpfsFileSystem":{"VirtualFileSystem":[]},"_SimpleOpfsFile":{"VirtualFileSystemFile":[]},"Chain":{"StackTrace":[]},"LazyTrace":{"Trace":[],"StackTrace":[]},"Trace":{"StackTrace":[]},"UnparsedFrame":{"Frame":[]},"GuaranteeChannel":{"StreamChannel":["1"]},"_GuaranteeSink":{"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"]},"StreamChannelMixin":{"StreamChannel":["1"]},"StringScannerException":{"FormatException":[],"Exception":[]},"Uint8Buffer":{"TypedDataBuffer":["int"],"ListBase":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"],"ListBase.E":"int","TypedDataBuffer.E":"int"},"TypedDataBuffer":{"ListBase":["1"],"List":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"_IntBuffer":{"TypedDataBuffer":["int"],"ListBase":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"_EventStream":{"Stream":["1"],"Stream.T":"1"},"_EventStreamSubscription":{"StreamSubscription":["1"]}}'));
+  A._Universe_addRules(init.typeUniverse, JSON.parse('{"JavaScriptFunction":"LegacyJavaScriptObject","PlainJavaScriptObject":"LegacyJavaScriptObject","UnknownJavaScriptObject":"LegacyJavaScriptObject","NativeSharedArrayBuffer":"NativeByteBuffer","JSArray":{"List":["1"],"EfficientLengthIterable":["1"],"JSObject":[],"Iterable":["1"],"JSIndexable":["1"]},"JSBool":{"bool":[],"TrustedGetRuntimeType":[]},"JSNull":{"Null":[],"TrustedGetRuntimeType":[]},"JavaScriptObject":{"JSObject":[]},"LegacyJavaScriptObject":{"JSObject":[]},"JSArraySafeToStringHook":{"SafeToStringHook":[]},"JSUnmodifiableArray":{"JSArray":["1"],"List":["1"],"EfficientLengthIterable":["1"],"JSObject":[],"Iterable":["1"],"JSIndexable":["1"]},"ArrayIterator":{"Iterator":["1"]},"JSNumber":{"double":[],"num":[],"Comparable":["num"]},"JSInt":{"double":[],"int":[],"num":[],"Comparable":["num"],"TrustedGetRuntimeType":[]},"JSNumNotInt":{"double":[],"num":[],"Comparable":["num"],"TrustedGetRuntimeType":[]},"JSString":{"String":[],"Comparable":["String"],"Pattern":[],"JSIndexable":["@"],"TrustedGetRuntimeType":[]},"CastStream":{"Stream":["2"],"Stream.T":"2"},"CastStreamSubscription":{"StreamSubscription":["2"]},"_CopyingBytesBuilder":{"BytesBuilder":[]},"_CastIterableBase":{"Iterable":["2"]},"CastIterator":{"Iterator":["2"]},"CastIterable":{"_CastIterableBase":["1","2"],"Iterable":["2"],"Iterable.E":"2"},"_EfficientLengthCastIterable":{"CastIterable":["1","2"],"_CastIterableBase":["1","2"],"EfficientLengthIterable":["2"],"Iterable":["2"],"Iterable.E":"2"},"_CastListBase":{"ListBase":["2"],"List":["2"],"_CastIterableBase":["1","2"],"EfficientLengthIterable":["2"],"Iterable":["2"]},"CastList":{"_CastListBase":["1","2"],"ListBase":["2"],"List":["2"],"_CastIterableBase":["1","2"],"EfficientLengthIterable":["2"],"Iterable":["2"],"ListBase.E":"2","Iterable.E":"2"},"CastMap":{"MapBase":["3","4"],"Map":["3","4"],"MapBase.K":"3","MapBase.V":"4"},"LateError":{"Error":[]},"CodeUnits":{"ListBase":["int"],"UnmodifiableListMixin":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"],"ListBase.E":"int","UnmodifiableListMixin.E":"int"},"EfficientLengthIterable":{"Iterable":["1"]},"ListIterable":{"EfficientLengthIterable":["1"],"Iterable":["1"]},"SubListIterable":{"ListIterable":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"],"ListIterable.E":"1","Iterable.E":"1"},"ListIterator":{"Iterator":["1"]},"MappedIterable":{"Iterable":["2"],"Iterable.E":"2"},"EfficientLengthMappedIterable":{"MappedIterable":["1","2"],"EfficientLengthIterable":["2"],"Iterable":["2"],"Iterable.E":"2"},"MappedIterator":{"Iterator":["2"]},"MappedListIterable":{"ListIterable":["2"],"EfficientLengthIterable":["2"],"Iterable":["2"],"ListIterable.E":"2","Iterable.E":"2"},"WhereIterable":{"Iterable":["1"],"Iterable.E":"1"},"WhereIterator":{"Iterator":["1"]},"ExpandIterable":{"Iterable":["2"],"Iterable.E":"2"},"ExpandIterator":{"Iterator":["2"]},"TakeIterable":{"Iterable":["1"],"Iterable.E":"1"},"EfficientLengthTakeIterable":{"TakeIterable":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"],"Iterable.E":"1"},"TakeIterator":{"Iterator":["1"]},"SkipIterable":{"Iterable":["1"],"Iterable.E":"1"},"EfficientLengthSkipIterable":{"SkipIterable":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"],"Iterable.E":"1"},"SkipIterator":{"Iterator":["1"]},"SkipWhileIterable":{"Iterable":["1"],"Iterable.E":"1"},"SkipWhileIterator":{"Iterator":["1"]},"EmptyIterable":{"EfficientLengthIterable":["1"],"Iterable":["1"],"Iterable.E":"1"},"EmptyIterator":{"Iterator":["1"]},"WhereTypeIterable":{"Iterable":["1"],"Iterable.E":"1"},"WhereTypeIterator":{"Iterator":["1"]},"NonNullsIterable":{"Iterable":["1"],"Iterable.E":"1"},"NonNullsIterator":{"Iterator":["1"]},"IndexedIterable":{"Iterable":["+(int,1)"],"Iterable.E":"+(int,1)"},"EfficientLengthIndexedIterable":{"IndexedIterable":["1"],"EfficientLengthIterable":["+(int,1)"],"Iterable":["+(int,1)"],"Iterable.E":"+(int,1)"},"IndexedIterator":{"Iterator":["+(int,1)"]},"UnmodifiableListBase":{"ListBase":["1"],"UnmodifiableListMixin":["1"],"List":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"ReversedListIterable":{"ListIterable":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"],"ListIterable.E":"1","Iterable.E":"1"},"_Record_2":{"_Record2":[],"_Record":[]},"_Record_2_accessToken_dPoP":{"_Record2":[],"_Record":[]},"_Record_2_appGraph_frameworkGraph":{"_Record2":[],"_Record":[]},"_Record_2_blankNodeLabels_dataset":{"_Record2":[],"_Record":[]},"_Record_2_compactedIris_contex78t":{"_Record2":[],"_Record":[]},"_Record_2_etag_fileId":{"_Record2":[],"_Record":[]},"_Record_2_file_outFlags":{"_Record2":[],"_Record":[]},"_Record_2_folderId_folderName":{"_Record2":[],"_Record":[]},"_Record_2_lastCursor_stream":{"_Record2":[],"_Record":[]},"_Record_2_logicalTime_physicalTime":{"_Record2":[],"_Record":[]},"_Record_2_object_predicate":{"_Record2":[],"_Record":[]},"_Record_2_ours_theirs":{"_Record2":[],"_Record":[]},"_Record_2_statementsToAdd_triplesToRemove":{"_Record2":[],"_Record":[]},"_Record_3":{"_Record3":[],"_Record":[]},"_Record_3_cursor_deletions_updates":{"_Record3":[],"_Record":[]},"_Record_3_etag_graph_notModified":{"_Record3":[],"_Record":[]},"_Record_3_metadata_newBlankNodes_oldBlankNodes":{"_Record3":[],"_Record":[]},"_Record_4":{"_RecordN":[],"_Record":[]},"_Record_4_documentIri_lastSyncTimestamp_shouldSync_syncTime":{"_RecordN":[],"_Record":[]},"_Record_4_fullClock_hash_logicalTime_physicalTime":{"_RecordN":[],"_Record":[]},"_Record_4_index78Iri_max78PhysicalClock_resourceTypeIri_shardIri":{"_RecordN":[],"_Record":[]},"_Record_4_newObjects_predicate_subject_subjectTypeIri":{"_RecordN":[],"_Record":[]},"_Record_5_governedByFiles_mergeContract_oldAppData_oldFrameworkGraph_oldUpdatedAt":{"_RecordN":[],"_Record":[]},"_Record_6_appData_blankNodes_documentIri_predicate_subject_values":{"_RecordN":[],"_Record":[]},"_Record_6_etag_localUpdatedAt_mergeContract_mergedDocument_originalLocalDocument_originalRemoteDocument":{"_RecordN":[],"_Record":[]},"_Record_9_appData_crdtDocument_currentCursor_documentIri_missingGroupIndices_physicalTime_previousCursor_resourceIri_updatedAt":{"_RecordN":[],"_Record":[]},"ConstantMapView":{"UnmodifiableMapView":["1","2"],"_UnmodifiableMapView_MapView__UnmodifiableMapMixin":["1","2"],"MapView":["1","2"],"_UnmodifiableMapMixin":["1","2"],"Map":["1","2"],"_UnmodifiableMapMixin.K":"1","_UnmodifiableMapMixin.V":"2"},"ConstantMap":{"Map":["1","2"]},"ConstantStringMap":{"ConstantMap":["1","2"],"Map":["1","2"]},"_KeysOrValues":{"Iterable":["1"],"Iterable.E":"1"},"_KeysOrValuesOrElementsIterator":{"Iterator":["1"]},"GeneralConstantMap":{"ConstantMap":["1","2"],"Map":["1","2"]},"ConstantSet":{"SetBase":["1"],"Set":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"ConstantStringSet":{"ConstantSet":["1"],"SetBase":["1"],"Set":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"Instantiation":{"Closure":[],"Function":[]},"Instantiation1":{"Closure":[],"Function":[]},"NullError":{"TypeError":[],"Error":[]},"JsNoSuchMethodError":{"Error":[]},"UnknownJsTypeError":{"Error":[]},"NullThrownFromJavaScriptException":{"Exception":[]},"_StackTrace":{"StackTrace":[]},"Closure":{"Function":[]},"Closure0Args":{"Closure":[],"Function":[]},"Closure2Args":{"Closure":[],"Function":[]},"TearOffClosure":{"Closure":[],"Function":[]},"StaticClosure":{"Closure":[],"Function":[]},"BoundClosure":{"Closure":[],"Function":[]},"RuntimeError":{"Error":[]},"JsLinkedHashMap":{"MapBase":["1","2"],"LinkedHashMap":["1","2"],"Map":["1","2"],"MapBase.K":"1","MapBase.V":"2"},"LinkedHashMapKeysIterable":{"EfficientLengthIterable":["1"],"Iterable":["1"],"Iterable.E":"1"},"LinkedHashMapKeyIterator":{"Iterator":["1"]},"LinkedHashMapValuesIterable":{"EfficientLengthIterable":["1"],"Iterable":["1"],"Iterable.E":"1"},"LinkedHashMapValueIterator":{"Iterator":["1"]},"LinkedHashMapEntriesIterable":{"EfficientLengthIterable":["MapEntry<1,2>"],"Iterable":["MapEntry<1,2>"],"Iterable.E":"MapEntry<1,2>"},"LinkedHashMapEntryIterator":{"Iterator":["MapEntry<1,2>"]},"JsIdentityLinkedHashMap":{"JsLinkedHashMap":["1","2"],"MapBase":["1","2"],"LinkedHashMap":["1","2"],"Map":["1","2"],"MapBase.K":"1","MapBase.V":"2"},"JsConstantLinkedHashMap":{"JsLinkedHashMap":["1","2"],"MapBase":["1","2"],"LinkedHashMap":["1","2"],"Map":["1","2"],"MapBase.K":"1","MapBase.V":"2"},"_Record2":{"_Record":[]},"_Record3":{"_Record":[]},"_RecordN":{"_Record":[]},"JSSyntaxRegExp":{"RegExp":[],"Pattern":[]},"_MatchImplementation":{"RegExpMatch":[],"Match":[]},"_AllMatchesIterable":{"Iterable":["RegExpMatch"],"Iterable.E":"RegExpMatch"},"_AllMatchesIterator":{"Iterator":["RegExpMatch"]},"StringMatch":{"Match":[]},"_StringAllMatchesIterable":{"Iterable":["Match"],"Iterable.E":"Match"},"_StringAllMatchesIterator":{"Iterator":["Match"]},"NativeArrayBuffer":{"NativeByteBuffer":[],"JSObject":[],"ByteBuffer":[],"TrustedGetRuntimeType":[]},"NativeByteData":{"ByteData":[],"JSObject":[],"TrustedGetRuntimeType":[]},"NativeInt32List":{"NativeTypedArrayOfInt":[],"Int32List":[],"ListBase":["int"],"TypedDataList":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int","FixedLengthListMixin.E":"int"},"NativeUint8List":{"NativeTypedArrayOfInt":[],"Uint8List":[],"ListBase":["int"],"TypedDataList":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int","FixedLengthListMixin.E":"int"},"NativeByteBuffer":{"JSObject":[],"ByteBuffer":[],"TrustedGetRuntimeType":[]},"NativeTypedData":{"JSObject":[]},"_UnmodifiableNativeByteBufferView":{"ByteBuffer":[]},"NativeTypedArray":{"JavaScriptIndexingBehavior":["1"],"JSObject":[],"JSIndexable":["1"]},"NativeTypedArrayOfDouble":{"ListBase":["double"],"NativeTypedArray":["double"],"List":["double"],"JavaScriptIndexingBehavior":["double"],"EfficientLengthIterable":["double"],"JSObject":[],"JSIndexable":["double"],"Iterable":["double"],"FixedLengthListMixin":["double"]},"NativeTypedArrayOfInt":{"ListBase":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"]},"NativeFloat32List":{"NativeTypedArrayOfDouble":[],"Float32List":[],"ListBase":["double"],"TypedDataList":["double"],"NativeTypedArray":["double"],"List":["double"],"JavaScriptIndexingBehavior":["double"],"EfficientLengthIterable":["double"],"JSObject":[],"JSIndexable":["double"],"Iterable":["double"],"FixedLengthListMixin":["double"],"TrustedGetRuntimeType":[],"ListBase.E":"double","FixedLengthListMixin.E":"double"},"NativeFloat64List":{"NativeTypedArrayOfDouble":[],"Float64List":[],"ListBase":["double"],"TypedDataList":["double"],"NativeTypedArray":["double"],"List":["double"],"JavaScriptIndexingBehavior":["double"],"EfficientLengthIterable":["double"],"JSObject":[],"JSIndexable":["double"],"Iterable":["double"],"FixedLengthListMixin":["double"],"TrustedGetRuntimeType":[],"ListBase.E":"double","FixedLengthListMixin.E":"double"},"NativeInt16List":{"NativeTypedArrayOfInt":[],"Int16List":[],"ListBase":["int"],"TypedDataList":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int","FixedLengthListMixin.E":"int"},"NativeInt8List":{"NativeTypedArrayOfInt":[],"Int8List":[],"ListBase":["int"],"TypedDataList":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int","FixedLengthListMixin.E":"int"},"NativeUint16List":{"NativeTypedArrayOfInt":[],"Uint16List":[],"ListBase":["int"],"TypedDataList":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int","FixedLengthListMixin.E":"int"},"NativeUint32List":{"NativeTypedArrayOfInt":[],"Uint32List":[],"ListBase":["int"],"TypedDataList":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int","FixedLengthListMixin.E":"int"},"NativeUint8ClampedList":{"NativeTypedArrayOfInt":[],"Uint8ClampedList":[],"ListBase":["int"],"TypedDataList":["int"],"NativeTypedArray":["int"],"List":["int"],"JavaScriptIndexingBehavior":["int"],"EfficientLengthIterable":["int"],"JSObject":[],"JSIndexable":["int"],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int","FixedLengthListMixin.E":"int"},"_Type":{"Type":[]},"_Error":{"Error":[]},"_TypeError":{"TypeError":[],"Error":[]},"AsyncError":{"Error":[]},"_Future":{"Future":["1"]},"EventSink":{"Sink":["1"]},"MultiStreamController":{"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"]},"StreamController":{"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"]},"_BufferingStreamSubscription":{"StreamSubscription":["1"],"_EventSink":["1"],"_EventDispatch":["1"],"_BufferingStreamSubscription.T":"1"},"_TimerImpl":{"Timer":[]},"_AsyncAwaitCompleter":{"Completer":["1"]},"_SyncStarIterator":{"Iterator":["1"]},"_SyncStarIterable":{"Iterable":["1"],"Iterable.E":"1"},"_BroadcastStream":{"_ControllerStream":["1"],"_StreamImpl":["1"],"Stream":["1"],"Stream.T":"1"},"_BroadcastSubscription":{"_ControllerSubscription":["1"],"_BufferingStreamSubscription":["1"],"StreamSubscription":["1"],"_EventSink":["1"],"_EventDispatch":["1"],"_BufferingStreamSubscription.T":"1"},"_BroadcastStreamController":{"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"],"_StreamControllerLifecycle":["1"],"_EventSink":["1"],"_EventDispatch":["1"]},"_SyncBroadcastStreamController":{"_BroadcastStreamController":["1"],"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"],"_StreamControllerLifecycle":["1"],"_EventSink":["1"],"_EventDispatch":["1"]},"_AsyncBroadcastStreamController":{"_BroadcastStreamController":["1"],"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"],"_StreamControllerLifecycle":["1"],"_EventSink":["1"],"_EventDispatch":["1"]},"TimeoutException":{"Exception":[]},"_Completer":{"Completer":["1"]},"_AsyncCompleter":{"_Completer":["1"],"Completer":["1"]},"_SyncCompleter":{"_Completer":["1"],"Completer":["1"]},"StreamView":{"Stream":["1"]},"StreamTransformerBase":{"StreamTransformer":["1","2"]},"_StreamController":{"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"],"_StreamControllerLifecycle":["1"],"_EventSink":["1"],"_EventDispatch":["1"]},"_AsyncStreamController":{"_AsyncStreamControllerDispatch":["1"],"_StreamController":["1"],"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"],"_StreamControllerLifecycle":["1"],"_EventSink":["1"],"_EventDispatch":["1"]},"_SyncStreamController":{"_SyncStreamControllerDispatch":["1"],"_StreamController":["1"],"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"],"_StreamControllerLifecycle":["1"],"_EventSink":["1"],"_EventDispatch":["1"]},"_ControllerStream":{"_StreamImpl":["1"],"Stream":["1"],"Stream.T":"1"},"_ControllerSubscription":{"_BufferingStreamSubscription":["1"],"StreamSubscription":["1"],"_EventSink":["1"],"_EventDispatch":["1"],"_BufferingStreamSubscription.T":"1"},"_StreamSinkWrapper":{"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"]},"_StreamControllerAddStreamState":{"_AddStreamState":["1"]},"_StreamImpl":{"Stream":["1"]},"_DelayedData":{"_DelayedEvent":["1"]},"_DelayedError":{"_DelayedEvent":["@"]},"_DelayedDone":{"_DelayedEvent":["@"]},"_DoneStreamSubscription":{"StreamSubscription":["1"]},"_EmptyStream":{"Stream":["1"],"Stream.T":"1"},"_MultiStream":{"Stream":["1"],"Stream.T":"1"},"_MultiStreamController":{"_AsyncStreamController":["1"],"_AsyncStreamControllerDispatch":["1"],"_StreamController":["1"],"MultiStreamController":["1"],"StreamController":["1"],"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"],"_StreamControllerLifecycle":["1"],"_EventSink":["1"],"_EventDispatch":["1"]},"_ForwardingStream":{"Stream":["2"]},"_ForwardingStreamSubscription":{"_BufferingStreamSubscription":["2"],"StreamSubscription":["2"],"_EventSink":["2"],"_EventDispatch":["2"],"_BufferingStreamSubscription.T":"2"},"_WhereStream":{"_ForwardingStream":["1","1"],"Stream":["1"],"Stream.T":"1","_ForwardingStream.T":"1","_ForwardingStream.S":"1"},"_MapStream":{"_ForwardingStream":["1","2"],"Stream":["2"],"Stream.T":"2","_ForwardingStream.T":"2","_ForwardingStream.S":"1"},"_EventSinkWrapper":{"EventSink":["1"],"Sink":["1"]},"_SinkTransformerStreamSubscription":{"_BufferingStreamSubscription":["2"],"StreamSubscription":["2"],"_EventSink":["2"],"_EventDispatch":["2"],"_BufferingStreamSubscription.T":"2"},"_BoundSinkStream":{"Stream":["2"],"Stream.T":"2"},"_ZoneSpecification":{"ZoneSpecification":[]},"_ZoneDelegate":{"ZoneDelegate":[]},"_Zone":{"Zone":[]},"_CustomZone":{"_Zone":[],"Zone":[]},"_RootZone":{"_Zone":[],"Zone":[]},"_HashMap":{"MapBase":["1","2"],"Map":["1","2"],"MapBase.K":"1","MapBase.V":"2"},"_IdentityHashMap":{"_HashMap":["1","2"],"MapBase":["1","2"],"Map":["1","2"],"MapBase.K":"1","MapBase.V":"2"},"_CustomHashMap":{"_HashMap":["1","2"],"MapBase":["1","2"],"Map":["1","2"],"MapBase.K":"1","MapBase.V":"2"},"_HashMapKeyIterable":{"EfficientLengthIterable":["1"],"Iterable":["1"],"Iterable.E":"1"},"_HashMapKeyIterator":{"Iterator":["1"]},"_LinkedCustomHashMap":{"JsLinkedHashMap":["1","2"],"MapBase":["1","2"],"LinkedHashMap":["1","2"],"Map":["1","2"],"MapBase.K":"1","MapBase.V":"2"},"_HashSet":{"_SetBase":["1"],"SetBase":["1"],"HashSet":["1"],"Set":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"_HashSetIterator":{"Iterator":["1"]},"_LinkedHashSet":{"_SetBase":["1"],"SetBase":["1"],"LinkedHashSet":["1"],"Set":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"_LinkedHashSetIterator":{"Iterator":["1"]},"LinkedList":{"Iterable":["1"],"Iterable.E":"1"},"_LinkedListIterator":{"Iterator":["1"]},"ListBase":{"List":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"MapBase":{"Map":["1","2"]},"UnmodifiableMapBase":{"MapBase":["1","2"],"_UnmodifiableMapMixin":["1","2"],"Map":["1","2"]},"_MapBaseValueIterable":{"EfficientLengthIterable":["2"],"Iterable":["2"],"Iterable.E":"2"},"_MapBaseValueIterator":{"Iterator":["2"]},"MapView":{"Map":["1","2"]},"UnmodifiableMapView":{"_UnmodifiableMapView_MapView__UnmodifiableMapMixin":["1","2"],"MapView":["1","2"],"_UnmodifiableMapMixin":["1","2"],"Map":["1","2"],"_UnmodifiableMapMixin.K":"1","_UnmodifiableMapMixin.V":"2"},"ListQueue":{"Queue":["1"],"ListIterable":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"],"ListIterable.E":"1","Iterable.E":"1"},"_ListQueueIterator":{"Iterator":["1"]},"SetBase":{"Set":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"_SetBase":{"SetBase":["1"],"Set":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"UnmodifiableSetView":{"SetBase":["1"],"_UnmodifiableSetMixin":["1"],"Set":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"_ConverterStreamEventSink":{"EventSink":["1"],"Sink":["1"]},"Encoding":{"Codec":["String","List<int>"]},"_JsonMap":{"MapBase":["String","@"],"Map":["String","@"],"MapBase.K":"String","MapBase.V":"@"},"_JsonMapKeyIterable":{"ListIterable":["String"],"EfficientLengthIterable":["String"],"Iterable":["String"],"ListIterable.E":"String","Iterable.E":"String"},"_JsonDecoderSink":{"_StringSinkConversionSink":["StringBuffer"],"StringConversionSink":[],"Sink":["String"],"_StringSinkConversionSink.0":"StringBuffer"},"AsciiCodec":{"Encoding":[],"Codec":["String","List<int>"],"Codec.S":"String","Codec.T":"List<int>"},"_UnicodeSubsetEncoder":{"Converter":["String","List<int>"],"StreamTransformer":["String","List<int>"]},"AsciiEncoder":{"Converter":["String","List<int>"],"StreamTransformer":["String","List<int>"],"Converter.T":"List<int>","Converter.S":"String"},"_UnicodeSubsetEncoderSink":{"StringConversionSink":[],"Sink":["String"]},"_UnicodeSubsetDecoder":{"Converter":["List<int>","String"],"StreamTransformer":["List<int>","String"]},"AsciiDecoder":{"Converter":["List<int>","String"],"StreamTransformer":["List<int>","String"],"Converter.T":"String","Converter.S":"List<int>"},"_ErrorHandlingAsciiDecoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"_SimpleAsciiDecoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"Base64Codec":{"Codec":["List<int>","String"],"Codec.S":"List<int>","Codec.T":"String"},"Base64Encoder":{"Converter":["List<int>","String"],"StreamTransformer":["List<int>","String"],"Converter.T":"String","Converter.S":"List<int>"},"_BufferCachingBase64Encoder":{"_Base64Encoder":[]},"_Base64EncoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"_AsciiBase64EncoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"_Utf8Base64EncoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"Base64Decoder":{"Converter":["String","List<int>"],"StreamTransformer":["String","List<int>"],"Converter.T":"List<int>","Converter.S":"String"},"_Base64DecoderSink":{"StringConversionSink":[],"Sink":["String"]},"ByteConversionSink":{"Sink":["List<int>"]},"_ByteAdapterSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"_ByteCallbackSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"ChunkedConversionSink":{"Sink":["1"]},"_FusedCodec":{"Codec":["1","3"],"Codec.S":"1","Codec.T":"3"},"Converter":{"StreamTransformer":["1","2"]},"_FusedConverter":{"Converter":["1","3"],"StreamTransformer":["1","3"],"Converter.T":"3","Converter.S":"1"},"JsonUnsupportedObjectError":{"Error":[]},"JsonCyclicError":{"Error":[]},"JsonCodec":{"Codec":["Object?","String"],"Codec.S":"Object?","Codec.T":"String"},"JsonEncoder":{"Converter":["Object?","String"],"StreamTransformer":["Object?","String"],"Converter.T":"String","Converter.S":"Object?"},"_JsonEncoderSink":{"Sink":["Object?"]},"_JsonUtf8EncoderSink":{"Sink":["Object?"]},"JsonDecoder":{"Converter":["String","Object?"],"StreamTransformer":["String","Object?"],"Converter.T":"Object?","Converter.S":"String"},"Latin1Codec":{"Encoding":[],"Codec":["String","List<int>"],"Codec.S":"String","Codec.T":"List<int>"},"Latin1Encoder":{"Converter":["String","List<int>"],"StreamTransformer":["String","List<int>"],"Converter.T":"List<int>","Converter.S":"String"},"Latin1Decoder":{"Converter":["List<int>","String"],"StreamTransformer":["List<int>","String"],"Converter.T":"String","Converter.S":"List<int>"},"_Latin1DecoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"_Latin1AllowInvalidDecoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"StringConversionSink":{"Sink":["String"]},"_ClosableStringSink":{"StringSink":[]},"_StringConversionSinkAsStringSinkAdapter":{"StringSink":[]},"_StringSinkConversionSink":{"StringConversionSink":[],"Sink":["String"]},"_StringAdapterSink":{"StringConversionSink":[],"Sink":["String"]},"_Utf8StringSinkAdapter":{"ByteConversionSink":[],"Sink":["List<int>"]},"_Utf8ConversionSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"Utf8Codec":{"Encoding":[],"Codec":["String","List<int>"],"Codec.S":"String","Codec.T":"List<int>"},"Utf8Encoder":{"Converter":["String","List<int>"],"StreamTransformer":["String","List<int>"],"Converter.T":"List<int>","Converter.S":"String"},"_Utf8EncoderSink":{"StringConversionSink":[],"Sink":["String"]},"Utf8Decoder":{"Converter":["List<int>","String"],"StreamTransformer":["List<int>","String"],"Converter.T":"String","Converter.S":"List<int>"},"BigInt":{"Comparable":["BigInt"]},"DateTime":{"Comparable":["DateTime"]},"double":{"num":[],"Comparable":["num"]},"Duration":{"Comparable":["Duration"]},"int":{"num":[],"Comparable":["num"]},"List":{"EfficientLengthIterable":["1"],"Iterable":["1"]},"num":{"Comparable":["num"]},"RegExp":{"Pattern":[]},"RegExpMatch":{"Match":[]},"Set":{"EfficientLengthIterable":["1"],"Iterable":["1"]},"String":{"Comparable":["String"],"Pattern":[]},"StringBuffer":{"StringSink":[]},"_BigIntImpl":{"BigInt":[],"Comparable":["BigInt"]},"_Enum":{"Enum":[]},"AssertionError":{"Error":[]},"TypeError":{"Error":[]},"ArgumentError":{"Error":[]},"RangeError":{"Error":[]},"IndexError":{"Error":[]},"UnsupportedError":{"Error":[]},"UnimplementedError":{"UnsupportedError":[],"Error":[]},"StateError":{"Error":[]},"ConcurrentModificationError":{"Error":[]},"OutOfMemoryError":{"Error":[]},"StackOverflowError":{"Error":[]},"_Exception":{"Exception":[]},"FormatException":{"Exception":[]},"IntegerDivisionByZeroException":{"UnsupportedError":[],"Exception":[],"Error":[]},"_StringStackTrace":{"StackTrace":[]},"_Uri":{"Uri":[]},"_SimpleUri":{"Uri":[]},"_DataUri":{"Uri":[]},"NullRejectionException":{"Exception":[]},"_JSRandom":{"Random":[]},"_JSSecureRandom":{"Random":[]},"Int8List":{"TypedDataList":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"Uint8List":{"TypedDataList":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"Uint8ClampedList":{"TypedDataList":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"Int16List":{"TypedDataList":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"Uint16List":{"TypedDataList":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"Int32List":{"TypedDataList":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"Uint32List":{"TypedDataList":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"Float32List":{"TypedDataList":["double"],"List":["double"],"EfficientLengthIterable":["double"],"Iterable":["double"]},"Float64List":{"TypedDataList":["double"],"List":["double"],"EfficientLengthIterable":["double"],"Iterable":["double"]},"RequestImpl":{"BaseRequest":[]},"PartialDownloadOptions":{"DownloadOptions":[]},"ApiRequestError":{"Exception":[]},"DetailedApiRequestError":{"Exception":[]},"DelegatingStreamSubscription":{"StreamSubscription":["1"]},"FutureGroup":{"Sink":["Future<1>"]},"ErrorResult":{"Result":["0&"]},"ValueResult":{"Result":["1"]},"SingleSubscriptionTransformer":{"StreamTransformer":["1","2"]},"_NextRequest":{"_EventRequest":["1"]},"_CancelRequest":{"_EventRequest":["1"]},"SubscriptionStream":{"Stream":["1"],"Stream.T":"1"},"_CancelOnErrorSubscriptionWrapper":{"DelegatingStreamSubscription":["1"],"StreamSubscription":["1"]},"CanonicalizedMap":{"Map":["2","3"]},"DefaultEquality":{"Equality":["1"]},"ListEquality":{"Equality":["List<1>"]},"_UnorderedEquality":{"Equality":["2"]},"UnorderedIterableEquality":{"_UnorderedEquality":["1","Iterable<1>"],"Equality":["Iterable<1>"],"_UnorderedEquality.E":"1","_UnorderedEquality.T":"Iterable<1>"},"SetEquality":{"_UnorderedEquality":["1","Set<1>"],"Equality":["Set<1>"],"_UnorderedEquality.E":"1","_UnorderedEquality.T":"Set<1>"},"MapEquality":{"Equality":["Map<1,2>"]},"QueueList":{"ListBase":["1"],"List":["1"],"Queue":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"],"ListBase.E":"1","QueueList.E":"1"},"_CastQueueList":{"QueueList":["2"],"ListBase":["2"],"List":["2"],"Queue":["2"],"EfficientLengthIterable":["2"],"Iterable":["2"],"ListBase.E":"2","QueueList.E":"2"},"HexCodec":{"Codec":["List<int>","String"],"Codec.S":"List<int>","Codec.T":"String"},"HexEncoder":{"Converter":["List<int>","String"],"StreamTransformer":["List<int>","String"],"Converter.T":"String","Converter.S":"List<int>"},"_HexEncoderSink":{"ByteConversionSink":[],"Sink":["List<int>"]},"DigestSink":{"Sink":["Digest"]},"Hash":{"Converter":["List<int>","Digest"],"StreamTransformer":["List<int>","Digest"]},"HashSink":{"Sink":["List<int>"]},"_MD5":{"Converter":["List<int>","Digest"],"StreamTransformer":["List<int>","Digest"],"Converter.T":"Digest","Converter.S":"List<int>"},"_MD5Sink":{"Sink":["List<int>"]},"Column":{"Expression":["1"],"FunctionParameter":[],"Component":[]},"Table":{"HasResultSet":[]},"_BaseExecutor":{"QueryExecutor":[]},"_RemoteQueryExecutor":{"QueryExecutor":[]},"_RemoteTransactionExecutor":{"TransactionExecutor":[],"QueryExecutor":[]},"_RemoteExclusiveExecutor":{"QueryExecutor":[]},"_RemoteStreamQueryStore":{"StreamQueryStore":[]},"ConnectionClosedException":{"Exception":[]},"DriftRemoteException":{"Exception":[]},"Request0":{"Message":[]},"SuccessResponse":{"Message":[]},"PrimitiveResponsePayload":{"ResponsePayload":[]},"StatementMethod":{"Enum":[]},"ExecuteBatchedStatement":{"RequestPayload":[]},"NestedExecutorControl":{"Enum":[]},"ServerInfo":{"RequestPayload":[]},"SelectResult":{"ResponsePayload":[]},"ErrorResponse":{"Message":[]},"CancelledResponse":{"Message":[]},"NoArgsRequest":{"Enum":[],"RequestPayload":[]},"ExecuteQuery":{"RequestPayload":[]},"RequestCancellation":{"RequestPayload":[]},"RunNestedExecutorControl":{"RequestPayload":[]},"EnsureOpen":{"RequestPayload":[]},"RunBeforeOpen":{"RequestPayload":[]},"NotifyTablesUpdated":{"RequestPayload":[]},"DatabaseConnection":{"QueryExecutor":[]},"UpdateKind":{"Enum":[]},"_ExclusiveExecutor":{"DatabaseConnectionUser":[]},"DatabaseAccessor":{"DatabaseConnectionUser":[]},"GeneratedDatabase":{"DatabaseConnectionUser":[],"QueryExecutorUser":[]},"CancellationException":{"Exception":[]},"UpdateCompanion":{"Insertable":["1"]},"CollectCreateStatements":{"QueryExecutor":[]},"InvalidDataException":{"Exception":[]},"DriftWrappedException":{"Exception":[]},"CouldNotRollBackException":{"Exception":[]},"DynamicVersionDelegate":{"DbVersionDelegate":[]},"_BaseExecutor0":{"QueryExecutor":[]},"_TransactionExecutor":{"_BaseExecutor0":[],"TransactionExecutor":[],"QueryExecutor":[]},"_StatementBasedTransactionExecutor":{"_BaseExecutor0":[],"TransactionExecutor":[],"QueryExecutor":[]},"DelegatedDatabase":{"_BaseExecutor0":[],"QueryExecutor":[]},"_BeforeOpeningExecutor":{"_BaseExecutor0":[],"QueryExecutor":[]},"_ExclusiveExecutor0":{"_BaseExecutor0":[],"QueryExecutor":[]},"_InterceptedExecutor":{"QueryExecutor":[]},"_InterceptedTransactionExecutor":{"TransactionExecutor":[],"QueryExecutor":[]},"AnyUpdateQuery":{"TableUpdateQuery":[]},"MultipleUpdateQuery":{"TableUpdateQuery":[]},"SpecificUpdateQuery":{"TableUpdateQuery":[]},"Transaction":{"DatabaseConnectionUser":[]},"_TransactionStreamStore":{"StreamQueryStore":[]},"BeforeOpenRunner":{"DatabaseConnectionUser":[]},"InfixOperator":{"Expression":["1"],"FunctionParameter":[],"Component":[]},"BaseInfixOperator":{"InfixOperator":["1"],"Expression":["1"],"FunctionParameter":[],"Component":[],"Expression.D":"1"},"Join":{"Component":[]},"OrderingTerm":{"Component":[]},"Where":{"Component":[]},"FunctionParameter":{"Component":[]},"Expression":{"FunctionParameter":[],"Component":[]},"Precedence":{"Enum":[],"Comparable":["Precedence"]},"Variable":{"Expression":["1"],"FunctionParameter":[],"Component":[],"Expression.D":"1"},"SqlDialect":{"Enum":[]},"GeneratedColumn":{"Column":["1"],"Expression":["1"],"FunctionParameter":[],"Component":[],"Expression.D":"1"},"ResultSetImplementation":{"DatabaseSchemaEntity":[]},"TableInfo":{"Table":[],"ResultSetImplementation":["1","2"],"HasResultSet":[],"DatabaseSchemaEntity":[]},"InsertMode":{"Enum":[],"Component":[]},"BaseSelectStatement":{"Component":[]},"_CompoundOperator":{"Enum":[]},"_JoinType":{"Enum":[]},"Limit":{"Component":[]},"OrderingMode":{"Enum":[]},"OrderBy":{"Component":[]},"AggregateFunctionExpression":{"Expression":["1"],"FunctionParameter":[],"Component":[],"Expression.D":"1"},"_ComparisonOperator":{"Enum":[]},"_Comparison":{"InfixOperator":["bool"],"Expression":["bool"],"FunctionParameter":[],"Component":[],"Expression.D":"bool"},"_BaseInExpression":{"Expression":["bool"],"FunctionParameter":[],"Component":[]},"_InExpression":{"Expression":["bool"],"FunctionParameter":[],"Component":[],"Expression.D":"bool"},"Constant":{"Expression":["1"],"FunctionParameter":[],"Component":[],"Expression.D":"1","Constant.T":"1"},"DoUpdate":{"UpsertClause":["1","2"]},"Query":{"Component":[]},"CustomSelectStatement":{"Selectable":["QueryRow"],"Selectable.T":"QueryRow"},"SimpleSelectStatement":{"_SimpleSelectStatement_Query_SingleTableQueryMixin_LimitContainerMixin_Selectable":["1","2"],"_SimpleSelectStatement_Query_SingleTableQueryMixin_LimitContainerMixin":["1","2"],"_SimpleSelectStatement_Query_SingleTableQueryMixin":["1","2"],"BaseSelectStatement":["2"],"SingleTableQueryMixin":["1","2"],"Query":["1","2"],"Selectable":["2"],"Component":[],"Selectable.T":"2"},"JoinedSelectStatement":{"_JoinedSelectStatement_Query_LimitContainerMixin_Selectable":["1","2"],"_JoinedSelectStatement_Query_LimitContainerMixin":["1","2"],"BaseSelectStatement":["TypedResult"],"Query":["1","2"],"Selectable":["TypedResult"],"Component":[],"Selectable.T":"TypedResult"},"_LazyExpressionMap":{"MapBase":["Expression<Object>","Object?"],"_UnmodifiableMapMixin":["Expression<Object>","Object?"],"Map":["Expression<Object>","Object?"],"MapBase.K":"Expression<Object>","MapBase.V":"Object?","_UnmodifiableMapMixin.K":"Expression<Object>","_UnmodifiableMapMixin.V":"Object?"},"UpdateStatement":{"_UpdateStatement_Query_SingleTableQueryMixin":["1","2"],"SingleTableQueryMixin":["1","2"],"Query":["1","2"],"Component":[]},"DriftSqlType":{"Enum":[],"BaseSqlType":["1"]},"Sqlite3Delegate":{"DatabaseDelegate":[]},"_SqliteVersionDelegate":{"DbVersionDelegate":[]},"BroadcastStreamQueryStore":{"StreamQueryStore":[]},"_ProbeResult":{"WasmProbeResult":[]},"ProtocolVersion":{"Enum":[]},"CompatibilityResult":{"WasmInitializationMessage":[]},"SharedWorkerCompatibilityResult":{"CompatibilityResult":[],"WasmInitializationMessage":[]},"WorkerError":{"WasmInitializationMessage":[],"Exception":[]},"ServeDriftDatabase":{"WasmInitializationMessage":[]},"RequestCompatibilityCheck":{"WasmInitializationMessage":[]},"DedicatedWorkerCompatibilityResult":{"CompatibilityResult":[],"WasmInitializationMessage":[]},"StartFileSystemServer":{"WasmInitializationMessage":[]},"DeleteDatabase":{"WasmInitializationMessage":[]},"_CloseVfsOnClose":{"QueryInterceptor":[]},"WasmStorageImplementation":{"Enum":[]},"WebStorageApi":{"Enum":[]},"MissingBrowserFeature":{"Enum":[]},"WasmDatabase":{"DelegatedDatabase":[],"_BaseExecutor0":[],"QueryExecutor":[]},"_WasmDelegate":{"Sqlite3Delegate":["CommonDatabase"],"DatabaseDelegate":[],"Sqlite3Delegate.0":"CommonDatabase"},"RetryClient":{"Client":[]},"RequestAbortedException":{"Exception":[]},"BaseClient":{"Client":[]},"BrowserClient":{"Client":[]},"ByteStream":{"StreamView":["List<int>"],"Stream":["List<int>"],"Stream.T":"List<int>","StreamView.T":"List<int>"},"ClientException":{"Exception":[]},"Request":{"BaseRequest":[]},"Response":{"BaseResponse":[]},"StreamedRequest":{"BaseRequest":[]},"StreamedResponse":{"BaseResponse":[]},"StreamedResponseV2":{"StreamedResponse":[],"BaseResponse":[]},"CaseInsensitiveMap":{"CanonicalizedMap":["String","String","1"],"Map":["String","1"],"CanonicalizedMap.V":"1","CanonicalizedMap.K":"String","CanonicalizedMap.C":"String"},"CrdtIndexData":{"CrdtIndexConfigBase":[]},"FullIndexData":{"CrdtIndexData":[],"CrdtIndexConfigBase":[]},"GroupIndexData":{"CrdtIndexData":[],"CrdtIndexConfigBase":[]},"ResourceConfigData":{"ResourceConfigBase":[]},"IndexItemData":{"IndexItemConfigBase":[]},"SyncEngineConfig":{"ConfigBase":[]},"SyncConfigValidationException":{"Exception":[]},"_RdfObjectComparison":{"Enum":[]},"MergeInstruction":{"Enum":[]},"SubjectMetadataStatement":{"MetadataStatementKey":[]},"SubjectPredicateMetadataStatement":{"MetadataStatementKey":[]},"TripleMetadataStatement":{"MetadataStatementKey":[]},"GRegister":{"CrdtType":[]},"LwwRegister":{"CrdtType":[]},"Immutable":{"CrdtType":[]},"OrSet":{"CrdtType":[]},"MergeObjectState":{"Enum":[]},"GroupIndexGraphSubscriptionException":{"Exception":[]},"Prefetch":{"ItemFetchPolicy":[]},"OnRequest":{"ItemFetchPolicy":[]},"PrefetchFiltered":{"ItemFetchPolicy":[]},"GroupIndexConfigBase":{"CrdtIndexConfigBase":[]},"FullIndexConfigBase":{"CrdtIndexConfigBase":[]},"ShardDeterminationMode":{"Enum":[]},"IndexType":{"Enum":[]},"UnidentifiedBlankNodeException":{"Exception":[]},"UnidentifiedBlankNodeWithContextException":{"Exception":[]},"IdentifiedIriSubject":{"IdentifiedRdfSubject":[]},"IdentifiedBlankNodeSubject":{"IdentifiedRdfSubject":[]},"NoOpIriTranslator":{"IriTranslator":[]},"BaseIriTranslator":{"IriTranslator":[]},"AppResourceLocator":{"ResourceLocator":[]},"DocumentMappingDependencyExtractor":{"DependencyExtractor":[]},"CachingMergeContractLoader":{"MergeContractLoader":[]},"StandardMergeContractLoader":{"MergeContractLoader":[]},"HttpFetcher":{"Fetcher":[]},"StandardRdfGraphFetcher":{"RdfGraphFetcher":[]},"UnsupportedIriException":{"Exception":[]},"LocalResourceLocator":{"ResourceLocator":[]},"StandardSyncEngine":{"SyncEngine":[]},"ConcurrentUpdateException":{"Exception":[]},"ConflictUploadResult":{"RemoteUploadResult":[]},"SuccessUploadResult":{"RemoteUploadResult":[]},"AuthException":{"Exception":[]},"AuthAwareRemoteStorage":{"RemoteStorage":[]},"AuthAwareSyncStorage":{"RemoteSyncStorage":[]},"MergeSubjectType":{"Enum":[]},"LiteralKey":{"RdfObjectKey":[]},"IriSubjectKey":{"RdfObjectKey":[]},"IdentifiedBlankNodeKey":{"RdfObjectKey":[]},"UnIdentifiedBlankNodeKey":{"RdfObjectKey":[]},"ClockComparison":{"Enum":[]},"FullIndexSync":{"IndexSyncSpec":[]},"PartialIndexSync":{"IndexSyncSpec":[]},"FullShardSync":{"ShardSyncSpec":[]},"PartialShardSync":{"ShardSyncSpec":[]},"StandardSyncManager":{"SyncManager":[]},"SyncTrigger":{"Enum":[]},"SyncStatus":{"Enum":[]},"ExpectationSeverity":{"Enum":[]},"DriftStorage":{"Storage":[]},"SyncDatabase":{"GeneratedDatabase":[],"DatabaseConnectionUser":[],"QueryExecutorUser":[]},"$SyncIrisTable":{"TableInfo":["$SyncIrisTable","SyncIri"],"Table":[],"ResultSetImplementation":["$SyncIrisTable","SyncIri"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$SyncIrisTable","TableInfo.D":"SyncIri"},"SyncIri":{"Insertable":["SyncIri"]},"$SyncDocumentsTable":{"TableInfo":["$SyncDocumentsTable","SyncDocument"],"Table":[],"ResultSetImplementation":["$SyncDocumentsTable","SyncDocument"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$SyncDocumentsTable","TableInfo.D":"SyncDocument"},"SyncDocument":{"Insertable":["SyncDocument"]},"$SyncPropertyChangesTable":{"TableInfo":["$SyncPropertyChangesTable","SyncPropertyChange"],"Table":[],"ResultSetImplementation":["$SyncPropertyChangesTable","SyncPropertyChange"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$SyncPropertyChangesTable","TableInfo.D":"SyncPropertyChange"},"SyncPropertyChange":{"Insertable":["SyncPropertyChange"]},"SyncPropertyChangesCompanion":{"UpdateCompanion":["SyncPropertyChange"],"Insertable":["SyncPropertyChange"],"UpdateCompanion.D":"SyncPropertyChange"},"$SyncSettingsTable":{"TableInfo":["$SyncSettingsTable","SyncSetting"],"Table":[],"ResultSetImplementation":["$SyncSettingsTable","SyncSetting"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$SyncSettingsTable","TableInfo.D":"SyncSetting"},"SyncSetting":{"Insertable":["SyncSetting"]},"$IndexEntriesTable":{"TableInfo":["$IndexEntriesTable","IndexEntry"],"Table":[],"ResultSetImplementation":["$IndexEntriesTable","IndexEntry"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$IndexEntriesTable","TableInfo.D":"IndexEntry"},"IndexEntry":{"Insertable":["IndexEntry"]},"$GroupIndexSubscriptionsTable":{"TableInfo":["$GroupIndexSubscriptionsTable","GroupIndexSubscription"],"Table":[],"ResultSetImplementation":["$GroupIndexSubscriptionsTable","GroupIndexSubscription"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$GroupIndexSubscriptionsTable","TableInfo.D":"GroupIndexSubscription"},"GroupIndexSubscription":{"Insertable":["GroupIndexSubscription"]},"$IndexIriIdSetVersionsTable":{"TableInfo":["$IndexIriIdSetVersionsTable","IndexIriIdSetVersion"],"Table":[],"ResultSetImplementation":["$IndexIriIdSetVersionsTable","IndexIriIdSetVersion"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$IndexIriIdSetVersionsTable","TableInfo.D":"IndexIriIdSetVersion"},"IndexIriIdSetVersion":{"Insertable":["IndexIriIdSetVersion"]},"$RemoteSettingsTable":{"TableInfo":["$RemoteSettingsTable","RemoteSetting"],"Table":[],"ResultSetImplementation":["$RemoteSettingsTable","RemoteSetting"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$RemoteSettingsTable","TableInfo.D":"RemoteSetting"},"RemoteSetting":{"Insertable":["RemoteSetting"]},"$RemoteSyncStateTable":{"TableInfo":["$RemoteSyncStateTable","RemoteSyncStateData"],"Table":[],"ResultSetImplementation":["$RemoteSyncStateTable","RemoteSyncStateData"],"HasResultSet":[],"DatabaseSchemaEntity":[],"TableInfo.0":"$RemoteSyncStateTable","TableInfo.D":"RemoteSyncStateData"},"RemoteSyncStateData":{"Insertable":["RemoteSyncStateData"]},"SyncIris":{"Table":[],"HasResultSet":[]},"SyncDocuments":{"Table":[],"HasResultSet":[]},"SyncPropertyChanges":{"Table":[],"HasResultSet":[]},"SyncSettings":{"Table":[],"HasResultSet":[]},"IndexEntries":{"Table":[],"HasResultSet":[]},"GroupIndexSubscriptions":{"Table":[],"HasResultSet":[]},"RemoteSettings":{"Table":[],"HasResultSet":[]},"RemoteSyncState":{"Table":[],"HasResultSet":[]},"IndexIriIdSetVersions":{"Table":[],"HasResultSet":[]},"SyncDocumentDao":{"DatabaseAccessor":["SyncDatabase"],"DatabaseConnectionUser":[],"DatabaseAccessor.T":"SyncDatabase"},"SyncPropertyChangeDao":{"DatabaseAccessor":["SyncDatabase"],"DatabaseConnectionUser":[],"DatabaseAccessor.T":"SyncDatabase"},"IndexDao":{"DatabaseAccessor":["SyncDatabase"],"DatabaseConnectionUser":[],"DatabaseAccessor.T":"SyncDatabase"},"RemoteSyncStateDao":{"DatabaseAccessor":["SyncDatabase"],"DatabaseConnectionUser":[],"DatabaseAccessor.T":"SyncDatabase"},"SyncIrisCompanion":{"UpdateCompanion":["SyncIri"],"Insertable":["SyncIri"],"UpdateCompanion.D":"SyncIri"},"SyncDocumentsCompanion":{"UpdateCompanion":["SyncDocument"],"Insertable":["SyncDocument"],"UpdateCompanion.D":"SyncDocument"},"SyncSettingsCompanion":{"UpdateCompanion":["SyncSetting"],"Insertable":["SyncSetting"],"UpdateCompanion.D":"SyncSetting"},"IndexEntriesCompanion":{"UpdateCompanion":["IndexEntry"],"Insertable":["IndexEntry"],"UpdateCompanion.D":"IndexEntry"},"GroupIndexSubscriptionsCompanion":{"UpdateCompanion":["GroupIndexSubscription"],"Insertable":["GroupIndexSubscription"],"UpdateCompanion.D":"GroupIndexSubscription"},"IndexIriIdSetVersionsCompanion":{"UpdateCompanion":["IndexIriIdSetVersion"],"Insertable":["IndexIriIdSetVersion"],"UpdateCompanion.D":"IndexIriIdSetVersion"},"RemoteSettingsCompanion":{"UpdateCompanion":["RemoteSetting"],"Insertable":["RemoteSetting"],"UpdateCompanion.D":"RemoteSetting"},"RemoteSyncStateCompanion":{"UpdateCompanion":["RemoteSyncStateData"],"Insertable":["RemoteSyncStateData"],"UpdateCompanion.D":"RemoteSyncStateData"},"_$SyncDatabase":{"GeneratedDatabase":[],"DatabaseConnectionUser":[],"QueryExecutorUser":[]},"DriftWorkerHandler":{"StorageWorkerHandler":[]},"_GoogleAuthClient":{"Client":[]},"GDriveClientException":{"Exception":[]},"GDriveSyncStorage":{"RemoteSyncStorage":[]},"GDriveRemoteStorage":{"RemoteStorage":[]},"GDriveBackend":{"Backend":[]},"GDriveFolderMode":{"Enum":[]},"GDriveWorkerHandler":{"RemoteWorkerHandler":[]},"WorkerGDriveAuthProvider":{"GDriveAuthProvider":[]},"RdfDecoderException":{"Exception":[]},"RdfSyntaxException":{"Exception":[]},"RdfInvalidIriException":{"Exception":[]},"RdfException":{"Exception":[]},"RdfValidationException":{"Exception":[]},"RdfConstraintViolationException":{"Exception":[]},"TraversalDecision":{"Enum":[]},"RdfObject":{"RdfTerm":[]},"RdfSubject":{"RdfObject":[],"RdfTerm":[]},"RdfGraphName":{"RdfSubject":[],"RdfObject":[],"RdfTerm":[]},"RdfPredicate":{"RdfTerm":[]},"IriTerm":{"RdfGraphName":[],"RdfSubject":[],"RdfPredicate":[],"RdfObject":[],"RdfTerm":[]},"BlankNodeTerm":{"RdfGraphName":[],"RdfSubject":[],"RdfObject":[],"RdfTerm":[]},"LiteralTerm":{"RdfObject":[],"RdfTerm":[]},"IriRole":{"Enum":[]},"IriCompactionType":{"Enum":[]},"PrefixedIri":{"CompactIri":[]},"FullIri":{"CompactIri":[]},"RelativeIri":{"CompactIri":[]},"SpecialIri":{"CompactIri":[]},"BaseIriRequiredException":{"Exception":[]},"JsonLdGraphCodec":{"RdfGraphCodec":[],"RdfCodec":["RdfGraph"],"Codec":["RdfGraph","String"],"RdfCodec.G":"RdfGraph","Codec.S":"RdfGraph","Codec.T":"String"},"JsonLdDecoderOptions":{"RdfGraphDecoderOptions":[]},"JsonLdDecoder":{"RdfGraphDecoder":[],"RdfDecoder":["RdfGraph"],"Converter":["String","RdfGraph"],"StreamTransformer":["String","RdfGraph"],"Converter.T":"RdfGraph","Converter.S":"String"},"JsonLdEncoderOptions":{"RdfGraphEncoderOptions":[]},"JsonLdEncoder":{"RdfGraphEncoder":[],"RdfEncoder":["RdfGraph"],"Converter":["RdfGraph","String"],"StreamTransformer":["RdfGraph","String"],"Converter.T":"String","Converter.S":"RdfGraph"},"NQuadsCodec":{"RdfDatasetCodec":[],"RdfCodec":["RdfDataset"],"Codec":["RdfDataset","String"],"RdfCodec.G":"RdfDataset","Codec.S":"RdfDataset","Codec.T":"String"},"NQuadsDecoderOptions":{"RdfGraphDecoderOptions":[]},"NQuadsDecoder":{"RdfDecoder":["RdfDataset"],"Converter":["String","RdfDataset"],"StreamTransformer":["String","RdfDataset"],"Converter.T":"RdfDataset","Converter.S":"String"},"NQuadsEncoderOptions":{"RdfGraphEncoderOptions":[]},"NQuadsEncoder":{"RdfEncoder":["RdfDataset"],"Converter":["RdfDataset","String"],"StreamTransformer":["RdfDataset","String"],"Converter.T":"String","Converter.S":"RdfDataset"},"_BlankNodeLabelFactoryImpl":{"_BlankNodeLabelFactory":[]},"_NoOpBlankNodeCounter":{"_BlankNodeLabelFactory":[]},"NTriplesCodec":{"RdfGraphCodec":[],"RdfCodec":["RdfGraph"],"Codec":["RdfGraph","String"],"RdfCodec.G":"RdfGraph","Codec.S":"RdfGraph","Codec.T":"String"},"NTriplesDecoderOptions":{"RdfGraphDecoderOptions":[]},"NTriplesDecoder":{"RdfGraphDecoder":[],"RdfDecoder":["RdfGraph"],"Converter":["String","RdfGraph"],"StreamTransformer":["String","RdfGraph"],"Converter.T":"RdfGraph","Converter.S":"String"},"NTriplesEncoderOptions":{"RdfGraphEncoderOptions":[]},"NTriplesEncoder":{"RdfGraphEncoder":[],"RdfEncoder":["RdfGraph"],"Converter":["RdfGraph","String"],"StreamTransformer":["RdfGraph","String"],"Converter.T":"String","Converter.S":"RdfGraph"},"CodecNotSupportedException":{"Exception":[]},"RdfCodec":{"Codec":["1","String"]},"BaseRdfCodecRegistry":{"BaseRdfCodecRegistry.G":"1"},"AutoDetectingRdfCodec":{"RdfCodec":["1"],"Codec":["1","String"],"RdfCodec.G":"1","Codec.S":"1","Codec.T":"String"},"AutoDetectingRdfDecoder":{"RdfDecoder":["1"],"Converter":["String","1"],"StreamTransformer":["String","1"],"Converter.T":"1","Converter.S":"String"},"RdfDatasetCodec":{"RdfCodec":["RdfDataset"],"Codec":["RdfDataset","String"]},"RdfDatasetCodecRegistry":{"BaseRdfCodecRegistry":["RdfDataset"],"BaseRdfCodecRegistry.G":"RdfDataset"},"RdfGraphCodec":{"RdfCodec":["RdfGraph"],"Codec":["RdfGraph","String"]},"_RdfGraphCodecWrapper":{"RdfGraphCodec":[],"RdfCodec":["RdfGraph"],"Codec":["RdfGraph","String"],"RdfCodec.G":"RdfGraph","Codec.S":"RdfGraph","Codec.T":"String"},"_RdfGraphDecoderWrapper":{"RdfGraphDecoder":[],"RdfDecoder":["RdfGraph"],"Converter":["String","RdfGraph"],"StreamTransformer":["String","RdfGraph"],"Converter.T":"RdfGraph","Converter.S":"String"},"_RdfGraphEncoderWrapper":{"RdfGraphEncoder":[],"RdfEncoder":["RdfGraph"],"Converter":["RdfGraph","String"],"StreamTransformer":["RdfGraph","String"],"Converter.T":"String","Converter.S":"RdfGraph"},"RdfDatasetDecoderOptions":{"RdfGraphDecoderOptions":[]},"RdfDatasetDecoder":{"RdfDecoder":["RdfDataset"],"Converter":["String","RdfDataset"],"StreamTransformer":["String","RdfDataset"]},"RdfDatasetEncoderOptions":{"RdfGraphEncoderOptions":[]},"RdfDatasetEncoder":{"RdfEncoder":["RdfDataset"],"Converter":["RdfDataset","String"],"StreamTransformer":["RdfDataset","String"]},"RdfDecoder":{"Converter":["String","1"],"StreamTransformer":["String","1"]},"RdfEncoder":{"Converter":["1","String"],"StreamTransformer":["1","String"]},"RdfGraphDecoder":{"RdfDecoder":["RdfGraph"],"Converter":["String","RdfGraph"],"StreamTransformer":["String","RdfGraph"]},"RdfGraphEncoder":{"RdfEncoder":["RdfGraph"],"Converter":["RdfGraph","String"],"StreamTransformer":["RdfGraph","String"]},"TurtleCodec":{"RdfGraphCodec":[],"RdfCodec":["RdfGraph"],"Codec":["RdfGraph","String"],"RdfCodec.G":"RdfGraph","Codec.S":"RdfGraph","Codec.T":"String"},"TurtleDecoderOptions":{"RdfGraphDecoderOptions":[]},"TurtleDecoder":{"RdfGraphDecoder":[],"RdfDecoder":["RdfGraph"],"Converter":["String","RdfGraph"],"StreamTransformer":["String","RdfGraph"],"Converter.T":"RdfGraph","Converter.S":"String"},"TurtleEncoderOptions":{"RdfGraphEncoderOptions":[]},"TurtleEncoder":{"RdfGraphEncoder":[],"RdfEncoder":["RdfGraph"],"Converter":["RdfGraph","String"],"StreamTransformer":["RdfGraph","String"],"Converter.T":"String","Converter.S":"RdfGraph"},"TurtleParsingFlag":{"Enum":[]},"TokenType":{"Enum":[]},"SolidWorkerHandler":{"RemoteWorkerHandler":[]},"SolidAuthReceiver":{"SolidAuthProvider":[]},"SolidBackend":{"Backend":[]},"SolidClientException":{"Exception":[]},"NotFoundException":{"Exception":[]},"SolidResourceLocator":{"ResourceLocator":[]},"SolidRemoteStorage":{"RemoteStorage":[]},"SolidSyncStorage":{"RemoteSyncStorage":[]},"WorkerRequest":{"WorkerMessage":[]},"WorkerResponse":{"WorkerMessage":[]},"SaveRequest":{"WorkerMessage":[]},"SaveResponse":{"WorkerMessage":[]},"DeleteDocumentRequest":{"WorkerMessage":[]},"DeleteDocumentResponse":{"WorkerMessage":[]},"ConfigureGroupIndexSubscriptionRequest":{"WorkerMessage":[]},"ConfigureGroupIndexSubscriptionResponse":{"WorkerMessage":[]},"HydrateStreamRequest":{"WorkerMessage":[]},"HydrationBatchMessage":{"WorkerMessage":[]},"SyncTriggerRequest":{"WorkerMessage":[]},"SyncTriggerResponse":{"WorkerMessage":[]},"EnableAutoSyncRequest":{"WorkerMessage":[]},"EnableAutoSyncResponse":{"WorkerMessage":[]},"DisableAutoSyncRequest":{"WorkerMessage":[]},"DisableAutoSyncResponse":{"WorkerMessage":[]},"GetSyncStateRequest":{"WorkerMessage":[]},"GetSyncStateResponse":{"WorkerMessage":[]},"SyncStateUpdateMessage":{"WorkerMessage":[]},"WebWorkerSender":{"WorkerMessageSender":[]},"WorkerHandlerContextImpl":{"WorkerHandlerContext":[]},"Level":{"Comparable":["Level"]},"PathException":{"Exception":[]},"PosixStyle":{"InternalStyle":[]},"UrlStyle":{"InternalStyle":[]},"WindowsStyle":{"InternalStyle":[]},"TimestampFormat":{"Enum":[]},"LogFormat":{"Enum":[]},"StreamCipherAsBlockCipher":{"BlockCipher":[]},"KeyParameter":{"CipherParameters":[]},"PaddedBlockCipher":{"BlockCipher":[]},"PrivateKey":{"AsymmetricKey":[]},"AsymmetricKeyParameter":{"CipherParameters":[]},"ParametersWithIV":{"CipherParameters":[]},"PrivateKeyParameter":{"AsymmetricKeyParameter":["1"],"CipherParameters":[]},"RegistryFactoryException":{"Exception":[]},"ASN1BitString":{"ASN1Object":[]},"ASN1BMPString":{"ASN1Object":[]},"ASN1Boolean":{"ASN1Object":[]},"ASN1GeneralizedTime":{"ASN1Object":[]},"ASN1IA5String":{"ASN1Object":[]},"ASN1Integer":{"ASN1Object":[]},"ASN1Null":{"ASN1Object":[]},"ASN1ObjectIdentifier":{"ASN1Object":[]},"ASN1OctetString":{"ASN1Object":[]},"ASN1PrintableString":{"ASN1Object":[]},"ASN1Sequence":{"ASN1Object":[]},"ASN1Set":{"ASN1Object":[]},"ASN1TeletextString":{"ASN1Object":[]},"ASN1UtcTime":{"ASN1Object":[]},"ASN1UTF8String":{"ASN1Object":[]},"UnsupportedASN1TagException":{"Exception":[]},"RSAAsymmetricKey":{"AsymmetricKey":[]},"RSAPrivateKey0":{"RSAAsymmetricKey":[],"PrivateKey":[],"AsymmetricKey":[]},"OAEPEncoding":{"AsymmetricBlockCipher":[]},"PKCS1Encoding":{"AsymmetricBlockCipher":[]},"RSAEngine":{"AsymmetricBlockCipher":[]},"AESEngine":{"BlockCipher":[]},"DESedeEngine":{"BlockCipher":[]},"CBCBlockCipher":{"BlockCipher":[]},"CCMBlockCipher":{"BlockCipher":[]},"CFBBlockCipher":{"BlockCipher":[]},"CTRBlockCipher":{"BlockCipher":[]},"ECBBlockCipher":{"BlockCipher":[]},"GCMBlockCipher":{"BlockCipher":[]},"GCTRBlockCipher":{"BlockCipher":[]},"IGEBlockCipher":{"BlockCipher":[]},"OFBBlockCipher":{"BlockCipher":[]},"SICBlockCipher":{"BlockCipher":[]},"RC2Engine":{"BlockCipher":[]},"Blake2bDigest":{"Digest0":[]},"CSHAKEDigest":{"Digest0":[]},"KeccakDigest":{"Digest0":[]},"MD2Digest":{"Digest0":[]},"MD4Digest":{"Digest0":[]},"MD5Digest":{"Digest0":[]},"RIPEMD128Digest":{"Digest0":[]},"RIPEMD160Digest":{"Digest0":[]},"RIPEMD256Digest":{"Digest0":[]},"RIPEMD320Digest":{"Digest0":[]},"SHA1Digest":{"Digest0":[]},"SHA224Digest":{"Digest0":[]},"SHA256Digest":{"Digest0":[]},"SHA3Digest":{"Digest0":[]},"SHA384Digest":{"Digest0":[]},"SHA512Digest":{"Digest0":[]},"SHA512tDigest":{"Digest0":[]},"SHAKEDigest":{"Digest0":[]},"SM3Digest":{"Digest0":[]},"TigerDigest":{"Digest0":[]},"WhirlpoolDigest":{"Digest0":[]},"ECCurve_brainpoolp160r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp160t1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp192r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp192t1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp224r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp224t1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp256r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp256t1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp320r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp320t1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp384r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp384t1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp512r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_brainpoolp512t1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_gostr3410_2001_cryptopro_a":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_gostr3410_2001_cryptopro_b":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_gostr3410_2001_cryptopro_c":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_gostr3410_2001_cryptopro_xcha":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_gostr3410_2001_cryptopro_xchb":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_prime192v1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_prime192v2":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_prime192v3":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_prime239v1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_prime239v2":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_prime239v3":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_prime256v1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp112r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp112r2":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp128r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp128r2":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp160k1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp160r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp160r2":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp192k1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp192r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp224k1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp224r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp256k1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp256r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp384r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECCurve_secp521r1":{"ECDomainParametersImpl":[],"ECDomainParameters":[]},"ECPointBase":{"ECPoint0":[]},"ECDomainParametersImpl":{"ECDomainParameters":[]},"ECCurveBase":{"ECCurve0":[]},"ECPoint":{"ECPointBase":[],"ECPoint0":[]},"ECFieldElement":{"ECFieldElementBase":[]},"ECCurve":{"ECCurveBase":[],"ECCurve0":[]},"_WNafPreCompInfo":{"PreCompInfo":[]},"CBCBlockCipherMac":{"Mac":[]},"CMac":{"Mac":[]},"HMac":{"Mac":[]},"Poly1305":{"Mac":[]},"PaddedBlockCipherImpl":{"BlockCipher":[]},"ISO7816d4Padding":{"Padding":[]},"PKCS7Padding":{"Padding":[]},"AutoSeedBlockCtrRandom":{"SecureRandom":[]},"BlockCtrRandom":{"SecureRandom":[]},"FortunaRandom":{"SecureRandom":[]},"ECDSASigner":{"Signer":[]},"PSSSigner":{"Signer":[]},"RSASigner":{"Signer":[]},"BaseAEADBlockCipher":{"BlockCipher":[]},"BaseAsymmetricBlockCipher":{"AsymmetricBlockCipher":[]},"BaseBlockCipher":{"BlockCipher":[]},"BaseDigest":{"Digest0":[]},"BaseMac":{"Mac":[]},"BasePadding":{"Padding":[]},"BaseStreamCipher":{"StreamCipher":[]},"KeccakEngine":{"Digest0":[]},"LongSHA2FamilyDigest":{"Digest0":[]},"MD4FamilyDigest":{"Digest0":[]},"SecureRandomBase":{"SecureRandom":[]},"PlatformException":{"Exception":[]},"DynamicFactoryConfig":{"FactoryConfig":[]},"StaticFactoryConfig":{"FactoryConfig":[]},"ChaCha20Engine":{"StreamCipher":[]},"ChaCha7539Engine":{"StreamCipher":[]},"CTRStreamCipher":{"StreamCipher":[]},"RC4Engine":{"StreamCipher":[]},"Salsa20Engine":{"StreamCipher":[]},"SICStreamCipher":{"StreamCipher":[]},"_SwitchMapStreamSink":{"ForwardingSink":["1","2"]},"SwitchMapStreamTransformer":{"StreamTransformer":["1","2"]},"_EnhancedEventSink":{"EnhancedEventSink":["1"],"EventSink":["1"],"Sink":["1"]},"_HMACAlgorithm":{"JWTAlgorithm":[]},"_RSAAlgorithm":{"JWTAlgorithm":[]},"JWTError":{"Error":[]},"JWTParseError":{"Error":[]},"JWTUndefinedError":{"Error":[]},"RSAPrivateKey":{"JWTKey":[]},"FileLocation":{"SourceLocation0":[],"Comparable":["SourceLocation0"]},"_FileSpan":{"SourceSpanWithContext":[],"SourceSpan":[],"Comparable":["SourceSpan"]},"SourceLocation0":{"Comparable":["SourceLocation0"]},"SourceLocationMixin":{"SourceLocation0":[],"Comparable":["SourceLocation0"]},"SourceSpan":{"Comparable":["SourceSpan"]},"SourceSpanBase":{"SourceSpan":[],"Comparable":["SourceSpan"]},"SourceSpanException":{"Exception":[]},"SourceSpanFormatException":{"FormatException":[],"Exception":[]},"SourceSpanMixin":{"SourceSpan":[],"Comparable":["SourceSpan"]},"SourceSpanWithContext":{"SourceSpan":[],"Comparable":["SourceSpan"]},"SqliteException":{"Exception":[]},"SqliteArguments":{"List":["Object?"],"EfficientLengthIterable":["Object?"],"Iterable":["Object?"]},"FinalizableDatabase":{"FinalizablePart":[]},"DatabaseImplementation":{"CommonDatabase":[]},"ValueList":{"ListBase":["Object?"],"List":["Object?"],"EfficientLengthIterable":["Object?"],"Iterable":["Object?"],"ListBase.E":"Object?"},"Sqlite3Implementation":{"CommonSqlite3":[]},"FinalizableStatement":{"FinalizablePart":[]},"StatementImplementation":{"CommonPreparedStatement":[]},"InMemoryFileSystem":{"VirtualFileSystem":[]},"_InMemoryFile":{"VirtualFileSystemFile":[]},"Row":{"UnmodifiableMapMixin":["String","@"],"MapBase":["String","@"],"Map":["String","@"],"MapBase.K":"String","MapBase.V":"@","UnmodifiableMapMixin.K":"String","UnmodifiableMapMixin.V":"@"},"ResultSet":{"ListBase":["Row"],"NonGrowableListMixin":["Row"],"List":["Row"],"EfficientLengthIterable":["Row"],"Cursor":[],"Iterable":["Row"],"ListBase.E":"Row","NonGrowableListMixin.E":"Row"},"_ResultIterator":{"Iterator":["Row"]},"OpenMode":{"Enum":[]},"IndexedParameters":{"StatementParameters":[]},"VfsException":{"Exception":[]},"BaseVirtualFileSystem":{"VirtualFileSystem":[]},"BaseVfsFile":{"VirtualFileSystemFile":[]},"WasmValue":{"RawSqliteValue":[]},"WasmSqliteBindings":{"RawSqliteBindings":[]},"WasmDatabase0":{"RawSqliteDatabase":[]},"WasmStatement":{"RawSqliteStatement":[]},"WasmContext":{"RawSqliteContext":[]},"WasmValueList":{"ListBase":["WasmValue"],"List":["WasmValue"],"EfficientLengthIterable":["WasmValue"],"Iterable":["WasmValue"],"ListBase.E":"WasmValue"},"WasmSqlite3":{"CommonSqlite3":[]},"WasmVfs":{"VirtualFileSystem":[]},"WasmFile":{"VirtualFileSystemFile":[]},"EmptyMessage":{"Message0":[]},"Flags":{"Message0":[]},"NameAndInt32Flags":{"Flags":[],"Message0":[]},"WorkerOperation":{"Enum":[]},"IndexedDbFileSystem":{"VirtualFileSystem":[]},"_IndexedDbWorkItem":{"LinkedListEntry":["_IndexedDbWorkItem"]},"_IndexedDbFile":{"VirtualFileSystemFile":[]},"_FunctionWorkItem":{"_IndexedDbWorkItem":[],"LinkedListEntry":["_IndexedDbWorkItem"],"LinkedListEntry.E":"_IndexedDbWorkItem"},"_DeleteFileWorkItem":{"_IndexedDbWorkItem":[],"LinkedListEntry":["_IndexedDbWorkItem"],"LinkedListEntry.E":"_IndexedDbWorkItem"},"_CreateFileWorkItem":{"_IndexedDbWorkItem":[],"LinkedListEntry":["_IndexedDbWorkItem"],"LinkedListEntry.E":"_IndexedDbWorkItem"},"_WriteFileWorkItem":{"_IndexedDbWorkItem":[],"LinkedListEntry":["_IndexedDbWorkItem"],"LinkedListEntry.E":"_IndexedDbWorkItem"},"FileType":{"Enum":[]},"SimpleOpfsFileSystem":{"VirtualFileSystem":[]},"_SimpleOpfsFile":{"VirtualFileSystemFile":[]},"Chain":{"StackTrace":[]},"LazyTrace":{"Trace":[],"StackTrace":[]},"Trace":{"StackTrace":[]},"UnparsedFrame":{"Frame":[]},"GuaranteeChannel":{"StreamChannel":["1"]},"_GuaranteeSink":{"StreamSink":["1"],"EventSink":["1"],"Sink":["1"],"StreamConsumer":["1"]},"StreamChannelMixin":{"StreamChannel":["1"]},"StringScannerException":{"FormatException":[],"Exception":[]},"Uint8Buffer":{"TypedDataBuffer":["int"],"ListBase":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"],"ListBase.E":"int","TypedDataBuffer.E":"int"},"TypedDataBuffer":{"ListBase":["1"],"List":["1"],"EfficientLengthIterable":["1"],"Iterable":["1"]},"_IntBuffer":{"TypedDataBuffer":["int"],"ListBase":["int"],"List":["int"],"EfficientLengthIterable":["int"],"Iterable":["int"]},"_EventStream":{"Stream":["1"],"Stream.T":"1"},"_EventStreamSubscription":{"StreamSubscription":["1"]}}'));
   A._Universe_addErasedTypes(init.typeUniverse, JSON.parse('{"UnmodifiableListBase":1,"__CastListBase__CastIterableBase_ListMixin":2,"NativeTypedArray":1,"StreamTransformerBase":2,"_DelayedEvent":1,"UnmodifiableMapBase":2,"_UnmodifiableSetView_SetBase__UnmodifiableSetMixin":1,"ChunkedConversionSink":1,"_QueueList_Object_ListMixin":1,"BaseSelectStatement":1,"LimitContainerMixin":2,"AggregateContext":1,"StreamChannelMixin":1}'));
   var string$ = {
     x00_____: "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\u03f6\x00\u0404\u03f4 \u03f4\u03f6\u01f6\u01f6\u03f6\u03fc\u01f4\u03ff\u03ff\u0584\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u05d4\u01f4\x00\u01f4\x00\u0504\u05c4\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u0400\x00\u0400\u0200\u03f7\u0200\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u03ff\u0200\u0200\u0200\u03f7\x00",
-    x20__tok: " - token refresh did not resolve the issue",
-    x20even_: " even after token refresh - authentication failed",
     x20must_: " must not be greater than the number of characters in the file, ",
     x27_has_: "' has been assigned during initialization.",
     x30400000: "04000000000000000000000000000000000000000000000000000000000000000041ece55743711a8c3cbf3783cd08c0ee4d4dc440d4641a8f366e550dfdb3bb67",
@@ -89557,7 +90132,9 @@
     x3d_____: "===== asynchronous gap ===========================\n",
     ABCDEFx2b: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
     ABCDEFx2d: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_",
-    Authen: "Authentication state changed: isAuthenticated=",
+    Auth_f: "Auth failure detected, requesting token refresh",
+    Authenf: "Authentication failed during sync operation",
+    Authens: "Authentication state changed: isAuthenticated=",
     Blank_: "Blank nodes are not supported in ItemFetchPolicy serialization",
     Broadc: "Broadcast stream controllers do not support pause callbacks",
     Cannotc: "Cannot change the length of a fixed-length list",
@@ -89572,7 +90149,6 @@
     Signer: "Signer was not initialised for signature generation",
     Token_: "Token refresh request timed out after 10 seconds",
     Tried_: "Tried to operate on a released prepared statement",
-    User_i: "User is authenticated but currentWebId is null in SolidBackend",
     User_l: "User logged out: clearing Solid remote storage",
     a9fb571: "a9fb57dba1eea9bc3e660a909d838d718c397aa3b561a6f7901e0e82974856a7",
     a9fb572: "a9fb57dba1eea9bc3e660a909d838d726e3bf623d52620282013481d1f6e5377",
@@ -89593,6 +90169,7 @@
     fffffffff6: "ffffffffffffffffffffffffffffffff6c611070995ad10045841b09b761b893",
     ffffffffff4: "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd94",
     ffffffffff7: "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd97",
+    handle: "handleError callback must take either an Object (the error), or both an Object (the error) and a StackTrace.",
     http__1: "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
     http__1f: "http://www.w3.org/1999/02/22-rdf-syntax-ns#first",
     http__1l: "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString",
@@ -89762,6 +90339,7 @@
       Future_nullable_ResponsePayload: findType("Future<ResponsePayload?>"),
       Future_void: findType("Future<~>"),
       Future_void_Function: findType("Future<~>()"),
+      GDriveFolderMode: findType("GDriveFolderMode"),
       GeneratedColumn_Object: findType("GeneratedColumn<Object>"),
       GroupIndexData: findType("GroupIndexData"),
       GroupIndexSubscription: findType("GroupIndexSubscription"),
@@ -90131,6 +90709,7 @@
       Record_3_nullable_String_cursor_and_List_Record_2_IriTerm_and_RdfGraph_deletions_and_List_Record_2_IriTerm_and_RdfGraph_updates: findType("+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)"),
       Record_3_nullable_String_etag_and_nullable_RdfGraph_graph_and_bool_notModified: findType("+etag,graph,notModified(String?,RdfGraph?,bool)"),
       Record_4_IriTerm_and_RdfGraph_and_Record_4_List_Record_2_RdfSubject_and_RdfGraph_fullClock_and_String_hash_and_int_logicalTime_and_int_physicalTime_and_List_MissingGroupIndex: findType("+(IriTerm,RdfGraph,+fullClock,hash,logicalTime,physicalTime(List<+(RdfSubject,RdfGraph)>,String,int,int),List<MissingGroupIndex>)"),
+      Record_4_IriTerm_documentIri_and_int_lastSyncTimestamp_and_bool_shouldSync_and_DateTime_syncTime: findType("+documentIri,lastSyncTimestamp,shouldSync,syncTime(IriTerm,int,bool,DateTime)"),
       Record_4_IriTerm_indexIri_and_int_maxPhysicalClock_and_IriTerm_resourceTypeIri_and_IriTerm_shardIri: findType("+indexIri,maxPhysicalClock,resourceTypeIri,shardIri(IriTerm,int,IriTerm,IriTerm)"),
       Record_4_List_Record_2_RdfSubject_and_RdfGraph_fullClock_and_String_hash_and_int_logicalTime_and_int_physicalTime: findType("+fullClock,hash,logicalTime,physicalTime(List<+(RdfSubject,RdfGraph)>,String,int,int)"),
       Record_4_Set_IriTerm_and_Set_IriTerm_and_List_MissingGroupIndex_and_List_MissingIndexDocument: findType("+(Set<IriTerm>,Set<IriTerm>,List<MissingGroupIndex>,List<MissingIndexDocument>)"),
@@ -90178,6 +90757,7 @@
       Set__IndexMetadata: findType("Set<_IndexMetadata>"),
       Set_int: findType("Set<int>"),
       ShardDeterminationResult: findType("ShardDeterminationResult"),
+      ShardSyncSpec: findType("ShardSyncSpec"),
       SharedWorkerCompatibilityResult: findType("SharedWorkerCompatibilityResult"),
       Signer: findType("Signer"),
       SimpleOpfsFileSystem: findType("SimpleOpfsFileSystem"),
@@ -90185,7 +90765,6 @@
       Sink_Digest: findType("Sink<Digest>"),
       Sink_List_int: findType("Sink<List<int>>"),
       Sink_String: findType("Sink<String>"),
-      SolidClientException: findType("SolidClientException"),
       SourceLocation: findType("SourceLocation0"),
       SourceSpan: findType("SourceSpan"),
       SourceSpanWithContext: findType("SourceSpanWithContext"),
@@ -90280,12 +90859,14 @@
       WhereTypeIterable_String: findType("WhereTypeIterable<String>"),
       WhereTypeIterator_TableInfo_of_Table_and_nullable_Object: findType("WhereTypeIterator<TableInfo<Table,Object?>>"),
       WorkerChannelMessage: findType("WorkerChannelMessage"),
+      WorkerHandlerChannel: findType("WorkerHandlerChannel"),
       WorkerOperation_Flags_EmptyMessage: findType("WorkerOperation<Flags,EmptyMessage>"),
       WorkerOperation_Flags_Flags: findType("WorkerOperation<Flags,Flags>"),
       WorkerOperation_NameAndInt32Flags_Flags: findType("WorkerOperation<NameAndInt32Flags,Flags>"),
       WorkerParams: findType("WorkerParams"),
       Zone: findType("Zone"),
       _AsyncCompleter_DpopCredentials: findType("_AsyncCompleter<DpopCredentials>"),
+      _AsyncCompleter_GDriveConfig: findType("_AsyncCompleter<GDriveConfig>"),
       _AsyncCompleter_List_dynamic: findType("_AsyncCompleter<List<@>>"),
       _AsyncCompleter_ServerInfo: findType("_AsyncCompleter<ServerInfo>"),
       _AsyncCompleter_Uint8List: findType("_AsyncCompleter<Uint8List>"),
@@ -90298,6 +90879,7 @@
       _DocumentQueueEntry: findType("_DocumentQueueEntry"),
       _EventStream_JSObject: findType("_EventStream<JSObject>"),
       _Future_DpopCredentials: findType("_Future<DpopCredentials>"),
+      _Future_GDriveConfig: findType("_Future<GDriveConfig>"),
       _Future_JSObject: findType("_Future<JSObject>"),
       _Future_List_dynamic: findType("_Future<List<@>>"),
       _Future_MergeContract: findType("_Future<MergeContract>"),
@@ -90470,6 +91052,7 @@
     B.CONSTANT = new A.Instantiation1(A.math__max$closure(), A.findType("Instantiation1<int>"));
     B.C_AnyUpdateQuery = new A.AnyUpdateQuery();
     B.C_AsciiCodec = new A.AsciiCodec();
+    B.C_AuthRetryConfig = new A.AuthRetryConfig();
     B.C_Base64Decoder = new A.Base64Decoder();
     B.C_CancellationException = new A.CancellationException();
     B.C_ConflictUploadResult = new A.ConflictUploadResult();
@@ -90670,8 +91253,10 @@
     B.ExpectationSeverity_2 = new A.ExpectationSeverity(2, "critical");
     B.FormatException_IWx = new A.FormatException("Unknown tag", null, null);
     B.FormatException_NvI = new A.FormatException("Cannot read message", null, null);
-    B.Map_empty4 = new A.ConstantStringMap(B.Object_empty, [], A.findType("ConstantStringMap<BlankNodeTerm,List<0&>>"));
-    B.IdentifiedBlankNodes_Map_empty = new A.IdentifiedBlankNodes(B.Map_empty4, A.findType("IdentifiedBlankNodes<0&>"));
+    B.GDriveFolderMode_0 = new A.GDriveFolderMode(0, "appDataFolder");
+    B.GDriveFolderMode_1 = new A.GDriveFolderMode(1, "visibleFolder");
+    B.Map_empty3 = new A.ConstantStringMap(B.Object_empty, [], A.findType("ConstantStringMap<BlankNodeTerm,List<0&>>"));
+    B.IdentifiedBlankNodes_Map_empty = new A.IdentifiedBlankNodes(B.Map_empty3, A.findType("IdentifiedBlankNodes<0&>"));
     B.IndexType_0 = new A.IndexType(0, "fullIndex");
     B.IndexType_1 = new A.IndexType(1, "groupIndexTemplate");
     B.InsertMode_0 = new A.InsertMode(0, "insert");
@@ -90777,8 +91362,8 @@
     B.IriTerm_zzB = new A.IriTerm("https://w3id.org/solid-crdt-sync/vocab/merge-contract#predicateMapping");
     B.JsonDecoder_null = new A.JsonDecoder(null);
     B.JsonEncoder_null_null = new A.JsonEncoder(null, null);
-    B.Map_empty2 = new A.ConstantStringMap(B.Object_empty, [], type$.ConstantStringMap_String_String);
-    B.JsonLdEncoderOptions_Bmk = new A.JsonLdEncoderOptions(B.Map_empty2, B.C_IriRelativizationOptions);
+    B.Map_empty1 = new A.ConstantStringMap(B.Object_empty, [], type$.ConstantStringMap_String_String);
+    B.JsonLdEncoderOptions_Bmk = new A.JsonLdEncoderOptions(B.Map_empty1, B.C_IriRelativizationOptions);
     B.Latin1Decoder_false_255 = new A.Latin1Decoder(false, 255);
     B.Latin1Encoder_255 = new A.Latin1Encoder(255);
     B.Level_ALL_0 = new A.Level("ALL", 0);
@@ -90804,6 +91389,7 @@
     B.UpdateKind_1 = new A.UpdateKind(1, "update");
     B.UpdateKind_2 = new A.UpdateKind(2, "delete");
     B.List_L4j = makeConstList([B.UpdateKind_0, B.UpdateKind_1, B.UpdateKind_2], A.findType("JSArray<UpdateKind>"));
+    B.List_Osh = makeConstList([B.GDriveFolderMode_0, B.GDriveFolderMode_1], A.findType("JSArray<GDriveFolderMode>"));
     B.WebStorageApi_1 = new A.WebStorageApi(1, "indexedDb");
     B.WasmStorageImplementation_WebStorageApi_1_2_sharedIndexedDb = new A.WasmStorageImplementation(B.WebStorageApi_1, 2, "sharedIndexedDb");
     B.WasmStorageImplementation_WebStorageApi_1_3_unsafeIndexedDb = new A.WasmStorageImplementation(B.WebStorageApi_1, 3, "unsafeIndexedDb");
@@ -91180,12 +91766,11 @@
     B.Map_5aT1b = new A.GeneralConstantMap([B.InsertMode_0, "INSERT", B.InsertMode_1, "REPLACE", B.InsertMode_2, "INSERT OR REPLACE", B.InsertMode_3, "INSERT OR ROLLBACK", B.InsertMode_4, "INSERT OR ABORT", B.InsertMode_5, "INSERT OR FAIL", B.InsertMode_6, "INSERT OR IGNORE"], A.findType("GeneralConstantMap<InsertMode,String>"));
     B.Object_xBp = {rdf: 0, rdfs: 1, xsd: 2, owl: 3, solid: 4, space: 5, ldp: 6, pim: 7, foaf: 8, schema: 9, dc: 10};
     B.Map_cwq5q = new A.ConstantStringMap(B.Object_xBp, [string$.http__1, "http://www.w3.org/2000/01/rdf-schema#", "http://www.w3.org/2001/XMLSchema#", "http://www.w3.org/2002/07/owl#", "http://www.w3.org/ns/solid/terms#", "http://www.w3.org/ns/pim/space#", "http://www.w3.org/ns/ldp#", "http://www.w3.org/ns/pim/space#", "http://xmlns.com/foaf/0.1/", "http://schema.org/", "http://purl.org/dc/terms/"], type$.ConstantStringMap_String_String);
-    B.Map_empty5 = new A.ConstantStringMap(B.Object_empty, [], A.findType("ConstantStringMap<BlankNodeTerm,String>"));
-    B.Map_empty = new A.ConstantStringMap(B.Object_empty, [], A.findType("ConstantStringMap<IriTerm,String>"));
-    B.Map_empty1 = new A.ConstantStringMap(B.Object_empty, [], A.findType("ConstantStringMap<MetadataStatementKey,MetadataStatement>"));
-    B.Map_empty0 = new A.ConstantStringMap(B.Object_empty, [], A.findType("ConstantStringMap<RdfPredicate,PredicateRule>"));
-    B.Map_empty3 = new A.ConstantStringMap(B.Object_empty, [], A.findType("ConstantStringMap<String,int>"));
-    B.Map_empty6 = new A.ConstantStringMap(B.Object_empty, [], A.findType("ConstantStringMap<VerificationMeta,VerificationResult>"));
+    B.Map_empty4 = new A.ConstantStringMap(B.Object_empty, [], A.findType("ConstantStringMap<BlankNodeTerm,String>"));
+    B.Map_empty0 = new A.ConstantStringMap(B.Object_empty, [], A.findType("ConstantStringMap<MetadataStatementKey,MetadataStatement>"));
+    B.Map_empty = new A.ConstantStringMap(B.Object_empty, [], A.findType("ConstantStringMap<RdfPredicate,PredicateRule>"));
+    B.Map_empty2 = new A.ConstantStringMap(B.Object_empty, [], A.findType("ConstantStringMap<String,int>"));
+    B.Map_empty5 = new A.ConstantStringMap(B.Object_empty, [], A.findType("ConstantStringMap<VerificationMeta,VerificationResult>"));
     B.MergeInstruction_0 = new A.MergeInstruction(0, "keepLocal");
     B.MergeInstruction_1 = new A.MergeInstruction(1, "keepRemote");
     B.MergeInstruction_2 = new A.MergeInstruction(2, "mergeRequired");
@@ -91205,9 +91790,9 @@
     B.MissingBrowserFeature_4 = new A.MissingBrowserFeature(4, "indexedDb");
     B.MissingBrowserFeature_5 = new A.MissingBrowserFeature(5, "sharedArrayBuffers");
     B.MissingBrowserFeature_6 = new A.MissingBrowserFeature(6, "workerError");
-    B.NQuadsEncoderOptions_TXi = new A.NQuadsEncoderOptions(true, B.Map_empty2, B.C_IriRelativizationOptions);
-    B.NQuadsEncoderOptions_sop = new A.NQuadsEncoderOptions(false, B.Map_empty2, B.C_IriRelativizationOptions);
-    B.NTriplesEncoderOptions_Ajk = new A.NTriplesEncoderOptions(B.Map_empty2, B.C_IriRelativizationOptions);
+    B.NQuadsEncoderOptions_TXi = new A.NQuadsEncoderOptions(true, B.Map_empty1, B.C_IriRelativizationOptions);
+    B.NQuadsEncoderOptions_sop = new A.NQuadsEncoderOptions(false, B.Map_empty1, B.C_IriRelativizationOptions);
+    B.NTriplesEncoderOptions_Ajk = new A.NTriplesEncoderOptions(B.Map_empty1, B.C_IriRelativizationOptions);
     B.NoArgsRequest_0 = new A.NoArgsRequest(0, "terminateAll");
     B.OpenMode_2 = new A.OpenMode(2, "readWriteCreate");
     B.OrderingMode_0_asc = new A.OrderingMode(0, "asc");
@@ -91277,7 +91862,7 @@
     B.TraversalDecision_1 = new A.TraversalDecision(1, "skip");
     B.TraversalDecision_2 = new A.TraversalDecision(2, "skipButDescend");
     B.TraversalDecision_3 = new A.TraversalDecision(3, "includeButDontDescend");
-    B.TurtleEncoderOptions_ics = new A.TurtleEncoderOptions(B.Map_empty2, B.C_IriRelativizationOptions);
+    B.TurtleEncoderOptions_ics = new A.TurtleEncoderOptions(B.Map_empty1, B.C_IriRelativizationOptions);
     B.TurtleParsingFlag_0 = new A.TurtleParsingFlag(0, "allowDigitInLocalName");
     B.TurtleParsingFlag_1 = new A.TurtleParsingFlag(1, "allowMissingDotAfterPrefix");
     B.TurtleParsingFlag_2 = new A.TurtleParsingFlag(2, "autoAddCommonPrefixes");
@@ -91316,7 +91901,7 @@
     B.Utf8Decoder_true = new A.Utf8Decoder(true);
     B.Value_false_null0 = new A.Value(false, null, type$.Value_String);
     B.Value_false_null = new A.Value(false, null, type$.Value_int);
-    B.VerificationContext_Map_empty = new A.VerificationContext(B.Map_empty6);
+    B.VerificationContext_Map_empty = new A.VerificationContext(B.Map_empty5);
     B.VerificationMeta_changeLogicalClock = new A.VerificationMeta("changeLogicalClock");
     B.VerificationMeta_changedAtMs = new A.VerificationMeta("changedAtMs");
     B.VerificationMeta_clockHash = new A.VerificationMeta("clockHash");
@@ -91594,7 +92179,8 @@
     _lazyFinal($, "_log18", "$get$_log27", () => A.Logger_Logger("GDriveTypeIndexManager"));
     _lazyFinal($, "GDriveTypeIndexManager__indexTypes", "$get$GDriveTypeIndexManager__indexTypes", () => A.LinkedHashSet_LinkedHashSet$_literal([B.IriTerm_EF8, B.IriTerm_oTK, B.IriTerm_Dot, B.IriTerm_IIm], type$.IriTerm));
     _lazyFinal($, "_log19", "$get$_log25", () => A.Logger_Logger("WorkerGDriveAuthProvider"));
-    _lazyFinal($, "_log20", "$get$_log3", () => A.Logger_Logger("locorda_rdf_core.iri_compaction"));
+    _lazyFinal($, "_log20", "$get$_log28", () => A.Logger_Logger("WorkerGDriveConfigReceiver"));
+    _lazyFinal($, "_log21", "$get$_log3", () => A.Logger_Logger("locorda_rdf_core.iri_compaction"));
     _lazyFinal($, "allowedCompactionTypesAll", "$get$allowedCompactionTypesAll", () => {
       var t2, _i,
         t1 = A.LinkedHashMap_LinkedHashMap$_empty(type$.IriRole, type$.Set_IriCompactionType);
@@ -91602,12 +92188,12 @@
         t1.$indexSet(0, B.List_Uwk[_i], A.LinkedHashSet_LinkedHashSet$of(B.List_JhD, t2));
       return t1;
     });
-    _lazyFinal($, "_log21", "$get$_log24", () => A.Logger_Logger("rdf.jsonld"));
-    _lazyFinal($, "_log22", "$get$_log23", () => A.Logger_Logger("rdf.jsonld"));
+    _lazyFinal($, "_log22", "$get$_log24", () => A.Logger_Logger("rdf.jsonld"));
+    _lazyFinal($, "_log23", "$get$_log23", () => A.Logger_Logger("rdf.jsonld"));
     _lazyFinal($, "turtle", "$get$turtle", () => A.TurtleCodec$(B.C_TurtleDecoderOptions, B.TurtleEncoderOptions_ics, A.rdf_term_IriTerm___validated_tearOff$closure(), null));
-    _lazyFinal($, "_log23", "$get$_log5", () => A.Logger_Logger("rdf.turtle"));
-    _lazyFinal($, "_log24", "$get$_log2", () => A.Logger_Logger("rdf.turtle"));
-    _lazyFinal($, "_log25", "$get$_log6", () => A.Logger_Logger("rdf.turtle"));
+    _lazyFinal($, "_log24", "$get$_log5", () => A.Logger_Logger("rdf.turtle"));
+    _lazyFinal($, "_log25", "$get$_log2", () => A.Logger_Logger("rdf.turtle"));
+    _lazyFinal($, "_log26", "$get$_log6", () => A.Logger_Logger("rdf.turtle"));
     _lazyFinal($, "TurtleTokenizer__isDigitRegExp", "$get$TurtleTokenizer__isDigitRegExp", () => A.RegExp_RegExp("[0-9]", true, false, false, false));
     _lazyFinal($, "TurtleTokenizer__isNameStartCharRegExp", "$get$TurtleTokenizer__isNameStartCharRegExp", () => A.RegExp_RegExp("[a-zA-Z_:]", true, false, false, false));
     _lazyFinal($, "TurtleTokenizer__isNameCharRegExp", "$get$TurtleTokenizer__isNameCharRegExp", () => A.RegExp_RegExp("[a-zA-Z0-9_\\-]", true, false, false, false));
@@ -91623,10 +92209,10 @@
     _lazyFinal($, "_pnLocalSingleCharRegex", "$get$_pnLocalSingleCharRegex", () => A.RegExp_RegExp("^[a-zA-Z0-9_:]$", true, false, false, false));
     _lazyFinal($, "_pnLocalEndCharRegex", "$get$_pnLocalEndCharRegex", () => A.RegExp_RegExp("[a-zA-Z0-9_:-]$", true, false, false, false));
     _lazyFinal($, "_pnLocalFullRegex", "$get$_pnLocalFullRegex", () => A.RegExp_RegExp("^[a-zA-Z0-9_:][a-zA-Z0-9_\\-.:]*[a-zA-Z0-9_:-]$", true, false, false, false));
-    _lazyFinal($, "_log26", "$get$_log28", () => A.Logger_Logger("SolidRemoteStorage"));
-    _lazyFinal($, "_log27", "$get$_log29", () => A.Logger_Logger("solid.profile"));
-    _lazyFinal($, "_log28", "$get$_log", () => A.Logger_Logger("WebWorkerEntryPoint"));
-    _lazyFinal($, "_log29", "$get$_log0", () => A.Logger_Logger("WorkerEntryPoint"));
+    _lazyFinal($, "_log27", "$get$_log29", () => A.Logger_Logger("SolidRemoteStorage"));
+    _lazyFinal($, "_log28", "$get$_log30", () => A.Logger_Logger("solid.profile"));
+    _lazyFinal($, "_log29", "$get$_log", () => A.Logger_Logger("WebWorkerEntryPoint"));
+    _lazyFinal($, "_log30", "$get$_log0", () => A.Logger_Logger("WorkerEntryPoint"));
     _lazyFinal($, "Logger_root", "$get$Logger_root", () => A.Logger_Logger(""));
     _lazyFinal($, "windows", "$get$windows", () => A.Context_Context(null, $.$get$Style_windows()));
     _lazyFinal($, "url", "$get$url", () => A.Context_Context(null, $.$get$Style_url()));

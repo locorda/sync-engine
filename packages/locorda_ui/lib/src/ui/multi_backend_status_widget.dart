@@ -340,49 +340,58 @@ class _BackendSelectionSheetState extends State<_BackendSelectionSheet> {
             ),
             const SizedBox(height: 16),
 
-            // Backend list
-            ...widget.registry.remoteAdapters.map((plugin) {
-              final isActive = plugin.id == activePlugin?.id;
-              final isAuthenticated =
-                  plugin.auth.isAuthenticatedNotifier.isAuthenticated;
+            // Backend list (scrollable for many backends)
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ...widget.registry.remoteAdapters.map((plugin) {
+                      final isActive = plugin.id == activePlugin?.id;
+                      final isAuthenticated =
+                          plugin.auth.isAuthenticatedNotifier.isAuthenticated;
 
-              return ListTile(
-                enabled: !_isProcessing,
-                leading: Icon(plugin.icon),
-                title: Text(plugin.displayName),
-                subtitle: isAuthenticated
-                    ? Text(l10n.connected)
-                    : Text(l10n.notConnected),
-                trailing: isAuthenticated
-                    ? (isActive
-                        ? null
-                        : IconButton(
-                            icon: const Icon(Icons.logout),
-                            onPressed: () => _disconnect(plugin),
-                          ))
-                    : TextButton(
-                        onPressed: () => _connectToBackend(plugin),
-                        child: Text(l10n.connect),
+                      return ListTile(
+                        enabled: !_isProcessing,
+                        leading: Icon(plugin.icon),
+                        title: Text(plugin.displayName),
+                        subtitle: isAuthenticated
+                            ? Text(l10n.connected)
+                            : Text(l10n.notConnected),
+                        trailing: isAuthenticated
+                            ? (isActive
+                                ? null
+                                : IconButton(
+                                    icon: const Icon(Icons.logout),
+                                    onPressed: () => _disconnect(plugin),
+                                  ))
+                            : TextButton(
+                                onPressed: () => _connectToBackend(plugin),
+                                child: Text(l10n.connect),
+                              ),
+                      );
+                    }),
+
+                    // Sync actions (only if authenticated)
+                    if (activePlugin != null) ...[
+                      const Divider(),
+                      ListTile(
+                        enabled: !_isProcessing,
+                        leading: const Icon(Icons.sync),
+                        title: Text(l10n.syncNow),
+                        onTap: _triggerSync,
                       ),
-              );
-            }),
-
-            // Sync actions (only if authenticated)
-            if (activePlugin != null) ...[
-              const Divider(),
-              ListTile(
-                enabled: !_isProcessing,
-                leading: const Icon(Icons.sync),
-                title: Text(l10n.syncNow),
-                onTap: _triggerSync,
+                      ListTile(
+                        enabled: !_isProcessing,
+                        leading: const Icon(Icons.logout),
+                        title: Text(l10n.disconnect),
+                        onTap: () => _disconnect(activePlugin),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-              ListTile(
-                enabled: !_isProcessing,
-                leading: const Icon(Icons.logout),
-                title: Text(l10n.disconnect),
-                onTap: () => _disconnect(activePlugin),
-              ),
-            ],
+            ),
           ],
         ),
       ),

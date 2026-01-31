@@ -6,6 +6,7 @@ import FlutterMacOS
 import Foundation
 
 import fast_rsa
+import file_picker
 import flutter_appauth
 import google_sign_in_ios
 import oidc_macos
@@ -18,6 +19,7 @@ import window_to_front
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   FastRsaPlugin.register(with: registry.registrar(forPlugin: "FastRsaPlugin"))
+  FilePickerPlugin.register(with: registry.registrar(forPlugin: "FilePickerPlugin"))
   FlutterAppauthPlugin.register(with: registry.registrar(forPlugin: "FlutterAppauthPlugin"))
   FLTGoogleSignInPlugin.register(with: registry.registrar(forPlugin: "FLTGoogleSignInPlugin"))
   OidcPlugin.register(with: registry.registrar(forPlugin: "OidcPlugin"))

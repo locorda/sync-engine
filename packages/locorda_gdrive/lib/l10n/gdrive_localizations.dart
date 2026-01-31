@@ -146,7 +146,7 @@ abstract class GDriveLocalizations {
   /// **'Create Account'**
   String get createAccount;
 
-  /// Notice about data privacy and storage
+  /// Notice about data privacy and storage on Google servers
   ///
   /// In en, this message translates to:
   /// **'Your data will be transferred to and stored on Google servers. The data is stored unencrypted in your Google Drive. We do not have control over what Google does with your data.'**

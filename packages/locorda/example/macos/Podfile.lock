@@ -11,6 +11,8 @@ PODS:
     - PromisesObjC (~> 2.4)
   - fast_rsa (0.6.0):
     - FlutterMacOS
+  - file_picker (0.0.1):
+    - FlutterMacOS
   - flutter_appauth (0.0.1):
     - AppAuth (= 2.0.0)
     - FlutterMacOS
@@ -86,6 +88,7 @@ PODS:
 
 DEPENDENCIES:
   - fast_rsa (from `Flutter/ephemeral/.symlinks/plugins/fast_rsa/macos`)
+  - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
   - flutter_appauth (from `Flutter/ephemeral/.symlinks/plugins/flutter_appauth/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - google_sign_in_ios (from `Flutter/ephemeral/.symlinks/plugins/google_sign_in_ios/darwin`)
@@ -111,6 +114,8 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   fast_rsa:
     :path: Flutter/ephemeral/.symlinks/plugins/fast_rsa/macos
+  file_picker:
+    :path: Flutter/ephemeral/.symlinks/plugins/file_picker/macos
   flutter_appauth:
     :path: Flutter/ephemeral/.symlinks/plugins/flutter_appauth/macos
   FlutterMacOS:
@@ -136,6 +141,7 @@ SPEC CHECKSUMS:
   AppAuth: 1c1a8afa7e12f2ec3a294d9882dfa5ab7d3cb063
   AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
   fast_rsa: 940a67b8d8e425f37708189361efc90be7299d66
+  file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
   flutter_appauth: 84cbf57c7926a898a612726e99241a031e33fac3
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   google_sign_in_ios: 000870aa06da9b28d1d0bf7ef70ff0213059dd28
