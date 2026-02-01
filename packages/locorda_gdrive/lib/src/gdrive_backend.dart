@@ -640,6 +640,7 @@ class GDriveClient implements GDriveApiClient {
       final fileList = await _driveApi.files.list(
         spaces: spaces,
         q: 'trashed=false',
+        pageSize: 1000,
         pageToken: pageToken,
         $fields:
             'nextPageToken, files(id, name, mimeType, parents, md5Checksum, headRevisionId, version)',
@@ -701,6 +702,7 @@ class GDriveClient implements GDriveApiClient {
       final fileList = await _driveApi.files.list(
         q: query,
         spaces: spaces,
+        pageSize: 1000,
         pageToken: pageToken,
         $fields:
             'nextPageToken, files(id, name, mimeType, md5Checksum, headRevisionId, version)',
@@ -847,11 +849,11 @@ class GDriveLocalMirror {
     await _filesDir.create(recursive: true);
 
     final existingIndex = await _loadIndex();
-    
+
     // Streaming pipeline: start downloads while listing is still in progress
     final updatedIndex = existingIndex.copy();
     await _streamingListAndDownload(updatedIndex);
-    
+
     _index = updatedIndex;
     await _saveIndex(_index);
   }
@@ -904,7 +906,7 @@ class GDriveLocalMirror {
 
     final file = File(_localFilePath(relativePath));
     await file.parent.create(recursive: true);
-    await file.writeAsBytes(bytes, flush: true);
+    await file.writeAsBytes(bytes);
 
     final updatedEntry =
         (entry ?? _GDriveMirrorIndexEntry.newLocal(relativePath)).copyWith(
@@ -913,7 +915,6 @@ class GDriveLocalMirror {
     );
 
     _index.entries[relativePath] = updatedEntry;
-    await _saveIndex(_index);
     return RemoteUploadResult.success(newMd5);
   }
 
@@ -1016,21 +1017,21 @@ class GDriveLocalMirror {
     final downloadQueue = Queue<_GDriveMirrorIndexEntry>();
     final downloadCompleter = Completer<void>();
     final listCompleter = Completer<void>();
-    
+
     var activeDownloads = 0;
     var listingComplete = false;
 
     // Download worker pool
     Future<void> scheduleDownloads() async {
-      while (activeDownloads < _config.maxConcurrentDownloads && 
-             downloadQueue.isNotEmpty) {
+      while (activeDownloads < _config.maxConcurrentDownloads &&
+          downloadQueue.isNotEmpty) {
         final entry = downloadQueue.removeFirst();
         activeDownloads++;
-        
+
         _downloadFile(entry, index).whenComplete(() {
           activeDownloads--;
-          if (listingComplete && 
-              downloadQueue.isEmpty && 
+          if (listingComplete &&
+              downloadQueue.isEmpty &&
               activeDownloads == 0 &&
               !downloadCompleter.isCompleted) {
             downloadCompleter.complete();
@@ -1044,7 +1045,7 @@ class GDriveLocalMirror {
     // Listing phase: stream entries and queue downloads
     _streamListFiles((remoteEntry) {
       if (remoteEntry.isFolder) return;
-      
+
       final existingEntry = index.entries[remoteEntry.path];
       final needsDownload = _shouldDownload(
         remoteEntry,
@@ -1052,15 +1053,16 @@ class GDriveLocalMirror {
       );
 
       // Update index with remote metadata
-      final updatedEntry = (existingEntry ?? 
-          _GDriveMirrorIndexEntry.remote(remoteEntry.path, remoteEntry.fileId))
-        .copyWith(
-          fileId: remoteEntry.fileId,
-          remoteMd5: remoteEntry.md5Checksum ?? existingEntry?.remoteMd5,
-          headRevisionId: remoteEntry.headRevisionId,
-          version: remoteEntry.version,
-          localOnly: false,
-        );
+      final updatedEntry = (existingEntry ??
+              _GDriveMirrorIndexEntry.remote(
+                  remoteEntry.path, remoteEntry.fileId))
+          .copyWith(
+        fileId: remoteEntry.fileId,
+        remoteMd5: remoteEntry.md5Checksum ?? existingEntry?.remoteMd5,
+        headRevisionId: remoteEntry.headRevisionId,
+        version: remoteEntry.version,
+        localOnly: false,
+      );
       index.entries[remoteEntry.path] = updatedEntry;
 
       if (needsDownload) {
@@ -1083,25 +1085,13 @@ class GDriveLocalMirror {
   Future<void> _streamListFiles(
     void Function(GDriveListedEntry) onEntry,
   ) async {
-    if (_typeIndexMappings.appFolderId == 'appDataFolder') {
-      final entries = await _client.listFilesRecursively(
-        rootFolderId: _typeIndexMappings.appFolderId,
-        spaces: _spaces,
-        maxConcurrentRequests: _config.maxConcurrentListings,
-      );
-      for (final entry in entries) {
-        onEntry(entry);
-      }
-    } else {
-      // For visible folders, use recursive listing
-      final entries = await _client.listFilesRecursively(
-        rootFolderId: _typeIndexMappings.appFolderId,
-        spaces: _spaces,
-        maxConcurrentRequests: _config.maxConcurrentListings,
-      );
-      for (final entry in entries) {
-        onEntry(entry);
-      }
+    final entries = await _client.listFilesRecursively(
+      rootFolderId: _typeIndexMappings.appFolderId,
+      spaces: _spaces,
+      maxConcurrentRequests: _config.maxConcurrentListings,
+    );
+    for (final entry in entries) {
+      onEntry(entry);
     }
   }
 
@@ -1110,12 +1100,12 @@ class GDriveLocalMirror {
     _GDriveMirrorIndexEntry? existing,
   ) {
     if (remote.fileId.isEmpty) return false;
-    
+
     final localFile = File(_localFilePath(remote.path));
     if (!localFile.existsSync()) return true;
 
     if (existing == null) return true;
-    
+
     final remoteMd5 = remote.md5Checksum;
     if (remoteMd5 != null && remoteMd5 != existing.localMd5) {
       return true;
@@ -1132,7 +1122,7 @@ class GDriveLocalMirror {
       final bytes = await _client.downloadRawBytes(entry.fileId!);
       final file = File(_localFilePath(entry.path));
       await file.parent.create(recursive: true);
-      await file.writeAsBytes(bytes, flush: true);
+      await file.writeAsBytes(bytes);
 
       final localMd5 = _computeMd5(bytes);
       final updatedEntry = entry.copyWith(
@@ -1142,8 +1132,7 @@ class GDriveLocalMirror {
       );
       index.entries[entry.path] = updatedEntry;
     } catch (e, stackTrace) {
-      _mirrorLog.warning(
-        'Failed to download ${entry.path}', e, stackTrace);
+      _mirrorLog.warning('Failed to download ${entry.path}', e, stackTrace);
     }
   }
 
