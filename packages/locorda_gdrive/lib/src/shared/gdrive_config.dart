@@ -37,11 +37,11 @@ class GDriveLocalMirrorConfig {
   final int maxConcurrentUploads;
 
   const GDriveLocalMirrorConfig({
-    this.enabled = false,
+    this.enabled = true,
     this.cacheRootPath,
-    this.maxConcurrentListings = 4,
-    this.maxConcurrentDownloads = 12,
-    this.maxConcurrentUploads = 12,
+    this.maxConcurrentListings = 16,
+    this.maxConcurrentDownloads = 40,
+    this.maxConcurrentUploads = 30,
   });
 
   GDriveLocalMirrorConfig copyWith({

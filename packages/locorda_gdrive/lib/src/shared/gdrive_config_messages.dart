@@ -48,14 +48,14 @@ class GDriveConfigMessage {
     final mirrorConfig = mirrorConfigRaw == null
         ? const GDriveLocalMirrorConfig()
         : GDriveLocalMirrorConfig(
-            enabled: mirrorConfigRaw['enabled'] as bool? ?? true,
+            enabled: mirrorConfigRaw['enabled'] as bool? ?? false,
             cacheRootPath: mirrorConfigRaw['cacheRootPath'] as String?,
             maxConcurrentListings:
-                mirrorConfigRaw['maxConcurrentListings'] as int? ?? 4,
+                mirrorConfigRaw['maxConcurrentListings'] as int? ?? 16,
             maxConcurrentDownloads:
-                mirrorConfigRaw['maxConcurrentDownloads'] as int? ?? 12,
+                mirrorConfigRaw['maxConcurrentDownloads'] as int? ?? 40,
             maxConcurrentUploads:
-                mirrorConfigRaw['maxConcurrentUploads'] as int? ?? 12,
+                mirrorConfigRaw['maxConcurrentUploads'] as int? ?? 30,
           );
 
     return GDriveConfigMessage(

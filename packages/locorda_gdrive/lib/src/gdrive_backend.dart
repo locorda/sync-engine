@@ -847,16 +847,12 @@ class GDriveLocalMirror {
     await _filesDir.create(recursive: true);
 
     final existingIndex = await _loadIndex();
-    final remoteEntries = await _client.listFilesRecursively(
-      rootFolderId: _typeIndexMappings.appFolderId,
-      spaces: _spaces,
-      maxConcurrentRequests: _config.maxConcurrentListings,
-    );
-
-    final updatedIndex = _reconcileIndex(existingIndex, remoteEntries);
-    await _downloadMissingOrChanged(updatedIndex, remoteEntries);
+    
+    // Streaming pipeline: start downloads while listing is still in progress
+    final updatedIndex = existingIndex.copy();
+    await _streamingListAndDownload(updatedIndex);
+    
     _index = updatedIndex;
-
     await _saveIndex(_index);
   }
 
@@ -1012,88 +1008,143 @@ class GDriveLocalMirror {
     await _indexFile.writeAsString(json, flush: true);
   }
 
-  _GDriveMirrorIndex _reconcileIndex(
-    _GDriveMirrorIndex existing,
-    List<GDriveListedEntry> remoteEntries,
-  ) {
-    final remotePaths = remoteEntries.map((e) => e.path).toSet();
-    final updated = existing.copy();
+  /// Streaming pipeline: list files and download them concurrently as they're discovered.
+  ///
+  /// This replaces the two-phase approach (list all, then download all) with a
+  /// single-pass pipeline that starts downloads immediately when files are found.
+  Future<void> _streamingListAndDownload(_GDriveMirrorIndex index) async {
+    final downloadQueue = Queue<_GDriveMirrorIndexEntry>();
+    final downloadCompleter = Completer<void>();
+    final listCompleter = Completer<void>();
+    
+    var activeDownloads = 0;
+    var listingComplete = false;
 
-    for (final entry in remoteEntries.where((e) => !e.isFolder)) {
-      final existingEntry = updated.entries[entry.path];
-      updated.entries[entry.path] = (existingEntry ??
-              _GDriveMirrorIndexEntry.remote(entry.path, entry.fileId))
-          .copyWith(
-        fileId: entry.fileId,
-        remoteMd5: entry.md5Checksum ?? existingEntry?.remoteMd5,
-        headRevisionId: entry.headRevisionId,
-        version: entry.version,
-        localOnly: false,
-      );
-    }
-
-    final removedPaths = existing.entries.keys
-        .where((path) => !remotePaths.contains(path))
-        .toList();
-
-    for (final pathToRemove in removedPaths) {
-      final entry = updated.entries[pathToRemove];
-      if (entry == null) continue;
-      if (entry.localOnly || entry.dirty) continue;
-
-      updated.entries.remove(pathToRemove);
-      final file = File(_localFilePath(pathToRemove));
-      if (file.existsSync()) {
-        file.deleteSync();
+    // Download worker pool
+    Future<void> scheduleDownloads() async {
+      while (activeDownloads < _config.maxConcurrentDownloads && 
+             downloadQueue.isNotEmpty) {
+        final entry = downloadQueue.removeFirst();
+        activeDownloads++;
+        
+        _downloadFile(entry, index).whenComplete(() {
+          activeDownloads--;
+          if (listingComplete && 
+              downloadQueue.isEmpty && 
+              activeDownloads == 0 &&
+              !downloadCompleter.isCompleted) {
+            downloadCompleter.complete();
+          } else {
+            scheduleDownloads();
+          }
+        });
       }
     }
 
-    return updated;
+    // Listing phase: stream entries and queue downloads
+    _streamListFiles((remoteEntry) {
+      if (remoteEntry.isFolder) return;
+      
+      final existingEntry = index.entries[remoteEntry.path];
+      final needsDownload = _shouldDownload(
+        remoteEntry,
+        existingEntry,
+      );
+
+      // Update index with remote metadata
+      final updatedEntry = (existingEntry ?? 
+          _GDriveMirrorIndexEntry.remote(remoteEntry.path, remoteEntry.fileId))
+        .copyWith(
+          fileId: remoteEntry.fileId,
+          remoteMd5: remoteEntry.md5Checksum ?? existingEntry?.remoteMd5,
+          headRevisionId: remoteEntry.headRevisionId,
+          version: remoteEntry.version,
+          localOnly: false,
+        );
+      index.entries[remoteEntry.path] = updatedEntry;
+
+      if (needsDownload) {
+        downloadQueue.add(updatedEntry);
+        scheduleDownloads();
+      }
+    }).then((_) {
+      listingComplete = true;
+      if (downloadQueue.isEmpty && activeDownloads == 0) {
+        downloadCompleter.complete();
+      }
+      listCompleter.complete();
+    });
+
+    await listCompleter.future;
+    await downloadCompleter.future;
   }
 
-  Future<void> _downloadMissingOrChanged(
-    _GDriveMirrorIndex index,
-    List<GDriveListedEntry> remoteEntries,
+  /// Stream files from Drive API, calling callback for each entry.
+  Future<void> _streamListFiles(
+    void Function(GDriveListedEntry) onEntry,
   ) async {
-    final remoteByPath = {
-      for (final entry in remoteEntries.where((e) => !e.isFolder))
-        entry.path: entry,
-    };
-
-    final toDownload = <_GDriveMirrorIndexEntry>[];
-    for (final entry in index.entries.values) {
-      final remote = remoteByPath[entry.path];
-      if (remote == null || remote.fileId.isEmpty) continue;
-
-      final file = File(_localFilePath(entry.path));
-      final fileExists = await file.exists();
-      final remoteMd5 = remote.md5Checksum;
-      if (!fileExists || (remoteMd5 != null && remoteMd5 != entry.localMd5)) {
-        toDownload.add(entry.copyWith(fileId: remote.fileId));
+    if (_typeIndexMappings.appFolderId == 'appDataFolder') {
+      final entries = await _client.listFilesRecursively(
+        rootFolderId: _typeIndexMappings.appFolderId,
+        spaces: _spaces,
+        maxConcurrentRequests: _config.maxConcurrentListings,
+      );
+      for (final entry in entries) {
+        onEntry(entry);
+      }
+    } else {
+      // For visible folders, use recursive listing
+      final entries = await _client.listFilesRecursively(
+        rootFolderId: _typeIndexMappings.appFolderId,
+        spaces: _spaces,
+        maxConcurrentRequests: _config.maxConcurrentListings,
+      );
+      for (final entry in entries) {
+        onEntry(entry);
       }
     }
+  }
 
-    await _runConcurrent(
-      toDownload,
-      _config.maxConcurrentDownloads,
-      (entry) async {
-        final remote = remoteByPath[entry.path];
-        if (remote == null) return;
+  bool _shouldDownload(
+    GDriveListedEntry remote,
+    _GDriveMirrorIndexEntry? existing,
+  ) {
+    if (remote.fileId.isEmpty) return false;
+    
+    final localFile = File(_localFilePath(remote.path));
+    if (!localFile.existsSync()) return true;
 
-        final bytes = await _client.downloadRawBytes(remote.fileId);
-        final file = File(_localFilePath(entry.path));
-        await file.parent.create(recursive: true);
-        await file.writeAsBytes(bytes, flush: true);
+    if (existing == null) return true;
+    
+    final remoteMd5 = remote.md5Checksum;
+    if (remoteMd5 != null && remoteMd5 != existing.localMd5) {
+      return true;
+    }
 
-        final localMd5 = _computeMd5(bytes);
-        final updatedEntry = entry.copyWith(
-          localMd5: localMd5,
-          remoteMd5: remote.md5Checksum ?? localMd5,
-          dirty: false,
-        );
-        index.entries[entry.path] = updatedEntry;
-      },
-    );
+    return false;
+  }
+
+  Future<void> _downloadFile(
+    _GDriveMirrorIndexEntry entry,
+    _GDriveMirrorIndex index,
+  ) async {
+    try {
+      final bytes = await _client.downloadRawBytes(entry.fileId!);
+      final file = File(_localFilePath(entry.path));
+      await file.parent.create(recursive: true);
+      await file.writeAsBytes(bytes, flush: true);
+
+      final localMd5 = _computeMd5(bytes);
+      final updatedEntry = entry.copyWith(
+        localMd5: localMd5,
+        remoteMd5: entry.remoteMd5 ?? localMd5,
+        dirty: false,
+      );
+      index.entries[entry.path] = updatedEntry;
+    } catch (e, stackTrace) {
+      _mirrorLog.warning(
+        'Failed to download ${entry.path}', e, stackTrace);
+    }
   }
 
   Future<({String fileId, String md5Checksum})?> _createRemoteFile(
