@@ -5,7 +5,6 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_worker/worker.dart';
 
 import '../gdrive_backend.dart';
-import '../gdrive_type_index_manager.dart';
 import 'gdrive_auth_connector_worker.dart';
 
 /// Worker-thread [RemoteWorkerHandler] implementation for Google Drive backend.

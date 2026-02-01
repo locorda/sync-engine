@@ -4,9 +4,11 @@ library;
 import 'package:flutter/material.dart';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_flutter_core/locorda_flutter_core.dart';
-import 'package:locorda_gdrive/locorda_gdrive.dart';
 import 'package:locorda_worker/worker_main.dart';
 
+import '../gdrive_auth.dart';
+import '../shared/gdrive_config.dart';
+import '../ui/gdrive_login_screen.dart';
 import 'gdrive_auth_connector.dart';
 import 'gdrive_config_connector.dart';
 

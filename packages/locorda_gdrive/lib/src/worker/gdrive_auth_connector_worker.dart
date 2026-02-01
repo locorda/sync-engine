@@ -6,7 +6,7 @@ library;
 import 'package:locorda_worker/worker.dart';
 
 import '../auth/gdrive_auth_provider.dart';
-import '../gdrive_type_index_manager.dart';
+import '../shared/gdrive_config.dart';
 import 'worker_gdrive_auth_provider.dart';
 import 'worker_gdrive_config_receiver.dart';
 

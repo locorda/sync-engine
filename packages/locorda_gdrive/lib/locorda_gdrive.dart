@@ -66,7 +66,7 @@ library locorda_gdrive;
 
 // Core backend
 export 'src/gdrive_backend.dart' show /*GDriveBackend,*/ GDriveClientException;
-export 'src/gdrive_type_index_manager.dart' show GDriveConfig, GDriveFolderMode;
+export 'src/shared/gdrive_config.dart' show GDriveConfig, GDriveFolderMode;
 
 // Authentication (internal use only, managed by GDriveMainIntegration)
 export 'src/auth/gdrive_auth_provider.dart' show GDriveAuthProvider;

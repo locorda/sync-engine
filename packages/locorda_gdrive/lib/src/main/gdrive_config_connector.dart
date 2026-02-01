@@ -5,7 +5,7 @@ library;
 
 import 'package:locorda_worker/worker_main.dart';
 
-import '../gdrive_type_index_manager.dart';
+import '../shared/gdrive_config.dart';
 import 'gdrive_config_sender.dart';
 
 /// Worker plugin that bridges Google Drive configuration from main thread to worker.

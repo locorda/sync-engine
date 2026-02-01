@@ -28,6 +28,7 @@ dependencies:
   google_sign_in: ^7.2.0
   google_sign_in_web: ^1.1.0
   crypto: ^3.0.3
+  path: ^1.9.1
   
   # Locorda dependencies
   locorda_core: any

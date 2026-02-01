@@ -6,7 +6,7 @@ library;
 import 'package:locorda_worker/worker_main.dart';
 import 'package:logging/logging.dart';
 
-import '../gdrive_type_index_manager.dart';
+import '../shared/gdrive_config.dart';
 import '../shared/gdrive_config_messages.dart';
 
 final _log = Logger('GDriveConfigSender');
