@@ -26,6 +26,7 @@ workspace:
   - packages/locorda_ui
   - packages/locorda_worker
   - packages/locorda_gdrive
+  - packages/locorda_gdrive_slow
   - packages/locorda/example
 
 dev_dependencies:
