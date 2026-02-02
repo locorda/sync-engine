@@ -75,17 +75,12 @@ class GDriveTypeIndexManager {
 
     // Step 2: Load or create gdrive-index.ttl
     final typeIndexResult = await _loadOrCreateTypeIndexFile(appFolderId);
-    final dataset = typeIndexResult.dataset;
-    if (dataset.namedGraphs.isNotEmpty) {
-      throw StateError('Type Index dataset contains named graphs');
-    }
+    final graph = typeIndexResult.graph;
     _log.fine('Type Index loaded, ETag: ${typeIndexResult.etag}');
 
     // Step 3: Parse existing TypeMappings
-    final typeIndexIri =
-        dataset.defaultGraph.getIdentifier(GdriveTypeIndex.classIri);
-    final existingMappings =
-        _parseTypeMappings(typeIndexIri, typeIndexResult.dataset);
+    final typeIndexIri = graph.getIdentifier(GdriveTypeIndex.classIri);
+    final existingMappings = _parseTypeMappings(typeIndexIri, graph);
     _log.fine('Found ${existingMappings.length} existing type mappings');
 
     // Step 4: Add missing types with optimistic locking
@@ -99,7 +94,7 @@ class GDriveTypeIndexManager {
       await _addMissingTypes(
         typeIndexIri: typeIndexIri,
         appFolderId: appFolderId,
-        existingDataset: typeIndexResult.dataset,
+        existingGraph: typeIndexResult.graph,
         existingETag: typeIndexResult.etag,
         missingTypes: missingTypes,
       );
@@ -110,7 +105,7 @@ class GDriveTypeIndexManager {
         throw StateError('Type Index disappeared after update');
       }
       final updatedMappings =
-          _parseTypeMappings(typeIndexIri, updatedResult.dataset);
+          _parseTypeMappings(typeIndexIri, updatedResult.graph);
       return TypeIndexMappings(
         appFolderId: appFolderId,
         typeMappings: updatedMappings,
@@ -155,12 +150,12 @@ class GDriveTypeIndexManager {
 
     // Create new empty Type Index
     _log.info('Creating new Type Index file');
-    final emptyDataset = _createEmptyTypeIndex();
+    final emptyGraph = _createEmptyTypeIndex();
 
     // Upload to Drive (returns fileId and etag directly)
     final result = await _client.createFile(
       'gdrive-index.ttl',
-      emptyDataset,
+      emptyGraph,
       folderId: appFolderId,
       spaces: _spaces,
     );
@@ -169,7 +164,7 @@ class GDriveTypeIndexManager {
         'Created Type Index file: ${result.fileId} with ETag: ${result.etag}');
 
     return _TypeIndexFile(
-      dataset: emptyDataset,
+      graph: emptyGraph,
       etag: result.etag,
     );
   }
@@ -192,18 +187,18 @@ class GDriveTypeIndexManager {
     _log.fine('Downloading Type Index file: $fileId');
     final result = await _client.download(fileId);
 
-    if (result.dataset == null) {
+    if (result.graph == null) {
       throw StateError('Type Index file is empty: $fileId');
     }
 
     return _TypeIndexFile(
-      dataset: result.dataset!,
+      graph: result.graph!,
       etag: result.etag ?? '',
     );
   }
 
   /// Create an empty Type Index graph.
-  RdfDataset _createEmptyTypeIndex() {
+  RdfGraph _createEmptyTypeIndex() {
     final typeIndexIri = _localResourceLocator.toIri(
       ResourceIdentifier.document(
         GdriveTypeIndex.rdfType,
@@ -211,8 +206,8 @@ class GDriveTypeIndexManager {
       ),
     );
 
-    return RdfDataset.fromQuads({
-      Quad(
+    return RdfGraph.fromTriples({
+      Triple(
         typeIndexIri,
         GdriveTypeIndex.rdfType,
         GdriveTypeIndex.classIri,
@@ -224,11 +219,7 @@ class GDriveTypeIndexManager {
   ///
   /// Returns map: type IRI → TypeMapping with folder ID and name.
   Map<IriTerm, TypeMapping> _parseTypeMappings(
-      IriTerm typeIndexIri, RdfDataset dataset) {
-    if (dataset.namedGraphs.isNotEmpty) {
-      throw StateError('Type Index dataset contains named graphs');
-    }
-    final graph = dataset.defaultGraph;
+      IriTerm typeIndexIri, RdfGraph graph) {
     final result = <IriTerm, TypeMapping>{};
     final typeMappingSubjects = graph.getMultiValueObjects<RdfSubject>(
         typeIndexIri, GdriveTypeIndex.hasTypeMapping);
@@ -277,7 +268,7 @@ class GDriveTypeIndexManager {
   Future<void> _addMissingTypes({
     required IriTerm typeIndexIri,
     required String appFolderId,
-    required RdfDataset existingDataset,
+    required RdfGraph existingGraph,
     required String existingETag,
     required Iterable<IriTerm> missingTypes,
     int retryCount = 0,
@@ -294,8 +285,8 @@ class GDriveTypeIndexManager {
         'Adding ${missingTypes.length} missing types with optimistic locking '
         '(attempt ${retryCount + 1}/$maxRetries)');
 
-    // Step 1: Extract already used folder names from existing dataset
-    final existingMappings = _parseTypeMappings(typeIndexIri, existingDataset);
+    // Step 1: Extract already used folder names from existing graph
+    final existingMappings = _parseTypeMappings(typeIndexIri, existingGraph);
     final alreadyUsedNames =
         existingMappings.values.map((mapping) => mapping.folderName).toSet();
 
@@ -307,9 +298,9 @@ class GDriveTypeIndexManager {
     );
 
     // Step 3: Create updated graph with complete TypeMappings (including folder IDs)
-    final updatedDataset = _addTypeMappingsToDataset(
+    final updatedGraph = _addTypeMappingsToDataset(
       typeIndexIri,
-      existingDataset,
+      existingGraph,
       typeFolderMappings,
     );
 
@@ -328,7 +319,7 @@ class GDriveTypeIndexManager {
     try {
       final uploadResult = await _client.upload(
         fileId,
-        updatedDataset,
+        updatedGraph,
         ifMatch: existingETag,
       );
 
@@ -356,8 +347,7 @@ class GDriveTypeIndexManager {
       throw StateError('Type Index disappeared after conflict');
     }
 
-    final currentMappings =
-        _parseTypeMappings(typeIndexIri, updatedFile.dataset);
+    final currentMappings = _parseTypeMappings(typeIndexIri, updatedFile.graph);
     final stillMissing = missingTypes.where(
       (type) => !currentMappings.containsKey(type),
     );
@@ -372,7 +362,7 @@ class GDriveTypeIndexManager {
     await _addMissingTypes(
       typeIndexIri: typeIndexIri,
       appFolderId: appFolderId,
-      existingDataset: updatedFile.dataset,
+      existingGraph: updatedFile.graph,
       existingETag: updatedFile.etag,
       missingTypes: stillMissing,
       retryCount: retryCount + 1,
@@ -482,12 +472,12 @@ class GDriveTypeIndexManager {
   }
 
   /// Add TypeMapping blank nodes with complete folder information.
-  RdfDataset _addTypeMappingsToDataset(
+  RdfGraph _addTypeMappingsToDataset(
     IriTerm typeIndexIri,
-    RdfDataset existingDataset,
+    RdfGraph existingGraph,
     Map<IriTerm, ({String folderId, String folderName})> typeFolderMappings,
   ) {
-    final newQuads = <Quad>{...existingDataset.quads};
+    final newTriples = <Triple>{...existingGraph.triples};
 
     // Add TypeMapping for each type with complete folder info
     for (final entry in typeFolderMappings.entries) {
@@ -496,42 +486,42 @@ class GDriveTypeIndexManager {
       final mappingNode = BlankNodeTerm(); // Generate unique blank node
 
       // TypeIndex hasTypeMapping _:mapping
-      newQuads.add(Quad(
+      newTriples.add(Triple(
         typeIndexIri,
         GdriveTypeIndex.hasTypeMapping,
         mappingNode,
       ));
 
       // _:mapping rdf:type gdrive:TypeMapping
-      newQuads.add(Quad(
+      newTriples.add(Triple(
         mappingNode,
         GdriveTypeMapping.rdfType,
         GdriveTypeMapping.classIri,
       ));
 
       // _:mapping gdrive:forType <type>
-      newQuads.add(Quad(
+      newTriples.add(Triple(
         mappingNode,
         GdriveTypeMapping.forType,
         type,
       ));
 
       // _:mapping gdrive:driveFolder "folder-name"
-      newQuads.add(Quad(
+      newTriples.add(Triple(
         mappingNode,
         GdriveTypeMapping.driveFolder,
         LiteralTerm(mapping.folderName),
       ));
 
       // _:mapping gdrive:driveFolderId "folder-id"
-      newQuads.add(Quad(
+      newTriples.add(Triple(
         mappingNode,
         GdriveTypeMapping.driveFolderId,
         LiteralTerm(mapping.folderId),
       ));
     }
 
-    return RdfDataset.fromQuads(newQuads);
+    return RdfGraph.fromTriples(newTriples);
   }
 
   static GDriveConfig _fillInDefaults(GDriveConfig config) {
@@ -550,11 +540,11 @@ class GDriveTypeIndexManager {
 
 /// Result of loading the Type Index file.
 class _TypeIndexFile {
-  final RdfDataset dataset;
+  final RdfGraph graph;
   final String etag;
 
   _TypeIndexFile({
-    required this.dataset,
+    required this.graph,
     required this.etag,
   });
 }

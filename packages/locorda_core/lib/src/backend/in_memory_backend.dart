@@ -122,7 +122,7 @@ class InMemorySyncStorage extends RemoteSyncStorage {
     if (stored == null) {
       _logger.fine('Document not found: ${documentIri.debug}');
       return RemoteDownloadResult(
-        dataset: null,
+        graph: null,
         etag: null,
         notModified: false,
       );
@@ -139,17 +139,17 @@ class InMemorySyncStorage extends RemoteSyncStorage {
         'Document downloaded: ${documentIri.debug}, etag:${stored.etag}, ifNoneMatch:$ifNoneMatch');
     // 200 OK - return document
     return RemoteDownloadResult(
-      dataset: stored.dataset,
+      graph: stored.graph,
       etag: stored.etag,
       notModified: false,
     );
   }
 
   @override
-  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfDataset dataset,
+  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfGraph graph,
       {String? ifMatch}) async {
     _logger.fine(
-        'Uploading document: ${documentIri.debug}, ifMatch:$ifMatch, default graph size: ${dataset.defaultGraph.triples.length}');
+        'Uploading document: ${documentIri.debug}, ifMatch:$ifMatch, default graph size: ${graph.triples.length}');
     final iri = documentIri.value;
     final stored = _storage._documents[iri];
 
@@ -164,8 +164,7 @@ class InMemorySyncStorage extends RemoteSyncStorage {
 
       // Create new document with new ETag
       final newEtag = _storage._generateETag();
-      _storage._documents[iri] =
-          _StoredDocument(dataset: dataset, etag: newEtag);
+      _storage._documents[iri] = _StoredDocument(graph: graph, etag: newEtag);
       _logger.fine('Document created: ${documentIri.debug}, etag:$newEtag');
       return RemoteUploadResult.success(newEtag);
     }
@@ -187,7 +186,7 @@ class InMemorySyncStorage extends RemoteSyncStorage {
 
     // Update document with new ETag
     final newEtag = _storage._generateETag();
-    _storage._documents[iri] = _StoredDocument(dataset: dataset, etag: newEtag);
+    _storage._documents[iri] = _StoredDocument(graph: graph, etag: newEtag);
     _logger.fine('Document updated: ${documentIri.debug}, new etag:$newEtag');
     return RemoteUploadResult.success(newEtag);
   }
@@ -218,11 +217,11 @@ class InMemorySyncStorage extends RemoteSyncStorage {
 
 /// Internal storage structure for documents
 class _StoredDocument {
-  final RdfDataset dataset;
+  final RdfGraph graph;
   final String etag;
 
   _StoredDocument({
-    required this.dataset,
+    required this.graph,
     required this.etag,
   });
 }

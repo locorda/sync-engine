@@ -4,11 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:http/retry.dart';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
-import 'package:locorda_core/rdf.dart';
-import 'solid_profile_parser.dart';
 import 'package:logging/logging.dart';
 
 import 'auth/solid_auth_provider.dart';
+import 'solid_profile_parser.dart';
 
 final _log = Logger('SolidRemoteStorage');
 
@@ -152,7 +151,7 @@ class SolidClient {
 
   final String _contentType;
 
-  final DatasetCodecResolver _codecResolver;
+  final RdfCodec<RdfGraph> Function(String) _codecResolver;
 
   SolidClient(
       {required http.Client client,
@@ -161,7 +160,8 @@ class SolidClient {
       required String contentType})
       : _client = client,
         _authProvider = authProvider,
-        _codecResolver = DatasetCodecResolver.withGraphCodecFallback(rdfCore),
+        _codecResolver =
+            ((contentType) => rdfCore.codec(contentType: contentType)),
         _contentType = contentType;
 
   Future<RemoteDownloadResult> download(String url,
@@ -199,7 +199,7 @@ class SolidClient {
 
     if (response.statusCode == 404) {
       //throw NotFoundException('Resource not found at $url');
-      return RemoteDownloadResult(dataset: null, etag: null);
+      return RemoteDownloadResult(graph: null, etag: null);
     }
     if (response.statusCode == 304) {
       // Not modified
@@ -217,16 +217,13 @@ class SolidClient {
 
     // Extract MIME type from content-type header (remove charset and other parameters)
     final mimeType = contentType.split(';').first.trim();
-    final codec = _getCachedCodec(mimeType);
-    final dataset = codec.decode(data, documentUrl: url);
+    final codec = _codecResolver(mimeType);
+    final graph = codec.decode(data, documentUrl: url);
     return RemoteDownloadResult(
-      dataset: dataset,
+      graph: graph,
       etag: response.headers['etag'],
     );
   }
-
-  RdfCodec<RdfDataset> _getCachedCodec(String mimeType) =>
-      _codecResolver.datasetCodec(mimeType);
 
   // Important: '=' characters in URLs must be percent-encoded here
   // because they will be automatically percent-encoded when the url is sent
@@ -259,10 +256,10 @@ class SolidClient {
     return null;
   }
 
-  Future<RemoteUploadResult> upload(String url, RdfDataset dataset,
+  Future<RemoteUploadResult> upload(String url, RdfGraph graph,
       {bool requiresAuth = true, String? ifMatch}) async {
-    final codec = _getCachedCodec(_contentType); // ensure codec is cached
-    final turtle = codec.encode(dataset);
+    final codec = _codecResolver(_contentType); // ensure codec is cached
+    final turtle = codec.encode(graph);
     final dpop = requiresAuth
         ? await _authProvider.getDpopToken(_prepareUrlForDpopToken(url), 'PUT')
         : null;
@@ -421,12 +418,11 @@ class SolidRemoteStorage implements RemoteStorage {
 
   Future<String> _resolvePodUrl(String webId) async {
     final profile = await _client.download(webId, requiresAuth: true);
-    if (profile.dataset == null) {
+    if (profile.graph == null) {
       throw StateError('Profile document is empty for WebID: $webId');
     }
 
-    final podUrl = await _profileParser.parseStorageUrl(
-        webId, profile.dataset!.defaultGraph);
+    final podUrl = await _profileParser.parseStorageUrl(webId, profile.graph!);
     if (podUrl == null) {
       throw StateError('Could not resolve Pod URL for WebID: $webId');
     }
@@ -478,11 +474,10 @@ class SolidSyncStorage extends RemoteSyncStorage {
     final podDocumentIri = _iriTranslator.internalToExternal(documentIri);
     final result = await _client.download(podDocumentIri.value,
         requiresAuth: true, ifNoneMatch: ifNoneMatch);
-    if (result.dataset != null) {
-      final translated =
-          _iriTranslator.translateDatasetToInternal(result.dataset!);
+    if (result.graph != null) {
+      final translated = _iriTranslator.translateGraphToInternal(result.graph!);
       return RemoteDownloadResult(
-        dataset: translated,
+        graph: translated,
         etag: result.etag,
         notModified: result.notModified,
       );
@@ -491,12 +486,11 @@ class SolidSyncStorage extends RemoteSyncStorage {
   }
 
   @override
-  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfDataset dataset,
+  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfGraph graph,
       {String? ifMatch}) async {
     final podDocumentIri = _iriTranslator.internalToExternal(documentIri);
-    final translatedDataset =
-        _iriTranslator.translateDatasetToExternal(dataset);
-    return await _client.upload(podDocumentIri.value, translatedDataset,
+    final translatedGraph = _iriTranslator.translateGraphToExternal(graph);
+    return await _client.upload(podDocumentIri.value, translatedGraph,
         requiresAuth: true, ifMatch: ifMatch);
   }
 

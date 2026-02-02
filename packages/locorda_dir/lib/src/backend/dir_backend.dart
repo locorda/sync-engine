@@ -6,10 +6,10 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_core/rdf.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
+
 import '../auth/dir_auth_provider.dart';
 import '../rdf/rdf_extensions.dart';
 
@@ -134,7 +134,7 @@ class DirRemoteStorage implements RemoteStorage {
 /// Per-sync-session storage for directory backend.
 class DirSyncStorage extends RemoteSyncStorage {
   final String _directoryPath;
-  final DatasetCodecResolver _codecResolver;
+  final RdfCodec<RdfGraph> Function(String) _codecResolver;
   final String contentType;
   final ResourceLocator _resourceLocator;
 
@@ -143,8 +143,8 @@ class DirSyncStorage extends RemoteSyncStorage {
     required RdfCore rdfCore,
     required String contentType,
   })  : _directoryPath = directoryPath,
-        _codecResolver = DatasetCodecResolver.withGraphCodecFallback(rdfCore),
-        // TODO: auf trig umstellen sobald implementiert?
+        _codecResolver =
+            ((contentType) => rdfCore.codec(contentType: contentType)),
         contentType = contentType,
         _resourceLocator =
             LocalResourceLocator(iriTermFactory: IriTerm.validated);
@@ -192,7 +192,7 @@ class DirSyncStorage extends RemoteSyncStorage {
     // Check if file exists
     if (!await file.exists()) {
       _log.fine('File not found: $filePath');
-      return RemoteDownloadResult(dataset: null, etag: null);
+      return RemoteDownloadResult(graph: null, etag: null);
     }
 
     // Generate current ETag
@@ -207,12 +207,12 @@ class DirSyncStorage extends RemoteSyncStorage {
     // Read and parse file
     try {
       final content = await file.readAsString();
-      final codec = _codecResolver.datasetCodec(contentType);
+      final codec = _codecResolver(contentType);
       final dataset = codec.decode(content);
 
       _log.fine('Downloaded: $filePath, etag: $currentETag');
       return RemoteDownloadResult(
-        dataset: dataset,
+        graph: dataset,
         etag: currentETag,
       );
     } catch (e, stackTrace) {
@@ -224,7 +224,7 @@ class DirSyncStorage extends RemoteSyncStorage {
   @override
   Future<RemoteUploadResult> upload(
     IriTerm documentIri,
-    RdfDataset dataset, {
+    RdfGraph graph, {
     String? ifMatch,
   }) async {
     final filePath = _iriToFilePath(documentIri);
@@ -258,8 +258,8 @@ class DirSyncStorage extends RemoteSyncStorage {
 
     // Write file
     try {
-      final codec = _codecResolver.datasetCodec(contentType);
-      final content = codec.encode(dataset);
+      final codec = _codecResolver(contentType);
+      final content = codec.encode(graph);
       await file.writeAsString(content);
 
       // Generate new ETag

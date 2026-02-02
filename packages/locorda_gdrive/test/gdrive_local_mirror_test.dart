@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_core/rdf.dart';
 import 'package:locorda_gdrive/src/gdrive_backend.dart';
 import 'package:locorda_gdrive/src/gdrive_type_index_manager.dart';
 import 'package:locorda_gdrive/src/shared/gdrive_config.dart';
@@ -27,7 +26,7 @@ class FakeGDriveClient implements GDriveApiClient {
   FakeGDriveClient(this.codecResolver);
 
   @override
-  final DatasetCodecResolver codecResolver;
+  final RdfCodec<RdfGraph> Function(String) codecResolver;
 
   final Map<String, _FakeRemoteFile> filesById = {};
   final List<GDriveListedEntry> listedEntries = [];
@@ -91,14 +90,14 @@ class FakeGDriveClient implements GDriveApiClient {
   @override
   Future<RemoteUploadResult> upload(
     String fileId,
-    RdfDataset updatedDataset, {
+    RdfGraph updatedGraph, {
     required String ifMatch,
   }) {
     throw UnimplementedError();
   }
 
   @override
-  Future<({RdfDataset? dataset, String? etag, bool notModified})> download(
+  Future<({RdfGraph? graph, String? etag, bool notModified})> download(
     String fileId, {
     String? ifNoneMatch,
   }) {
@@ -127,7 +126,7 @@ class FakeGDriveClient implements GDriveApiClient {
   @override
   Future<({String fileId, String etag})> createFile(
     String filename,
-    RdfDataset dataset, {
+    RdfGraph graph, {
     required String folderId,
     bool fileNameMayBeRelativePath = false,
     String spaces = 'drive',
@@ -141,8 +140,8 @@ void main() {
       () async {
     final rdfCore =
         RdfCore.withStandardCodecs(iriTermFactory: IriTerm.validated);
-    final client =
-        FakeGDriveClient(DatasetCodecResolver.withGraphCodecFallback(rdfCore));
+    final client = FakeGDriveClient(
+        (contentType) => rdfCore.codec(contentType: contentType));
 
     final typeIri = IriTerm.validated('https://example.com/Note');
     final locator = LocalResourceLocator(iriTermFactory: IriTerm.validated);
@@ -196,7 +195,7 @@ void main() {
     await mirror.initialize();
 
     final download = await mirror.download(docIri);
-    expect(download.dataset, isNotNull);
+    expect(download.graph, isNotNull);
     expect(download.etag, md5Checksum);
 
     final mirrorIndex = File(
@@ -209,8 +208,8 @@ void main() {
       () async {
     final rdfCore =
         RdfCore.withStandardCodecs(iriTermFactory: IriTerm.validated);
-    final client =
-        FakeGDriveClient(DatasetCodecResolver.withGraphCodecFallback(rdfCore));
+    final client = FakeGDriveClient(
+        (contentType) => rdfCore.codec(contentType: contentType));
 
     final typeIri = IriTerm.validated('https://example.com/Note');
     final locator = LocalResourceLocator(iriTermFactory: IriTerm.validated);
@@ -260,13 +259,13 @@ void main() {
 
     await mirror.initialize();
 
-    final updatedGraph = RdfDataset.fromDefaultGraph(RdfGraph(triples: {
+    final updatedGraph = RdfGraph(triples: {
       Triple(
         docIri,
         IriTerm.validated('https://example.com/predicate'),
         LiteralTerm.string('updated'),
       ),
-    }));
+    });
 
     final uploadResult =
         await mirror.upload(docIri, updatedGraph, ifMatch: md5Checksum);

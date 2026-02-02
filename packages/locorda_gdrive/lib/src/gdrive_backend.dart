@@ -7,7 +7,6 @@ import 'package:crypto/crypto.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:http/http.dart' as http;
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_core/rdf.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
@@ -22,7 +21,7 @@ final _mirrorLog = Logger('GDriveLocalMirror');
 
 /// Minimal client abstraction to enable testable and swappable GDrive backends.
 abstract interface class GDriveApiClient {
-  DatasetCodecResolver get codecResolver;
+  RdfCodec<RdfGraph> Function(String) get codecResolver;
 
   Future<String> getOrCreateFolder({
     required String folderName,
@@ -32,7 +31,7 @@ abstract interface class GDriveApiClient {
 
   Future<({String fileId, String etag})> createFile(
     String filename,
-    RdfDataset dataset, {
+    RdfGraph graph, {
     required String folderId,
     bool fileNameMayBeRelativePath = false,
     String spaces = 'drive',
@@ -53,7 +52,7 @@ abstract interface class GDriveApiClient {
     String spaces = 'drive',
   });
 
-  Future<({RdfDataset? dataset, String? etag, bool notModified})> download(
+  Future<({RdfGraph? graph, String? etag, bool notModified})> download(
     String fileId, {
     String? ifNoneMatch,
   });
@@ -62,7 +61,7 @@ abstract interface class GDriveApiClient {
 
   Future<RemoteUploadResult> upload(
     String fileId,
-    RdfDataset updatedDataset, {
+    RdfGraph updatedGraph, {
     required String ifMatch,
   });
 
@@ -103,7 +102,7 @@ final class GDriveListedEntry {
 /// Provides low-level Google Drive operations with OAuth2 authentication,
 /// ETag-based concurrency control, and automatic token refresh on 401 errors.
 class GDriveClient implements GDriveApiClient {
-  final DatasetCodecResolver _codecResolver;
+  final RdfCodec<RdfGraph> Function(String) _codecResolver;
   final drive.DriveApi _driveApi;
   final String _contentType;
 
@@ -111,7 +110,8 @@ class GDriveClient implements GDriveApiClient {
     required RdfCore rdfCore,
     required drive.DriveApi driveApi,
     required String contentType,
-  })  : _codecResolver = DatasetCodecResolver.withGraphCodecFallback(rdfCore),
+  })  : _codecResolver =
+            ((contentType) => rdfCore.codec(contentType: contentType)),
         _driveApi = driveApi,
         _contentType = contentType;
 
@@ -130,7 +130,7 @@ class GDriveClient implements GDriveApiClient {
   }
 
   @override
-  DatasetCodecResolver get codecResolver => _codecResolver;
+  RdfCodec<RdfGraph> Function(String) get codecResolver => _codecResolver;
 
   /// Get or create a folder in Google Drive.
   ///
@@ -215,7 +215,7 @@ class GDriveClient implements GDriveApiClient {
 
   @override
   Future<({String fileId, String etag})> createFile(
-      String filename, RdfDataset dataset,
+      String filename, RdfGraph graph,
       {required String folderId,
       bool fileNameMayBeRelativePath = false,
       String spaces = 'drive'}) async {
@@ -236,8 +236,8 @@ class GDriveClient implements GDriveApiClient {
       _clientLog.fine('Creating file "$actualFileName" in folder=$parentId');
 
       // 2. Serialize RDF graph to Turtle format
-      final codec = _codecResolver.datasetCodec(_contentType);
-      final content = codec.encode(dataset);
+      final codec = _codecResolver(_contentType);
+      final content = codec.encode(graph);
       final bytes = utf8.encode(content);
 
       // 3. Create file metadata
@@ -407,7 +407,7 @@ class GDriveClient implements GDriveApiClient {
   }
 
   @override
-  Future<({RdfDataset? dataset, String? etag, bool notModified})> download(
+  Future<({RdfGraph? graph, String? etag, bool notModified})> download(
       String fileId,
       {String? ifNoneMatch}) async {
     _clientLog.fine('Downloading file $fileId');
@@ -424,7 +424,7 @@ class GDriveClient implements GDriveApiClient {
       // 2. Check if modified (ETag comparison)
       if (ifNoneMatch != null && currentEtag == ifNoneMatch) {
         _clientLog.fine('File not modified (ETag match): $fileId');
-        return (dataset: null, etag: ifNoneMatch, notModified: true);
+        return (graph: null, etag: ifNoneMatch, notModified: true);
       }
 
       // 3. Download file content
@@ -439,11 +439,11 @@ class GDriveClient implements GDriveApiClient {
         completer.addAll(chunk);
       }
       final content = utf8.decode(completer);
-      final codec = _codecResolver.datasetCodec(_contentType);
-      final dataset = codec.decode(content);
+      final codec = _codecResolver(_contentType);
+      final graph = codec.decode(content);
 
       _clientLog.fine('Downloaded file: $fileId (ETag: $currentEtag)');
-      return (dataset: dataset, etag: currentEtag, notModified: false);
+      return (graph: graph, etag: currentEtag, notModified: false);
     } on drive.DetailedApiRequestError catch (e, stackTrace) {
       // Handle API-specific errors
       handleGDriveAuthError(e);
@@ -451,7 +451,7 @@ class GDriveClient implements GDriveApiClient {
       if (e.status == 404) {
         // File not found - return null (same as Solid backend)
         _clientLog.fine('File not found: $fileId');
-        return (dataset: null, etag: null, notModified: false);
+        return (graph: null, etag: null, notModified: false);
       }
 
       _clientLog.severe('API error downloading file $fileId', e, stackTrace);
@@ -490,7 +490,7 @@ class GDriveClient implements GDriveApiClient {
   }
 
   @override
-  Future<RemoteUploadResult> upload(String fileId, RdfDataset updatedDataset,
+  Future<RemoteUploadResult> upload(String fileId, RdfGraph updatedGraph,
       {required String ifMatch}) async {
     _clientLog.fine('Uploading file $fileId');
 
@@ -513,8 +513,8 @@ class GDriveClient implements GDriveApiClient {
       // 3. Serialize RDF graph to Turtle format
       // FIXME: should we extract the original content type from the file metadata?
       // Or should we always use the client's default content type and set it in drive.File() metadata?
-      final codec = _codecResolver.datasetCodec(_contentType);
-      final content = codec.encode(updatedDataset);
+      final codec = _codecResolver(_contentType);
+      final content = codec.encode(updatedGraph);
       final bytes = utf8.encode(content);
 
       // 4. Upload updated content
@@ -884,14 +884,12 @@ class GDriveLocalMirror {
     final relativePath = _relativePathForDocument(documentIri);
     final entry = _index.entries[relativePath];
     if (entry == null) {
-      return RemoteDownloadResult(
-          dataset: null, etag: null, notModified: false);
+      return RemoteDownloadResult(graph: null, etag: null, notModified: false);
     }
 
     final file = File(_localFilePath(relativePath));
     if (!await file.exists()) {
-      return RemoteDownloadResult(
-          dataset: null, etag: null, notModified: false);
+      return RemoteDownloadResult(graph: null, etag: null, notModified: false);
     }
 
     final currentEtag = entry.localMd5 ?? await _computeFileMd5(file);
@@ -900,12 +898,12 @@ class GDriveLocalMirror {
     }
 
     final content = await file.readAsString();
-    final codec = _client.codecResolver.datasetCodec(_contentType);
-    final dataset = codec.decode(content);
-    return RemoteDownloadResult(dataset: dataset, etag: currentEtag);
+    final codec = _client.codecResolver(_contentType);
+    final graph = codec.decode(content);
+    return RemoteDownloadResult(graph: graph, etag: currentEtag);
   }
 
-  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfDataset dataset,
+  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfGraph graph,
       {String? ifMatch}) async {
     final relativePath = _relativePathForDocument(documentIri);
     final entry = _index.entries[relativePath];
@@ -923,8 +921,8 @@ class GDriveLocalMirror {
         return RemoteUploadResult.conflict();
       }
     }
-    final codec = _client.codecResolver.datasetCodec(_contentType);
-    final content = codec.encode(dataset);
+    final codec = _client.codecResolver(_contentType);
+    final content = codec.encode(graph);
     final bytes = utf8.encode(content);
     final newMd5 = _computeMd5(bytes);
 
@@ -1394,7 +1392,7 @@ class GDriveSyncStorage extends RemoteSyncStorage {
         spaces: _spaces);
     if (fileId == null) {
       return RemoteDownloadResult(
-        dataset: null,
+        graph: null,
         etag: null,
         notModified: false,
       );
@@ -1403,25 +1401,25 @@ class GDriveSyncStorage extends RemoteSyncStorage {
     if (result.notModified) {
       return RemoteDownloadResult.notModified(etag: result.etag);
     }
-    if (result.dataset == null) {
+    if (result.graph == null) {
       return RemoteDownloadResult(
-        dataset: null,
+        graph: null,
         etag: result.etag,
         notModified: false,
       );
     }
     return RemoteDownloadResult(
-      dataset: result.dataset!,
+      graph: result.graph!,
       etag: result.etag,
       notModified: false,
     );
   }
 
   @override
-  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfDataset dataset,
+  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfGraph graph,
       {String? ifMatch}) async {
     if (_localMirror != null) {
-      return _localMirror.upload(documentIri, dataset, ifMatch: ifMatch);
+      return _localMirror.upload(documentIri, graph, ifMatch: ifMatch);
     }
     final docIri = _resourceLocator.fromIri(documentIri);
     final folderId = _typeIndexMappings.getFolderId(docIri.typeIri);
@@ -1434,12 +1432,12 @@ class GDriveSyncStorage extends RemoteSyncStorage {
 
     if (fileId == null) {
       // Create new file
-      final created = await _client.createFile(filePath, dataset,
+      final created = await _client.createFile(filePath, graph,
           folderId: folderId, fileNameMayBeRelativePath: true, spaces: _spaces);
       return SuccessUploadResult(created.etag);
     } else {
       // Update existing file
-      return await _client.upload(fileId, dataset, ifMatch: ifMatch!);
+      return await _client.upload(fileId, graph, ifMatch: ifMatch!);
     }
   }
 
