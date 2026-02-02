@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/retry.dart';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_core/rdf.dart';
 import 'solid_profile_parser.dart';
 import 'package:logging/logging.dart';
 
@@ -26,9 +27,9 @@ final _log = Logger('SolidRemoteStorage');
 /// - 401 Unauthorized (auth issues)
 /// - 404 Not Found
 /// - 409 Conflict (optimistic locking)
-http.Client _createRetryClient() {
+http.Client _createRetryClient(http.Client inner) {
   return RetryClient(
-    http.Client(),
+    inner,
     retries: 3,
     when: (response) {
       // Retry on 503 Service Unavailable or 408 Request Timeout
@@ -59,22 +60,23 @@ class SolidBackend implements Backend {
 
   SolidBackend({
     required SolidAuthProvider auth,
-    IriTermFactory? iriTermFactory,
-    http.Client? httpClient,
-    RdfCore? rdfCore,
+    required IriTermFactory iriTermFactory,
+    required http.Client httpClient,
+    required RdfCore rdfCore,
+    required String contentType,
   })  : _authProvider = auth,
-        _iriTermFactory = iriTermFactory ?? IriTerm.validated,
+        _iriTermFactory = iriTermFactory,
         _solidClient = SolidClient(
-          client: httpClient ?? _createRetryClient(),
+          client: _createRetryClient(httpClient),
           authProvider: auth,
-          rdfCore: rdfCore ??
-              RdfCore.withStandardCodecs(
-                  iriTermFactory: iriTermFactory ?? IriTerm.validated),
+          rdfCore: rdfCore,
+          contentType: contentType,
         ) {
     auth.isAuthenticatedNotifier.addListener(_authStateChanged);
     // initialize based on current auth state
     _authStateChanged();
   }
+
   void _authStateChanged() {
     _log.info('Authentication state changed: '
         'isAuthenticated=${_authProvider.isAuthenticatedNotifier.isAuthenticated}, webId=${_authProvider.currentWebId}');
@@ -147,15 +149,20 @@ class NotFoundException implements SolidClientException {
 class SolidClient {
   final http.Client _client;
   final SolidAuthProvider _authProvider;
-  final RdfCore _rdfCore;
+
+  final String _contentType;
+
+  final DatasetCodecResolver _codecResolver;
 
   SolidClient(
       {required http.Client client,
       required SolidAuthProvider authProvider,
-      required RdfCore rdfCore})
+      required RdfCore rdfCore,
+      required String contentType})
       : _client = client,
         _authProvider = authProvider,
-        _rdfCore = rdfCore;
+        _codecResolver = DatasetCodecResolver.withGraphCodecFallback(rdfCore),
+        _contentType = contentType;
 
   Future<RemoteDownloadResult> download(String url,
       {bool requiresAuth = true, String? ifNoneMatch}) async {
@@ -172,7 +179,8 @@ class SolidClient {
     final response = await _client.get(
       Uri.parse(url),
       headers: {
-        'Accept': 'text/turtle, application/ld+json;q=0.9, */*;q=0.8',
+        'Accept':
+            _contentType, // 'text/turtle, application/ld+json;q=0.9, */*;q=0.8',
         if (dpop != null) 'Authorization': 'DPoP ${dpop.accessToken}',
         if (dpop != null) 'DPoP': dpop.dPoP,
         if (ifNoneMatch != null) 'If-None-Match': ifNoneMatch,
@@ -191,7 +199,7 @@ class SolidClient {
 
     if (response.statusCode == 404) {
       //throw NotFoundException('Resource not found at $url');
-      return RemoteDownloadResult(graph: null, etag: null);
+      return RemoteDownloadResult(dataset: null, etag: null);
     }
     if (response.statusCode == 304) {
       // Not modified
@@ -209,13 +217,16 @@ class SolidClient {
 
     // Extract MIME type from content-type header (remove charset and other parameters)
     final mimeType = contentType.split(';').first.trim();
-    final graph =
-        _rdfCore.decode(data, contentType: mimeType, documentUrl: url);
+    final codec = _getCachedCodec(mimeType);
+    final dataset = codec.decode(data, documentUrl: url);
     return RemoteDownloadResult(
-      graph: graph,
+      dataset: dataset,
       etag: response.headers['etag'],
     );
   }
+
+  RdfCodec<RdfDataset> _getCachedCodec(String mimeType) =>
+      _codecResolver.datasetCodec(mimeType);
 
   // Important: '=' characters in URLs must be percent-encoded here
   // because they will be automatically percent-encoded when the url is sent
@@ -248,9 +259,10 @@ class SolidClient {
     return null;
   }
 
-  Future<RemoteUploadResult> upload(String url, RdfGraph graph,
+  Future<RemoteUploadResult> upload(String url, RdfDataset dataset,
       {bool requiresAuth = true, String? ifMatch}) async {
-    final turtle = _rdfCore.encode(graph, contentType: 'text/turtle');
+    final codec = _getCachedCodec(_contentType); // ensure codec is cached
+    final turtle = codec.encode(dataset);
     final dpop = requiresAuth
         ? await _authProvider.getDpopToken(_prepareUrlForDpopToken(url), 'PUT')
         : null;
@@ -395,23 +407,26 @@ class SolidRemoteStorage implements RemoteStorage {
   final SolidClient _client;
   final IriTermFactory _iriTermFactory;
   final SolidProfileParser _profileParser = SolidProfileParser();
+
   late final Future<String> _podUrlFuture;
 
-  SolidRemoteStorage(
-      {required this.webId,
-      required SolidClient client,
-      required IriTermFactory iriTermFactory})
-      : _client = client,
+  SolidRemoteStorage({
+    required this.webId,
+    required SolidClient client,
+    required IriTermFactory iriTermFactory,
+  })  : _client = client,
         _iriTermFactory = iriTermFactory {
     _podUrlFuture = _resolvePodUrl(webId);
   }
 
   Future<String> _resolvePodUrl(String webId) async {
     final profile = await _client.download(webId, requiresAuth: true);
-    if (profile.graph == null) {
+    if (profile.dataset == null) {
       throw StateError('Profile document is empty for WebID: $webId');
     }
-    final podUrl = await _profileParser.parseStorageUrl(webId, profile.graph!);
+
+    final podUrl = await _profileParser.parseStorageUrl(
+        webId, profile.dataset!.defaultGraph);
     if (podUrl == null) {
       throw StateError('Could not resolve Pod URL for WebID: $webId');
     }
@@ -463,10 +478,11 @@ class SolidSyncStorage extends RemoteSyncStorage {
     final podDocumentIri = _iriTranslator.internalToExternal(documentIri);
     final result = await _client.download(podDocumentIri.value,
         requiresAuth: true, ifNoneMatch: ifNoneMatch);
-    if (result.graph != null) {
-      final translated = _iriTranslator.translateGraphToInternal(result.graph!);
+    if (result.dataset != null) {
+      final translated =
+          _iriTranslator.translateDatasetToInternal(result.dataset!);
       return RemoteDownloadResult(
-        graph: translated,
+        dataset: translated,
         etag: result.etag,
         notModified: result.notModified,
       );
@@ -475,11 +491,12 @@ class SolidSyncStorage extends RemoteSyncStorage {
   }
 
   @override
-  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfGraph graph,
+  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfDataset dataset,
       {String? ifMatch}) async {
     final podDocumentIri = _iriTranslator.internalToExternal(documentIri);
-    final translatedGraph = _iriTranslator.translateGraphToExternal(graph);
-    return await _client.upload(podDocumentIri.value, translatedGraph,
+    final translatedDataset =
+        _iriTranslator.translateDatasetToExternal(dataset);
+    return await _client.upload(podDocumentIri.value, translatedDataset,
         requiresAuth: true, ifMatch: ifMatch);
   }
 

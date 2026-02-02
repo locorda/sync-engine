@@ -485,7 +485,11 @@ void _dumpSharedBackend(InMemoryBackend sharedBackend, String when) {
       print(('-' * 10) +
           ' ${IriTerm(entry.key).debug} - ${entry.value.etag} ' +
           ('-' * 10));
-      print(turtle.encode(entry.value.graph));
+      if (entry.value.dataset.namedGraphs.isNotEmpty) {
+        print('⚠️  Named graphs present (not shown): '
+            '${entry.value.dataset.graphNames.map((k) => k.debug).join(', ')}');
+      }
+      print(turtle.encode(entry.value.dataset.defaultGraph));
       print('-' * 80 + '\n');
     }
   }

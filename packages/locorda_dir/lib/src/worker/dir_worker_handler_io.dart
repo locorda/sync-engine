@@ -4,6 +4,7 @@ library;
 import 'dart:io';
 
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_worker/worker.dart';
 
 import '../backend/dir_backend.dart';
@@ -27,8 +28,18 @@ class DirWorkerHandler implements RemoteWorkerHandler {
       Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
   final String appName;
+  final RdfCore _rdfCore;
+  final String _contentType;
 
-  DirWorkerHandler({this.appName = 'locorda'});
+  DirWorkerHandler(
+      {this.appName = 'locorda',
+      String? contentType,
+      RdfCore? rdfCore,
+      IriTermFactory? iriTermFactory})
+      : _rdfCore = rdfCore ??
+            RdfCore.withStandardCodecs(
+                iriTermFactory: iriTermFactory ?? IriTerm.validated),
+        _contentType = contentType ?? turtle.primaryMimeType;
 
   @override
   String get id => 'local_dir';
@@ -40,6 +51,6 @@ class DirWorkerHandler implements RemoteWorkerHandler {
     // Backend queries syncDirectoryPath from auth when it becomes enabled
     final auth = DirAuthConnectorWorker.receiver(context);
 
-    return DirBackend(auth: auth);
+    return DirBackend(auth: auth, contentType: _contentType, rdfCore: _rdfCore);
   }
 }

@@ -1,8 +1,8 @@
 import 'package:locorda_core/src/config/sync_engine_config.dart';
 import 'package:locorda_core/src/mapping/resource_locator.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:logging/logging.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:logging/logging.dart';
 
 final _log = Logger('IriTranslator');
 
@@ -40,11 +40,13 @@ abstract interface class IriTranslator {
   ///
   /// Converts all subject, predicate, and object IRIs that match configured templates
   RdfGraph translateGraphToInternal(RdfGraph externalGraph);
+  RdfDataset translateDatasetToInternal(RdfDataset externalDataset);
 
   /// Translates all IRIs in a graph from internal to external format
   ///
   /// Converts all subject, predicate, and object IRIs that have templates configured
   RdfGraph translateGraphToExternal(RdfGraph internalGraph);
+  RdfDataset translateDatasetToExternal(RdfDataset internalDataset);
 
   static IriTranslator forConfig(
       {required ResourceLocator resourceLocator,
@@ -86,6 +88,14 @@ class NoOpIriTranslator implements IriTranslator {
 
   @override
   RdfGraph translateGraphToInternal(RdfGraph externalGraph) => externalGraph;
+
+  @override
+  RdfDataset translateDatasetToExternal(RdfDataset internalDataset) =>
+      internalDataset;
+
+  @override
+  RdfDataset translateDatasetToInternal(RdfDataset externalDataset) =>
+      externalDataset;
 }
 
 class BaseIriTranslator implements IriTranslator {
@@ -155,6 +165,37 @@ class BaseIriTranslator implements IriTranslator {
       return iri;
     }
   }
+
+  RdfDataset _convertDataset(
+      RdfDataset dataset,
+      RdfGraph Function(RdfGraph) graphConverter,
+      IriTerm Function(IriTerm) iriConverter) {
+    if (!canTranslate) {
+      return dataset;
+    }
+    final defaultGraph = graphConverter(dataset.defaultGraph);
+    final namedGraphs = <RdfGraphName, RdfGraph>{};
+    for (final namedGraph in dataset.namedGraphs) {
+      namedGraphs[switch (namedGraph.name) {
+        IriTerm iri => iriConverter(iri),
+        BlankNodeTerm b => b
+      }] = graphConverter(namedGraph.graph);
+    }
+    return RdfDataset(
+      defaultGraph: defaultGraph,
+      namedGraphs: namedGraphs,
+    );
+  }
+
+  @override
+  RdfDataset translateDatasetToExternal(RdfDataset internalDataset) =>
+      _convertDataset(
+          internalDataset, translateGraphToExternal, internalToExternal);
+
+  @override
+  RdfDataset translateDatasetToInternal(RdfDataset externalDataset) =>
+      _convertDataset(
+          externalDataset, translateGraphToInternal, externalToInternal);
 
   /// Translates all IRIs in a graph from external to internal format
   ///

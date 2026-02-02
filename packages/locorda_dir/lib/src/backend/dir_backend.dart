@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_core/rdf.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
@@ -27,10 +28,16 @@ class DirBackend implements Backend {
 
   final DirAuthProvider _auth;
   List<RemoteStorage> _remotes = [];
+  final RdfCore _rdfCore;
+  final String _contentType;
 
   DirBackend({
     required DirAuthProvider auth,
-  }) : _auth = auth {
+    required RdfCore rdfCore,
+    required String contentType,
+  })  : _auth = auth,
+        _rdfCore = rdfCore,
+        _contentType = contentType {
     _auth.isAuthenticatedNotifier.addListener(_authStateChanged);
     _authStateChanged();
   }
@@ -55,6 +62,8 @@ class DirBackend implements Backend {
       _remotes = [
         DirRemoteStorage(
           directoryPath: syncDirectoryPath,
+          rdfCore: _rdfCore,
+          contentType: _contentType,
         )
       ];
     } else {
@@ -76,10 +85,16 @@ class DirBackend implements Backend {
 class DirRemoteStorage implements RemoteStorage {
   final String _directoryPath;
   final RemoteId _remoteId;
+  final String _contentType;
+  final RdfCore _rdfCore;
 
   DirRemoteStorage({
     required String directoryPath,
+    required String contentType,
+    required RdfCore rdfCore,
   })  : _directoryPath = directoryPath,
+        _contentType = contentType,
+        _rdfCore = rdfCore,
         _remoteId = RemoteId('local-dir', directoryPath);
 
   @override
@@ -109,20 +124,28 @@ class DirRemoteStorage implements RemoteStorage {
       _log.info('Created sync directory: $_directoryPath');
     }
 
-    return DirSyncStorage(directoryPath: _directoryPath);
+    return DirSyncStorage(
+        directoryPath: _directoryPath,
+        rdfCore: _rdfCore,
+        contentType: _contentType);
   }
 }
 
 /// Per-sync-session storage for directory backend.
 class DirSyncStorage extends RemoteSyncStorage {
   final String _directoryPath;
-  final RdfGraphCodec _codec;
+  final DatasetCodecResolver _codecResolver;
+  final String contentType;
   final ResourceLocator _resourceLocator;
 
   DirSyncStorage({
     required String directoryPath,
+    required RdfCore rdfCore,
+    required String contentType,
   })  : _directoryPath = directoryPath,
-        _codec = TurtleCodec(),
+        _codecResolver = DatasetCodecResolver.withGraphCodecFallback(rdfCore),
+        // TODO: auf trig umstellen sobald implementiert?
+        contentType = contentType,
         _resourceLocator =
             LocalResourceLocator(iriTermFactory: IriTerm.validated);
 
@@ -169,7 +192,7 @@ class DirSyncStorage extends RemoteSyncStorage {
     // Check if file exists
     if (!await file.exists()) {
       _log.fine('File not found: $filePath');
-      return RemoteDownloadResult(graph: null, etag: null);
+      return RemoteDownloadResult(dataset: null, etag: null);
     }
 
     // Generate current ETag
@@ -184,11 +207,12 @@ class DirSyncStorage extends RemoteSyncStorage {
     // Read and parse file
     try {
       final content = await file.readAsString();
-      final graph = _codec.decode(content);
+      final codec = _codecResolver.datasetCodec(contentType);
+      final dataset = codec.decode(content);
 
       _log.fine('Downloaded: $filePath, etag: $currentETag');
       return RemoteDownloadResult(
-        graph: graph,
+        dataset: dataset,
         etag: currentETag,
       );
     } catch (e, stackTrace) {
@@ -200,7 +224,7 @@ class DirSyncStorage extends RemoteSyncStorage {
   @override
   Future<RemoteUploadResult> upload(
     IriTerm documentIri,
-    RdfGraph graph, {
+    RdfDataset dataset, {
     String? ifMatch,
   }) async {
     final filePath = _iriToFilePath(documentIri);
@@ -234,7 +258,8 @@ class DirSyncStorage extends RemoteSyncStorage {
 
     // Write file
     try {
-      final content = _codec.encode(graph);
+      final codec = _codecResolver.datasetCodec(contentType);
+      final content = codec.encode(dataset);
       await file.writeAsString(content);
 
       // Generate new ETag

@@ -1,7 +1,9 @@
 /// Google Drive storage plugin - worker thread implementation.
 library;
 
+import 'package:http/http.dart' as http;
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_worker/worker.dart';
 
 import '../gdrive_backend.dart';
@@ -35,6 +37,23 @@ import 'gdrive_auth_connector_worker.dart';
 /// );
 /// ```
 class GDriveWorkerHandler implements RemoteWorkerHandler {
+  final IriTermFactory? _iriTermFactory;
+  final RdfCore _rdfCore;
+  final http.Client _httpClient;
+  final String _contentType;
+
+  GDriveWorkerHandler(
+      {IriTermFactory? iriTermFactory,
+      RdfCore? rdfCore,
+      http.Client? httpClient,
+      String? contentType})
+      : _iriTermFactory = iriTermFactory ?? IriTerm.validated,
+        _rdfCore = rdfCore ??
+            RdfCore.withStandardCodecs(
+                iriTermFactory: iriTermFactory ?? IriTerm.validated),
+        _httpClient = httpClient ?? http.Client(),
+        _contentType = contentType ?? turtle.primaryMimeType;
+
   @override
   String get id => 'gdrive';
 
@@ -47,6 +66,10 @@ class GDriveWorkerHandler implements RemoteWorkerHandler {
     return GDriveBackend(
       auth: GDriveAuthConnector.receiver(context),
       config: config,
+      iriTermFactory: _iriTermFactory,
+      rdfCore: _rdfCore,
+      httpClient: _httpClient,
+      contentType: _contentType,
     );
   }
 }

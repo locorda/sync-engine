@@ -2,6 +2,7 @@
 library;
 
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_worker/worker.dart';
 
 class _DisabledDirBackend implements Backend {
@@ -20,7 +21,11 @@ class DirWorkerHandler implements RemoteWorkerHandler {
 
   final String appName;
 
-  DirWorkerHandler({this.appName = 'locorda'});
+  DirWorkerHandler(
+      {this.appName = 'locorda',
+      String? contentType,
+      RdfCore? rdfCore,
+      IriTermFactory? iriTermFactory});
 
   @override
   String get id => 'local_dir';

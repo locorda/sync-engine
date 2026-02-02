@@ -3,18 +3,18 @@ import 'package:locorda_rdf_core/core.dart';
 
 /// Result of a remote download operation with ETag support.
 class RemoteDownloadResult {
-  final RdfGraph? graph;
+  final RdfDataset? dataset;
   final String? etag;
   final bool notModified; // true if 304 Not Modified
 
   RemoteDownloadResult({
-    required this.graph,
+    required this.dataset,
     required this.etag,
     this.notModified = false,
   });
 
   RemoteDownloadResult.notModified({required this.etag})
-      : graph = null,
+      : dataset = null,
         notModified = true;
 }
 
@@ -78,17 +78,21 @@ abstract class RemoteSyncStorage {
   /// The implementation may transform the internal document IRI and RDF graph
   /// to backend-specific format before uploading.
   ///
+  /// FIXME: Note that the dataset might either be just the default graph
+  /// or a full dataset with named graphs, depending on whether we run in
+  /// file-per-document mode or shard mode. This needs to be documented better.
+  ///
   /// **Conditional Upload Semantics:**
   /// - `ifMatch: null` → Use "If-None-Match: *" (create only, fail if exists)
   /// - `ifMatch: "<etag>"` → Use "If-Match: <etag>" (update only, fail if changed)
   ///
   /// Parameters:
   /// - [documentIri]: Internal Locorda document IRI (tag:locorda.org,2025:l:...)
-  /// - [graph]: RDF graph using internal IRIs
+  /// - [dataset]: RDF dataset using internal IRIs
   /// - [ifMatch]: ETag for conditional upload, or null for create-only semantics
   ///
   /// Returns upload result with new ETag, or conflict=true on 409/412.
-  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfGraph graph,
+  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfDataset dataset,
       {String? ifMatch});
 
   /// Download a document from remote storage.
@@ -269,13 +273,14 @@ class AuthAwareSyncStorage implements RemoteSyncStorage {
   @override
   Future<RemoteUploadResult> upload(
     IriTerm documentIri,
-    RdfGraph graph, {
+    RdfDataset dataset, {
     String? ifMatch,
   }) =>
       _retryOnAuthFailure(
           config: _config,
           onAuthFailure: _onAuthFailure,
-          operation: () => _inner.upload(documentIri, graph, ifMatch: ifMatch));
+          operation: () =>
+              _inner.upload(documentIri, dataset, ifMatch: ifMatch));
 
   @override
   Future<RemoteDownloadResult> download(

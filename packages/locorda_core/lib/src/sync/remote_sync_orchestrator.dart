@@ -336,8 +336,12 @@ class RemoteSyncOrchestrator {
       documentToUpload = loadedLocalDocument.document;
       mergeContract = await _mergeContractLoader.load(_mergeContractLoader
           .extractGovernanceIris(loadedLocalDocument.document, documentIri));
-    } else if (downloadResult.graph != null) {
-      final remoteGraph = downloadResult.graph!;
+    } else if (downloadResult.dataset != null) {
+      if (downloadResult.dataset!.namedGraphs.isNotEmpty) {
+        _log.warning(
+            '$debugName download returned named graphs, which are ignored. Only default graph is used.');
+      }
+      final remoteGraph = downloadResult.dataset!.defaultGraph;
       // Case: 200 OK - Remote changed
       _log.fine('$debugName changed remotely');
       // Theoretically, we could skip merge if local unchanged since last sync
@@ -391,7 +395,7 @@ class RemoteSyncOrchestrator {
     return (
       mergedDocument: documentToUpload,
       originalLocalDocument: loadedLocalDocument?.document,
-      originalRemoteDocument: downloadResult.graph,
+      originalRemoteDocument: downloadResult.dataset?.defaultGraph,
       mergeContract: mergeContract,
       etag: downloadResult.etag,
       localUpdatedAt: loadedLocalDocument?.metadata.updatedAt
@@ -502,7 +506,7 @@ class RemoteSyncOrchestrator {
   }) async {
     final uploadResult = await _remoteSyncStorage.upload(
       documentIri,
-      documentToUpload,
+      RdfDataset.fromDefaultGraph(documentToUpload),
       ifMatch: etag,
     );
 
