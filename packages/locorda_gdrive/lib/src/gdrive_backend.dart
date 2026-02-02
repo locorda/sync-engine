@@ -777,6 +777,9 @@ final class _DriveNode {
 /// The googleapis package requires an authenticated http.Client.
 /// This implementation adds the OAuth2 access token to all requests.
 /// Token refresh logic is handled at the method level (download/upload).
+///
+/// Enables gzip compression for all requests to reduce bandwidth usage.
+/// The http package automatically decompresses gzip responses.
 class _GoogleAuthClient extends http.BaseClient {
   final GDriveAuthProvider _authProvider;
   final http.Client _inner = http.Client();
@@ -787,6 +790,7 @@ class _GoogleAuthClient extends http.BaseClient {
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final accessToken = await _authProvider.getAccessToken();
     request.headers['Authorization'] = 'Bearer $accessToken';
+    request.headers['Accept-Encoding'] = 'gzip';
     return _inner.send(request);
   }
 
