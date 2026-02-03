@@ -117,6 +117,9 @@
 - [x] Remove extraOidcScopes from notes_list_screen (and client profile jsonld) again and verify it still works correctly
 - [x] Example App Responsiveness: offload syncing from ui thread to web worker on web
 - [x] Implement basic GDrive Backend
+- [ ] GDrive Backend: store resource data in shard files (rdf dataset)
+- [ ] Remote Sync: alow backends to declare whether or not they support partial fetch mode - for gdrive with dataset shard files for example, partial fetch mode makes no sense at all.
+- [ ] Remote Sync: move dataset shard file concept into the remote sync, collecting data fully from local db since the backend disabled partial fetch and we can thus expect data to be fully available (ATTENTION: this could cause bugs in combination with e.g. solid backends - we *have* to know in this case whether or not the data is potentially partial and we *have* to force completeness before syncing - this potential bug of course already exists in the gdrive-only solution we have currently). Actually, this means that controlling dataset shards from the framework is an essential must-have
 - [ ] GDrive Backend: proper e-tag support (with custom http.Client wrapper)
 - [ ] GDrive Backend: is there a way to get the token expiry time so we can make use of it e.g. in UpdateAuthMessage?
 - [ ] GDrive Backend: we have to search by name all the time - this seems very inefficient, especially for group indices and shards where the id is a relative path. Is there some better solution? Can/Should we store the path/id relationships in our DB?
