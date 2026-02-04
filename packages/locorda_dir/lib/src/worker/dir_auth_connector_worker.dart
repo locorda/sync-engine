@@ -11,8 +11,9 @@ class DirAuthConnectorWorker {
   ///
   /// Call this in the worker thread to get an auth provider that receives
   /// updates from the main thread.
-  static WorkerDirAuthProvider receiver(WorkerHandlerContext context) {
-    final channel = context.createChannel('locorda_dir/dir_auth');
+  static WorkerDirAuthProvider receiver(
+      WorkerHandlerContext context, String id) {
+    final channel = context.createChannel('locorda_dir/$id/dir_auth');
     return WorkerDirAuthProvider(channel);
   }
 }

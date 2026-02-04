@@ -24,8 +24,9 @@ void main() {
       final channel = WorkerChannel((_) {});
       final receivedMessages = <Object?>[];
 
-      // Listen to incoming messages
-      final subscription = channel.messages.listen(receivedMessages.add);
+      // Listen to incoming messages and extract data
+      final subscription =
+          channel.messages.map((msg) => msg.data).listen(receivedMessages.add);
 
       // Simulate receiving messages from transport layer
       channel.deliver('test', 'message 1');
@@ -50,8 +51,10 @@ void main() {
       final listener2Messages = <Object?>[];
 
       // Multiple listeners should work (broadcast stream)
-      final sub1 = channel.messages.listen(listener1Messages.add);
-      final sub2 = channel.messages.listen(listener2Messages.add);
+      final sub1 =
+          channel.messages.map((msg) => msg.data).listen(listener1Messages.add);
+      final sub2 =
+          channel.messages.map((msg) => msg.data).listen(listener2Messages.add);
 
       channel.deliver('test', 'broadcast message');
       await Future.delayed(Duration.zero);
@@ -72,11 +75,13 @@ void main() {
       late final WorkerChannel channelA;
       late final WorkerChannel channelB;
 
-      channelA = WorkerChannel((msg) => channelB.deliver('test', msg));
-      channelB = WorkerChannel((msg) => channelA.deliver('test', msg));
+      channelA =
+          WorkerChannel((msg) => channelB.deliver(msg.channel, msg.data));
+      channelB =
+          WorkerChannel((msg) => channelA.deliver(msg.channel, msg.data));
 
-      channelA.messages.listen(messagesFromA.add);
-      channelB.messages.listen(messagesFromB.add);
+      channelA.messages.map((msg) => msg.data).listen(messagesFromA.add);
+      channelB.messages.map((msg) => msg.data).listen(messagesFromB.add);
 
       // A sends to B
       channelA.send('test', 'hello from A');
@@ -94,10 +99,10 @@ void main() {
       final receivedMessages = <Object?>[];
       bool streamDone = false;
 
-      final subscription = channel.messages.listen(
-        receivedMessages.add,
-        onDone: () => streamDone = true,
-      );
+      final subscription = channel.messages.map((msg) => msg.data).listen(
+            receivedMessages.add,
+            onDone: () => streamDone = true,
+          );
 
       channel.deliver('test', 'before close');
       await Future.delayed(Duration.zero);
@@ -142,10 +147,10 @@ void main() {
 
     test('multiple sends and delivers in sequence', () async {
       final sentMessages = <Object?>[];
-      final channel = WorkerChannel((msg) => sentMessages.add(msg));
+      final channel = WorkerChannel((msg) => sentMessages.add(msg.data));
       final receivedMessages = <Object?>[];
 
-      channel.messages.listen(receivedMessages.add);
+      channel.messages.map((msg) => msg.data).listen(receivedMessages.add);
 
       // Interleaved sends and delivers
       channel.send('test', 'send 1');

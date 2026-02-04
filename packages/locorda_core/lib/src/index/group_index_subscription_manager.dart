@@ -1,7 +1,7 @@
 /// Manages group index subscriptions and group key generation.
 library;
 
-import 'package:locorda_core/src/config/sync_engine_config.dart';
+import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_core/src/index/group_key_generator.dart';
 
@@ -24,17 +24,18 @@ class GroupIndexGraphSubscriptionException implements Exception {
 /// - Generation of group identifiers using GroupKeyGenerator
 /// - Validation that group key types are properly registered
 class GroupIndexGraphSubscriptionManager {
-  final SyncEngineConfig _config;
+  final ConfigService _configService;
 
   const GroupIndexGraphSubscriptionManager({
-    required SyncEngineConfig config,
-  }) : _config = config;
+    required ConfigService configService,
+  }) : _configService = configService;
 
   /// Returns the set of group identifiers generated from the group key.
   Future<Set<String>> getGroupIdentifiers(
       String indexName, RdfGraph groupKeyGraph) async {
     // Step 1: Find the GroupIndex configuration for indexName
-    final groupIndexConfig = _config.findGroupIndexConfig(indexName);
+    final groupIndexConfig =
+        _configService.currentConfig.findGroupIndexConfig(indexName);
     if (groupIndexConfig == null) {
       throw GroupIndexGraphSubscriptionException(
           'No GroupIndex found with indexName "$indexName". '

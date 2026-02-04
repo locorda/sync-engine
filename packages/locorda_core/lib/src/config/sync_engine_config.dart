@@ -32,6 +32,17 @@ class FullIndexData extends FullIndexConfigBase implements CrdtIndexData {
       {required super.localName, this.item, super.itemFetchPolicy})
       : super(item: item);
 
+  FullIndexData copyWith(
+      {String? localName,
+      IndexItemData? item,
+      ItemFetchPolicy? itemFetchPolicy}) {
+    return FullIndexData(
+      localName: localName ?? this.localName,
+      item: item ?? this.item,
+      itemFetchPolicy: itemFetchPolicy ?? this.itemFetchPolicy,
+    );
+  }
+
   factory FullIndexData.fromJson(Map<String, dynamic> json) {
     final localName = json['localName'] as String;
     final itemFetchPolicyStr = json['itemFetchPolicy'] as String?;
@@ -199,6 +210,21 @@ class ResourceConfigData extends ResourceConfigBase {
             : null,
         super(indices: indices);
 
+  ResourceConfigData copyWith({
+    IriTerm? typeIri,
+    Uri? crdtMapping,
+    List<CrdtIndexData>? indices,
+    String? documentIriTemplate,
+  }) {
+    return ResourceConfigData(
+      typeIri: typeIri ?? this.typeIri,
+      crdtMapping: crdtMapping ?? this.crdtMapping,
+      indices: indices ?? this.indices,
+      documentIriTemplate:
+          documentIriTemplate ?? this.documentIriTemplate?.template,
+    );
+  }
+
   CrdtIndexData getIndexByName(String localName) {
     return indices.firstWhere((i) => i.localName == localName,
         orElse: () =>
@@ -288,6 +314,16 @@ class SyncEngineConfig extends ConfigBase {
     required this.resources,
     super.autoSyncConfig = const AutoSyncConfig.disabled(),
   }) : super(resources: resources);
+
+  SyncEngineConfig copyWith({
+    List<ResourceConfigData>? resources,
+    AutoSyncConfig? autoSyncConfig,
+  }) {
+    return SyncEngineConfig(
+      resources: resources ?? this.resources,
+      autoSyncConfig: autoSyncConfig ?? this.autoSyncConfig,
+    );
+  }
 
   factory SyncEngineConfig.fromJson(Map<String, dynamic> json) {
     final resourcesJson = json['resources'] as List<dynamic>;

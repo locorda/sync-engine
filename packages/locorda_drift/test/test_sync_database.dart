@@ -3,8 +3,7 @@ library;
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-
-import '../lib/src/sync_database.dart';
+import 'package:locorda_drift/src/sync_database.dart';
 
 /// Test database class that extends SyncDatabase with in-memory support.
 ///

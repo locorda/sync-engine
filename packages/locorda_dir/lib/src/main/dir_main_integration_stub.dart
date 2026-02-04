@@ -14,6 +14,8 @@ class DirMainIntegration implements RemoteIntegration {
   static Future<DirMainIntegration> create({
     String appName = 'locorda',
     bool initiallyEnabled = false,
+    String id = 'local_dir',
+    String displayName = 'Local Directory',
   }) async {
     throw UnimplementedError(
         'Local directory integration is not supported on this platform.');

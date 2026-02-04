@@ -6,13 +6,39 @@ part of 'sync_database.dart';
 mixin _$SyncDocumentDaoMixin on DatabaseAccessor<SyncDatabase> {
   $SyncIrisTable get syncIris => attachedDatabase.syncIris;
   $SyncDocumentsTable get syncDocuments => attachedDatabase.syncDocuments;
+  SyncDocumentDaoManager get managers => SyncDocumentDaoManager(this);
 }
+
+class SyncDocumentDaoManager {
+  final _$SyncDocumentDaoMixin _db;
+  SyncDocumentDaoManager(this._db);
+  $$SyncIrisTableTableManager get syncIris =>
+      $$SyncIrisTableTableManager(_db.attachedDatabase, _db.syncIris);
+  $$SyncDocumentsTableTableManager get syncDocuments =>
+      $$SyncDocumentsTableTableManager(_db.attachedDatabase, _db.syncDocuments);
+}
+
 mixin _$SyncPropertyChangeDaoMixin on DatabaseAccessor<SyncDatabase> {
   $SyncIrisTable get syncIris => attachedDatabase.syncIris;
   $SyncDocumentsTable get syncDocuments => attachedDatabase.syncDocuments;
   $SyncPropertyChangesTable get syncPropertyChanges =>
       attachedDatabase.syncPropertyChanges;
+  SyncPropertyChangeDaoManager get managers =>
+      SyncPropertyChangeDaoManager(this);
 }
+
+class SyncPropertyChangeDaoManager {
+  final _$SyncPropertyChangeDaoMixin _db;
+  SyncPropertyChangeDaoManager(this._db);
+  $$SyncIrisTableTableManager get syncIris =>
+      $$SyncIrisTableTableManager(_db.attachedDatabase, _db.syncIris);
+  $$SyncDocumentsTableTableManager get syncDocuments =>
+      $$SyncDocumentsTableTableManager(_db.attachedDatabase, _db.syncDocuments);
+  $$SyncPropertyChangesTableTableManager get syncPropertyChanges =>
+      $$SyncPropertyChangesTableTableManager(
+          _db.attachedDatabase, _db.syncPropertyChanges);
+}
+
 mixin _$IndexDaoMixin on DatabaseAccessor<SyncDatabase> {
   $SyncIrisTable get syncIris => attachedDatabase.syncIris;
   $IndexEntriesTable get indexEntries => attachedDatabase.indexEntries;
@@ -20,11 +46,42 @@ mixin _$IndexDaoMixin on DatabaseAccessor<SyncDatabase> {
       attachedDatabase.groupIndexSubscriptions;
   $IndexIriIdSetVersionsTable get indexIriIdSetVersions =>
       attachedDatabase.indexIriIdSetVersions;
+  IndexDaoManager get managers => IndexDaoManager(this);
 }
+
+class IndexDaoManager {
+  final _$IndexDaoMixin _db;
+  IndexDaoManager(this._db);
+  $$SyncIrisTableTableManager get syncIris =>
+      $$SyncIrisTableTableManager(_db.attachedDatabase, _db.syncIris);
+  $$IndexEntriesTableTableManager get indexEntries =>
+      $$IndexEntriesTableTableManager(_db.attachedDatabase, _db.indexEntries);
+  $$GroupIndexSubscriptionsTableTableManager get groupIndexSubscriptions =>
+      $$GroupIndexSubscriptionsTableTableManager(
+          _db.attachedDatabase, _db.groupIndexSubscriptions);
+  $$IndexIriIdSetVersionsTableTableManager get indexIriIdSetVersions =>
+      $$IndexIriIdSetVersionsTableTableManager(
+          _db.attachedDatabase, _db.indexIriIdSetVersions);
+}
+
 mixin _$RemoteSyncStateDaoMixin on DatabaseAccessor<SyncDatabase> {
   $RemoteSettingsTable get remoteSettings => attachedDatabase.remoteSettings;
   $SyncIrisTable get syncIris => attachedDatabase.syncIris;
   $RemoteSyncStateTable get remoteSyncState => attachedDatabase.remoteSyncState;
+  RemoteSyncStateDaoManager get managers => RemoteSyncStateDaoManager(this);
+}
+
+class RemoteSyncStateDaoManager {
+  final _$RemoteSyncStateDaoMixin _db;
+  RemoteSyncStateDaoManager(this._db);
+  $$RemoteSettingsTableTableManager get remoteSettings =>
+      $$RemoteSettingsTableTableManager(
+          _db.attachedDatabase, _db.remoteSettings);
+  $$SyncIrisTableTableManager get syncIris =>
+      $$SyncIrisTableTableManager(_db.attachedDatabase, _db.syncIris);
+  $$RemoteSyncStateTableTableManager get remoteSyncState =>
+      $$RemoteSyncStateTableTableManager(
+          _db.attachedDatabase, _db.remoteSyncState);
 }
 
 class $SyncIrisTable extends SyncIris with TableInfo<$SyncIrisTable, SyncIri> {

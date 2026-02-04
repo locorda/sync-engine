@@ -2,20 +2,23 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
 
 /// Result of a remote download operation with ETag support.
-class RemoteDownloadResult {
-  final RdfGraph? graph;
+class RemoteDownloadResult<T> {
+  final T? graph;
   final String? etag;
   final bool notModified; // true if 304 Not Modified
 
-  RemoteDownloadResult({
+  const RemoteDownloadResult({
     required this.graph,
     required this.etag,
     this.notModified = false,
   });
-
-  RemoteDownloadResult.notModified({required this.etag})
-      : graph = null,
-        notModified = true;
+  factory RemoteDownloadResult.notModified({required String etag}) {
+    return RemoteDownloadResult<T>(
+      graph: null,
+      etag: etag,
+      notModified: true,
+    );
+  }
 }
 
 /// Result of a remote upload operation with ETag support.
@@ -72,7 +75,37 @@ final class SuccessUploadResult extends RemoteUploadResult {
 /// - Conditional GET (If-None-Match header for ETags)
 /// - Conditional PUT (If-Match header for ETags)
 /// - HTTP status codes: 200, 304 Not Modified, 412 Precondition Failed
-abstract class RemoteSyncStorage {
+abstract class RemoteSyncStorage extends GraphSyncStorage {
+  Future<RemoteUploadResult> uploadDataset(
+          IriTerm documentIri, RdfDataset dataset,
+          {String? ifMatch}) =>
+      throw UnimplementedError();
+
+  Future<RemoteDownloadResult<RdfDataset>> downloadDataset(IriTerm documentIri,
+          {String? ifNoneMatch}) =>
+      throw UnimplementedError();
+
+  /// Finalize sync operations and perform cleanup.
+  ///
+  /// Called after sync completion (success or failure). Implementations can:
+  /// - Flush pending operations
+  /// - Update metadata or statistics
+  /// - Release resources
+  ///
+  /// This is optional - default implementation does nothing.
+  Future<void> finalizeSync() async {}
+
+  // FIXME: concurrent synchronization currently leads to concurrency issues in tests (for example save_36)
+  int get maxConcurrentDocumentSyncs => 1; //10;
+
+  // FIXME: concurrent synchronization currently leads to concurrency issues in tests (for example save_36)
+  int get maxConcurrentShardSyncs => 1; //5;
+
+  // FIXME: concurrent synchronization currently leads to concurrency issues in tests (for example save_36)
+  int get maxConcurrentIndexSyncs => 1; //3;
+}
+
+abstract class GraphSyncStorage {
   /// Upload a document to remote storage.
   ///
   /// The implementation may transform the internal document IRI and RDF graph
@@ -105,24 +138,8 @@ abstract class RemoteSyncStorage {
   /// - [ifNoneMatch]: Optional ETag for conditional download (304 if unchanged)
   ///
   /// Returns download result with graph using internal IRIs, plus ETag.
-  Future<RemoteDownloadResult> download(IriTerm documentIri,
+  Future<RemoteDownloadResult<RdfGraph>> download(IriTerm documentIri,
       {String? ifNoneMatch});
-
-  /// Finalize sync operations and perform cleanup.
-  ///
-  /// Called after sync completion (success or failure). Implementations can:
-  /// - Flush pending operations
-  /// - Update metadata or statistics
-  /// - Release resources
-  ///
-  /// This is optional - default implementation does nothing.
-  Future<void> finalizeSync() async {}
-
-  int get maxConcurrentDocumentSyncs => 10;
-
-  int get maxConcurrentShardSyncs => 5;
-
-  int get maxConcurrentIndexSyncs => 3;
 }
 
 /// Abstract interface for remote storage backend setup.
@@ -160,6 +177,16 @@ abstract interface class RemoteStorage {
   ///
   /// Throws if backend cannot be initialized (e.g., auth failure, missing config).
   Future<RemoteSyncStorage> createSyncStorage(SyncEngineConfig config);
+
+  /// Whether this remote storage uses shard datasets (all resources in one file per shard).
+  ///
+  /// **Important Implications:**
+  /// - When true: All ItemFetchPolicy must be Prefetch() (lazy loading impossible)
+  /// - When true: All index entries must have corresponding documents in storage
+  /// - Backend switch: Can only switch to dataset mode if storage is complete
+  ///
+  /// This is a global flag (not per-type) to simplify the experimental phase.
+  bool get useShardDatasets => false;
 }
 
 /// Exception thrown when remote storage operations fail due to authentication or authorization issues.
@@ -252,6 +279,9 @@ class AuthAwareRemoteStorage implements RemoteStorage {
       config: _config,
     );
   }
+
+  @override
+  bool get useShardDatasets => _inner.useShardDatasets;
 }
 
 /// Wraps a [RemoteSyncStorage] to automatically handle authentication failures.
@@ -282,7 +312,7 @@ class AuthAwareSyncStorage implements RemoteSyncStorage {
           operation: () => _inner.upload(documentIri, graph, ifMatch: ifMatch));
 
   @override
-  Future<RemoteDownloadResult> download(
+  Future<RemoteDownloadResult<RdfGraph>> download(
     IriTerm documentIri, {
     String? ifNoneMatch,
   }) =>
@@ -291,6 +321,28 @@ class AuthAwareSyncStorage implements RemoteSyncStorage {
           onAuthFailure: _onAuthFailure,
           operation: () =>
               _inner.download(documentIri, ifNoneMatch: ifNoneMatch));
+  @override
+  Future<RemoteUploadResult> uploadDataset(
+    IriTerm documentIri,
+    RdfDataset dataset, {
+    String? ifMatch,
+  }) =>
+      _retryOnAuthFailure(
+          config: _config,
+          onAuthFailure: _onAuthFailure,
+          operation: () =>
+              _inner.uploadDataset(documentIri, dataset, ifMatch: ifMatch));
+
+  @override
+  Future<RemoteDownloadResult<RdfDataset>> downloadDataset(
+    IriTerm documentIri, {
+    String? ifNoneMatch,
+  }) =>
+      _retryOnAuthFailure(
+          config: _config,
+          onAuthFailure: _onAuthFailure,
+          operation: () =>
+              _inner.downloadDataset(documentIri, ifNoneMatch: ifNoneMatch));
 
   @override
   Future<void> finalizeSync() => _inner.finalizeSync();

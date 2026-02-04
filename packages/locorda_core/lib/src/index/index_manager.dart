@@ -6,6 +6,7 @@ library;
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/crdt_document_manager.dart';
+import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/index/index_discovery.dart';
 import 'package:locorda_core/src/index/index_property_resolver.dart';
@@ -30,22 +31,24 @@ class IndexManager {
   final IndexRdfGenerator _rdfGenerator;
   final IndexPropertyResolver _propertyResolver;
   final Storage _storage;
-  final SyncEngineConfig _config;
+  final ConfigService _configService;
   final IriTerm _installationIri;
   final IndexDiscovery _indexDiscovery;
+
+  SyncEngineConfig get _config => _configService.currentConfig;
 
   IndexManager({
     required CrdtDocumentManager crdtDocumentManager,
     required IndexRdfGenerator rdfGenerator,
     required Storage storage,
     required IriTerm installationIri,
-    required SyncEngineConfig config,
+    required ConfigService configService,
     required IndexDiscovery indexDiscovery,
     required ResourceLocator resourceLocator,
   })  : _documentManager = crdtDocumentManager,
         _rdfGenerator = rdfGenerator,
         _storage = storage,
-        _config = config,
+        _configService = configService,
         _propertyResolver = IndexPropertyResolver(
             storage: storage, resourceLocator: resourceLocator),
         _installationIri = installationIri,

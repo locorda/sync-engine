@@ -50,11 +50,11 @@ class DirAuthConnector {
   ///
   /// Pass the main thread's [dirAuth] instance. The returned factory will be
   /// called by the worker framework with the [MainHandlerContext].
-  static MainHandlerFactory sender(DirAuth dirAuth) {
+  static MainHandlerFactory sender(DirAuth dirAuth, String id) {
     return (MainHandlerContext context) {
       return DirAuthSender(
         dirAuth: dirAuth,
-        workerHandle: context.createChannel('locorda_dir/dir_auth'),
+        workerHandle: context.createChannel('locorda_dir/$id/dir_auth'),
       );
     };
   }

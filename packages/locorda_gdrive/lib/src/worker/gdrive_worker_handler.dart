@@ -41,18 +41,21 @@ class GDriveWorkerHandler implements RemoteWorkerHandler {
   final RdfCore _rdfCore;
   final http.Client _httpClient;
   final String _contentType;
+  final String _datasetContentType;
 
   GDriveWorkerHandler(
       {IriTermFactory? iriTermFactory,
       RdfCore? rdfCore,
       http.Client? httpClient,
-      String? contentType})
+      String? contentType,
+      String? datasetContentType})
       : _iriTermFactory = iriTermFactory ?? IriTerm.validated,
         _rdfCore = rdfCore ??
             RdfCore.withStandardCodecs(
                 iriTermFactory: iriTermFactory ?? IriTerm.validated),
         _httpClient = httpClient ?? http.Client(),
-        _contentType = contentType ?? turtle.primaryMimeType;
+        _contentType = contentType ?? turtle.primaryMimeType,
+        _datasetContentType = datasetContentType ?? trig.primaryMimeType;
 
   @override
   String get id => 'gdrive';
@@ -70,6 +73,7 @@ class GDriveWorkerHandler implements RemoteWorkerHandler {
       rdfCore: _rdfCore,
       httpClient: _httpClient,
       contentType: _contentType,
+      datasetContentType: _datasetContentType,
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:http/retry.dart';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
+import 'package:rxdart/rxdart.dart';
 
 import 'auth/solid_auth_provider.dart';
 import 'solid_profile_parser.dart';
@@ -51,11 +52,14 @@ http.Client _createRetryClient(http.Client inner) {
 class SolidBackend implements Backend {
   String get name => 'solid';
 
-  // ignore: unused_field
   final SolidAuthProvider _authProvider;
   final IriTermFactory _iriTermFactory;
   final SolidClient _solidClient;
+  final RdfCore _rdfCore;
+  final String _contentType;
+  final String _datasetContentType;
   List<RemoteStorage> _remotes = [];
+  late final BehaviorSubject<List<RemoteStorage>> _remotesChangedSubject;
 
   SolidBackend({
     required SolidAuthProvider auth,
@@ -63,14 +67,17 @@ class SolidBackend implements Backend {
     required http.Client httpClient,
     required RdfCore rdfCore,
     required String contentType,
+    required String datasetContentType,
   })  : _authProvider = auth,
         _iriTermFactory = iriTermFactory,
         _solidClient = SolidClient(
           client: _createRetryClient(httpClient),
           authProvider: auth,
-          rdfCore: rdfCore,
-          contentType: contentType,
-        ) {
+        ),
+        _contentType = contentType,
+        _datasetContentType = datasetContentType,
+        _rdfCore = rdfCore {
+    _remotesChangedSubject = BehaviorSubject<List<RemoteStorage>>();
     auth.isAuthenticatedNotifier.addListener(_authStateChanged);
     // initialize based on current auth state
     _authStateChanged();
@@ -99,6 +106,9 @@ class SolidBackend implements Backend {
         webId: webId,
         client: _solidClient,
         iriTermFactory: _iriTermFactory,
+        rdfCore: _rdfCore,
+        contentType: _contentType,
+        datasetContentType: _datasetContentType,
       );
 
       // Wrap with auth-aware retry logic
@@ -113,20 +123,31 @@ class SolidBackend implements Backend {
           config: const AuthRetryConfig.retryOnce(),
         )
       ];
+
+      // Emit remote change
+      _remotesChangedSubject.add(_remotes);
     } else {
       _log.info('User logged out: clearing Solid remote storage');
       // User logged out: clear remote storage
       _remotes = [];
+
+      // Emit remote change
+      _remotesChangedSubject.add(_remotes);
     }
   }
 
   @override
   Future<void> dispose() async {
     _authProvider.isAuthenticatedNotifier.removeListener(_authStateChanged);
+    await _remotesChangedSubject.close();
   }
 
   @override
   List<RemoteStorage> get remotes => _remotes;
+
+  @override
+  Stream<List<RemoteStorage>> get remotesChanged =>
+      _remotesChangedSubject.stream;
 }
 
 class SolidClientException implements Exception {
@@ -149,23 +170,20 @@ class SolidClient {
   final http.Client _client;
   final SolidAuthProvider _authProvider;
 
-  final String _contentType;
+  SolidClient({
+    required http.Client client,
+    required SolidAuthProvider authProvider,
+  })  : _client = client,
+        _authProvider = authProvider;
 
-  final RdfCodec<RdfGraph> Function(String) _codecResolver;
-
-  SolidClient(
-      {required http.Client client,
-      required SolidAuthProvider authProvider,
-      required RdfCore rdfCore,
-      required String contentType})
-      : _client = client,
-        _authProvider = authProvider,
-        _codecResolver =
-            ((contentType) => rdfCore.codec(contentType: contentType)),
-        _contentType = contentType;
-
-  Future<RemoteDownloadResult> download(String url,
-      {bool requiresAuth = true, String? ifNoneMatch}) async {
+  Future<RemoteDownloadResult<T>> download<T>(
+    String url, {
+    bool requiresAuth = true,
+    String? ifNoneMatch,
+    required String acceptContentType,
+    required T Function(String, {String? documentUrl, String? mimeType})
+        convert,
+  }) async {
     final dpop = requiresAuth
         ? await _authProvider.getDpopToken(_prepareUrlForDpopToken(url), 'GET')
         : null;
@@ -180,7 +198,7 @@ class SolidClient {
       Uri.parse(url),
       headers: {
         'Accept':
-            _contentType, // 'text/turtle, application/ld+json;q=0.9, */*;q=0.8',
+            acceptContentType, // 'text/turtle, application/ld+json;q=0.9, */*;q=0.8',
         if (dpop != null) 'Authorization': 'DPoP ${dpop.accessToken}',
         if (dpop != null) 'DPoP': dpop.dPoP,
         if (ifNoneMatch != null) 'If-None-Match': ifNoneMatch,
@@ -203,7 +221,7 @@ class SolidClient {
     }
     if (response.statusCode == 304) {
       // Not modified
-      return RemoteDownloadResult.notModified(etag: ifNoneMatch);
+      return RemoteDownloadResult.notModified(etag: ifNoneMatch!);
     }
     if (response.statusCode != 200) {
       _log.warning('Failed to fetch $url: ${response.statusCode}');
@@ -217,8 +235,7 @@ class SolidClient {
 
     // Extract MIME type from content-type header (remove charset and other parameters)
     final mimeType = contentType.split(';').first.trim();
-    final codec = _codecResolver(mimeType);
-    final graph = codec.decode(data, documentUrl: url);
+    final graph = convert(data, documentUrl: url, mimeType: mimeType);
     return RemoteDownloadResult(
       graph: graph,
       etag: response.headers['etag'],
@@ -256,10 +273,11 @@ class SolidClient {
     return null;
   }
 
-  Future<RemoteUploadResult> upload(String url, RdfGraph graph,
-      {bool requiresAuth = true, String? ifMatch}) async {
-    final codec = _codecResolver(_contentType); // ensure codec is cached
-    final turtle = codec.encode(graph);
+  Future<RemoteUploadResult> upload<T>(String url, T graph,
+      {bool requiresAuth = true,
+      String? ifMatch,
+      required String Function(T) convert}) async {
+    final turtle = convert(graph);
     final dpop = requiresAuth
         ? await _authProvider.getDpopToken(_prepareUrlForDpopToken(url), 'PUT')
         : null;
@@ -404,6 +422,9 @@ class SolidRemoteStorage implements RemoteStorage {
   final SolidClient _client;
   final IriTermFactory _iriTermFactory;
   final SolidProfileParser _profileParser = SolidProfileParser();
+  final RdfCore _rdfCore;
+  final String _contentType;
+  final String _datasetContentType;
 
   late final Future<String> _podUrlFuture;
 
@@ -411,13 +432,31 @@ class SolidRemoteStorage implements RemoteStorage {
     required this.webId,
     required SolidClient client,
     required IriTermFactory iriTermFactory,
+    required RdfCore rdfCore,
+    required String contentType,
+    required String datasetContentType,
   })  : _client = client,
-        _iriTermFactory = iriTermFactory {
+        _iriTermFactory = iriTermFactory,
+        _rdfCore = rdfCore,
+        _contentType = contentType,
+        _datasetContentType = datasetContentType {
     _podUrlFuture = _resolvePodUrl(webId);
   }
 
+  // Performance reasons suggest to use shard datasets, but that would
+  // not be really good Solid practice since solid is based on linked data principles
+  // and on the idea that we have resources identified by IRIs described by separate documents.
+  @override
+  bool get useShardDatasets => false;
+
   Future<String> _resolvePodUrl(String webId) async {
-    final profile = await _client.download(webId, requiresAuth: true);
+    final profile = await _client.download(
+      webId,
+      requiresAuth: true,
+      acceptContentType: 'text/turtle, application/ld+json;q=0.9, */*;q=0.8',
+      convert: (data, {documentUrl, mimeType}) =>
+          _rdfCore.decode(data, contentType: mimeType ?? 'text/turtle'),
+    );
     if (profile.graph == null) {
       throw StateError('Profile document is empty for WebID: $webId');
     }
@@ -451,7 +490,12 @@ class SolidRemoteStorage implements RemoteStorage {
         externalResourceLocator: SolidResourceLocator(
             iriTermFactory: _iriTermFactory, podBaseUrl: podUrl));
 
-    return SolidSyncStorage(client: _client, iriTranslator: iriTranslator);
+    return SolidSyncStorage(
+        client: _client,
+        iriTranslator: iriTranslator,
+        contentType: _contentType,
+        datasetContentType: _datasetContentType,
+        rdfCore: _rdfCore);
   }
 }
 
@@ -461,22 +505,67 @@ class SolidRemoteStorage implements RemoteStorage {
 class SolidSyncStorage extends RemoteSyncStorage {
   final SolidClient _client;
   final IriTranslator _iriTranslator;
+  final String _contentType;
+  final String _datasetContentType;
+
+  final RdfCore _rdfCore;
 
   SolidSyncStorage({
     required SolidClient client,
     required IriTranslator iriTranslator,
+    required String contentType,
+    required String datasetContentType,
+    required RdfCore rdfCore,
   })  : _client = client,
-        _iriTranslator = iriTranslator;
+        _iriTranslator = iriTranslator,
+        _contentType = contentType,
+        _datasetContentType = datasetContentType,
+        _rdfCore = rdfCore;
 
   @override
-  Future<RemoteDownloadResult> download(IriTerm documentIri,
-      {String? ifNoneMatch}) async {
+  Future<RemoteDownloadResult<RdfGraph>> download(IriTerm documentIri,
+          {String? ifNoneMatch}) =>
+      _download(
+        documentIri,
+        ifNoneMatch: ifNoneMatch,
+        acceptContentType: _contentType,
+        convert: (data, {documentUrl, mimeType}) => _rdfCore.decode(data,
+            contentType: mimeType ?? _contentType, documentUrl: documentUrl),
+        translator: _iriTranslator.translateGraphToInternal,
+      );
+
+  @override
+  Future<RemoteDownloadResult<RdfDataset>> downloadDataset(IriTerm documentIri,
+          {String? ifNoneMatch}) =>
+      _download(
+        documentIri,
+        ifNoneMatch: ifNoneMatch,
+        acceptContentType: _datasetContentType,
+        convert: (data, {documentUrl, mimeType}) => _rdfCore.decodeDataset(data,
+            contentType: mimeType ?? _datasetContentType,
+            documentUrl: documentUrl),
+        translator: _iriTranslator.translateDatasetToInternal,
+      );
+
+  Future<RemoteDownloadResult<T>> _download<T>(
+    IriTerm documentIri, {
+    String? ifNoneMatch,
+    required String acceptContentType,
+    required T Function(String, {String? documentUrl, String? mimeType})
+        convert,
+    required T Function(T) translator,
+  }) async {
     final podDocumentIri = _iriTranslator.internalToExternal(documentIri);
-    final result = await _client.download(podDocumentIri.value,
-        requiresAuth: true, ifNoneMatch: ifNoneMatch);
+    final result = await _client.download<T>(
+      podDocumentIri.value,
+      requiresAuth: true,
+      acceptContentType: acceptContentType,
+      ifNoneMatch: ifNoneMatch,
+      convert: convert,
+    );
     if (result.graph != null) {
-      final translated = _iriTranslator.translateGraphToInternal(result.graph!);
-      return RemoteDownloadResult(
+      final translated = translator(result.graph!);
+      return RemoteDownloadResult<T>(
         graph: translated,
         etag: result.etag,
         notModified: result.notModified,
@@ -490,8 +579,28 @@ class SolidSyncStorage extends RemoteSyncStorage {
       {String? ifMatch}) async {
     final podDocumentIri = _iriTranslator.internalToExternal(documentIri);
     final translatedGraph = _iriTranslator.translateGraphToExternal(graph);
-    return await _client.upload(podDocumentIri.value, translatedGraph,
-        requiresAuth: true, ifMatch: ifMatch);
+    return await _client.upload(
+      podDocumentIri.value,
+      translatedGraph,
+      requiresAuth: true,
+      ifMatch: ifMatch,
+      convert: (graph) => _rdfCore.encode(graph, contentType: _contentType),
+    );
+  }
+
+  Future<RemoteUploadResult> uploadDataset(
+      IriTerm documentIri, RdfDataset dataset,
+      {String? ifMatch}) async {
+    final podDocumentIri = _iriTranslator.internalToExternal(documentIri);
+    final translatedGraph = _iriTranslator.translateDatasetToExternal(dataset);
+    return await _client.upload(
+      podDocumentIri.value,
+      translatedGraph,
+      requiresAuth: true,
+      ifMatch: ifMatch,
+      convert: (dataset) =>
+          _rdfCore.encodeDataset(dataset, contentType: _datasetContentType),
+    );
   }
 
   @override

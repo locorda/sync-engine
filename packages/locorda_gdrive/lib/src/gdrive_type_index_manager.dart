@@ -31,6 +31,9 @@ class GDriveTypeIndexManager {
   final GDriveApiClient _client;
   final ResourceLocator _localResourceLocator;
   final GDriveConfig _config;
+  final String _contentType = turtle.primaryMimeType;
+  final RdfCore _rdfCore;
+
   late final String _spaces =
       _config.folderMode == GDriveFolderMode.appDataFolder
           ? 'appDataFolder'
@@ -47,7 +50,9 @@ class GDriveTypeIndexManager {
     required GDriveApiClient client,
     required IriTermFactory iriTermFactory,
     required GDriveConfig config,
+    required RdfCore rdfCore,
   })  : _client = client,
+        _rdfCore = rdfCore,
         _config = _fillInDefaults(config),
         _localResourceLocator =
             LocalResourceLocator(iriTermFactory: iriTermFactory);
@@ -158,6 +163,8 @@ class GDriveTypeIndexManager {
       emptyGraph,
       folderId: appFolderId,
       spaces: _spaces,
+      contentType: turtle.primaryMimeType,
+      convert: (c) => _rdfCore.encode(c, contentType: _contentType),
     );
 
     _log.info(
@@ -185,7 +192,11 @@ class GDriveTypeIndexManager {
 
     // Download with ETag
     _log.fine('Downloading Type Index file: $fileId');
-    final result = await _client.download(fileId);
+    final result = await _client.download(fileId,
+        convert: (c) => _rdfCore.decode(
+              c,
+              contentType: _contentType,
+            ));
 
     if (result.graph == null) {
       throw StateError('Type Index file is empty: $fileId');
@@ -321,6 +332,8 @@ class GDriveTypeIndexManager {
         fileId,
         updatedGraph,
         ifMatch: existingETag,
+        convert: (content) =>
+            _rdfCore.encode(content, contentType: _contentType),
       );
 
       switch (uploadResult) {

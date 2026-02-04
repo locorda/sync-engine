@@ -689,4 +689,25 @@ class DriftStorage implements Storage {
         remoteId.backend, remoteId.id);
     await remoteSyncStateDao.updateRemoteLastSyncTimestamp(id, timestamp);
   }
+
+  @override
+  Future<List<IriTerm>> getMissingDocumentsForIndexEntries(
+      {IriTerm? resourceType}) async {
+    // Get resource type IRI ID if filtering
+    int? resourceTypeIriId;
+    if (resourceType != null) {
+      resourceTypeIriId = await _getOrCreateIriId(resourceType.value);
+    }
+
+    // Query DAO for missing document IRI IDs
+    final missingIriIds = await indexDao.getMissingDocumentResourceIriIds(
+      resourceTypeIriId: resourceTypeIriId,
+    );
+
+    if (missingIriIds.isEmpty) return [];
+
+    // Convert IRI IDs back to IriTerms
+    final idToIri = await _getIris(missingIriIds);
+    return idToIri.values.map((iri) => _iriTermFactory(iri)).toList();
+  }
 }

@@ -44,16 +44,24 @@ class DirAuth implements DirAuthProvider {
   final ValueNotifier<bool> _isAuthenticatedNotifier;
   late final _AuthValueListenableImpl _authListenable;
   String _syncDirectoryPath;
+  final String _id;
 
   DirAuth._({
     required bool initiallyEnabled,
     required String syncDirectoryPath,
+    required String id,
   })  : _isAuthenticatedNotifier = ValueNotifier(initiallyEnabled),
-        _syncDirectoryPath = syncDirectoryPath {
+        _syncDirectoryPath = syncDirectoryPath,
+        _id = id {
     _authListenable = _AuthValueListenableImpl(_isAuthenticatedNotifier);
     _log.info(
         'DirAuth initialized: enabled=$initiallyEnabled, path=$syncDirectoryPath');
   }
+
+  static String _getKPathKey(String id) =>
+      id == 'local_dir' ? _kPathKey : '${_kPathKey}_$id';
+  static String _getKEnabledKey(String id) =>
+      id == 'local_dir' ? _kEnabledKey : '${_kEnabledKey}_$id';
 
   /// Creates DirAuth with initial state.
   ///
@@ -67,16 +75,18 @@ class DirAuth implements DirAuthProvider {
   static Future<DirAuth> create({
     required String syncDirectoryPath,
     bool initiallyEnabled = false,
+    String id = 'local_dir',
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
     // Load persisted state, fallback to constructor params
-    final savedPath = prefs.getString(_kPathKey) ?? syncDirectoryPath;
-    final savedEnabled = prefs.getBool(_kEnabledKey) ?? initiallyEnabled;
+    final savedPath = prefs.getString(_getKPathKey(id)) ?? syncDirectoryPath;
+    final savedEnabled = prefs.getBool(_getKEnabledKey(id)) ?? initiallyEnabled;
 
     final auth = DirAuth._(
       initiallyEnabled: savedEnabled,
       syncDirectoryPath: savedPath,
+      id: id,
     );
 
     // Test directory access if sync is supposed to be enabled
@@ -107,7 +117,7 @@ class DirAuth implements DirAuthProvider {
     _syncDirectoryPath = newPath;
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kPathKey, newPath);
+    await prefs.setString(_getKPathKey(_id), newPath);
   }
 
   /// Test if the app has access to the sync directory.
@@ -157,7 +167,7 @@ class DirAuth implements DirAuthProvider {
     _isAuthenticatedNotifier.value = true;
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kEnabledKey, true);
+    await prefs.setBool(_getKEnabledKey(_id), true);
   }
 
   /// Disable local directory sync.
@@ -166,7 +176,7 @@ class DirAuth implements DirAuthProvider {
     _isAuthenticatedNotifier.value = false;
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kEnabledKey, false);
+    await prefs.setBool(_getKEnabledKey(_id), false);
   }
 
   @override

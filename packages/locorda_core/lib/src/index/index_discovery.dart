@@ -20,6 +20,7 @@ import 'package:locorda_core/src/index/index_rdf_generator.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart'
     show ShardDeterminationMode;
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
+import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart'
     show IndexEntryWithIri;
 import 'package:locorda_core/src/util/build_effective_config.dart';
@@ -76,7 +77,8 @@ class IndexDiscovery {
   final Storage _storage;
   final IndexParser _parser;
   final IndexRdfGenerator _rdfGenerator;
-  final SyncEngineConfig _config;
+  final ConfigService _configService;
+  SyncEngineConfig get _config => _configService.currentConfig;
 
   /// Watch-based cache: indexed class → set of FullIndex metadata
   ///
@@ -109,11 +111,11 @@ class IndexDiscovery {
     required Storage storage,
     required IndexParser parser,
     required IndexRdfGenerator rdfGenerator,
-    required SyncEngineConfig config,
+    required ConfigService configService,
   })  : _storage = storage,
         _parser = parser,
         _rdfGenerator = rdfGenerator,
-        _config = config {
+        _configService = configService {
     _watchSubscriptions = _initializeWatches();
   }
 

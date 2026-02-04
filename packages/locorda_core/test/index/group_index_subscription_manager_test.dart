@@ -1,6 +1,7 @@
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_core/src/index/group_index_subscription_manager.dart';
+import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -33,7 +34,9 @@ void main() {
         ],
       );
 
-      manager = GroupIndexGraphSubscriptionManager(config: config);
+      manager = GroupIndexGraphSubscriptionManager(
+        configService: SimpleConfigService(config),
+      );
     });
 
     group('getGroupIdentifiers', () {
@@ -81,8 +84,9 @@ void main() {
           ],
         );
 
-        final dateManager =
-            GroupIndexGraphSubscriptionManager(config: dateConfig);
+        final dateManager = GroupIndexGraphSubscriptionManager(
+          configService: SimpleConfigService(dateConfig),
+        );
 
         final groupKeySubject = const IriTerm('https://example.org/groupkey/2');
         final groupKeyGraph = RdfGraph(triples: [
@@ -147,8 +151,9 @@ void main() {
           ],
         );
 
-        final multiManager =
-            GroupIndexGraphSubscriptionManager(config: multiConfig);
+        final multiManager = GroupIndexGraphSubscriptionManager(
+          configService: SimpleConfigService(multiConfig),
+        );
 
         final groupKeySubject = const IriTerm('https://example.org/groupkey/5');
         final groupKeyGraph = RdfGraph(triples: [
@@ -199,8 +204,9 @@ void main() {
           ],
         );
 
-        final hierarchyManager =
-            GroupIndexGraphSubscriptionManager(config: hierarchyConfig);
+        final hierarchyManager = GroupIndexGraphSubscriptionManager(
+          configService: SimpleConfigService(hierarchyConfig),
+        );
 
         final groupKeySubject = const IriTerm('https://example.org/groupkey/6');
         final groupKeyGraph = RdfGraph(triples: [

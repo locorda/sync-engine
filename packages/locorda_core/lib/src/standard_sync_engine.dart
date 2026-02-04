@@ -9,6 +9,7 @@ import 'package:locorda_core/src/crdt/crdt_types.dart';
 import 'package:locorda_core/src/crdt_document_manager.dart';
 import 'package:locorda_core/src/hlc_service.dart';
 import 'package:locorda_core/src/index/group_index_subscription_manager.dart';
+import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/index/index_discovery.dart';
 import 'package:locorda_core/src/index/index_manager.dart';
 import 'package:locorda_core/src/index/index_parser.dart';
@@ -43,6 +44,110 @@ typedef HydrationBatch = ({
   String? cursor
 });
 
+/// Simple config service for testing that doesn't listen to remote changes.
+class SimpleConfigService extends ConfigService {
+  SimpleConfigService(super.initialConfig) : super(backends: []);
+}
+
+class ConfigService {
+  final BehaviorSubject<SyncEngineConfig> _configSubject;
+  final SyncEngineConfig _initialConfig;
+  final List<Backend> _backends;
+  final List<StreamSubscription> _remoteSubscriptions = [];
+  bool _needsPrefetchAll = false;
+
+  Stream<SyncEngineConfig> get configChanges => _configSubject.stream;
+  SyncEngineConfig get currentConfig => _configSubject.value;
+
+  ConfigService(SyncEngineConfig initialConfig,
+      {required List<Backend> backends})
+      : _configSubject =
+            BehaviorSubject<SyncEngineConfig>.seeded(initialConfig),
+        _initialConfig = initialConfig,
+        _backends = backends {
+    _setupRemoteListeners();
+  }
+
+  /// Setup listeners for remote availability changes across all backends.
+  void _setupRemoteListeners() {
+    for (final backend in _backends) {
+      final subscription = backend.remotesChanged.listen((_) {
+        _onRemotesChanged();
+      });
+      _remoteSubscriptions.add(subscription);
+    }
+
+    // Check initial state
+    _onRemotesChanged();
+  }
+
+  /// Handle remote availability changes.
+  void _onRemotesChanged() {
+    // Check if any available remote uses shard datasets
+    final anyDatasetRemote = _backends.any((backend) {
+      return backend.remotes.any((remote) {
+        // Remote must be available to be considered
+        // We can't check availability synchronously here, but remotes list
+        // only contains authenticated/configured remotes, so we can assume they're potentially available
+        return remote is RemoteSyncStorage && remote.useShardDatasets;
+      });
+    });
+
+    if (anyDatasetRemote != _needsPrefetchAll) {
+      _needsPrefetchAll = anyDatasetRemote;
+      final SyncEngineConfig _effectiveConfig;
+      if (_needsPrefetchAll) {
+        _log.info(
+            'Dataset-based remote detected - adjusting ItemFetchPolicy to Prefetch() for all indices');
+        _effectiveConfig = _adjustConfigForDatasets(_initialConfig);
+      } else {
+        _log.info('No dataset-based remotes - using original configuration');
+        _effectiveConfig = _initialConfig;
+      }
+      _configSubject.add(_effectiveConfig);
+      // Note: Config change takes effect on next sync cycle
+      // Active sync operations continue with their original config
+    }
+  }
+
+  /// Adjust configuration to enforce Prefetch policy for dataset compatibility.
+  static SyncEngineConfig _adjustConfigForDatasets(SyncEngineConfig config) {
+    final adjustedResources = config.resources.map((resource) {
+      final adjustedIndices = resource.indices.map((index) {
+        // Only FullIndex has itemFetchPolicy that needs adjustment
+        return switch (index) {
+          FullIndexData(itemFetchPolicy: final policy)
+              when policy is! Prefetch =>
+            () {
+              _log.warning(
+                  'Overriding ItemFetchPolicy for index ${index.localName} to Prefetch() for dataset compatibility');
+
+              return index.copyWith(
+                itemFetchPolicy: ItemFetchPolicy.prefetch,
+              );
+            }(),
+          _ => index, // GroupIndexData or already Prefetch - no change needed
+        };
+      }).toList();
+
+      // Create new resource config with adjusted indices
+      return resource.copyWith(indices: adjustedIndices);
+    }).toList();
+
+    return config.copyWith(
+      resources: adjustedResources,
+    );
+  }
+
+  Future<void> close() async {
+    // Cancel remote listeners
+    for (final subscription in _remoteSubscriptions) {
+      await subscription.cancel();
+    }
+    _remoteSubscriptions.clear();
+  }
+}
+
 /// Main facade for the locorda system.
 ///
 /// Provides a simple, high-level API for offline-first applications with
@@ -51,7 +156,7 @@ typedef HydrationBatch = ({
 class StandardSyncEngine implements SyncEngine {
   final Storage _storage;
   final IndexManager _indexManager;
-  final SyncEngineConfig _config;
+  final ConfigService _configService;
   final CrdtDocumentManager _crdtDocumentManager;
   final IriTranslator _iriTranslator;
   final GroupIndexGraphSubscriptionManager _groupIndexManager;
@@ -66,28 +171,31 @@ class StandardSyncEngine implements SyncEngine {
   StandardSyncEngine._(
       {required Storage storage,
       required IndexManager indexManager,
-      required SyncEngineConfig config,
+      required ConfigService configService,
       required ResourceLocator resourceLocator,
       required CrdtDocumentManager crdtDocumentManager,
       required IndexRdfGenerator indexRdfGenerator,
       required PhysicalTimestampFactory physicalTimestampFactory,
       required SyncManager syncManager,
+      required List<Backend> backends,
       List<Future<void> Function()> closeFunctions = const []})
       : _storage = storage,
         _indexManager = indexManager,
-        _config = config,
+        _configService = configService,
         _groupIndexManager = GroupIndexGraphSubscriptionManager(
-          config: config,
+          configService: configService,
         ),
         _iriTranslator = IriTranslator.forConfig(
           resourceLocator: resourceLocator,
-          resourceConfigs: config.resources,
+          resourceConfigs: configService.currentConfig.resources,
         ),
         _crdtDocumentManager = crdtDocumentManager,
         _syncManager = syncManager,
         _indexRdfGenerator = indexRdfGenerator,
         _physicalTimestampFactory = physicalTimestampFactory,
         _closeFunctions = closeFunctions;
+
+  SyncEngineConfig get _effectiveConfig => _configService.currentConfig;
 
   /// Set up the CRDT sync system with resource-focused configuration.
   ///
@@ -117,10 +225,12 @@ class StandardSyncEngine implements SyncEngine {
         physicalTimestampFactory ?? defaultPhysicalTimestampFactory;
 
     // Automatically add configuration for Framework-Owned resources
-    config = buildEffectiveConfig(config);
+    final configService =
+        ConfigService(buildEffectiveConfig(config), backends: backends);
 
     // Validate configuration before proceeding
-    final configValidationResult = SyncEngineConfigValidator().validate(config);
+    final configValidationResult =
+        SyncEngineConfigValidator().validate(configService.currentConfig);
 
     // Throw if any validation failed
     configValidationResult.throwIfInvalid();
@@ -160,14 +270,15 @@ class StandardSyncEngine implements SyncEngine {
     final indexRdfGenerator = IndexRdfGenerator(
         resourceLocator: localResourceLocator, shardManager: shardManager);
 
-    final indexParser =
-        IndexParser(knownConfig: config, rdfGenerator: indexRdfGenerator);
+    final indexParser = IndexParser(
+        knownConfig: configService.currentConfig,
+        rdfGenerator: indexRdfGenerator);
 
     final indexDiscovery = IndexDiscovery(
       storage: storage,
       parser: indexParser,
       rdfGenerator: indexRdfGenerator,
-      config: config,
+      configService: configService,
     );
 
     final shardDeterminer = ShardDeterminer(
@@ -187,7 +298,7 @@ class StandardSyncEngine implements SyncEngine {
 
     final crdtDocumentManager = CrdtDocumentManager(
       storage: storage,
-      config: config,
+      configService: configService,
       shardDeterminer: shardDeterminer,
       mergeContractLoader: mergeContractLoader,
       localDocumentMerger: localDocumentMerger,
@@ -201,12 +312,13 @@ class StandardSyncEngine implements SyncEngine {
       rdfGenerator: indexRdfGenerator,
       storage: storage,
       installationIri: installationService.installationIri,
-      config: config,
+      configService: configService,
       indexDiscovery: indexDiscovery,
       resourceLocator: localResourceLocator,
     );
 
     await indexManager.initializeIndices();
+
     final remoteDocumentMerger = RemoteDocumentMerger(
       storage: storage,
       hlcService: hlcService,
@@ -218,44 +330,48 @@ class StandardSyncEngine implements SyncEngine {
       documentManager: crdtDocumentManager,
       indexManager: indexManager,
     );
-    final remoteSyncOrchestratorFactory =
-        (RemoteSyncStorage remoteSyncStorage, RemoteId remoteId) =>
-            RemoteSyncOrchestrator(
-              remoteSyncStorage: remoteSyncStorage,
-              remoteId: remoteId,
-              storage: storage,
-              merger: remoteDocumentMerger,
-              config: config,
-              indexRdfGenerator: indexRdfGenerator,
-              indexManager: indexManager,
-              shardDeterminer: shardDeterminer,
-              hlcService: hlcService,
-              mergeContractLoader: mergeContractLoader,
-              localDocumentMerger: localDocumentMerger,
-              shardDocumentGenerator: shardDocumentGenerator,
-              physicalTimestampFactory: timestampFactory,
-            );
+    final remoteSyncOrchestratorFactory = (
+      RemoteSyncStorage remoteSyncStorage,
+      RemoteId remoteId, {
+      required bool useShardDatasets,
+    }) =>
+        RemoteSyncOrchestrator(
+          remoteSyncStorage: remoteSyncStorage,
+          remoteId: remoteId,
+          storage: storage,
+          merger: remoteDocumentMerger,
+          indexRdfGenerator: indexRdfGenerator,
+          indexManager: indexManager,
+          shardDeterminer: shardDeterminer,
+          hlcService: hlcService,
+          mergeContractLoader: mergeContractLoader,
+          localDocumentMerger: localDocumentMerger,
+          shardDocumentGenerator: shardDocumentGenerator,
+          physicalTimestampFactory: timestampFactory,
+          useShardDatasets: useShardDatasets,
+        );
 
     final syncManager = StandardSyncManager(
         syncFunction: SyncFunction(
           storage: storage,
-          config: config,
+          configService: configService,
           shardDocumentGenerator: shardDocumentGenerator,
           backends: backends,
           remoteSyncOrchestratorFactory: remoteSyncOrchestratorFactory,
         ),
-        autoSyncConfig: config.autoSyncConfig,
+        configService: configService,
         physicalTimestampFactory: timestampFactory);
 
     final sync = StandardSyncEngine._(
         storage: storage,
         indexManager: indexManager,
-        config: config,
+        configService: configService,
         resourceLocator: localResourceLocator,
         crdtDocumentManager: crdtDocumentManager,
         indexRdfGenerator: indexRdfGenerator,
         physicalTimestampFactory: timestampFactory,
         syncManager: syncManager,
+        backends: backends,
         closeFunctions: backends.map((b) => b.dispose).toList());
 
     // installation documents might be organized in indices, so we need to use graph sync instead of crdtDocumentManager directly
@@ -322,7 +438,7 @@ class StandardSyncEngine implements SyncEngine {
     final groupIdentifiers =
         await _groupIndexManager.getGroupIdentifiers(indexName, groupKeyGraph);
     final (resourceConfig, indexConfig) =
-        _config.findGroupIndexConfig(indexName)!;
+        _effectiveConfig.findGroupIndexConfig(indexName)!;
     _log.info(
         'configure called for index: $indexName and group key: $groupKeyGraph, resolved to group identifiers: $groupIdentifiers');
     for (final id in groupIdentifiers) {
@@ -445,6 +561,9 @@ Use the 'documentIriTemplate' property of the resource configuration to configur
     }
 
     // TODO: properly implement remote fetch with pending fetch tracking
+    // TODO: check with fetch strategy - if fetch is prefetch, we can return a 404
+    // immediately since the item must be present through sync - but note that
+    // it would be a severe error if an ite is in the index entries, in prefetch mode, but not present in the documents.
 /*
 Check with https://g.co/gemini/share/60e9b2d3036e for the details
 
@@ -491,7 +610,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
     final internalIri = _iriTranslator.externalToInternal(externalIri);
 
     // ignore: unused_local_variable
-    final resourceConfig = _config.getResourceConfig(typeIri);
+    final resourceConfig = _effectiveConfig.getResourceConfig(typeIri);
 
     // TODO: Implement proper CRDT deletion processing:
     // 1. Load existing document
@@ -547,7 +666,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
     int initialBatchSize = 100,
   }) async* {
     // Validate configuration
-    final resourceConfig = _config.getResourceConfig(typeIri);
+    final resourceConfig = _effectiveConfig.getResourceConfig(typeIri);
     if (indexName == null) {
       yield* _hydrateRootResourceStream(
         typeIri: typeIri,
@@ -865,6 +984,8 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
 
   /// Close the sync system and free resources.
   Future<void> close() async {
+    await _configService.close();
+
     await _syncManager.dispose();
     await _crdtDocumentManager.close();
     for (final func in _closeFunctions) {

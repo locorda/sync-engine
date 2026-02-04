@@ -3,6 +3,7 @@ library;
 
 import 'dart:async';
 import 'package:locorda_core/src/hlc_service.dart';
+import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:logging/logging.dart';
 import 'sync_state.dart';
 import 'sync_manager.dart';
@@ -39,7 +40,7 @@ final _log = Logger('StandardSyncManager');
 /// ```
 class StandardSyncManager implements SyncManager {
   final Future<void> Function(DateTime syncTime) _syncFunction;
-  final AutoSyncConfig _autoSyncConfig;
+  final ConfigService _configService;
 
   final _statusController = StreamController<SyncState>.broadcast();
   SyncState _currentState = const SyncState.idle();
@@ -62,37 +63,39 @@ class StandardSyncManager implements SyncManager {
 
   StandardSyncManager({
     required Future<void> Function(DateTime syncTime) syncFunction,
-    AutoSyncConfig autoSyncConfig = const AutoSyncConfig.disabled(),
+    required ConfigService configService,
     required PhysicalTimestampFactory physicalTimestampFactory,
   })  : _syncFunction = syncFunction,
-        _autoSyncConfig = autoSyncConfig,
+        _configService = configService,
         _physicalTimestampFactory = physicalTimestampFactory {
     _initialize();
   }
 
   void _initialize() {
+    final autoSyncConfig = _configService.currentConfig.autoSyncConfig;
     // Trigger startup sync if configured
-    if (_autoSyncConfig.syncOnStartup) {
+    if (autoSyncConfig.syncOnStartup) {
       _log.info('Triggering startup sync');
       // Schedule for next event loop to allow initialization to complete
       Future.microtask(() => sync(trigger: SyncTrigger.startup));
     }
 
     // Setup automatic sync timer if enabled
-    if (_autoSyncConfig.enabled) {
+    if (autoSyncConfig.enabled) {
       _log.info(
-          'Enabling automatic sync with interval: ${_autoSyncConfig.interval}');
+          'Enabling automatic sync with interval: ${autoSyncConfig.interval}');
       _setupAutoSync();
     }
   }
 
   void _setupAutoSync() {
     _autoSyncTimer?.cancel();
-    if (_autoSyncConfig.interval <= Duration.zero) {
+    final autoSyncConfig = _configService.currentConfig.autoSyncConfig;
+    if (autoSyncConfig.interval <= Duration.zero) {
       _autoSyncTimer = null;
       return;
     }
-    _autoSyncTimer = Timer.periodic(_autoSyncConfig.interval, (_) {
+    _autoSyncTimer = Timer.periodic(autoSyncConfig.interval, (_) {
       _log.fine('Auto-sync timer triggered');
       sync(trigger: SyncTrigger.scheduled);
     });
@@ -206,6 +209,5 @@ class StandardSyncManager implements SyncManager {
     _autoSyncTimer = null;
 
     await _statusController.close();
-    
   }
 }

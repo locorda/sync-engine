@@ -8,6 +8,7 @@ import 'package:locorda_core/src/hlc_service.dart';
 import 'package:locorda_core/src/index/index_discovery.dart';
 import 'package:locorda_core/src/index/index_manager.dart';
 import 'package:locorda_core/src/index/index_parser.dart';
+import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/index/index_rdf_generator.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart';
 import 'package:locorda_core/src/index/shard_manager.dart';
@@ -352,7 +353,7 @@ Future<void> _executeStep({
         IndexParser(knownConfig: effectiveConfig, rdfGenerator: rdfGenerator);
     final indexDiscovery = IndexDiscovery(
       storage: storage,
-      config: effectiveConfig,
+      configService: SimpleConfigService(effectiveConfig),
       parser: parser,
       rdfGenerator: rdfGenerator,
     );
@@ -376,7 +377,7 @@ Future<void> _executeStep({
         crdtTypeRegistry);
     final crdtDocumentManager = CrdtDocumentManager(
         storage: storage,
-        config: effectiveConfig,
+        configService: SimpleConfigService(effectiveConfig),
         hlcService: hlcService,
         localDocumentMerger: localDocumentMerger,
         mergeContractLoader: mergeContractLoader,
@@ -389,7 +390,7 @@ Future<void> _executeStep({
       rdfGenerator: rdfGenerator,
       storage: storage,
       installationIri: installationIri,
-      config: effectiveConfig,
+      configService: SimpleConfigService(effectiveConfig),
       indexDiscovery: indexDiscovery,
       resourceLocator: resourceLocator,
     );
@@ -481,6 +482,7 @@ void _dumpSharedBackend(InMemoryBackend sharedBackend, String when) {
   for (var remote in sharedBackend.remotes) {
     print(
         '🗄️  Shared Backend State ($when) - ${remote.remoteId.backend} - ${remote.remoteId.id}:');
+    /*
     for (final entry in remote.documents.entries) {
       print(('-' * 10) +
           ' ${IriTerm(entry.key).debug} - ${entry.value.etag} ' +
@@ -488,6 +490,7 @@ void _dumpSharedBackend(InMemoryBackend sharedBackend, String when) {
       print(turtle.encode(entry.value.graph));
       print('-' * 80 + '\n');
     }
+    */
   }
 }
 

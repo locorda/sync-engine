@@ -1,10 +1,17 @@
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_core/src/index/index_config_base.dart';
+import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/storage/sync_timestamp_storage.dart';
 import 'package:locorda_core/src/sync/remote_sync_orchestrator.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger('SyncFunction');
+typedef OrchestratorFactory = RemoteSyncOrchestrator Function(
+  RemoteSyncStorage syncStorage,
+  RemoteId remoteId, {
+  required bool useShardDatasets,
+});
 
 /// Synchronization function orchestrating complete sync cycle.
 ///
@@ -31,22 +38,18 @@ class SyncFunction {
   final ShardDocumentGenerator _shardDocumentGenerator;
   final Storage _storage;
   final List<Backend> _backends;
-  final SyncEngineConfig _config;
-  final RemoteSyncOrchestrator Function(
-          RemoteSyncStorage syncStorage, RemoteId remoteId)
-      _remoteSyncOrchestratorFactory;
+  final ConfigService _configService;
+  final OrchestratorFactory _remoteSyncOrchestratorFactory;
 
   SyncFunction({
     required List<Backend> backends,
     required Storage storage,
-    required SyncEngineConfig config,
-    required RemoteSyncOrchestrator Function(
-            RemoteSyncStorage syncStorage, RemoteId remoteId)
-        remoteSyncOrchestratorFactory,
+    required ConfigService configService,
+    required OrchestratorFactory remoteSyncOrchestratorFactory,
     required ShardDocumentGenerator shardDocumentGenerator,
   })  : _backends = backends,
         _storage = storage,
-        _config = config,
+        _configService = configService,
         _shardDocumentGenerator = shardDocumentGenerator,
         _remoteSyncOrchestratorFactory = remoteSyncOrchestratorFactory;
 
@@ -56,6 +59,64 @@ class SyncFunction {
 
     // Phase A+B: Remote Synchronization (metadata + documents + shards)
     await _syncRemote(syncTime);
+  }
+
+  /// Validate that configuration and data support the given backend's dataset mode.
+  ///
+  /// When backend uses `useShardDatasets = true`, we must ensure:
+  /// 1. **Config constraint**: All ItemFetchPolicy must be Prefetch()
+  ///    - OnRequest/PrefetchFiltered lazy loading is incompatible with dataset shards
+  ///    - Cannot fetch individual resources from a dataset file
+  /// 2. **Data constraint**: No missing documents for index entries
+  ///    - All resources referenced in index must exist in storage
+  ///    - Dataset upload would fail with incomplete data
+  ///
+  /// Throws [StateError] if constraints are violated.
+  Future<void> _validateDatasetCompatibilityForBackend(
+      RemoteSyncStorage backend, SyncEngineConfig config) async {
+    _log.fine(
+        'Validating dataset compatibility for backend using shard datasets');
+
+    // FIXME: what about the group index fetch policies?
+
+    // 1. Validate config: Check that all fetch policies are Prefetch()
+    final nonPrefetchResources = config.resources.where((resource) {
+      return resource.indices.whereType<FullIndexData>().any((index) {
+        final policy = index.itemFetchPolicy;
+        return policy is! Prefetch;
+      });
+    }).toList();
+
+    if (nonPrefetchResources.isNotEmpty) {
+      final resourceNames =
+          nonPrefetchResources.map((r) => r.typeIri.value).join(', ');
+      throw StateError(
+          'Cannot use shard datasets with non-Prefetch ItemFetchPolicy. '
+          'Lazy loading (OnRequest/PrefetchFiltered) is incompatible with dataset shards '
+          'because individual resources cannot be fetched from a dataset file. '
+          'Resources with non-Prefetch policies: $resourceNames. '
+          'Please change all ItemFetchPolicy to Prefetch() for dataset shard backends.');
+    }
+
+    // 2. Validate data: Check for missing documents
+    final missingDocuments =
+        await _storage.getMissingDocumentsForIndexEntries();
+    if (missingDocuments.isNotEmpty) {
+      final missingCount = missingDocuments.length;
+      final samples =
+          missingDocuments.take(5).map((iri) => iri.value).join(', ');
+      final more = missingDocuments.length > 5
+          ? ' and ${missingDocuments.length - 5} more'
+          : '';
+      throw StateError('Cannot use shard datasets with incomplete storage. '
+          'Found $missingCount index entries without corresponding documents. '
+          'Dataset shards require all referenced resources to be present locally. '
+          'Missing documents: $samples$more. '
+          'Please sync with a non-dataset backend first to fetch all resources, '
+          'or manually ensure all documents are present.');
+    }
+
+    _log.fine('Dataset compatibility validation passed');
   }
 
   /// Phase 0: Sync Preparation
@@ -99,6 +160,7 @@ class SyncFunction {
   /// If remote storage is not available (offline), this phase is skipped
   /// gracefully (offline-first architecture).
   Future<void> _syncRemote(DateTime syncTime) async {
+    final config = await _configService.currentConfig;
     for (final backend in _backends) {
       _log.fine('Using backend: ${backend.name}');
       for (final remote in backend.remotes) {
@@ -114,11 +176,18 @@ class SyncFunction {
         // Create sync session with backend (e.g., load type index)
         _log.fine(
             'Creating sync storage session for backend: ${remote.remoteId}');
-        final remoteSyncStorage = await remote.createSyncStorage(_config);
+        final remoteSyncStorage = await remote.createSyncStorage(config);
+
+        // Validate dataset compatibility if this backend uses shard datasets
+        if (remote.useShardDatasets) {
+          await _validateDatasetCompatibilityForBackend(
+              remoteSyncStorage, config);
+        }
 
         final remoteSyncOrchestrator = _remoteSyncOrchestratorFactory(
           remoteSyncStorage,
           remote.remoteId,
+          useShardDatasets: remote.useShardDatasets,
         );
 
         _log.info('Starting Phase A+B: Remote Synchronization');
@@ -126,7 +195,11 @@ class SyncFunction {
         final lastSyncTimestamp =
             await _storage.getLastRemoteSyncTimestamp(remote.remoteId);
         try {
-          await remoteSyncOrchestrator.sync(syncTime, lastSyncTimestamp);
+          await remoteSyncOrchestrator.sync(
+            syncTime,
+            lastSyncTimestamp,
+            config: config,
+          );
           _log.info('Remote synchronization completed successfully');
           await _storage.updateLastRemoteSyncTimestamp(
               remote.remoteId, syncTime.millisecondsSinceEpoch);

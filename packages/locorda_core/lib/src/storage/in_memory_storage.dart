@@ -476,6 +476,29 @@ class InMemoryStorage implements Storage {
   }
 
   @override
+  Future<List<IriTerm>> getMissingDocumentsForIndexEntries(
+      {IriTerm? resourceType}) async {
+    final missingIris = <IriTerm>{};
+
+    for (final entry in _indexEntries.values) {
+      // Skip deleted entries
+      if (entry.isDeleted) continue;
+
+      // Optional filter by resource type
+      if (resourceType != null && entry.resourceType != resourceType) {
+        continue;
+      }
+
+      // Check if document exists
+      if (!_documents.containsKey(entry.resourceIri)) {
+        missingIris.add(entry.resourceIri);
+      }
+    }
+
+    return missingIris.toList();
+  }
+
+  @override
   Future<
       List<
           ({

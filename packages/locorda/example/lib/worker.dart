@@ -37,7 +37,10 @@ void main() {
 Future<WorkerParams> setupWorkerEngine() async => WorkerParams(
       // in main, we configured Solid and GDrive as remotes
       remotes: [
-        if (DirWorkerHandler.isPlatformSupported) DirWorkerHandler(),
+        if (DirWorkerHandler.isPlatformSupported) ...[
+          DirWorkerHandler(id: 'local_dir'),
+          DirWorkerHandler(id: 'local_dir_sd', useShardDatasets: true)
+        ],
         SolidWorkerHandler(),
         GDriveWorkerHandler()
       ],

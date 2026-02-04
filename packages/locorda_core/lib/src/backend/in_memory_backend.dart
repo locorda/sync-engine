@@ -2,6 +2,7 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
+import 'package:rxdart/rxdart.dart';
 
 final _logger = Logger('InMemoryBackend');
 
@@ -34,16 +35,25 @@ class InMemoryBackend implements Backend {
   String get name => 'in-memory';
 
   final List<InMemoryRemoteStorage> _remotes;
+  final BehaviorSubject<List<RemoteStorage>> _remotesChangedSubject;
 
   InMemoryBackend()
-      : _remotes = [InMemoryRemoteStorage(RemoteId('in-memory', 'default'))];
+      : _remotes = [InMemoryRemoteStorage(RemoteId('in-memory', 'default'))],
+        _remotesChangedSubject = BehaviorSubject<List<RemoteStorage>>() {
+    // Emit initial state
+    _remotesChangedSubject.add(_remotes);
+  }
 
   @override
   List<InMemoryRemoteStorage> get remotes => _remotes;
 
   @override
+  Stream<List<RemoteStorage>> get remotesChanged =>
+      _remotesChangedSubject.stream;
+
+  @override
   Future<void> dispose() async {
-    // No resources to clean up for in-memory backend
+    await _remotesChangedSubject.close();
   }
 }
 
@@ -56,14 +66,13 @@ class InMemoryBackend implements Backend {
 class InMemoryRemoteStorage implements RemoteStorage {
   @override
   final RemoteId remoteId;
+  @override
+  final bool useShardDatasets;
 
   /// Storage: documentIri -> (graph, etag)
-  final Map<String, _StoredDocument> _documents = {};
+  late final _Store _store = _Store();
 
-  /// Counter for generating unique ETags
-  int _etagCounter = 0;
-
-  InMemoryRemoteStorage(this.remoteId);
+  InMemoryRemoteStorage(this.remoteId, {this.useShardDatasets = false});
 
   @override
   Future<bool> isAvailable() async {
@@ -74,21 +83,48 @@ class InMemoryRemoteStorage implements RemoteStorage {
   @override
   Future<RemoteSyncStorage> createSyncStorage(SyncEngineConfig config) async {
     // In-memory backend needs no initialization, just wrap access
-    return InMemorySyncStorage(this);
-  }
-
-  /// Generate a new unique ETag
-  String _generateETag() {
-    return '"etag-${++_etagCounter}"';
+    return InMemorySyncStorage(_store);
   }
 
   /// Clear all stored documents (for testing)
   void clear() {
-    _documents.clear();
+    _store.clear();
+  }
+}
+
+class _Store {
+  /// Counter for generating unique ETags
+  int _etagCounter = 0;
+
+  /// Storage: documentIri -> (graph, etag)
+  final Map<String, _StoredDocument> _documents = {};
+
+  _Store();
+
+  /// Clear all stored documents (for testing)
+  void clear() {
     _etagCounter = 0;
+    _documents.clear();
   }
 
-  Map<String, _StoredDocument> get documents => _documents;
+  /// Generate a new unique ETag
+  String _generateETag() => '"etag-${++_etagCounter}"';
+
+  //Map<String, _StoredDocument<T>> get documents => _documents;
+  _StoredDocument<T>? getDocument<T>(IriTerm documentIri) {
+    return _documents[documentIri.value] as _StoredDocument<T>?;
+  }
+
+  void deleteDocument(IriTerm documentIri) {
+    _documents.remove(documentIri.value);
+  }
+
+  String storeDocument<T>(IriTerm documentIri, T data) {
+    final newEtag = _generateETag();
+    _documents[documentIri.value] =
+        _StoredDocument<T>(data: data, etag: newEtag);
+    return newEtag;
+  }
 
   /// Check if document exists (for testing)
   bool hasDocument(IriTerm documentIri) {
@@ -106,22 +142,30 @@ class InMemoryRemoteStorage implements RemoteStorage {
 /// Lightweight wrapper around [InMemoryRemoteStorage] providing upload/download
 /// access during sync operations.
 class InMemorySyncStorage extends RemoteSyncStorage {
-  final InMemoryRemoteStorage _storage;
+  final _Store _storage;
 
   InMemorySyncStorage(this._storage);
 
   @override
-  Future<RemoteDownloadResult> download(IriTerm documentIri,
+  Future<RemoteDownloadResult<RdfGraph>> download(IriTerm documentIri,
+          {String? ifNoneMatch}) =>
+      _download(_storage, documentIri, ifNoneMatch: ifNoneMatch);
+
+  @override
+  Future<RemoteDownloadResult<RdfDataset>> downloadDataset(IriTerm documentIri,
+          {String? ifNoneMatch}) =>
+      _download(_storage, documentIri, ifNoneMatch: ifNoneMatch);
+
+  Future<RemoteDownloadResult<T>> _download<T>(
+      _Store store, IriTerm documentIri,
       {String? ifNoneMatch}) async {
     _logger.fine(
         'Downloading document: ${documentIri.debug}, ifNoneMatch:$ifNoneMatch');
-    final iri = documentIri.value;
-    final stored = _storage._documents[iri];
-
+    final stored = store.getDocument<T>(documentIri);
     // Document doesn't exist
     if (stored == null) {
       _logger.fine('Document not found: ${documentIri.debug}');
-      return RemoteDownloadResult(
+      return RemoteDownloadResult<T>(
         graph: null,
         etag: null,
         notModified: false,
@@ -132,14 +176,14 @@ class InMemorySyncStorage extends RemoteSyncStorage {
     if (ifNoneMatch != null && ifNoneMatch == stored.etag) {
       _logger.fine('Document not modified: ${documentIri.debug}');
       // 304 Not Modified
-      return RemoteDownloadResult.notModified(etag: stored.etag);
+      return RemoteDownloadResult<T>.notModified(etag: stored.etag);
     }
 
     _logger.fine(
         'Document downloaded: ${documentIri.debug}, etag:${stored.etag}, ifNoneMatch:$ifNoneMatch');
     // 200 OK - return document
-    return RemoteDownloadResult(
-      graph: stored.graph,
+    return RemoteDownloadResult<T>(
+      graph: stored.data,
       etag: stored.etag,
       notModified: false,
     );
@@ -147,12 +191,20 @@ class InMemorySyncStorage extends RemoteSyncStorage {
 
   @override
   Future<RemoteUploadResult> upload(IriTerm documentIri, RdfGraph graph,
-      {String? ifMatch}) async {
-    _logger.fine(
-        'Uploading document: ${documentIri.debug}, ifMatch:$ifMatch, default graph size: ${graph.triples.length}');
-    final iri = documentIri.value;
-    final stored = _storage._documents[iri];
+          {String? ifMatch}) =>
+      _upload(_storage, documentIri, graph, ifMatch: ifMatch);
 
+  @override
+  Future<RemoteUploadResult> uploadDataset(
+          IriTerm documentIri, RdfDataset dataset,
+          {String? ifMatch}) =>
+      _upload(_storage, documentIri, dataset, ifMatch: ifMatch);
+
+  Future<RemoteUploadResult> _upload<T>(
+      _Store store, IriTerm documentIri, T graph,
+      {String? ifMatch}) async {
+    _logger.fine('Uploading document: ${documentIri.debug}, ifMatch:$ifMatch');
+    final stored = store.getDocument<T>(documentIri);
     // ifMatch: null → If-None-Match: * (create only)
     if (ifMatch == null) {
       if (stored != null) {
@@ -163,8 +215,7 @@ class InMemorySyncStorage extends RemoteSyncStorage {
       }
 
       // Create new document with new ETag
-      final newEtag = _storage._generateETag();
-      _storage._documents[iri] = _StoredDocument(graph: graph, etag: newEtag);
+      final newEtag = store.storeDocument<T>(documentIri, graph);
       _logger.fine('Document created: ${documentIri.debug}, etag:$newEtag');
       return RemoteUploadResult.success(newEtag);
     }
@@ -185,8 +236,7 @@ class InMemorySyncStorage extends RemoteSyncStorage {
     }
 
     // Update document with new ETag
-    final newEtag = _storage._generateETag();
-    _storage._documents[iri] = _StoredDocument(graph: graph, etag: newEtag);
+    final newEtag = store.storeDocument<T>(documentIri, graph);
     _logger.fine('Document updated: ${documentIri.debug}, new etag:$newEtag');
     return RemoteUploadResult.success(newEtag);
   }
@@ -196,9 +246,12 @@ class InMemorySyncStorage extends RemoteSyncStorage {
     // In-memory backend needs no finalization
   }
 
-  Future<void> delete(IriTerm documentIri, {String? ifMatch}) async {
-    final iri = documentIri.value;
-    final stored = _storage._documents[iri];
+  Future<void> delete(IriTerm documentIri, {String? ifMatch}) =>
+      _delete(_storage, documentIri, ifMatch: ifMatch);
+
+  Future<void> _delete(_Store store, IriTerm documentIri,
+      {String? ifMatch}) async {
+    final stored = store.getDocument(documentIri);
 
     // If document doesn't exist, delete is idempotent (no-op)
     if (stored == null) {
@@ -211,17 +264,17 @@ class InMemorySyncStorage extends RemoteSyncStorage {
     }
 
     // Delete document
-    _storage._documents.remove(iri);
+    store.deleteDocument(documentIri);
   }
 }
 
 /// Internal storage structure for documents
-class _StoredDocument {
-  final RdfGraph graph;
+class _StoredDocument<T> {
+  final T data;
   final String etag;
 
   _StoredDocument({
-    required this.graph,
+    required this.data,
     required this.etag,
   });
 }

@@ -191,6 +191,17 @@ abstract class FullIndexConfigBase extends CrdtIndexConfigBase {
   @override
   final IndexItemConfigBase? item;
 
+  /// Policy for fetching index items from the Pod to local storage.
+  ///
+  /// **IMPORTANT:** Some backends (e.g. Google Drive) store all resources
+  /// embedded in the shards document and thus do not support lazy fetching
+  /// of individual resources. In such cases,
+  /// the itemFetchPolicy will be automatically overridden here to `prefetch`
+  /// regardless of the originally specified configuration.
+  ///
+  /// So, an application that originally specified `onRequest` fetching might
+  /// actually get `prefetch` here when using such backends.
+  ///
   final ItemFetchPolicy itemFetchPolicy;
 
   const FullIndexConfigBase({

@@ -30,27 +30,40 @@ class DirWorkerHandler implements RemoteWorkerHandler {
   final String appName;
   final RdfCore _rdfCore;
   final String _contentType;
+  final String _datasetContentType;
+  final bool _useShardDatasets;
+
+  @override
+  final String id;
 
   DirWorkerHandler(
       {this.appName = 'locorda',
       String? contentType,
+      String? datasetContentType,
       RdfCore? rdfCore,
-      IriTermFactory? iriTermFactory})
+      IriTermFactory? iriTermFactory,
+      bool useShardDatasets = false,
+      this.id = 'local_dir'})
       : _rdfCore = rdfCore ??
             RdfCore.withStandardCodecs(
                 iriTermFactory: iriTermFactory ?? IriTerm.validated),
-        _contentType = contentType ?? turtle.primaryMimeType;
-
-  @override
-  String get id => 'local_dir';
+        _contentType = contentType ?? turtle.primaryMimeType,
+        _datasetContentType = datasetContentType ?? trig.primaryMimeType,
+        _useShardDatasets = useShardDatasets;
 
   @override
   Future<Backend> createBackend(
       WorkerHandlerContext context, SyncEngineConfig config) async {
     // Get auth from connector (synced from main thread)
     // Backend queries syncDirectoryPath from auth when it becomes enabled
-    final auth = DirAuthConnectorWorker.receiver(context);
+    final auth = DirAuthConnectorWorker.receiver(context, id);
 
-    return DirBackend(auth: auth, contentType: _contentType, rdfCore: _rdfCore);
+    return DirBackend(
+      auth: auth,
+      contentType: _contentType,
+      datasetContentType: _datasetContentType,
+      rdfCore: _rdfCore,
+      useShardDatasets: _useShardDatasets,
+    );
   }
 }

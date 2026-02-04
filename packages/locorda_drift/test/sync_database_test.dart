@@ -1,9 +1,9 @@
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_drift/src/sync_database.dart';
 import 'package:locorda_rdf_core/core.dart';
 
-import '../lib/src/sync_database.dart';
 import 'test_sync_database.dart';
 
 const IriTerm typeIri = IriTerm('https://example.com/TestType');

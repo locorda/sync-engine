@@ -76,6 +76,22 @@ abstract interface class Storage {
       IriTerm typeIri, String? minCursor,
       {required int limit});
 
+  /// Check for missing documents referenced by index entries.
+  ///
+  /// Returns resource IRIs that have entries in the index_items table
+  /// but no corresponding document in the documents table.
+  ///
+  /// Used for validation before switching to shard dataset backends:
+  /// - Dataset shards require all resources to be present locally
+  /// - Lazy loading is incompatible with dataset mode
+  ///
+  /// Parameters:
+  /// - [resourceType]: Optional filter for specific resource type
+  ///
+  /// Returns list of missing resource IRIs (empty if storage is complete).
+  Future<List<IriTerm>> getMissingDocumentsForIndexEntries(
+      {IriTerm? resourceType});
+
   /// Watch documents of a specific type modified since cursor (local OR remote changes).
   ///
   /// Emits DocumentsResult whenever documents of the given type change in the database.

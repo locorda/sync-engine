@@ -26,18 +26,21 @@ class SolidWorkerHandler implements RemoteWorkerHandler {
   final IriTermFactory _iriTermFactory;
   final http.Client _httpClient;
   final String _contentType;
+  final String _datasetContentType;
 
   SolidWorkerHandler({
     RdfCore? rdfCore,
     IriTermFactory? iriTermFactory,
     http.Client? httpClient,
     String? contentType,
+    String? datasetContentType,
   })  : _rdfCore = rdfCore ??
             RdfCore.withStandardCodecs(
                 iriTermFactory: iriTermFactory ?? IriTerm.validated),
         _iriTermFactory = iriTermFactory ?? IriTerm.validated,
         _httpClient = httpClient ?? http.Client(),
-        _contentType = contentType ?? turtle.primaryMimeType;
+        _contentType = contentType ?? turtle.primaryMimeType,
+        _datasetContentType = datasetContentType ?? trig.primaryMimeType;
   @override
   String get id => 'solid';
 
@@ -50,5 +53,6 @@ class SolidWorkerHandler implements RemoteWorkerHandler {
         iriTermFactory: _iriTermFactory,
         httpClient: _httpClient,
         contentType: _contentType,
+        datasetContentType: _datasetContentType,
       );
 }

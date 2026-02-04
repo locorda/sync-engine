@@ -48,16 +48,16 @@ melos:
 
     test:
       run: |
-        dart run melos exec --dir-exists=test --no-flutter -- dart test
-        dart run melos exec --dir-exists=test --flutter --concurrency=1 -- flutter test
+        dart run melos exec --dir-exists=test --no-flutter -- dart test --reporter failures-only && \
+        dart run melos exec --dir-exists=test --flutter --concurrency=1 -- flutter test --reporter failures-only
       description: Run tests for all packages (Dart and Flutter).
 
     test:dart:
-      run: dart run melos exec --dir-exists=test --no-flutter -- dart test
+      run: dart run melos exec --dir-exists=test --no-flutter -- dart test --reporter failures-only
       description: Run tests for pure Dart packages only.
 
     test:flutter:
-      run: dart run melos exec --dir-exists=test --flutter --concurrency=1 -- flutter test
+      run: dart run melos exec --dir-exists=test --flutter --concurrency=1 -- flutter test --reporter failures-only
       description: Run tests for Flutter packages only.
 
     format:

@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/local_document_merger.dart';
+import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/hlc_service.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart';
@@ -247,7 +248,8 @@ List<IriTerm> _computeIsGovernedBy(RdfGraph? oldFrameworkGraph,
 /// and sync operations transparently.
 class CrdtDocumentManager {
   final Storage _storage;
-  final SyncEngineConfig _config;
+  final ConfigService _configService;
+  SyncEngineConfig get _config => _configService.currentConfig;
   final MergeContractLoader _mergeContractLoader;
   final ShardDeterminer _shardDeterminer;
   final LocalDocumentMerger _localDocumentMerger;
@@ -258,14 +260,14 @@ class CrdtDocumentManager {
 
   CrdtDocumentManager({
     required Storage storage,
-    required SyncEngineConfig config,
+    required ConfigService configService,
     required MergeContractLoader mergeContractLoader,
     required HlcService hlcService,
     required ShardDeterminer shardDeterminer,
     required LocalDocumentMerger localDocumentMerger,
     required PhysicalTimestampFactory physicalTimestampFactory,
   })  : _storage = storage,
-        _config = config,
+        _configService = configService,
         _mergeContractLoader = mergeContractLoader,
         _hlcService = hlcService,
         _localDocumentMerger = localDocumentMerger,

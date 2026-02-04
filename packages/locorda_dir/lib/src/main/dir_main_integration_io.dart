@@ -24,8 +24,16 @@ class DirMainIntegration implements RemoteIntegration {
 
   final DirAuth _dirAuth;
 
+  @override
+  final String id;
+
+  @override
+  final String displayName;
+
   DirMainIntegration._({
     required DirAuth dirAuth,
+    required this.id,
+    required this.displayName,
   }) : _dirAuth = dirAuth;
 
   /// Creates integration with automatic directory path detection.
@@ -43,34 +51,35 @@ class DirMainIntegration implements RemoteIntegration {
   static Future<DirMainIntegration> create({
     String appName = 'locorda',
     bool initiallyEnabled = false,
+    String id = 'local_dir',
+    String displayName = 'Local Directory',
   }) async {
-    final syncPath = await _getSyncDirectoryPath(appName);
+    final syncPath = await _getSyncDirectoryPath(appName, id);
 
     final dirAuth = await DirAuth.create(
       syncDirectoryPath: syncPath,
       initiallyEnabled: initiallyEnabled,
+      id: id,
     );
 
-    return DirMainIntegration._(dirAuth: dirAuth);
+    return DirMainIntegration._(
+      dirAuth: dirAuth,
+      id: id,
+      displayName: displayName,
+    );
   }
 
   /// Gets platform-appropriate sync directory path.
-  static Future<String> _getSyncDirectoryPath(String appName) async {
+  static Future<String> _getSyncDirectoryPath(String appName, String id) async {
     if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
       final docsDir = await getApplicationDocumentsDirectory();
-      return '${docsDir.path}/$appName/locorda-sync';
+      return '${docsDir.path}/$appName/$id';
     }
 
     // Fallback for unsupported platforms (mobile)
     final appDir = await getApplicationSupportDirectory();
-    return '${appDir.path}/locorda-sync';
+    return '${appDir.path}/$id';
   }
-
-  @override
-  String get id => 'local_dir';
-
-  @override
-  String get displayName => 'Local Directory';
 
   @override
   IconData get icon => Icons.folder_copy_outlined;
@@ -80,7 +89,7 @@ class DirMainIntegration implements RemoteIntegration {
 
   @override
   List<MainHandlerFactory> get workerConnectors => [
-        DirAuthConnector.sender(_dirAuth),
+        DirAuthConnector.sender(_dirAuth, id),
       ];
 
   @override

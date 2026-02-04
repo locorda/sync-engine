@@ -9,6 +9,7 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
+import 'package:rxdart/rxdart.dart';
 
 import '../auth/dir_auth_provider.dart';
 import '../rdf/rdf_extensions.dart';
@@ -30,14 +31,22 @@ class DirBackend implements Backend {
   List<RemoteStorage> _remotes = [];
   final RdfCore _rdfCore;
   final String _contentType;
+  final String _datasetContentType;
+  final bool _useShardDatasets;
+  late final BehaviorSubject<List<RemoteStorage>> _remotesChangedSubject;
 
   DirBackend({
     required DirAuthProvider auth,
     required RdfCore rdfCore,
     required String contentType,
+    required String datasetContentType,
+    required bool useShardDatasets,
   })  : _auth = auth,
         _rdfCore = rdfCore,
-        _contentType = contentType {
+        _contentType = contentType,
+        _datasetContentType = datasetContentType,
+        _useShardDatasets = useShardDatasets {
+    _remotesChangedSubject = BehaviorSubject<List<RemoteStorage>>();
     _auth.isAuthenticatedNotifier.addListener(_authStateChanged);
     _authStateChanged();
   }
@@ -64,11 +73,19 @@ class DirBackend implements Backend {
           directoryPath: syncDirectoryPath,
           rdfCore: _rdfCore,
           contentType: _contentType,
+          datasetContentType: _datasetContentType,
+          useShardDatasets: _useShardDatasets,
         )
       ];
+
+      // Emit remote change
+      _remotesChangedSubject.add(_remotes);
     } else {
       _log.info('Sync disabled: clearing local directory remote storage');
       _remotes = [];
+
+      // Emit remote change
+      _remotesChangedSubject.add(_remotes);
     }
   }
 
@@ -76,8 +93,13 @@ class DirBackend implements Backend {
   List<RemoteStorage> get remotes => _remotes;
 
   @override
+  Stream<List<RemoteStorage>> get remotesChanged =>
+      _remotesChangedSubject.stream;
+
+  @override
   Future<void> dispose() async {
     _auth.isAuthenticatedNotifier.removeListener(_authStateChanged);
+    await _remotesChangedSubject.close();
   }
 }
 
@@ -86,16 +108,24 @@ class DirRemoteStorage implements RemoteStorage {
   final String _directoryPath;
   final RemoteId _remoteId;
   final String _contentType;
+  final String _datasetContentType;
   final RdfCore _rdfCore;
+  final bool _useShardDatasets = true;
 
   DirRemoteStorage({
     required String directoryPath,
     required String contentType,
+    required String datasetContentType,
     required RdfCore rdfCore,
+    required bool useShardDatasets,
   })  : _directoryPath = directoryPath,
         _contentType = contentType,
+        _datasetContentType = datasetContentType,
         _rdfCore = rdfCore,
         _remoteId = RemoteId('local-dir', directoryPath);
+
+  @override
+  bool get useShardDatasets => _useShardDatasets;
 
   @override
   RemoteId get remoteId => _remoteId;
@@ -125,27 +155,31 @@ class DirRemoteStorage implements RemoteStorage {
     }
 
     return DirSyncStorage(
-        directoryPath: _directoryPath,
-        rdfCore: _rdfCore,
-        contentType: _contentType);
+      directoryPath: _directoryPath,
+      rdfCore: _rdfCore,
+      contentType: _contentType,
+      datasetContentType: _datasetContentType,
+    );
   }
 }
 
 /// Per-sync-session storage for directory backend.
 class DirSyncStorage extends RemoteSyncStorage {
   final String _directoryPath;
-  final RdfCodec<RdfGraph> Function(String) _codecResolver;
-  final String contentType;
+  final RdfCore _rdfCore;
+  final String _contentType;
+  final String _datasetContentType;
   final ResourceLocator _resourceLocator;
 
   DirSyncStorage({
     required String directoryPath,
     required RdfCore rdfCore,
     required String contentType,
+    required String datasetContentType,
   })  : _directoryPath = directoryPath,
-        _codecResolver =
-            ((contentType) => rdfCore.codec(contentType: contentType)),
-        contentType = contentType,
+        _rdfCore = rdfCore,
+        _contentType = contentType,
+        _datasetContentType = datasetContentType,
         _resourceLocator =
             LocalResourceLocator(iriTermFactory: IriTerm.validated);
 
@@ -180,9 +214,34 @@ class DirSyncStorage extends RemoteSyncStorage {
   }
 
   @override
-  Future<RemoteDownloadResult> download(
+  Future<RemoteDownloadResult<RdfGraph>> download(
     IriTerm documentIri, {
     String? ifNoneMatch,
+  }) =>
+      _download<RdfGraph>(
+        documentIri,
+        ifNoneMatch: ifNoneMatch,
+        convert: (content) =>
+            _rdfCore.decode(content, contentType: _contentType),
+      );
+
+  Future<RemoteDownloadResult<RdfDataset>> downloadDataset(
+    IriTerm documentIri, {
+    String? ifNoneMatch,
+  }) =>
+      _download<RdfDataset>(
+        documentIri,
+        ifNoneMatch: ifNoneMatch,
+        convert: (content) => _rdfCore.decodeDataset(
+          content,
+          contentType: _datasetContentType,
+        ),
+      );
+
+  Future<RemoteDownloadResult<T>> _download<T>(
+    IriTerm documentIri, {
+    String? ifNoneMatch,
+    required T Function(String) convert,
   }) async {
     final filePath = _iriToFilePath(documentIri);
     final file = File(filePath);
@@ -207,8 +266,7 @@ class DirSyncStorage extends RemoteSyncStorage {
     // Read and parse file
     try {
       final content = await file.readAsString();
-      final codec = _codecResolver(contentType);
-      final dataset = codec.decode(content);
+      final dataset = convert(content);
 
       _log.fine('Downloaded: $filePath, etag: $currentETag');
       return RemoteDownloadResult(
@@ -226,6 +284,36 @@ class DirSyncStorage extends RemoteSyncStorage {
     IriTerm documentIri,
     RdfGraph graph, {
     String? ifMatch,
+  }) =>
+      _upload<RdfGraph>(
+        documentIri,
+        graph,
+        ifMatch: ifMatch,
+        convert: (content) =>
+            _rdfCore.encode(content, contentType: _contentType),
+      );
+
+  @override
+  Future<RemoteUploadResult> uploadDataset(
+    IriTerm documentIri,
+    RdfDataset dataset, {
+    String? ifMatch,
+  }) =>
+      _upload<RdfDataset>(
+        documentIri,
+        dataset,
+        ifMatch: ifMatch,
+        convert: (content) => _rdfCore.encodeDataset(
+          content,
+          contentType: _datasetContentType,
+        ),
+      );
+
+  Future<RemoteUploadResult> _upload<T>(
+    IriTerm documentIri,
+    T graph, {
+    String? ifMatch,
+    required String Function(T) convert,
   }) async {
     final filePath = _iriToFilePath(documentIri);
     final file = File(filePath);
@@ -258,8 +346,7 @@ class DirSyncStorage extends RemoteSyncStorage {
 
     // Write file
     try {
-      final codec = _codecResolver(contentType);
-      final content = codec.encode(graph);
+      final content = convert(graph);
       await file.writeAsString(content);
 
       // Generate new ETag

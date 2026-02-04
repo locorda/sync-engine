@@ -23,10 +23,7 @@ class _FakeRemoteFile {
 }
 
 class FakeGDriveClient implements GDriveApiClient {
-  FakeGDriveClient(this.codecResolver);
-
-  @override
-  final RdfCodec<RdfGraph> Function(String) codecResolver;
+  FakeGDriveClient();
 
   final Map<String, _FakeRemoteFile> filesById = {};
   final List<GDriveListedEntry> listedEntries = [];
@@ -55,6 +52,7 @@ class FakeGDriveClient implements GDriveApiClient {
     required String folderId,
     bool fileNameMayBeRelativePath = false,
     String spaces = 'drive',
+    required String contentType,
   }) async {
     final id = 'new-${_nextId++}';
     final path = filename;
@@ -88,19 +86,20 @@ class FakeGDriveClient implements GDriveApiClient {
   }
 
   @override
-  Future<RemoteUploadResult> upload(
+  Future<RemoteUploadResult> upload<T>(
     String fileId,
-    RdfGraph updatedGraph, {
+    T updatedGraph, {
     required String ifMatch,
+    required String Function(T) convert,
   }) {
     throw UnimplementedError();
   }
 
   @override
-  Future<({RdfGraph? graph, String? etag, bool notModified})> download(
-    String fileId, {
-    String? ifNoneMatch,
-  }) {
+  Future<({T? graph, String? etag, bool notModified})> download<T>(
+      String fileId,
+      {String? ifNoneMatch,
+      required T Function(String) convert}) {
     throw UnimplementedError();
   }
 
@@ -124,24 +123,27 @@ class FakeGDriveClient implements GDriveApiClient {
   }
 
   @override
-  Future<({String fileId, String etag})> createFile(
+  Future<({String fileId, String etag})> createFile<T>(
     String filename,
-    RdfGraph graph, {
+    T graph, {
     required String folderId,
     bool fileNameMayBeRelativePath = false,
     String spaces = 'drive',
+    required String contentType,
+    required String Function(T) convert,
   }) {
     throw UnimplementedError();
   }
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('GDriveLocalMirror initializes cache and serves local downloads',
       () async {
     final rdfCore =
         RdfCore.withStandardCodecs(iriTermFactory: IriTerm.validated);
-    final client = FakeGDriveClient(
-        (contentType) => rdfCore.codec(contentType: contentType));
+    final client = FakeGDriveClient();
 
     final typeIri = IriTerm.validated('https://example.com/Note');
     final locator = LocalResourceLocator(iriTermFactory: IriTerm.validated);
@@ -194,7 +196,7 @@ void main() {
 
     await mirror.initialize();
 
-    final download = await mirror.download(docIri);
+    final download = await mirror.download(docIri, convert: rdfCore.decode);
     expect(download.graph, isNotNull);
     expect(download.etag, md5Checksum);
 
@@ -208,8 +210,7 @@ void main() {
       () async {
     final rdfCore =
         RdfCore.withStandardCodecs(iriTermFactory: IriTerm.validated);
-    final client = FakeGDriveClient(
-        (contentType) => rdfCore.codec(contentType: contentType));
+    final client = FakeGDriveClient();
 
     final typeIri = IriTerm.validated('https://example.com/Note');
     final locator = LocalResourceLocator(iriTermFactory: IriTerm.validated);
@@ -267,8 +268,10 @@ void main() {
       ),
     });
 
-    final uploadResult =
-        await mirror.upload(docIri, updatedGraph, ifMatch: md5Checksum);
+    final uploadResult = await mirror.upload(docIri, updatedGraph,
+        ifMatch: md5Checksum,
+        contentType: 'text/turtle',
+        convert: rdfCore.encode);
     expect(uploadResult, isA<SuccessUploadResult>());
 
     await mirror.finalize();

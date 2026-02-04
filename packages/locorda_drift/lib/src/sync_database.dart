@@ -1138,7 +1138,46 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
       shardMap.putIfAbsent(shardIri, () => <String, String>{})[resourceIri] =
           clockHash;
     }
-  } // Note: Sync timestamps are now stored in SyncSettings table
+  }
+
+  /// Get resource IRI IDs for index entries that have no corresponding document.
+  ///
+  /// Finds active (not deleted) index entries where no document exists in storage.
+  /// This indicates incomplete storage state that's incompatible with dataset-based sync.
+  ///
+  /// Parameters:
+  /// - [resourceTypeIriId]: Optional filter by resource type
+  ///
+  /// Returns: Set of resource IRI IDs that have index entries but no documents
+  Future<Set<int>> getMissingDocumentResourceIriIds({
+    int? resourceTypeIriId,
+  }) async {
+    final whereConditions = <String>[
+      'e.is_deleted = 0', // Only active entries
+    ];
+    final variables = <Variable>[];
+
+    if (resourceTypeIriId != null) {
+      whereConditions.add('e.resource_type_iri_id = ?');
+      variables.add(Variable.withInt(resourceTypeIriId));
+    }
+
+    final results = await customSelect(
+      '''
+      SELECT DISTINCT e.resource_iri_id
+      FROM index_entries e
+      LEFT JOIN sync_documents d ON d.document_iri_id = e.resource_iri_id
+      WHERE ${whereConditions.join(' AND ')}
+        AND d.id IS NULL
+      ''',
+      variables: variables,
+      readsFrom: {db.indexEntries, db.syncDocuments},
+    ).get();
+
+    return results.map((row) => row.read<int>('resource_iri_id')).toSet();
+  }
+
+  // Note: Sync timestamps are now stored in SyncSettings table
   // using SyncSettingKeys constants. See DriftStorage helper methods.
 }
 

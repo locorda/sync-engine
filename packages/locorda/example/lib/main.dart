@@ -56,8 +56,12 @@ Future<Locorda> initializeLocorda() async {
 
     // Provide remotes - those must be configured correspondingly in setupWorkerEngine as well
     remotes: [
-      if (DirMainIntegration.isPlatformSupported)
-        await DirMainIntegration.create(),
+      if (DirMainIntegration.isPlatformSupported) ...[
+        await DirMainIntegration.create(
+            id: 'local_dir', displayName: 'Local Directory'),
+        await DirMainIntegration.create(
+            id: 'local_dir_sd', displayName: 'Local Directory (Sharded)'),
+      ],
       await SolidMainIntegration.create(
           // SECURITY: This example demonstrates secure redirect URI configuration.
           // - appUrlScheme provides secure custom URI scheme for mobile/macOS
