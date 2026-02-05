@@ -27,6 +27,10 @@ class GDriveConfigMessage {
               config.localMirrorConfig.maxConcurrentDownloads,
           'maxConcurrentUploads': config.localMirrorConfig.maxConcurrentUploads,
         },
+        'maxConcurrentDocumentSyncs': config.maxConcurrentDocumentSyncs,
+        'maxConcurrentShardSyncs': config.maxConcurrentShardSyncs,
+        'maxConcurrentIndexSyncs': config.maxConcurrentIndexSyncs,
+        'useShardDatasets': config.useShardDatasets,
       };
 
   static GDriveConfigMessage fromJson(Map<String, dynamic> json) {
@@ -58,18 +62,34 @@ class GDriveConfigMessage {
                 mirrorConfigRaw['maxConcurrentUploads'] as int? ?? 30,
           );
 
+    final maxConcurrentDocumentSyncs =
+        json['maxConcurrentDocumentSyncs'] as int? ?? 1;
+    final maxConcurrentShardSyncs =
+        json['maxConcurrentShardSyncs'] as int? ?? 1;
+    final maxConcurrentIndexSyncs =
+        json['maxConcurrentIndexSyncs'] as int? ?? 1;
+    final useShardDatasets = json['useShardDatasets'] as bool? ?? false;
+
     return GDriveConfigMessage(
       config: folderMode == GDriveFolderMode.appDataFolder
           ? GDriveConfig(
               typeFolderNames: typeFolderNames,
               extraScopes: extraScopes,
               localMirrorConfig: mirrorConfig,
+              maxConcurrentDocumentSyncs: maxConcurrentDocumentSyncs,
+              maxConcurrentShardSyncs: maxConcurrentShardSyncs,
+              maxConcurrentIndexSyncs: maxConcurrentIndexSyncs,
+              useShardDatasets: useShardDatasets,
             )
           : GDriveConfig.visibleFolder(
               appFolderName: appFolderName!,
               typeFolderNames: typeFolderNames,
               extraScopes: extraScopes,
               localMirrorConfig: mirrorConfig,
+              maxConcurrentDocumentSyncs: maxConcurrentDocumentSyncs,
+              maxConcurrentShardSyncs: maxConcurrentShardSyncs,
+              maxConcurrentIndexSyncs: maxConcurrentIndexSyncs,
+              useShardDatasets: useShardDatasets,
             ),
     );
   }

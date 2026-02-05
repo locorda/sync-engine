@@ -57,11 +57,11 @@ class GDriveAuthConnector {
   ///
   /// Pass the main thread's [authBridge] instance. The returned factory will be
   /// called by the worker framework with the [MainHandlerContext].
-  static MainHandlerFactory sender(GDriveAuthProvider authBridge) {
+  static MainHandlerFactory sender(GDriveAuthProvider authBridge, String id) {
     return (MainHandlerContext context) {
       return GDriveAuthSender(
         authBridge: authBridge,
-        workerHandle: context.createChannel('locorda_gdrive/gdrive_auth'),
+        workerHandle: context.createChannel('locorda_gdrive/${id}/gdrive_auth'),
       );
     };
   }

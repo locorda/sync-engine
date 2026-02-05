@@ -1428,7 +1428,7 @@ class GDriveSyncStorage extends RemoteSyncStorage {
   final RdfCore _rdfCore;
   final String _contentType;
   final String _datasetContentType;
-
+  final GDriveConfig _config;
   GDriveSyncStorage({
     required GDriveApiClient client,
     required TypeIndexMappings typeIndexMappings,
@@ -1437,15 +1437,24 @@ class GDriveSyncStorage extends RemoteSyncStorage {
     required RdfCore rdfCore,
     required String contentType,
     required String datasetContentType,
+    required GDriveConfig config,
     GDriveLocalMirror? localMirror,
   })  : _client = client,
         _typeIndexMappings = typeIndexMappings,
         _resourceLocator = resourceLocator,
         _spaces = spaces,
+        _config = config,
         _localMirror = localMirror,
         _contentType = contentType,
         _datasetContentType = datasetContentType,
         _rdfCore = rdfCore;
+
+  @override
+  int get maxConcurrentDocumentSyncs => _config.maxConcurrentDocumentSyncs;
+  @override
+  int get maxConcurrentIndexSyncs => _config.maxConcurrentIndexSyncs;
+  @override
+  int get maxConcurrentShardSyncs => _config.maxConcurrentShardSyncs;
 
   @override
   Future<RemoteDownloadResult<RdfGraph>> download(IriTerm documentIri,
@@ -1606,6 +1615,16 @@ class GDriveRemoteStorage implements RemoteStorage {
   final RdfCore _rdfCore;
   final String _contentType;
   final String _datasetContentType;
+  final GDriveConfig _config;
+
+  // Severely reduces the number of files that have to be transferred between
+  // the client and Google Drive, improving performance significantly.
+  //
+  // This means that all resources of a given shard are stored within
+  // the shard file with the help of rdf datasets, instead of storing
+  // a single file per rdf graph.
+  @override
+  bool get useShardDatasets => _config.useShardDatasets;
 
   GDriveRemoteStorage({
     required GDriveApiClient client,
@@ -1617,8 +1636,10 @@ class GDriveRemoteStorage implements RemoteStorage {
     required RdfCore rdfCore,
     required String contentType,
     required String datasetContentType,
+    required GDriveConfig config,
   })  : _client = client,
         _userId = userId,
+        _config = config,
         _typeIndexManager = typeIndexManager,
         _resourceLocator = resourceLocator,
         _spaces = spaces,
@@ -1627,15 +1648,6 @@ class GDriveRemoteStorage implements RemoteStorage {
         _rdfCore = rdfCore,
         _contentType = contentType,
         _datasetContentType = datasetContentType;
-
-  // Severely reduces the number of files that have to be transferred between
-  // the client and Google Drive, improving performance significantly.
-  //
-  // This means that all resources of a given shard are stored within
-  // the shard file with the help of rdf datasets, instead of storing
-  // a single file per rdf graph.
-  @override
-  bool get useShardDatasets => true;
 
   RemoteId get remoteId => _remoteId;
 
@@ -1657,15 +1669,15 @@ class GDriveRemoteStorage implements RemoteStorage {
       await mirror.initialize();
     }
     return GDriveSyncStorage(
-      client: _client,
-      resourceLocator: _resourceLocator,
-      typeIndexMappings: typeIndexMappings,
-      spaces: _spaces,
-      localMirror: mirror,
-      rdfCore: _rdfCore,
-      contentType: _contentType,
-      datasetContentType: _datasetContentType,
-    );
+        client: _client,
+        resourceLocator: _resourceLocator,
+        typeIndexMappings: typeIndexMappings,
+        spaces: _spaces,
+        localMirror: mirror,
+        rdfCore: _rdfCore,
+        contentType: _contentType,
+        datasetContentType: _datasetContentType,
+        config: _config);
   }
 
   @override
@@ -1776,6 +1788,7 @@ class GDriveBackend implements Backend {
         contentType: _contentType,
         datasetContentType: _datasetContentType,
         rdfCore: _rdfCore,
+        config: _config,
       );
 
       // Wrap with auth-aware retry logic

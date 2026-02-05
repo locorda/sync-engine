@@ -69,9 +69,9 @@ class GDriveAuthConnector {
   ///   });
   /// }
   /// ```
-  static GDriveAuthProvider receiver(WorkerHandlerContext context) {
+  static GDriveAuthProvider receiver(WorkerHandlerContext context, String id) {
     return WorkerGDriveAuthProvider(
-        context.createChannel('locorda_gdrive/gdrive_auth'));
+        context.createChannel('locorda_gdrive/${id}/gdrive_auth'));
   }
 
   /// Creates config receiver for worker context.
@@ -88,9 +88,10 @@ class GDriveAuthConnector {
   ///   });
   /// }
   /// ```
-  static Future<GDriveConfig> receiveConfig(WorkerHandlerContext context) {
+  static Future<GDriveConfig> receiveConfig(
+      WorkerHandlerContext context, String id) {
     final receiver = WorkerGDriveConfigReceiver(
-        context.createChannel('locorda_gdrive/gdrive_config'));
+        context.createChannel('locorda_gdrive/${id}/gdrive_config'));
     return receiver.getConfig();
   }
 }

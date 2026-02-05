@@ -42,14 +42,16 @@ class GDriveWorkerHandler implements RemoteWorkerHandler {
   final http.Client _httpClient;
   final String _contentType;
   final String _datasetContentType;
+  final String id;
 
-  GDriveWorkerHandler(
-      {IriTermFactory? iriTermFactory,
-      RdfCore? rdfCore,
-      http.Client? httpClient,
-      String? contentType,
-      String? datasetContentType})
-      : _iriTermFactory = iriTermFactory ?? IriTerm.validated,
+  GDriveWorkerHandler({
+    IriTermFactory? iriTermFactory,
+    RdfCore? rdfCore,
+    http.Client? httpClient,
+    String? contentType,
+    String? datasetContentType,
+    this.id = 'gdrive',
+  })  : _iriTermFactory = iriTermFactory ?? IriTerm.validated,
         _rdfCore = rdfCore ??
             RdfCore.withStandardCodecs(
                 iriTermFactory: iriTermFactory ?? IriTerm.validated),
@@ -58,16 +60,13 @@ class GDriveWorkerHandler implements RemoteWorkerHandler {
         _datasetContentType = datasetContentType ?? trig.primaryMimeType;
 
   @override
-  String get id => 'gdrive';
-
-  @override
   Future<Backend> createBackend(
       WorkerHandlerContext context, SyncEngineConfig syncEngineConfig) async {
     // Receive config from main thread
-    final config = await GDriveAuthConnector.receiveConfig(context);
+    final config = await GDriveAuthConnector.receiveConfig(context, id);
 
     return GDriveBackend(
-      auth: GDriveAuthConnector.receiver(context),
+      auth: GDriveAuthConnector.receiver(context, id),
       config: config,
       iriTermFactory: _iriTermFactory,
       rdfCore: _rdfCore,

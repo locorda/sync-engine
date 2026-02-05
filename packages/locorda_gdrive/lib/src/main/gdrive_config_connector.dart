@@ -44,11 +44,12 @@ class GDriveConfigConnector {
   ///
   /// Pass the main thread's [config] instance. The returned factory will be
   /// called by the worker framework with the [MainHandlerContext].
-  static MainHandlerFactory sender(GDriveConfig config) {
+  static MainHandlerFactory sender(GDriveConfig config, String id) {
     return (MainHandlerContext context) {
       return GDriveConfigSender(
         config: config,
-        workerHandle: context.createChannel('locorda_gdrive/gdrive_config'),
+        workerHandle:
+            context.createChannel('locorda_gdrive/${id}/gdrive_config'),
       );
     };
   }

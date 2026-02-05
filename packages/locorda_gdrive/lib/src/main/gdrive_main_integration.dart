@@ -40,10 +40,16 @@ import 'gdrive_config_connector.dart';
 class GDriveMainIntegration implements RemoteIntegration {
   final GDriveConfig _config;
   final GDriveAuth _gdriveAuth;
+  @override
+  final String id;
+  @override
+  final String displayName;
 
   GDriveMainIntegration._({
     required GDriveConfig config,
     required GDriveAuth gdriveAuth,
+    required this.id,
+    required this.displayName,
   })  : _config = config,
         _gdriveAuth = gdriveAuth;
 
@@ -53,6 +59,8 @@ class GDriveMainIntegration implements RemoteIntegration {
   static Future<GDriveMainIntegration> create({
     GDriveConfig config = const GDriveConfig(),
     String? clientId,
+    String id = 'gdrive',
+    String displayName = 'Google Drive',
   }) async {
     final auth = await GDriveAuth.create(
       clientId: clientId,
@@ -62,14 +70,10 @@ class GDriveMainIntegration implements RemoteIntegration {
     return GDriveMainIntegration._(
       config: config,
       gdriveAuth: auth,
+      id: id,
+      displayName: displayName,
     );
   }
-
-  @override
-  String get id => 'gdrive';
-
-  @override
-  String get displayName => 'Google Drive';
 
   @override
   IconData get icon => Icons.cloud;
@@ -79,8 +83,8 @@ class GDriveMainIntegration implements RemoteIntegration {
 
   @override
   List<MainHandlerFactory> get workerConnectors => [
-        GDriveAuthConnector.sender(_gdriveAuth),
-        GDriveConfigConnector.sender(_config),
+        GDriveAuthConnector.sender(_gdriveAuth, id),
+        GDriveConfigConnector.sender(_config, id),
       ];
 
   @override
