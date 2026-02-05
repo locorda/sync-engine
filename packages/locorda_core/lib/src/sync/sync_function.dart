@@ -1,6 +1,5 @@
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/index/index_config_base.dart';
-import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/storage/sync_timestamp_storage.dart';
 import 'package:locorda_core/src/sync/remote_sync_orchestrator.dart';

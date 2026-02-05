@@ -523,13 +523,46 @@ Future<void> _verifyExpectations({
 
   // Verify documents if expected (new unified format)
   final expectedDocuments = expectedJson['documents'] as List<dynamic>?;
+  final documentsDir = expectedJson['documents_dir'] as String?;
+  // TODO: maybe ensure only dir or files are expected
+  /*
+  if (expectedDocuments != null && documentsDir != null) {
+    fail('Expected only one of "documents" or "documents_dir"');
+  }
+  */
   if (expectedDocuments != null) {
     await _verifyDocuments(
         testId, stepIndex, expectedDocuments, testAssetsDir, storage);
   }
+  if (documentsDir != null) {
+    if (_recordMode) {
+      await _recordDocumentsDirectory(
+        testAssetsDir: testAssetsDir,
+        relativeDir: documentsDir,
+        actualDocuments: _getLocalDocumentsForTesting(storage),
+        allowDatasets: false,
+      );
+    } else {
+      await _verifyDocumentsDirectory(
+        testId: testId,
+        stepIndex: stepIndex,
+        testAssetsDir: testAssetsDir,
+        relativeDir: documentsDir,
+        actualDocuments: _getLocalDocumentsForTesting(storage),
+        allowDatasets: false,
+      );
+    }
+  }
 
   final expectedRemoteDocuments =
       expectedJson['remote_documents'] as List<dynamic>?;
+  final remoteDocumentsDir = expectedJson['remote_documents_dir'] as String?;
+  /*
+  // TODO: maybe ensure only dir or files are expected
+  if (expectedRemoteDocuments != null && remoteDocumentsDir != null) {
+    fail('Expected only one of "remote_documents" or "remote_documents_dir"');
+  }
+  */
   if (expectedRemoteDocuments != null) {
     await _verifyRemoteDocuments(
       testId: testId,
@@ -538,6 +571,25 @@ Future<void> _verifyExpectations({
       testAssetsDir: testAssetsDir,
       sharedBackend: sharedBackend,
     );
+  }
+  if (remoteDocumentsDir != null) {
+    if (_recordMode) {
+      await _recordDocumentsDirectory(
+        testAssetsDir: testAssetsDir,
+        relativeDir: remoteDocumentsDir,
+        actualDocuments: _getRemoteDocumentsForTesting(sharedBackend),
+        allowDatasets: true,
+      );
+    } else {
+      await _verifyDocumentsDirectory(
+        testId: testId,
+        stepIndex: stepIndex,
+        testAssetsDir: testAssetsDir,
+        relativeDir: remoteDocumentsDir,
+        actualDocuments: _getRemoteDocumentsForTesting(sharedBackend),
+        allowDatasets: true,
+      );
+    }
   }
 
   // Verify property changes if expected
@@ -558,6 +610,33 @@ Future<void> _verifyExpectations({
           actualPropertyChanges, expectedPropertyChanges);
     }
   }
+}
+
+class _ExpectedDocumentFile {
+  final IriTerm documentIri;
+  final String path;
+  final bool isDataset;
+
+  const _ExpectedDocumentFile({
+    required this.documentIri,
+    required this.path,
+    required this.isDataset,
+  });
+}
+
+class _ActualDocument {
+  final IriTerm documentIri;
+  final Object data;
+
+  const _ActualDocument({
+    required this.documentIri,
+    required this.data,
+  });
+
+  bool get isDataset => data is RdfDataset;
+  bool get isGraph => data is RdfGraph;
+  RdfGraph get graph => data as RdfGraph;
+  RdfDataset get dataset => data as RdfDataset;
 }
 
 IriTerm _resolveDocumentIri(
@@ -769,6 +848,249 @@ Future<void> _verifyRemoteDocuments({
       );
     }
   }
+}
+
+List<_ActualDocument> _getLocalDocumentsForTesting(InMemoryStorage storage) {
+  return storage
+      .getAllDocumentsForTesting()
+      .entries
+      .map((entry) => _ActualDocument(
+            documentIri: entry.key,
+            data: entry.value.document,
+          ))
+      .toList();
+}
+
+List<_ActualDocument> _getRemoteDocumentsForTesting(
+    InMemoryBackend sharedBackend) {
+  final remote = sharedBackend.remotes.first;
+  return remote
+      .getStoredDocumentsForTesting()
+      .map((doc) =>
+          _ActualDocument(documentIri: doc.documentIri, data: doc.data))
+      .toList();
+}
+
+Future<void> _verifyDocumentsDirectory({
+  required String testId,
+  required int stepIndex,
+  required Directory testAssetsDir,
+  required String relativeDir,
+  required List<_ActualDocument> actualDocuments,
+  required bool allowDatasets,
+}) async {
+  final expectedDocuments = _loadExpectedDocumentsDirectory(
+    testAssetsDir: testAssetsDir,
+    relativeDir: relativeDir,
+    allowDatasets: allowDatasets,
+    allowMissing: false,
+  );
+
+  final actualByIri = {
+    for (final doc in actualDocuments) doc.documentIri: doc,
+  };
+
+  _expectExactDocumentSet(expectedDocuments.keys, actualByIri.keys,
+      context: '$testId [step $stepIndex] - $relativeDir');
+
+  for (final expected in expectedDocuments.values) {
+    final actual = actualByIri[expected.documentIri];
+    if (actual == null) {
+      fail('Missing document for IRI: ${expected.documentIri.debug}');
+    }
+
+    if (expected.isDataset) {
+      if (!actual.isDataset) {
+        fail('Expected dataset for ${expected.documentIri.debug}, '
+            'but actual is graph.');
+      }
+      final expectedDataset = readDatasetFromFile(testAssetsDir, expected.path);
+      expectEqualDatasets(
+        "$testId [step $stepIndex] - dataset ${expected.path}",
+        actual.dataset,
+        expectedDataset,
+      );
+      continue;
+    }
+
+    if (!actual.isGraph) {
+      fail('Expected graph for ${expected.documentIri.debug}, '
+          'but actual is dataset.');
+    }
+    final expectedGraph = readGraphFromFile(testAssetsDir, expected.path);
+    _expectEqualGraphs(
+      "$testId [step $stepIndex] - document ${expected.path}",
+      actual.graph,
+      expectedGraph,
+    );
+  }
+}
+
+Future<void> _recordDocumentsDirectory({
+  required Directory testAssetsDir,
+  required String relativeDir,
+  required List<_ActualDocument> actualDocuments,
+  required bool allowDatasets,
+}) async {
+  final expectedDocuments = _loadExpectedDocumentsDirectory(
+    testAssetsDir: testAssetsDir,
+    relativeDir: relativeDir,
+    allowDatasets: allowDatasets,
+    allowMissing: true,
+  );
+
+  final dir = Directory('${testAssetsDir.path}/$relativeDir');
+  await dir.create(recursive: true);
+
+  final usedPaths = <String>{};
+  for (final actual in actualDocuments) {
+    if (actual.isDataset && !allowDatasets) {
+      fail('Dataset encountered in record mode for $relativeDir: '
+          '${actual.documentIri.debug}');
+    }
+
+    final existing = expectedDocuments[actual.documentIri];
+    final extension = actual.isDataset ? '.trig' : '.ttl';
+    final useExisting =
+        existing != null && existing.path.toLowerCase().endsWith(extension);
+
+    final path = useExisting
+        ? existing.path
+        : _buildExpectedPath(
+            relativeDir: relativeDir,
+            documentIri: actual.documentIri,
+            extension: extension,
+          );
+
+    if (actual.isDataset) {
+      await writeDatasetToFile(testAssetsDir, path, actual.dataset);
+    } else {
+      await writeGraphToFile(testAssetsDir, path, actual.graph);
+    }
+    usedPaths.add(path);
+  }
+
+  final existingFiles = _listExpectedFiles(dir);
+  for (final file in existingFiles) {
+    final relPath = _relativePath(testAssetsDir, file);
+    if (!usedPaths.contains(relPath)) {
+      await file.delete();
+    }
+  }
+}
+
+Map<IriTerm, _ExpectedDocumentFile> _loadExpectedDocumentsDirectory({
+  required Directory testAssetsDir,
+  required String relativeDir,
+  required bool allowDatasets,
+  required bool allowMissing,
+}) {
+  final dir = Directory('${testAssetsDir.path}/$relativeDir');
+  if (!dir.existsSync()) {
+    if (allowMissing) {
+      return {};
+    }
+    fail('Expected directory not found: ${dir.path}');
+  }
+
+  final expected = <IriTerm, _ExpectedDocumentFile>{};
+  for (final file in _listExpectedFiles(dir)) {
+    final relPath = _relativePath(testAssetsDir, file);
+    final lower = relPath.toLowerCase();
+    final isDataset = lower.endsWith('.trig');
+    if (isDataset && !allowDatasets) {
+      fail('Found dataset file in $relativeDir, but datasets are not allowed: '
+          '$relPath');
+    }
+
+    final documentIri = isDataset
+        ? extractDocumentIriFromDataset(
+            readDatasetFromFile(testAssetsDir, relPath))
+        : extractDocumentIriFromGraph(
+            readGraphFromFile(testAssetsDir, relPath));
+
+    if (expected.containsKey(documentIri)) {
+      fail('Duplicate document IRI in $relativeDir: ${documentIri.debug}');
+    }
+
+    expected[documentIri] = _ExpectedDocumentFile(
+      documentIri: documentIri,
+      path: relPath,
+      isDataset: isDataset,
+    );
+  }
+
+  return expected;
+}
+
+void _expectExactDocumentSet(
+  Iterable<IriTerm> expected,
+  Iterable<IriTerm> actual, {
+  required String context,
+}) {
+  final expectedSet = expected.toSet();
+  final actualSet = actual.toSet();
+
+  final missing = expectedSet.difference(actualSet).toList();
+  final extra = actualSet.difference(expectedSet).toList();
+
+  if (missing.isNotEmpty || extra.isNotEmpty) {
+    final missingText = missing.isEmpty
+        ? ''
+        : '\nMissing:\n\t${missing.map((i) => i.debug).join("\n\t")}';
+    final extraText = extra.isEmpty
+        ? ''
+        : '\nExtra:\n\t${extra.map((i) => i.debug).join("\n\t")}';
+    fail('Document set mismatch for $context.$missingText$extraText');
+  }
+}
+
+List<File> _listExpectedFiles(Directory dir) {
+  return dir.listSync(recursive: true).whereType<File>().where((file) {
+    final lower = file.path.toLowerCase();
+    return lower.endsWith('.ttl') || lower.endsWith('.trig');
+  }).toList();
+}
+
+String _relativePath(Directory testAssetsDir, File file) {
+  final root = testAssetsDir.path;
+  final fullPath = file.path;
+  if (!fullPath.startsWith(root)) {
+    fail('File is outside test assets directory: $fullPath');
+  }
+  final rel = fullPath.substring(root.length);
+  return rel.startsWith('/') ? rel.substring(1) : rel;
+}
+
+String _safeFileNameForIri(IriTerm iri) {
+  final locator = LocalResourceLocator(iriTermFactory: IriTerm.validated);
+  try {
+    final identifier = locator.fromIri(iri);
+    final typeName = _sanitizePathSegment(identifier.typeIri.localName);
+    final id = _sanitizePathSegment(identifier.id);
+    final fragment = identifier.fragment == null
+        ? ''
+        : '__${_sanitizePathSegment(identifier.fragment!)}';
+    return '$typeName/$id$fragment';
+  } catch (_) {
+    final encoded = base64Url.encode(utf8.encode(iri.value));
+    return 'unknown/$encoded';
+  }
+}
+
+String _buildExpectedPath({
+  required String relativeDir,
+  required IriTerm documentIri,
+  required String extension,
+}) {
+  final base = _safeFileNameForIri(documentIri);
+  return '$relativeDir/$base$extension';
+}
+
+String _sanitizePathSegment(String value) {
+  final trimmed = value.trim();
+  final sanitized = trimmed.replaceAll(RegExp(r'[^a-zA-Z0-9._-]+'), '_');
+  return sanitized.isEmpty ? 'unnamed' : sanitized;
 }
 
 /// Execute a save error test - expects an exception to be thrown

@@ -129,20 +129,32 @@ void expectEqualDatasets(String name, RdfDataset actual, RdfDataset expected) {
   }
 }
 
-ResourceIdentifier extractTypeIdFromStoredPath(
-    Directory testAssetsDir, String path) {
-  final graph = readGraphFromFile(testAssetsDir, path);
+/// Extracts the document IRI from a graph.
+///
+/// Expects exactly one document IRI to be present.
+IriTerm extractDocumentIriFromGraph(RdfGraph graph) {
   final documentIris = graph.subjects
       .whereType<IriTerm>()
       .map((s) => s.getDocumentIri())
       .toSet();
   if (documentIris.length != 1) {
     throw TestFailure(
-      'Expected exactly one document IRI in the graph at $path, '
-      'but found ${documentIris.length}: \n\t${documentIris.join("\n\t")}.',
+      'Expected exactly one document IRI, but found ${documentIris.length}: '
+      '\n\t${documentIris.join("\n\t")}.',
     );
   }
-  final documentIri = documentIris.single;
+  return documentIris.single;
+}
+
+/// Extracts the document IRI from a dataset using its default graph.
+IriTerm extractDocumentIriFromDataset(RdfDataset dataset) {
+  return extractDocumentIriFromGraph(dataset.defaultGraph);
+}
+
+ResourceIdentifier extractTypeIdFromStoredPath(
+    Directory testAssetsDir, String path) {
+  final graph = readGraphFromFile(testAssetsDir, path);
+  final documentIri = extractDocumentIriFromGraph(graph);
   final primaryTopic = graph.expectSingleObject<IriTerm>(
       documentIri, SyncManagedDocument.foafPrimaryTopic)!;
   final typeIris = graph.getMultiValueObjects<IriTerm>(primaryTopic, Rdf.type);

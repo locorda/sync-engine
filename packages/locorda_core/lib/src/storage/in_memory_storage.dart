@@ -82,6 +82,13 @@ class InMemoryStorage implements Storage {
   final Map<IriTerm, Set<_WatchController>> _watchControllersByTrigger = {};
   final List<_WatchController> _watchControllers = [];
 
+  /// Returns a snapshot of all stored documents for testing purposes.
+  ///
+  /// This bypasses the storage interface and should only be used in tests.
+  Map<IriTerm, StoredDocument> getAllDocumentsForTesting() {
+    return Map<IriTerm, StoredDocument>.unmodifiable(_documents);
+  }
+
   @override
   Future<void> initialize() async {
     _logger.fine(

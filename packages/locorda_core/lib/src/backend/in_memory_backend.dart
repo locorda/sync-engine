@@ -93,6 +93,18 @@ class InMemoryRemoteStorage implements RemoteStorage {
     return _store.getDocument<RdfDataset>(documentIri)?.data;
   }
 
+  /// Returns all stored documents for testing purposes.
+  ///
+  /// This bypasses remote sync semantics and should only be used in tests.
+  List<RemoteStoredDocument> getStoredDocumentsForTesting() {
+    return _store
+        .getAllDocuments()
+        .entries
+        .map((entry) => RemoteStoredDocument(
+            documentIri: entry.key, data: entry.value.data))
+        .toList();
+  }
+
   @override
   Future<bool> isAvailable() async {
     // In-memory storage is always available
@@ -129,6 +141,13 @@ class _Store {
   /// Generate a new unique ETag
   String _generateETag() => '"etag-${++_etagCounter}"';
 
+  /// Returns a snapshot of all documents for testing purposes.
+  Map<IriTerm, _StoredDocument> getAllDocuments() {
+    return _documents.map(
+      (key, value) => MapEntry(IriTerm(key), value),
+    );
+  }
+
   //Map<String, _StoredDocument<T>> get documents => _documents;
   _StoredDocument<T>? getDocument<T>(IriTerm documentIri) {
     return _documents[documentIri.value] as _StoredDocument<T>?;
@@ -155,6 +174,22 @@ class _Store {
   String? getETag(IriTerm documentIri) {
     return _documents[documentIri.value]?.etag;
   }
+}
+
+/// Stored remote document wrapper for testing.
+class RemoteStoredDocument {
+  final IriTerm documentIri;
+  final Object data;
+
+  const RemoteStoredDocument({
+    required this.documentIri,
+    required this.data,
+  });
+
+  bool get isDataset => data is RdfDataset;
+  bool get isGraph => data is RdfGraph;
+  RdfGraph get graph => data as RdfGraph;
+  RdfDataset get dataset => data as RdfDataset;
 }
 
 /// Per-sync-session storage for in-memory backend.
