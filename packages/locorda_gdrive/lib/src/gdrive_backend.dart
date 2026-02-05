@@ -1139,9 +1139,8 @@ class GDriveLocalMirror {
     _GDriveMirrorIndex index,
     Set<String> seenPaths,
   ) {
-    final missingPaths = index.entries.keys
-        .where((path) => !seenPaths.contains(path))
-        .toList();
+    final missingPaths =
+        index.entries.keys.where((path) => !seenPaths.contains(path)).toList();
     if (missingPaths.isEmpty) return;
 
     for (final pathEntry in missingPaths) {

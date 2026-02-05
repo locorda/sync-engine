@@ -560,6 +560,7 @@ Future<void> _verifyExpectations({
         relativeDir: documentsDir,
         actualDocuments: _getLocalDocumentsForTesting(storage),
         allowDatasets: false,
+        backendIriTranslator: backendIriTranslator,
       );
     } else {
       await _verifyDocumentsDirectory(
@@ -569,6 +570,7 @@ Future<void> _verifyExpectations({
         relativeDir: documentsDir,
         actualDocuments: _getLocalDocumentsForTesting(storage),
         allowDatasets: false,
+        backendIriTranslator: backendIriTranslator,
       );
     }
   }
@@ -599,6 +601,7 @@ Future<void> _verifyExpectations({
         actualDocuments:
             _getRemoteDocumentsForTesting(sharedBackend, backendIriTranslator),
         allowDatasets: true,
+        backendIriTranslator: backendIriTranslator,
       );
     } else {
       await _verifyDocumentsDirectory(
@@ -609,6 +612,7 @@ Future<void> _verifyExpectations({
         actualDocuments:
             _getRemoteDocumentsForTesting(sharedBackend, backendIriTranslator),
         allowDatasets: true,
+        backendIriTranslator: backendIriTranslator,
       );
     }
   }
@@ -900,13 +904,14 @@ Future<void> _verifyDocumentsDirectory({
   required String relativeDir,
   required List<_ActualDocument> actualDocuments,
   required bool allowDatasets,
+  required IriTranslator backendIriTranslator,
 }) async {
   final expectedDocuments = _loadExpectedDocumentsDirectory(
-    testAssetsDir: testAssetsDir,
-    relativeDir: relativeDir,
-    allowDatasets: allowDatasets,
-    allowMissing: false,
-  );
+      testAssetsDir: testAssetsDir,
+      relativeDir: relativeDir,
+      allowDatasets: allowDatasets,
+      allowMissing: false,
+      backendIriTranslator: backendIriTranslator);
 
   final actualByIri = {
     for (final doc in actualDocuments) doc.documentIri: doc,
@@ -953,12 +958,14 @@ Future<void> _recordDocumentsDirectory({
   required String relativeDir,
   required List<_ActualDocument> actualDocuments,
   required bool allowDatasets,
+  required IriTranslator backendIriTranslator,
 }) async {
   final expectedDocuments = _loadExpectedDocumentsDirectory(
     testAssetsDir: testAssetsDir,
     relativeDir: relativeDir,
     allowDatasets: allowDatasets,
     allowMissing: true,
+    backendIriTranslator: backendIriTranslator,
   );
 
   final dir = Directory('${testAssetsDir.path}/$relativeDir');
@@ -1006,6 +1013,7 @@ Map<IriTerm, _ExpectedDocumentFile> _loadExpectedDocumentsDirectory({
   required String relativeDir,
   required bool allowDatasets,
   required bool allowMissing,
+  required IriTranslator backendIriTranslator,
 }) {
   final dir = Directory('${testAssetsDir.path}/$relativeDir');
   if (!dir.existsSync()) {
@@ -1025,12 +1033,13 @@ Map<IriTerm, _ExpectedDocumentFile> _loadExpectedDocumentsDirectory({
           '$relPath');
     }
 
-    final documentIri = isDataset
+    final externalDocumentIri = isDataset
         ? extractDocumentIriFromDataset(
             readDatasetFromFile(testAssetsDir, relPath))
         : extractDocumentIriFromGraph(
             readGraphFromFile(testAssetsDir, relPath));
-
+    final documentIri =
+        backendIriTranslator.externalToInternal(externalDocumentIri);
     if (expected.containsKey(documentIri)) {
       fail('Duplicate document IRI in $relativeDir: ${documentIri.debug}');
     }

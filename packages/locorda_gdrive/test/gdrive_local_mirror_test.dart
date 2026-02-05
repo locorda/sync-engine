@@ -289,8 +289,7 @@ void main() {
     expect(updatedMd5, isNot(md5Checksum));
   });
 
-  test('GDriveLocalMirror recreates missing remote file on finalize',
-      () async {
+  test('GDriveLocalMirror recreates missing remote file on finalize', () async {
     final rdfCore =
         RdfCore.withStandardCodecs(iriTermFactory: IriTerm.validated);
     final client = FakeGDriveClient();
