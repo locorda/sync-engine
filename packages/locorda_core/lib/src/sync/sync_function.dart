@@ -1,5 +1,6 @@
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/index/index_config_base.dart';
+import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/storage/sync_timestamp_storage.dart';
 import 'package:locorda_core/src/sync/remote_sync_orchestrator.dart';
@@ -99,12 +100,17 @@ class SyncFunction {
     }
 
     // 2. Validate data: Check for missing documents
+    // TODO: apparently, checking for missing documents at least
+    // does not work with index documents - we are creating index
+    // and shard documents on the fly during sync preparation.
+    // Maybe we should still do this check for other types?
+    /*
     final missingDocuments =
         await _storage.getMissingDocumentsForIndexEntries();
     if (missingDocuments.isNotEmpty) {
       final missingCount = missingDocuments.length;
       final samples =
-          missingDocuments.take(5).map((iri) => iri.value).join(', ');
+          missingDocuments.take(5).map((iri) => iri.debug).join(', ');
       final more = missingDocuments.length > 5
           ? ' and ${missingDocuments.length - 5} more'
           : '';
@@ -115,6 +121,7 @@ class SyncFunction {
           'Please sync with a non-dataset backend first to fetch all resources, '
           'or manually ensure all documents are present.');
     }
+    */
 
     _log.fine('Dataset compatibility validation passed');
   }

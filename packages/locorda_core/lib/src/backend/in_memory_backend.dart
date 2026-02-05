@@ -37,8 +37,13 @@ class InMemoryBackend implements Backend {
   final List<InMemoryRemoteStorage> _remotes;
   final BehaviorSubject<List<RemoteStorage>> _remotesChangedSubject;
 
-  InMemoryBackend()
-      : _remotes = [InMemoryRemoteStorage(RemoteId('in-memory', 'default'))],
+  InMemoryBackend({bool useShardDatasets = false})
+      : _remotes = [
+          InMemoryRemoteStorage(
+            RemoteId('in-memory', 'default'),
+            useShardDatasets: useShardDatasets,
+          )
+        ],
         _remotesChangedSubject = BehaviorSubject<List<RemoteStorage>>() {
     // Emit initial state
     _remotesChangedSubject.add(_remotes);
@@ -73,6 +78,20 @@ class InMemoryRemoteStorage implements RemoteStorage {
   late final _Store _store = _Store();
 
   InMemoryRemoteStorage(this.remoteId, {this.useShardDatasets = false});
+
+  /// Returns a stored graph for testing purposes.
+  ///
+  /// This bypasses remote sync semantics and should only be used in tests.
+  RdfGraph? getStoredGraph(IriTerm documentIri) {
+    return _store.getDocument<RdfGraph>(documentIri)?.data;
+  }
+
+  /// Returns a stored dataset for testing purposes.
+  ///
+  /// This bypasses remote sync semantics and should only be used in tests.
+  RdfDataset? getStoredDataset(IriTerm documentIri) {
+    return _store.getDocument<RdfDataset>(documentIri)?.data;
+  }
 
   @override
   Future<bool> isAvailable() async {
@@ -120,6 +139,7 @@ class _Store {
   }
 
   String storeDocument<T>(IriTerm documentIri, T data) {
+    print('$T stored for document: ${documentIri.debug}');
     final newEtag = _generateETag();
     _documents[documentIri.value] =
         _StoredDocument<T>(data: data, etag: newEtag);

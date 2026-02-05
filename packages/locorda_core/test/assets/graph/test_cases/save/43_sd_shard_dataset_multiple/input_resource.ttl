@@ -1,0 +1,7 @@
+@prefix schema: <https://schema.org/> .
+
+<https://example.org/recipes/chocolate-cake#it>
+    a schema:Recipe ;
+    schema:name "Chocolate Cake" ;
+    schema:recipeCategory "Desserts" ;
+    schema:recipeIngredient "Flour" , "Sugar" , "Cocoa" .

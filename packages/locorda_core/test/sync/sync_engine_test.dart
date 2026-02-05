@@ -33,7 +33,10 @@ import 'test_physical_timestamp_factory.dart';
 /// instead of comparing them. Use this to create/update test expectations.
 ///
 /// Set via environment variable: RECORD_MODE=true dart test
-final _recordMode = Platform.environment['RECORD_MODE'] == 'true';
+const _forceRecordMode =
+    false; // Set to true to enable record mode without env variable
+final _recordMode =
+    _forceRecordMode || Platform.environment['RECORD_MODE'] == 'true';
 final debug = (dumpSharedBackend: false, logStep: false);
 
 /// Context for a single installation (device) in multi-device tests.
@@ -98,6 +101,7 @@ void main() {
           // Execute test based on suite type
           switch (suiteName) {
             case 'save':
+            case 'dataset':
             case 'group_index':
               setupTestLogging(Level.WARNING);
               await _executeSaveTestWithSteps(testJson, testAssetsDir, fetcher,
@@ -165,7 +169,9 @@ Future<void> _executeSaveTestWithSteps(
   }
 
   // Shared backend for all installations (simulates the remote storage)
-  final sharedBackend = InMemoryBackend();
+  // Get useShardDatasets flag from test config (defaults to false for backwards compatibility)
+  final useShardDatasets = testJson['use_shard_datasets'] as bool? ?? false;
+  final sharedBackend = InMemoryBackend(useShardDatasets: useShardDatasets);
 
   // Map of installation_id -> SyncEngine instance
   // Each installation has its own storage, clock, etc.
@@ -328,6 +334,7 @@ Future<void> _executeStep({
         storage: storage,
         config: buildEffectiveConfig(config),
         iriTranslator: iriTranslator,
+        sharedBackend: sharedBackend,
       );
     }
     return;
@@ -412,6 +419,7 @@ Future<void> _executeStep({
         storage: storage,
         config: effectiveConfig,
         iriTranslator: iriTranslator,
+        sharedBackend: sharedBackend,
       );
     }
     return;
@@ -472,6 +480,7 @@ Future<void> _executeStep({
       storage: storage,
       config: config,
       iriTranslator: iriTranslator,
+      sharedBackend: sharedBackend,
       externalDocumentIri: externalDocumentIri,
       typeIri: typeIri,
     );
@@ -503,6 +512,7 @@ Future<void> _verifyExpectations({
   required InMemoryStorage storage,
   required SyncEngineConfig config,
   required IriTranslator iriTranslator,
+  required InMemoryBackend sharedBackend,
   IriTerm? externalDocumentIri,
   IriTerm? typeIri,
 }) async {
@@ -516,6 +526,18 @@ Future<void> _verifyExpectations({
   if (expectedDocuments != null) {
     await _verifyDocuments(
         testId, stepIndex, expectedDocuments, testAssetsDir, storage);
+  }
+
+  final expectedRemoteDocuments =
+      expectedJson['remote_documents'] as List<dynamic>?;
+  if (expectedRemoteDocuments != null) {
+    await _verifyRemoteDocuments(
+      testId: testId,
+      stepIndex: stepIndex,
+      expectedDocuments: expectedRemoteDocuments,
+      testAssetsDir: testAssetsDir,
+      sharedBackend: sharedBackend,
+    );
   }
 
   // Verify property changes if expected
@@ -536,6 +558,21 @@ Future<void> _verifyExpectations({
           actualPropertyChanges, expectedPropertyChanges);
     }
   }
+}
+
+IriTerm _resolveDocumentIri(
+  Map<String, dynamic> docMap,
+  LocalResourceLocator resourceLocator,
+) {
+  if (docMap.containsKey('iri')) {
+    return IriTerm(docMap['iri'] as String);
+  }
+  if (docMap.containsKey('type_iri') && docMap.containsKey('id')) {
+    final typeIri = IriTerm(docMap['type_iri'] as String);
+    final id = docMap['id'] as String;
+    return resourceLocator.toIri(ResourceIdentifier.document(typeIri, id));
+  }
+  fail('Document spec must provide either "iri" or both "type_iri" and "id"');
 }
 
 void _expectEqualGraphs(String name, RdfGraph actual, RdfGraph expected) {
@@ -651,24 +688,7 @@ Future<void> _verifyDocuments(
     final path = docMap['path'] as String;
 
     // Determine document IRI - either direct or constructed
-    final IriTerm documentIri;
-
-    if (docMap.containsKey('iri')) {
-      // Direct IRI specification
-      final iriString = docMap['iri'] as String;
-      documentIri = IriTerm(iriString);
-    } else if (docMap.containsKey('type_iri') && docMap.containsKey('id')) {
-      // Build IRI from components
-      final typeIri = IriTerm(docMap['type_iri'] as String);
-      final id = docMap['id'] as String;
-
-      documentIri = resourceLocator.toIri(
-        ResourceIdentifier.document(typeIri, id),
-      );
-    } else {
-      fail(
-          'Document spec must provide either "iri" or both "type_iri" and "id"');
-    }
+    final documentIri = _resolveDocumentIri(docMap, resourceLocator);
 
     // Load actual document from storage
     final storedDoc = await storage.getDocument(documentIri);
@@ -687,6 +707,64 @@ Future<void> _verifyDocuments(
       _expectEqualGraphs(
         "$testId [step $stepIndex] - document $path",
         storedDoc.document,
+        expectedGraph,
+      );
+    }
+  }
+}
+
+Future<void> _verifyRemoteDocuments({
+  required String testId,
+  required int stepIndex,
+  required List<dynamic> expectedDocuments,
+  required Directory testAssetsDir,
+  required InMemoryBackend sharedBackend,
+}) async {
+  final resourceLocator =
+      LocalResourceLocator(iriTermFactory: IriTerm.validated);
+  final remote = sharedBackend.remotes.first;
+
+  for (final docJson in expectedDocuments) {
+    final docMap = docJson as Map<String, dynamic>;
+    final documentIri = _resolveDocumentIri(docMap, resourceLocator);
+
+    final path = docMap['path'] as String;
+    final isDataset = path.toLowerCase().endsWith('.trig');
+    if (isDataset) {
+      final dataset = remote.getStoredDataset(documentIri);
+      if (dataset == null) {
+        fail('No dataset found in remote for IRI: ${documentIri.value}\n'
+            'Expected: ${documentIri.debug}');
+      }
+
+      if (_recordMode) {
+        await writeDatasetToFile(testAssetsDir, path, dataset);
+        print('📝 Recorded: $path');
+      } else {
+        final expectedDataset = readDatasetFromFile(testAssetsDir, path);
+        expectEqualDatasets(
+          "$testId [step $stepIndex] - remote dataset $path",
+          dataset,
+          expectedDataset,
+        );
+      }
+      continue;
+    }
+
+    final storedGraph = remote.getStoredGraph(documentIri);
+    if (storedGraph == null) {
+      fail('No document found in remote for IRI: ${documentIri.value}\n'
+          'Expected: ${documentIri.debug}');
+    }
+
+    if (_recordMode) {
+      await writeGraphToFile(testAssetsDir, path, storedGraph);
+      print('📝 Recorded: $path');
+    } else {
+      final expectedGraph = _readGraphFromPath(testAssetsDir, path)!;
+      _expectEqualGraphs(
+        "$testId [step $stepIndex] - remote document $path",
+        storedGraph,
         expectedGraph,
       );
     }

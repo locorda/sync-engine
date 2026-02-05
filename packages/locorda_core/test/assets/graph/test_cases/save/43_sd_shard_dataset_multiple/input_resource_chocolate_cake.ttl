@@ -1,0 +1,7 @@
+@prefix schema: <https://schema.org/> .
+
+<https://example.org/recipes/double-chocolate-cake#it>
+    a schema:Recipe ;
+    schema:name "Double Chocolate Cake" ;
+    schema:recipeCategory "Desserts" ;
+    schema:recipeIngredient "Flour" , "Sugar" , "Dark Cocoa" , "Milk Chocolate" .

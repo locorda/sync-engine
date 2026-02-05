@@ -1962,6 +1962,80 @@
           ]
         }
       ]
+    },
+    {
+      "suite": "dataset",
+      "description": "Tests for Shard Datasets operation",
+      "tests": [
+        {
+          "id": "dataset_01",
+          "title": "Shard Dataset: First save of new resource",
+          "description": "Shard Dataset: Saving a new resource when no data exists in storage should add all triples with CRDT metadata",
+          "config": "shared/configs/basic_config.json",
+          "use_shard_datasets": true,
+          "steps": [
+            {
+              "action": "save",
+              "typeIri": "https://schema.org/Recipe",
+              "input_resource": "test_cases/dataset/01_first_save/input_resource.ttl",
+              "expected": {
+                "documents": [
+                  {
+                    "type_iri": "https://schema.org/Recipe",
+                    "id": "recipe123",
+                    "path": "test_cases/dataset/01_first_save/expected_stored_graph.ttl"
+                  },
+                  {
+                    "type_iri": "https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClientInstallation",
+                    "id": "test-installation",
+                    "path": "test_cases/dataset/01_first_save/expected_installation.ttl"
+                  }
+                ]
+              },
+              "action_ts": {
+                "save": "2024-01-01T02:00:00Z"
+              }
+            },
+            {
+              "action": "sync",
+              "action_ts": {
+                "sync": "2024-01-01T02:00:00.001Z"
+              },
+              "expected": {
+                "documents": [
+                  {
+                    "type_iri": "https://w3id.org/solid-crdt-sync/vocab/idx#FullIndex",
+                    "id": "index-full-e679d72f/index",
+                    "path": "test_cases/dataset/01_first_save/expected_index.ttl"
+                  },
+                  {
+                    "type_iri": "https://w3id.org/solid-crdt-sync/vocab/idx#FullIndex",
+                    "id": "index-full-bbcf09f5/index",
+                    "path": "test_cases/dataset/01_first_save/expected_lcrd-full-indices_index.ttl"
+                  },
+                  {
+                    "type_iri": "https://w3id.org/solid-crdt-sync/vocab/idx#Shard",
+                    "id": "index-full-e679d72f/shard-mod-md5-1-0-v1_0_0",
+                    "path": "test_cases/dataset/01_first_save/expected_shard.ttl"
+                  },
+                  {
+                    "type_iri": "https://w3id.org/solid-crdt-sync/vocab/idx#Shard",
+                    "id": "index-full-bbcf09f5/shard-mod-md5-1-0-v1_0_0",
+                    "path": "test_cases/dataset/01_first_save/expected_lcrd-full-indices_shard.ttl"
+                  }
+                ],
+                "remote_documents": [
+                  {
+                    "type_iri": "https://w3id.org/solid-crdt-sync/vocab/idx#Shard",
+                    "id": "index-full-e679d72f/shard-mod-md5-1-0-v1_0_0",
+                    "path": "test_cases/dataset/01_first_save/expected_shard_dataset.trig"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

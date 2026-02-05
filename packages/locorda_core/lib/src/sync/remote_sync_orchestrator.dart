@@ -246,6 +246,12 @@ class RemoteSyncOrchestrator {
     required RemoteSyncStorage remoteSyncStorage,
     required SyncEngineConfig config,
   }) async {
+    /* FIXME: should we skip this or wrap remoteSyncStorage for other resource
+    types than index-of-indices? in theory, the index-of-indices sync should 
+    sync all indexes already, so we don't need the extra network calls here.
+    And especially in shard dataset mode, we cannot fetch individual index documents
+    because they are inside datasets.
+    */
     _log.fine('Syncing index documents for ${resourceType.debug}');
 
     // Get resource config for this type
@@ -467,10 +473,11 @@ class RemoteSyncOrchestrator {
     _log.fine('Syncing: ${debugName}');
     await retryOnConflict(() async {
       final _ShardSyncAdapter adapter = shouldUseShardDataset
-          ? FilePerResourceShardSyncAdapter(
+          ? FilePerShardShardSyncAdapter(
               remoteSyncStorage: remoteSyncStorage,
             )
-          : FilePerShardShardSyncAdapter(remoteSyncStorage: remoteSyncStorage);
+          : FilePerResourceShardSyncAdapter(
+              remoteSyncStorage: remoteSyncStorage);
 
       return await _shardSyncOrchestrator.syncShard(
         resourceType,

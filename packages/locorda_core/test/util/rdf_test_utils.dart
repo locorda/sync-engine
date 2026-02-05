@@ -20,6 +20,19 @@ Future<void> writeGraphToFile(
   await file.writeAsString(turtleContent);
 }
 
+/// Writes an RDF dataset to a file in TriG format.
+/// Creates parent directories if they don't exist.
+Future<void> writeDatasetToFile(
+    Directory testAssetsDir, String path, RdfDataset dataset) async {
+  final file = File('${testAssetsDir.path}/$path');
+  await file.parent.create(recursive: true);
+  var trigContent = trig.encode(dataset);
+  if (!trigContent.endsWith('\n')) {
+    trigContent += "\n";
+  }
+  await file.writeAsString(trigContent);
+}
+
 /// Reads an RDF graph from a Turtle file.
 ///
 /// Throws if the file does not exist.
@@ -40,6 +53,30 @@ RdfGraph readGraphFromFile(Directory testAssetsDir, String relativePath) {
   } catch (e) {
     throw TestFailure(
       'Failed to read RDF file: $relativePath\nError: $e',
+    );
+  }
+}
+
+/// Reads an RDF dataset from a TriG file.
+///
+/// Throws if the file does not exist.
+RdfDataset readDatasetFromFile(Directory testAssetsDir, String relativePath) {
+  try {
+    final file = File('${testAssetsDir.path}/$relativePath');
+    if (!file.existsSync()) {
+      throw TestFailure(
+        'Expected RDF dataset file not found: ${file.path}\n'
+        'This test requires the file to exist. If this is a generate test, '
+        'ensure the expected output file has been created.',
+      );
+    }
+    final content = file.readAsStringSync();
+    return trig.decode(content);
+  } on TestFailure {
+    rethrow; // Rethrow test failures as-is
+  } catch (e) {
+    throw TestFailure(
+      'Failed to read RDF dataset file: $relativePath\nError: $e',
     );
   }
 }
@@ -67,6 +104,28 @@ void expectEqualGraphs(String name, RdfGraph actual, RdfGraph expected) {
     // This should have failed by now, but just in case:
     expect(actualCanonical, equals(expectedCanonical),
         reason: 'RDF graphs differ (canonical comparison)');
+  }
+}
+
+/// Compares two RDF datasets using RDF canonicalization.
+///
+/// If the datasets differ, prints both in TriG format for easier debugging.
+void expectEqualDatasets(String name, RdfDataset actual, RdfDataset expected) {
+  final actualCanonical = canonicalize(actual);
+  final expectedCanonical = canonicalize(expected);
+
+  if (actualCanonical != expectedCanonical) {
+    final actualTrig = trig.encode(actual);
+    final expectedTrig = trig.encode(expected);
+    print('-' * 4 + name + ' - Datasets differ ' + '-' * 4);
+    print(actualTrig);
+    print('-' * 40);
+
+    expect(actualTrig, equals(expectedTrig),
+        reason: 'RDF datasets differ (TriG comparison)');
+
+    expect(actualCanonical, equals(expectedCanonical),
+        reason: 'RDF datasets differ (canonical comparison)');
   }
 }
 

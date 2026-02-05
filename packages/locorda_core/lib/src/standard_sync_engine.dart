@@ -89,7 +89,7 @@ class ConfigService {
         // Remote must be available to be considered
         // We can't check availability synchronously here, but remotes list
         // only contains authenticated/configured remotes, so we can assume they're potentially available
-        return remote is RemoteSyncStorage && remote.useShardDatasets;
+        return remote.useShardDatasets;
       });
     });
 
