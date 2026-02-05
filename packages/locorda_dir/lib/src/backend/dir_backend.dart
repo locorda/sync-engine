@@ -110,7 +110,7 @@ class DirRemoteStorage implements RemoteStorage {
   final String _contentType;
   final String _datasetContentType;
   final RdfCore _rdfCore;
-  final bool _useShardDatasets = true;
+  final bool _useShardDatasets;
 
   DirRemoteStorage({
     required String directoryPath,
@@ -122,7 +122,8 @@ class DirRemoteStorage implements RemoteStorage {
         _contentType = contentType,
         _datasetContentType = datasetContentType,
         _rdfCore = rdfCore,
-        _remoteId = RemoteId('local-dir', directoryPath);
+        _remoteId = RemoteId('local-dir', directoryPath),
+        _useShardDatasets = useShardDatasets;
 
   @override
   bool get useShardDatasets => _useShardDatasets;
@@ -186,7 +187,7 @@ class DirSyncStorage extends RemoteSyncStorage {
   /// Convert internal document IRI to file path.
   ///
   /// Example: tag:locorda.org,2025:l:Note:abc123 → Note/abc123.ttl
-  String _iriToFilePath(IriTerm documentIri) {
+  String _iriToFilePath(IriTerm documentIri, {required bool isDataset}) {
     // Use ResourceLocator to properly extract type and ID
     final identifier = _resourceLocator.fromIri(documentIri);
 
@@ -194,7 +195,8 @@ class DirSyncStorage extends RemoteSyncStorage {
     final typeLocalName = identifier.typeIri.localName;
 
     // Create subdirectory per type
-    final relativePath = path.join(typeLocalName, '${identifier.id}.ttl');
+    final relativePath = path.join(
+        typeLocalName, '${identifier.id}.${isDataset ? 'trig' : 'ttl'}');
     return path.join(_directoryPath, relativePath);
   }
 
@@ -220,6 +222,7 @@ class DirSyncStorage extends RemoteSyncStorage {
   }) =>
       _download<RdfGraph>(
         documentIri,
+        isDataset: false,
         ifNoneMatch: ifNoneMatch,
         convert: (content) =>
             _rdfCore.decode(content, contentType: _contentType),
@@ -231,6 +234,7 @@ class DirSyncStorage extends RemoteSyncStorage {
   }) =>
       _download<RdfDataset>(
         documentIri,
+        isDataset: true,
         ifNoneMatch: ifNoneMatch,
         convert: (content) => _rdfCore.decodeDataset(
           content,
@@ -242,8 +246,9 @@ class DirSyncStorage extends RemoteSyncStorage {
     IriTerm documentIri, {
     String? ifNoneMatch,
     required T Function(String) convert,
+    required bool isDataset,
   }) async {
-    final filePath = _iriToFilePath(documentIri);
+    final filePath = _iriToFilePath(documentIri, isDataset: isDataset);
     final file = File(filePath);
 
     _log.fine('Downloading: $filePath, ifNoneMatch: $ifNoneMatch');
@@ -289,6 +294,7 @@ class DirSyncStorage extends RemoteSyncStorage {
         documentIri,
         graph,
         ifMatch: ifMatch,
+        isDataset: false,
         convert: (content) =>
             _rdfCore.encode(content, contentType: _contentType),
       );
@@ -303,6 +309,7 @@ class DirSyncStorage extends RemoteSyncStorage {
         documentIri,
         dataset,
         ifMatch: ifMatch,
+        isDataset: true,
         convert: (content) => _rdfCore.encodeDataset(
           content,
           contentType: _datasetContentType,
@@ -313,9 +320,10 @@ class DirSyncStorage extends RemoteSyncStorage {
     IriTerm documentIri,
     T graph, {
     String? ifMatch,
+    required bool isDataset,
     required String Function(T) convert,
   }) async {
-    final filePath = _iriToFilePath(documentIri);
+    final filePath = _iriToFilePath(documentIri, isDataset: isDataset);
     final file = File(filePath);
 
     _log.fine('Uploading: $filePath, ifMatch: $ifMatch');
