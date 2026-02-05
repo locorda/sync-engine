@@ -12,11 +12,24 @@ class RemoteDownloadResult<T> {
     required this.etag,
     this.notModified = false,
   });
+
   factory RemoteDownloadResult.notModified({required String etag}) {
     return RemoteDownloadResult<T>(
       graph: null,
       etag: etag,
       notModified: true,
+    );
+  }
+
+  RemoteDownloadResult<T> copyWith({
+    T? graph,
+    String? etag,
+    bool? notModified,
+  }) {
+    return RemoteDownloadResult<T>(
+      graph: graph ?? this.graph,
+      etag: etag ?? this.etag,
+      notModified: notModified ?? this.notModified,
     );
   }
 }
@@ -379,5 +392,68 @@ Future<T> _retryOnAuthFailure<T>(
       await onAuthFailure();
       // Retry after token refresh
     }
+  }
+}
+
+class IriTranslatingRemoteSyncStorage extends RemoteSyncStorage {
+  final RemoteSyncStorage _storage;
+  final IriTranslator _iriTranslator;
+
+  IriTranslatingRemoteSyncStorage(
+      {required RemoteSyncStorage storage,
+      required IriTranslator iriTranslator})
+      : _storage = storage,
+        _iriTranslator = iriTranslator;
+
+  @override
+  Future<RemoteDownloadResult<RdfGraph>> download(IriTerm documentIri,
+      {String? ifNoneMatch}) async {
+    final result = await _storage.download(
+      _iriTranslator.internalToExternal(documentIri),
+      ifNoneMatch: ifNoneMatch,
+    );
+    return result.copyWith(
+      graph: result.graph != null
+          ? _iriTranslator.translateGraphToInternal(result.graph!)
+          : null,
+    );
+  }
+
+  @override
+  Future<RemoteDownloadResult<RdfDataset>> downloadDataset(IriTerm documentIri,
+      {String? ifNoneMatch}) async {
+    final result = await _storage.downloadDataset(
+      _iriTranslator.internalToExternal(documentIri),
+      ifNoneMatch: ifNoneMatch,
+    );
+    return result.copyWith(
+      graph: result.graph != null
+          ? _iriTranslator.translateDatasetToInternal(result.graph!)
+          : null,
+    );
+  }
+
+  @override
+  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfGraph graph,
+          {String? ifMatch}) =>
+      _storage.upload(
+        _iriTranslator.internalToExternal(documentIri),
+        _iriTranslator.translateGraphToExternal(graph),
+        ifMatch: ifMatch,
+      );
+
+  @override
+  Future<RemoteUploadResult> uploadDataset(
+          IriTerm documentIri, RdfDataset dataset,
+          {String? ifMatch}) =>
+      _storage.uploadDataset(
+        _iriTranslator.internalToExternal(documentIri),
+        _iriTranslator.translateDatasetToExternal(dataset),
+        ifMatch: ifMatch,
+      );
+
+  @override
+  Future<void> finalizeSync() async {
+    await _storage.finalizeSync();
   }
 }

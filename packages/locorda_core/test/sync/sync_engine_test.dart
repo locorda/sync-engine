@@ -8,7 +8,6 @@ import 'package:locorda_core/src/hlc_service.dart';
 import 'package:locorda_core/src/index/index_discovery.dart';
 import 'package:locorda_core/src/index/index_manager.dart';
 import 'package:locorda_core/src/index/index_parser.dart';
-import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/index/index_rdf_generator.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart';
 import 'package:locorda_core/src/index/shard_manager.dart';
@@ -18,10 +17,11 @@ import 'package:locorda_core/src/mapping/framework_iri_generator.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
+import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
 import 'package:locorda_core/src/util/build_effective_config.dart';
-import 'package:logging/logging.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 
 import '../util/rdf_test_utils.dart';
@@ -171,7 +171,20 @@ Future<void> _executeSaveTestWithSteps(
   // Shared backend for all installations (simulates the remote storage)
   // Get useShardDatasets flag from test config (defaults to false for backwards compatibility)
   final useShardDatasets = testJson['use_shard_datasets'] as bool? ?? false;
-  final sharedBackend = InMemoryBackend(useShardDatasets: useShardDatasets);
+  final backendIriTranslator = IriTranslator.forConfig(
+    resourceLocator: LocalResourceLocator(iriTermFactory: IriTerm.validated),
+    resourceConfigs: installationConfigs.values
+        .expand((config) => config.resources)
+        .map((config) => config.copyWith(
+            documentIriTemplate:
+                'https://example.com/${config.typeIri.localName.toLowerCase()}/{id}}'))
+        .toList(),
+  );
+  final sharedBackend = InMemoryBackend(
+    useShardDatasets: useShardDatasets,
+    // TODO
+    iriTranslator: null, //backendIriTranslator,
+  );
 
   // Map of installation_id -> SyncEngine instance
   // Each installation has its own storage, clock, etc.

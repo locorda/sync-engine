@@ -1997,6 +1997,129 @@
               }
             }
           ]
+        },
+        {
+          "id": "dataset_02",
+          "title": "Cross-app sync with heterogeneous index configurations",
+          "description": "Validates that different applications with different indexing strategies can seamlessly sync the same data resources. Foreign device creates resource with FullIndex + GroupIndex for dateCreated, local device has GroupIndex for recipeCategory. The system correctly discovers and updates foreign shard entries while maintaining separate index infrastructures. This proves the fundamental design goal: applications can have different indexing strategies while sharing the same data.",
+          "use_shard_datasets": true,
+          "installations": [
+            {
+              "id": "foreign-device-installation",
+              "config": "shared/configs/foreign_app_config.json"
+            },
+            {
+              "id": "default-installation",
+              "config": "shared/configs/group_index_config.json"
+            }
+          ],
+          "steps": [
+            {
+              "action": "save",
+              "installation_id": "foreign-device-installation",
+              "typeIri": "https://schema.org/Recipe",
+              "input_resource": "test_cases/dataset/02_foreign_shard_discovery/00_foreign-device-installation_save/foreign_input_recipe.ttl",
+              "action_ts": {
+                "save": "2024-01-01T02:00:00Z"
+              }
+            },
+            {
+              "action": "sync",
+              "installation_id": "foreign-device-installation",
+              "action_ts": {
+                "sync": "2024-01-01T02:05:00Z"
+              },
+              "expected": {
+                "documents_dir": "test_cases/dataset/02_foreign_shard_discovery/01_foreign-device-installation_sync/storage",
+                "remote_documents_dir": "test_cases/dataset/02_foreign_shard_discovery/01_foreign-device-installation_sync/remote"
+              }
+            },
+            {
+              "action": "sync",
+              "installation_id": "default-installation",
+              "action_ts": {
+                "sync": "2024-01-01T02:10:00Z"
+              },
+              "expected": {
+                "documents_dir": "test_cases/dataset/02_foreign_shard_discovery/02_default-installation_sync/storage",
+                "remote_documents_dir": "test_cases/dataset/02_foreign_shard_discovery/02_default-installation_sync/remote"
+              }
+            },
+            {
+              "action": "save",
+              "installation_id": "default-installation",
+              "typeIri": "https://schema.org/Recipe",
+              "input_resource": "test_cases/dataset/02_foreign_shard_discovery/03_default-installation_save/input_resource.ttl",
+              "expected": {
+                "property_changes": [
+                  {
+                    "resource_iri": "tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlLWNha2U=#it",
+                    "property_iri": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+                    "changed_at": "2024-01-01T06:00:00Z",
+                    "logical_clock": 1
+                  },
+                  {
+                    "resource_iri": "tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlLWNha2U=#it",
+                    "property_iri": "https://schema.org/name",
+                    "changed_at": "2024-01-01T06:00:00Z",
+                    "logical_clock": 1
+                  },
+                  {
+                    "resource_iri": "tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlLWNha2U=#it",
+                    "property_iri": "https://schema.org/recipeCategory",
+                    "changed_at": "2024-01-01T06:00:00Z",
+                    "logical_clock": 1
+                  },
+                  {
+                    "resource_iri": "tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlLWNha2U=#it",
+                    "property_iri": "https://schema.org/dateCreated",
+                    "changed_at": "2024-01-01T06:00:00Z",
+                    "logical_clock": 1
+                  },
+                  {
+                    "resource_iri": "tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlLWNha2U=#it",
+                    "property_iri": "https://schema.org/description",
+                    "changed_at": "2024-01-01T06:00:00Z",
+                    "logical_clock": 1
+                  },
+                  {
+                    "resource_iri": "tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlLWNha2U=#it",
+                    "property_iri": "https://schema.org/prepTime",
+                    "changed_at": "2024-01-01T06:00:00Z",
+                    "logical_clock": 1
+                  },
+                  {
+                    "resource_iri": "tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlLWNha2U=#it",
+                    "property_iri": "https://schema.org/cookTime",
+                    "changed_at": "2024-01-01T06:00:00Z",
+                    "logical_clock": 1
+                  },
+                  {
+                    "resource_iri": "tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlLWNha2U=#it",
+                    "property_iri": "https://schema.org/recipeYield",
+                    "changed_at": "2024-01-01T06:00:00Z",
+                    "logical_clock": 1
+                  }
+                ],
+                "documents_dir": "test_cases/dataset/02_foreign_shard_discovery/03_default-installation_save/storage",
+                "remote_documents_dir": "test_cases/dataset/02_foreign_shard_discovery/03_default-installation_save/remote"
+              },
+              "action_ts": {
+                "save": "2024-01-01T06:00:00Z"
+              }
+            },
+            {
+              "action": "sync",
+              "installation_id": "default-installation",
+              "action_ts": {
+                "sync": "2024-01-01T06:00:00.001Z"
+              },
+              "expected": {
+                "documents_dir": "test_cases/dataset/02_foreign_shard_discovery/04_default-installation_sync/storage",
+                "remote_documents_dir": "test_cases/dataset/02_foreign_shard_discovery/04_default-installation_sync/remote"
+              }
+            }
+          ]
         }
       ]
     }

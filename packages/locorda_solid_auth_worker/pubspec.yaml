@@ -25,7 +25,7 @@ dependencies:
   
   
   # RDF mapping
-  locorda_rdf_core: ^0.11.5
+  locorda_rdf_core: ^0.11.6
 
 
 dev_dependencies:

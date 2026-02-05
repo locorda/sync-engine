@@ -17,7 +17,7 @@ dependencies:
   locorda_ui: any
   
   # RDF mapping
-  locorda_rdf_core: ^0.11.5
+  locorda_rdf_core: ^0.11.6
   
 dev_dependencies:
   flutter_test:

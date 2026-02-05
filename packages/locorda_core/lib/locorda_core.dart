@@ -105,6 +105,7 @@ export 'src/storage/remote_storage.dart'
     show
         RemoteStorage,
         RemoteSyncStorage,
+        IriTranslatingRemoteSyncStorage,
         RemoteUploadResult,
         SuccessUploadResult,
         ConflictUploadResult,

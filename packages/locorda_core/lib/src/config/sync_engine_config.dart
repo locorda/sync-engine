@@ -198,6 +198,11 @@ class ResourceConfigData extends ResourceConfigBase {
     ..sort((a, b) => a.localName.compareTo(b.localName));
 
   final IriTerm typeIri;
+
+  /// Optional template for document IRIs, intended for communication between
+  /// the app and the sync engine, so that apps which work with graphs directly
+  /// (instead of e.g. mappings to dart classes) can work with more readable
+  /// and app-specific IRIs.
   final DocumentIriTemplate? documentIriTemplate;
 
   ResourceConfigData({

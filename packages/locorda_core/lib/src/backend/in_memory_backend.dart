@@ -1,5 +1,6 @@
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
+import 'package:locorda_core/src/storage/remote_storage.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart';
@@ -36,12 +37,14 @@ class InMemoryBackend implements Backend {
 
   final List<InMemoryRemoteStorage> _remotes;
   final BehaviorSubject<List<RemoteStorage>> _remotesChangedSubject;
+  final IriTranslator? iriTranslator;
 
-  InMemoryBackend({bool useShardDatasets = false})
+  InMemoryBackend({bool useShardDatasets = false, this.iriTranslator})
       : _remotes = [
           InMemoryRemoteStorage(
             RemoteId('in-memory', 'default'),
             useShardDatasets: useShardDatasets,
+            iriTranslator: iriTranslator,
           )
         ],
         _remotesChangedSubject = BehaviorSubject<List<RemoteStorage>>() {
@@ -73,11 +76,13 @@ class InMemoryRemoteStorage implements RemoteStorage {
   final RemoteId remoteId;
   @override
   final bool useShardDatasets;
+  final IriTranslator? iriTranslator;
 
   /// Storage: documentIri -> (graph, etag)
   late final _Store _store = _Store();
 
-  InMemoryRemoteStorage(this.remoteId, {this.useShardDatasets = false});
+  InMemoryRemoteStorage(this.remoteId,
+      {this.useShardDatasets = false, this.iriTranslator});
 
   /// Returns a stored graph for testing purposes.
   ///
@@ -114,7 +119,12 @@ class InMemoryRemoteStorage implements RemoteStorage {
   @override
   Future<RemoteSyncStorage> createSyncStorage(SyncEngineConfig config) async {
     // In-memory backend needs no initialization, just wrap access
-    return InMemorySyncStorage(_store);
+    final storage = InMemorySyncStorage(storage: _store);
+
+    return iriTranslator == null
+        ? storage
+        : IriTranslatingRemoteSyncStorage(
+            storage: storage, iriTranslator: iriTranslator!);
   }
 
   /// Clear all stored documents (for testing)
@@ -199,17 +209,33 @@ class RemoteStoredDocument {
 class InMemorySyncStorage extends RemoteSyncStorage {
   final _Store _storage;
 
-  InMemorySyncStorage(this._storage);
+  InMemorySyncStorage({required _Store storage}) : _storage = storage;
 
   @override
   Future<RemoteDownloadResult<RdfGraph>> download(IriTerm documentIri,
-          {String? ifNoneMatch}) =>
-      _download(_storage, documentIri, ifNoneMatch: ifNoneMatch);
+      {String? ifNoneMatch}) async {
+    final result = await _download<RdfGraph>(
+      _storage,
+      documentIri,
+      ifNoneMatch: ifNoneMatch,
+    );
+    return result.copyWith(
+      graph: result.graph != null ? result.graph! : null,
+    );
+  }
 
   @override
   Future<RemoteDownloadResult<RdfDataset>> downloadDataset(IriTerm documentIri,
-          {String? ifNoneMatch}) =>
-      _download(_storage, documentIri, ifNoneMatch: ifNoneMatch);
+      {String? ifNoneMatch}) async {
+    final result = await _download<RdfDataset>(
+      _storage,
+      documentIri,
+      ifNoneMatch: ifNoneMatch,
+    );
+    return result.copyWith(
+      graph: result.graph != null ? result.graph! : null,
+    );
+  }
 
   Future<RemoteDownloadResult<T>> _download<T>(
       _Store store, IriTerm documentIri,
@@ -247,13 +273,23 @@ class InMemorySyncStorage extends RemoteSyncStorage {
   @override
   Future<RemoteUploadResult> upload(IriTerm documentIri, RdfGraph graph,
           {String? ifMatch}) =>
-      _upload(_storage, documentIri, graph, ifMatch: ifMatch);
+      _upload(
+        _storage,
+        documentIri,
+        graph,
+        ifMatch: ifMatch,
+      );
 
   @override
   Future<RemoteUploadResult> uploadDataset(
           IriTerm documentIri, RdfDataset dataset,
           {String? ifMatch}) =>
-      _upload(_storage, documentIri, dataset, ifMatch: ifMatch);
+      _upload(
+        _storage,
+        documentIri,
+        dataset,
+        ifMatch: ifMatch,
+      );
 
   Future<RemoteUploadResult> _upload<T>(
       _Store store, IriTerm documentIri, T graph,
@@ -301,8 +337,11 @@ class InMemorySyncStorage extends RemoteSyncStorage {
     // In-memory backend needs no finalization
   }
 
-  Future<void> delete(IriTerm documentIri, {String? ifMatch}) =>
-      _delete(_storage, documentIri, ifMatch: ifMatch);
+  Future<void> delete(IriTerm documentIri, {String? ifMatch}) => _delete(
+        _storage,
+        documentIri,
+        ifMatch: ifMatch,
+      );
 
   Future<void> _delete(_Store store, IriTerm documentIri,
       {String? ifMatch}) async {

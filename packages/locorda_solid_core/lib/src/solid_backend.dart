@@ -490,12 +490,17 @@ class SolidRemoteStorage implements RemoteStorage {
         externalResourceLocator: SolidResourceLocator(
             iriTermFactory: _iriTermFactory, podBaseUrl: podUrl));
 
-    return SolidSyncStorage(
-        client: _client,
-        iriTranslator: iriTranslator,
-        contentType: _contentType,
-        datasetContentType: _datasetContentType,
-        rdfCore: _rdfCore);
+    final storage = SolidSyncStorage(
+      client: _client,
+      contentType: _contentType,
+      datasetContentType: _datasetContentType,
+      rdfCore: _rdfCore,
+    );
+
+    return IriTranslatingRemoteSyncStorage(
+      storage: storage,
+      iriTranslator: iriTranslator,
+    );
   }
 }
 
@@ -504,7 +509,6 @@ class SolidRemoteStorage implements RemoteStorage {
 /// Caches the IRI translator to avoid rebuilding it on every upload/download.
 class SolidSyncStorage extends RemoteSyncStorage {
   final SolidClient _client;
-  final IriTranslator _iriTranslator;
   final String _contentType;
   final String _datasetContentType;
 
@@ -512,12 +516,10 @@ class SolidSyncStorage extends RemoteSyncStorage {
 
   SolidSyncStorage({
     required SolidClient client,
-    required IriTranslator iriTranslator,
     required String contentType,
     required String datasetContentType,
     required RdfCore rdfCore,
   })  : _client = client,
-        _iriTranslator = iriTranslator,
         _contentType = contentType,
         _datasetContentType = datasetContentType,
         _rdfCore = rdfCore;
@@ -531,7 +533,6 @@ class SolidSyncStorage extends RemoteSyncStorage {
         acceptContentType: _contentType,
         convert: (data, {documentUrl, mimeType}) => _rdfCore.decode(data,
             contentType: mimeType ?? _contentType, documentUrl: documentUrl),
-        translator: _iriTranslator.translateGraphToInternal,
       );
 
   @override
@@ -544,7 +545,6 @@ class SolidSyncStorage extends RemoteSyncStorage {
         convert: (data, {documentUrl, mimeType}) => _rdfCore.decodeDataset(data,
             contentType: mimeType ?? _datasetContentType,
             documentUrl: documentUrl),
-        translator: _iriTranslator.translateDatasetToInternal,
       );
 
   Future<RemoteDownloadResult<T>> _download<T>(
@@ -553,9 +553,8 @@ class SolidSyncStorage extends RemoteSyncStorage {
     required String acceptContentType,
     required T Function(String, {String? documentUrl, String? mimeType})
         convert,
-    required T Function(T) translator,
   }) async {
-    final podDocumentIri = _iriTranslator.internalToExternal(documentIri);
+    final podDocumentIri = documentIri;
     final result = await _client.download<T>(
       podDocumentIri.value,
       requiresAuth: true,
@@ -564,9 +563,8 @@ class SolidSyncStorage extends RemoteSyncStorage {
       convert: convert,
     );
     if (result.graph != null) {
-      final translated = translator(result.graph!);
       return RemoteDownloadResult<T>(
-        graph: translated,
+        graph: result.graph!,
         etag: result.etag,
         notModified: result.notModified,
       );
@@ -577,8 +575,8 @@ class SolidSyncStorage extends RemoteSyncStorage {
   @override
   Future<RemoteUploadResult> upload(IriTerm documentIri, RdfGraph graph,
       {String? ifMatch}) async {
-    final podDocumentIri = _iriTranslator.internalToExternal(documentIri);
-    final translatedGraph = _iriTranslator.translateGraphToExternal(graph);
+    final podDocumentIri = documentIri;
+    final translatedGraph = graph;
     return await _client.upload(
       podDocumentIri.value,
       translatedGraph,
@@ -591,8 +589,8 @@ class SolidSyncStorage extends RemoteSyncStorage {
   Future<RemoteUploadResult> uploadDataset(
       IriTerm documentIri, RdfDataset dataset,
       {String? ifMatch}) async {
-    final podDocumentIri = _iriTranslator.internalToExternal(documentIri);
-    final translatedGraph = _iriTranslator.translateDatasetToExternal(dataset);
+    final podDocumentIri = documentIri;
+    final translatedGraph = dataset;
     return await _client.upload(
       podDocumentIri.value,
       translatedGraph,
