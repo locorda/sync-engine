@@ -979,16 +979,39 @@ class GDriveLocalMirror {
         }
 
         final ifMatch = entry.remoteMd5 ?? localMd5;
-        final result =
-            await _client.uploadRaw(entry.fileId!, bytes, ifMatch: ifMatch);
-        if (result is SuccessUploadResult) {
-          _index.entries[entry.path] = entry.copyWith(
-            remoteMd5: result.etag,
-            localMd5: result.etag,
-            dirty: false,
-          );
-        } else {
-          _mirrorLog.warning('Conflict while finalizing upload: ${entry.path}');
+        try {
+          final result =
+              await _client.uploadRaw(entry.fileId!, bytes, ifMatch: ifMatch);
+          if (result is SuccessUploadResult) {
+            _index.entries[entry.path] = entry.copyWith(
+              remoteMd5: result.etag,
+              localMd5: result.etag,
+              dirty: false,
+            );
+          } else {
+            _mirrorLog
+                .warning('Conflict while finalizing upload: ${entry.path}');
+          }
+        } on GDriveClientException catch (e) {
+          if (e.message.startsWith('File not found:')) {
+            _mirrorLog.warning(
+              'Remote file missing during finalize, recreating: ${entry.path}',
+            );
+            final contentType = entry.contentType ?? 'text/turtle';
+            final created =
+                await _createRemoteFile(entry.path, bytes, contentType);
+            if (created == null) return;
+
+            _index.entries[entry.path] = entry.copyWith(
+              fileId: created.fileId,
+              remoteMd5: created.md5Checksum,
+              localMd5: created.md5Checksum,
+              dirty: false,
+              localOnly: false,
+            );
+          } else {
+            rethrow;
+          }
         }
       },
     );
@@ -1044,6 +1067,7 @@ class GDriveLocalMirror {
     final downloadQueue = Queue<_GDriveMirrorIndexEntry>();
     final downloadCompleter = Completer<void>();
     final listCompleter = Completer<void>();
+    final seenPaths = <String>{};
 
     var activeDownloads = 0;
     var listingComplete = false;
@@ -1072,6 +1096,7 @@ class GDriveLocalMirror {
     // Listing phase: stream entries and queue downloads
     _streamListFiles((remoteEntry) {
       if (remoteEntry.isFolder) return;
+      seenPaths.add(remoteEntry.path);
 
       final existingEntry = index.entries[remoteEntry.path];
       final needsDownload = _shouldDownload(
@@ -1106,6 +1131,30 @@ class GDriveLocalMirror {
 
     await listCompleter.future;
     await downloadCompleter.future;
+
+    _purgeMissingRemoteEntries(index, seenPaths);
+  }
+
+  void _purgeMissingRemoteEntries(
+    _GDriveMirrorIndex index,
+    Set<String> seenPaths,
+  ) {
+    final missingPaths = index.entries.keys
+        .where((path) => !seenPaths.contains(path))
+        .toList();
+    if (missingPaths.isEmpty) return;
+
+    for (final pathEntry in missingPaths) {
+      index.entries.remove(pathEntry);
+      final file = File(_localFilePath(pathEntry));
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
+    }
+
+    _mirrorLog.warning(
+      'Removed ${missingPaths.length} local mirror entries missing on remote',
+    );
   }
 
   /// Stream files from Drive API, calling callback for each entry.

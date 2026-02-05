@@ -28,6 +28,7 @@ class FakeGDriveClient implements GDriveApiClient {
   final Map<String, _FakeRemoteFile> filesById = {};
   final List<GDriveListedEntry> listedEntries = [];
   int _nextId = 0;
+  final Set<String> deletedIds = {};
 
   @override
   Future<List<GDriveListedEntry>> listFilesRecursively({
@@ -40,6 +41,9 @@ class FakeGDriveClient implements GDriveApiClient {
 
   @override
   Future<List<int>> downloadRawBytes(String fileId) async {
+    if (deletedIds.contains(fileId)) {
+      throw StateError('Missing file: $fileId');
+    }
     final file = filesById[fileId];
     if (file == null) throw StateError('Missing file: $fileId');
     return file.bytes;
@@ -58,6 +62,7 @@ class FakeGDriveClient implements GDriveApiClient {
     final path = filename;
     final file = _FakeRemoteFile(fileId: id, bytes: bytes, path: path);
     filesById[id] = file;
+    deletedIds.remove(id);
     listedEntries.add(GDriveListedEntry(
       fileId: id,
       path: path,
@@ -75,6 +80,9 @@ class FakeGDriveClient implements GDriveApiClient {
     List<int> bytes, {
     required String ifMatch,
   }) async {
+    if (deletedIds.contains(fileId)) {
+      throw GDriveClientException('File not found: $fileId');
+    }
     final file = filesById[fileId];
     if (file == null) throw StateError('Missing file: $fileId');
     if (file.md5Checksum != ifMatch) {
@@ -279,5 +287,146 @@ void main() {
     final remoteFile = client.filesById[fileId]!;
     final updatedMd5 = md5.convert(remoteFile.bytes).toString();
     expect(updatedMd5, isNot(md5Checksum));
+  });
+
+  test('GDriveLocalMirror recreates missing remote file on finalize',
+      () async {
+    final rdfCore =
+        RdfCore.withStandardCodecs(iriTermFactory: IriTerm.validated);
+    final client = FakeGDriveClient();
+
+    final typeIri = IriTerm.validated('https://example.com/Note');
+    final locator = LocalResourceLocator(iriTermFactory: IriTerm.validated);
+    final docIri =
+        locator.toIri(ResourceIdentifier.document(typeIri, 'note-3'));
+
+    final graph = RdfGraph(triples: {
+      Triple(
+        docIri,
+        IriTerm.validated('https://example.com/predicate'),
+        LiteralTerm.string('value'),
+      ),
+    });
+    final bytes = utf8.encode(rdfCore.encode(graph));
+    final md5Checksum = md5.convert(bytes).toString();
+
+    final fileId = 'file-3';
+    client.filesById[fileId] =
+        _FakeRemoteFile(fileId: fileId, bytes: bytes, path: 'Note/note-3');
+    client.listedEntries.add(GDriveListedEntry(
+      fileId: fileId,
+      path: 'Note/note-3',
+      isFolder: false,
+      md5Checksum: md5Checksum,
+      headRevisionId: 'rev-3',
+      version: '1',
+    ));
+
+    final tempDir = await Directory.systemTemp.createTemp('gdrive-mirror-test');
+    final mirrorConfig = GDriveLocalMirrorConfig(
+      cacheRootPath: tempDir.path,
+    );
+
+    final mirror = GDriveLocalMirror(
+      client: client,
+      typeIndexMappings: TypeIndexMappings(
+        appFolderId: 'root',
+        typeMappings: {
+          typeIri: const TypeMapping(folderId: 'folder-1', folderName: 'Note'),
+        },
+      ),
+      resourceLocator: locator,
+      config: mirrorConfig,
+      spaces: 'drive',
+      userId: 'user-3',
+    );
+
+    await mirror.initialize();
+
+    final updatedGraph = RdfGraph(triples: {
+      Triple(
+        docIri,
+        IriTerm.validated('https://example.com/predicate'),
+        LiteralTerm.string('updated'),
+      ),
+    });
+
+    final uploadResult = await mirror.upload(
+      docIri,
+      updatedGraph,
+      ifMatch: md5Checksum,
+      contentType: 'text/turtle',
+      convert: rdfCore.encode,
+    );
+    expect(uploadResult, isA<SuccessUploadResult>());
+
+    client.deletedIds.add(fileId);
+
+    await mirror.finalize();
+
+    expect(client.filesById.length, greaterThan(1));
+    final recreated = client.filesById.values.firstWhere(
+      (file) => file.fileId != fileId,
+    );
+    final recreatedMd5 = md5.convert(recreated.bytes).toString();
+    expect(recreatedMd5, isNot(md5Checksum));
+  });
+
+  test('GDriveLocalMirror removes entries missing on remote', () async {
+    final client = FakeGDriveClient();
+
+    final typeIri = IriTerm.validated('https://example.com/Note');
+    final locator = LocalResourceLocator(iriTermFactory: IriTerm.validated);
+
+    final tempDir = await Directory.systemTemp.createTemp('gdrive-mirror-test');
+    final mirrorConfig = GDriveLocalMirrorConfig(
+      cacheRootPath: tempDir.path,
+    );
+
+    final mirrorRoot = Directory(
+      '${tempDir.path}/locorda_gdrive_cache/${base64Url.encode(utf8.encode('user-4'))}/drive',
+    );
+    final filesDir = Directory('${mirrorRoot.path}/files/Note');
+    await filesDir.create(recursive: true);
+
+    final staleFile = File('${filesDir.path}/note-4');
+    await staleFile.writeAsString('stale');
+
+    final indexFile = File('${mirrorRoot.path}/index.json');
+    await indexFile.writeAsString(jsonEncode({
+      'version': 1,
+      'updatedAt': DateTime.now().toIso8601String(),
+      'entries': [
+        {
+          'path': 'Note/note-4',
+          'fileId': 'file-4',
+          'remoteMd5': 'md5-4',
+          'localMd5': 'md5-4',
+          'headRevisionId': 'rev-4',
+          'version': '1',
+          'contentType': 'text/turtle',
+          'dirty': false,
+          'localOnly': false,
+        }
+      ],
+    }));
+
+    final mirror = GDriveLocalMirror(
+      client: client,
+      typeIndexMappings: TypeIndexMappings(
+        appFolderId: 'root',
+        typeMappings: {
+          typeIri: const TypeMapping(folderId: 'folder-1', folderName: 'Note'),
+        },
+      ),
+      resourceLocator: locator,
+      config: mirrorConfig,
+      spaces: 'drive',
+      userId: 'user-4',
+    );
+
+    await mirror.initialize();
+
+    expect(await staleFile.exists(), isFalse);
   });
 }
