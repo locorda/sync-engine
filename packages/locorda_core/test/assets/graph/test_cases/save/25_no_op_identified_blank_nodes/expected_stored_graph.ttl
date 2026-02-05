@@ -1,3 +1,4 @@
+@base <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:cmVjaXBlMTIz> .
 @prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix mappings: <https://example.org/test/mappings/> .

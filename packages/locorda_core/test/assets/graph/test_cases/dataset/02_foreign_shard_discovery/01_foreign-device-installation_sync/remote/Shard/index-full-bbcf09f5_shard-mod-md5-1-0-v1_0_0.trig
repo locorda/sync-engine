@@ -1,136 +1,136 @@
+@base <https://example.com/shard/index-full-bbcf09f5%2Fshard-mod-md5-1-0-v1_0_0> .
+@prefix : <#> .
 @prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix if3: <https://example.com/fullindex/index-full-388036f3%2Findex#> .
+@prefix if3mm10v: <https://example.com/shard/index-full-388036f3%2Fshard-mod-md5-1-0-v1_0_0#> .
+@prefix if5: <https://example.com/fullindex/index-full-5f68b5b7%2Findex#> .
+@prefix if5mm10v: <https://example.com/shard/index-full-5f68b5b7%2Fshard-mod-md5-1-0-v1_0_0#> .
+@prefix ifb: <https://example.com/fullindex/index-full-bbcf09f5%2Findex#> .
+@prefix ife: <https://example.com/fullindex/index-full-e679d72f%2Findex#> .
+@prefix ifemm10v: <https://example.com/shard/index-full-e679d72f%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
-@prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1iYmNmMDlmNS9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=#> .
-@prefix ns2: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC1iYmNmMDlmNS9pbmRleA==#> .
-@prefix ns3: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC01ZjY4YjViNy9pbmRleA==#> .
-@prefix ns4: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC1lNjc5ZDcyZi9pbmRleA==#> .
-@prefix ns5: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC0zODgwMzZmMy9pbmRleA==#> .
-@prefix ns6: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvY3JkdC1tZWNoYW5pY3MjQ2xpZW50SW5zdGFsbGF0aW9u:Zm9yZWlnbi1kZXZpY2UtaW5zdGFsbGF0aW9u#> .
-@prefix ns7: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC01ZjY4YjViNy9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=#> .
-@prefix ns8: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1lNjc5ZDcyZi9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=#> .
-@prefix ns9: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC0zODgwMzZmMy9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix schema: <https://schema.org/> .
 @prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1iYmNmMDlmNS9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=> a sync:ManagedDocument;
-    foaf:primaryTopic ns1:shard;
+<> a sync:ManagedDocument;
+    foaf:primaryTopic :shard;
     cm:clockHash "f50ec99469b3a1b19547c4d8b69c4cf0";
     cm:createdAt "2024-01-01T00:00:00.000Z"^^xsd:dateTime;
-    cm:hasClockEntry ns1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
-ns1:entry-2e883124d69c377d8daff7f19ee0eaa6 cm:clockHash "5b6297aa65da5b4063684b49c65fd5b9";
+:entry-2e883124d69c377d8daff7f19ee0eaa6 cm:clockHash "5b6297aa65da5b4063684b49c65fd5b9";
     idx:indexesClass idx:FullIndex;
-    idx:resource ns2:index .
+    idx:resource ifb:index .
 
-ns1:entry-713129f56a309cabc970f22c7da295cf cm:clockHash "79bb6df0c95c2f218cea76ec98b42893";
+:entry-713129f56a309cabc970f22c7da295cf cm:clockHash "79bb6df0c95c2f218cea76ec98b42893";
     idx:indexesClass cm:ClientInstallation;
-    idx:resource ns5:index .
+    idx:resource if3:index .
 
-ns1:entry-a68c1c4f5dda5dbf177113200fb133a0 cm:clockHash "ed6460df8424173ce14dde98f510b36d";
+:entry-a68c1c4f5dda5dbf177113200fb133a0 cm:clockHash "ed6460df8424173ce14dde98f510b36d";
     idx:indexesClass schema:Recipe;
-    idx:resource ns4:index .
+    idx:resource ife:index .
 
-ns1:entry-ce394f730640668924968eddf09c01bc cm:clockHash "ee3544d03bfc955bfe2c62144e76c957";
+:entry-ce394f730640668924968eddf09c01bc cm:clockHash "ee3544d03bfc955bfe2c62144e76c957";
     idx:indexesClass idx:GroupIndexTemplate;
-    idx:resource ns3:index .
+    idx:resource if5:index .
 
-ns1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
+:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
     cm:physicalTime 1704067200012 .
 
-ns1:shard a idx:Shard;
-    idx:containsEntry ns1:entry-ce394f730640668924968eddf09c01bc, ns1:entry-a68c1c4f5dda5dbf177113200fb133a0, ns1:entry-713129f56a309cabc970f22c7da295cf, ns1:entry-2e883124d69c377d8daff7f19ee0eaa6;
-    idx:isShardOf ns2:index .
+:shard a idx:Shard;
+    idx:containsEntry :entry-ce394f730640668924968eddf09c01bc, :entry-a68c1c4f5dda5dbf177113200fb133a0, :entry-713129f56a309cabc970f22c7da295cf, :entry-2e883124d69c377d8daff7f19ee0eaa6;
+    idx:isShardOf ifb:index .
 
-GRAPH <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC01ZjY4YjViNy9pbmRleA==> {
-  <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC01ZjY4YjViNy9pbmRleA==> a sync:ManagedDocument;
-      foaf:primaryTopic ns3:index;
+GRAPH <https://example.com/fullindex/index-full-5f68b5b7%2Findex> {
+  <https://example.com/fullindex/index-full-5f68b5b7%2Findex> a sync:ManagedDocument;
+      foaf:primaryTopic if5:index;
       cm:clockHash "ee3544d03bfc955bfe2c62144e76c957";
       cm:createdAt "2024-01-01T00:00:00.005Z"^^xsd:dateTime;
-      cm:hasClockEntry ns3:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-      idx:belongsToIndexShard ns1:shard;
-      sync:hasBlankNodeMapping ns3:lcrd-ibn-md5-f7d7db17ed3c6b875f87c9c8c5e3894f;
+      cm:hasClockEntry if5:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      idx:belongsToIndexShard :shard;
+      sync:hasBlankNodeMapping if5:lcrd-ibn-md5-f7d7db17ed3c6b875f87c9c8c5e3894f;
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:FullIndex .
-  ns3:index a idx:FullIndex;
-      idx:hasShard ns7:shard;
+  if5:index a idx:FullIndex;
+      idx:hasShard if5mm10v:shard;
       idx:indexedProperty _:b2;
       idx:indexesClass idx:GroupIndexTemplate;
       idx:populationState "active";
-      idx:readBy ns6:installation;
+      idx:readBy </clientinstallation/foreign-device-installation#installation>;
       idx:shardingAlgorithm [ a idx:ModuloHashSharding ; idx:hashAlgorithm "md5" ; idx:numberOfShards 1 ; idx:configVersion "1_0_0" ; idx:autoScaleThreshold 1000 ] .
-  ns3:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+  if5:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
       cm:physicalTime 1704067200004 .
-  ns3:lcrd-ibn-md5-f7d7db17ed3c6b875f87c9c8c5e3894f sync:blankNode _:b2 .
+  if5:lcrd-ibn-md5-f7d7db17ed3c6b875f87c9c8c5e3894f sync:blankNode _:b2 .
   _:b2 a idx:IndexedProperty;
-      idx:readBy ns6:installation;
+      idx:readBy </clientinstallation/foreign-device-installation#installation>;
       idx:trackedProperty idx:indexesClass .
 }
 
-GRAPH <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC1lNjc5ZDcyZi9pbmRleA==> {
-  <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC1lNjc5ZDcyZi9pbmRleA==> a sync:ManagedDocument;
-      foaf:primaryTopic ns4:index;
+GRAPH <https://example.com/fullindex/index-full-e679d72f%2Findex> {
+  <https://example.com/fullindex/index-full-e679d72f%2Findex> a sync:ManagedDocument;
+      foaf:primaryTopic ife:index;
       cm:clockHash "ed6460df8424173ce14dde98f510b36d";
       cm:createdAt "2024-01-01T00:00:00.010Z"^^xsd:dateTime;
-      cm:hasClockEntry ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-      idx:belongsToIndexShard ns1:shard;
+      cm:hasClockEntry ife:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      idx:belongsToIndexShard :shard;
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:FullIndex .
-  ns4:index a idx:FullIndex;
-      idx:hasShard ns8:shard;
+  ife:index a idx:FullIndex;
+      idx:hasShard ifemm10v:shard;
       idx:indexesClass schema:Recipe;
       idx:populationState "active";
-      idx:readBy ns6:installation;
+      idx:readBy </clientinstallation/foreign-device-installation#installation>;
       idx:shardingAlgorithm [ a idx:ModuloHashSharding ; idx:hashAlgorithm "md5" ; idx:numberOfShards 1 ; idx:configVersion "1_0_0" ; idx:autoScaleThreshold 1000 ] .
-  ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+  ife:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
       cm:physicalTime 1704067200009 .
 }
 
-GRAPH <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC0zODgwMzZmMy9pbmRleA==> {
-  <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC0zODgwMzZmMy9pbmRleA==> a sync:ManagedDocument;
-      foaf:primaryTopic ns5:index;
+GRAPH <https://example.com/fullindex/index-full-388036f3%2Findex> {
+  <https://example.com/fullindex/index-full-388036f3%2Findex> a sync:ManagedDocument;
+      foaf:primaryTopic if3:index;
       cm:clockHash "79bb6df0c95c2f218cea76ec98b42893";
       cm:createdAt "2024-01-01T00:00:00.013Z"^^xsd:dateTime;
-      cm:hasClockEntry ns5:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-      idx:belongsToIndexShard ns1:shard;
+      cm:hasClockEntry if3:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      idx:belongsToIndexShard :shard;
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:FullIndex .
-  ns5:index a idx:FullIndex;
-      idx:hasShard ns9:shard;
+  if3:index a idx:FullIndex;
+      idx:hasShard if3mm10v:shard;
       idx:indexesClass cm:ClientInstallation;
       idx:populationState "active";
-      idx:readBy ns6:installation;
+      idx:readBy </clientinstallation/foreign-device-installation#installation>;
       idx:shardingAlgorithm [ a idx:ModuloHashSharding ; idx:hashAlgorithm "md5" ; idx:numberOfShards 1 ; idx:configVersion "1_0_0" ; idx:autoScaleThreshold 1000 ] .
-  ns5:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+  if3:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
       cm:physicalTime 1704067200012 .
 }
 
-GRAPH <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC1iYmNmMDlmNS9pbmRleA==> {
-  <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC1iYmNmMDlmNS9pbmRleA==> a sync:ManagedDocument;
-      foaf:primaryTopic ns2:index;
+GRAPH <https://example.com/fullindex/index-full-bbcf09f5%2Findex> {
+  <https://example.com/fullindex/index-full-bbcf09f5%2Findex> a sync:ManagedDocument;
+      foaf:primaryTopic ifb:index;
       cm:clockHash "5b6297aa65da5b4063684b49c65fd5b9";
       cm:createdAt "2024-01-01T00:00:00.002Z"^^xsd:dateTime;
-      cm:hasClockEntry ns2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-      idx:belongsToIndexShard ns1:shard;
-      sync:hasBlankNodeMapping ns2:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b;
+      cm:hasClockEntry ifb:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      idx:belongsToIndexShard :shard;
+      sync:hasBlankNodeMapping ifb:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b;
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:FullIndex .
-  ns2:index a idx:FullIndex;
-      idx:hasShard ns1:shard;
+  ifb:index a idx:FullIndex;
+      idx:hasShard :shard;
       idx:indexedProperty _:b9;
       idx:indexesClass idx:FullIndex;
       idx:populationState "active";
-      idx:readBy ns6:installation;
+      idx:readBy </clientinstallation/foreign-device-installation#installation>;
       idx:shardingAlgorithm [ a idx:ModuloHashSharding ; idx:hashAlgorithm "md5" ; idx:numberOfShards 1 ; idx:configVersion "1_0_0" ; idx:autoScaleThreshold 1000 ] .
-  ns2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+  ifb:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
       cm:physicalTime 1704067200001 .
-  ns2:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b sync:blankNode _:b9 .
+  ifb:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b sync:blankNode _:b9 .
   _:b9 a idx:IndexedProperty;
-      idx:readBy ns6:installation;
+      idx:readBy </clientinstallation/foreign-device-installation#installation>;
       idx:trackedProperty idx:indexesClass .
 }

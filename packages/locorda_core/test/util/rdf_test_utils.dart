@@ -13,7 +13,8 @@ Future<void> writeGraphToFile(
     Directory testAssetsDir, String path, RdfGraph graph) async {
   final file = File('${testAssetsDir.path}/$path');
   await file.parent.create(recursive: true);
-  var turtleContent = turtle.encode(graph);
+  final baseUri = _getBaseUri(graph);
+  var turtleContent = turtle.encode(graph, baseUri: baseUri);
   if (!turtleContent.endsWith('\n')) {
     turtleContent += "\n";
   }
@@ -26,12 +27,16 @@ Future<void> writeDatasetToFile(
     Directory testAssetsDir, String path, RdfDataset dataset) async {
   final file = File('${testAssetsDir.path}/$path');
   await file.parent.create(recursive: true);
-  var trigContent = trig.encode(dataset);
+  final baseUri = _getBaseUri(dataset.defaultGraph);
+  var trigContent = trig.encode(dataset, baseUri: baseUri);
   if (!trigContent.endsWith('\n')) {
     trigContent += "\n";
   }
   await file.writeAsString(trigContent);
 }
+
+String _getBaseUri(RdfGraph graph) =>
+    graph.getIdentifier(Sync.ManagedDocument).getDocumentIri().value;
 
 /// Reads an RDF graph from a Turtle file.
 ///

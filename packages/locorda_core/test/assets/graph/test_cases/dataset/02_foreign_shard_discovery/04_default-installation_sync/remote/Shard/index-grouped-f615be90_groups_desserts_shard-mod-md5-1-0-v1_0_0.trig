@@ -1,46 +1,47 @@
+@base <https://example.com/shard/index-grouped-f615be90%2Fgroups%2Fdesserts%2Fshard-mod-md5-1-0-v1_0_0> .
+@prefix : <#> .
 @prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix ifemm10v: <https://example.com/shard/index-full-e679d72f%2Fshard-mod-md5-1-0-v1_0_0#> .
+@prefix igemm10v: <https://example.com/shard/index-grouped-e093655c%2Fgroups%2F20_ad221effd73057a647d96bab312c4886%2Fshard-mod-md5-1-0-v1_0_0#> .
+@prefix igf: <https://example.com/groupindex/index-grouped-f615be90%2Fgroups%2Fdesserts%2Findex#> .
 @prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
 @prefix mappings1: <https://example.org/test/mappings/> .
-@prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZ3JvdXBlZC1mNjE1YmU5MC9ncm91cHMvZGVzc2VydHMvc2hhcmQtbW9kLW1kNS0xLTAtdjFfMF8w#> .
-@prefix ns2: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0dyb3VwSW5kZXg=:aW5kZXgtZ3JvdXBlZC1mNjE1YmU5MC9ncm91cHMvZGVzc2VydHMvaW5kZXg=#> .
-@prefix ns3: <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlLWNha2U=#> .
-@prefix ns4: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1lNjc5ZDcyZi9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=#> .
-@prefix ns5: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZ3JvdXBlZC1lMDkzNjU1Yy9ncm91cHMvMjBfYWQyMjFlZmZkNzMwNTdhNjQ3ZDk2YmFiMzEyYzQ4ODYvc2hhcmQtbW9kLW1kNS0xLTAtdjFfMF8w#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix recipe: <https://example.com/recipe/> .
 @prefix schema: <https://schema.org/> .
 @prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZ3JvdXBlZC1mNjE1YmU5MC9ncm91cHMvZGVzc2VydHMvc2hhcmQtbW9kLW1kNS0xLTAtdjFfMF8w> a sync:ManagedDocument;
-    foaf:primaryTopic ns1:shard;
+<> a sync:ManagedDocument;
+    foaf:primaryTopic :shard;
     cm:clockHash "3d1289d0668e56649d6cbc5345b95a6f";
     cm:createdAt "2024-01-01T06:00:00.002Z"^^xsd:dateTime;
-    cm:hasClockEntry ns1:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
-ns1:entry-c93b50159754d7a665032fc90e56af1d cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
-    idx:resource ns3:it .
+:entry-c93b50159754d7a665032fc90e56af1d cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
+    idx:resource </recipe/chocolate-cake#it> .
 
-ns1:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
+:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
     cm:physicalTime 1704088800000 .
 
-ns1:shard a idx:Shard;
-    idx:containsEntry ns1:entry-c93b50159754d7a665032fc90e56af1d;
-    idx:isShardOf ns2:index .
+:shard a idx:Shard;
+    idx:containsEntry :entry-c93b50159754d7a665032fc90e56af1d;
+    idx:isShardOf igf:index .
 
-GRAPH <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlLWNha2U=> {
-  <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlLWNha2U=> a sync:ManagedDocument;
-      foaf:primaryTopic ns3:it;
+GRAPH </recipe/chocolate-cake> {
+  </recipe/chocolate-cake> a sync:ManagedDocument;
+      foaf:primaryTopic </recipe/chocolate-cake#it>;
       cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
       cm:createdAt "2024-01-01T06:00:00.001Z"^^xsd:dateTime, "2024-01-01T02:00:00.001Z"^^xsd:dateTime;
-      cm:hasClockEntry ns3:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, ns3:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-      idx:belongsToIndexShard ns4:shard, ns1:shard, ns5:shard;
+      cm:hasClockEntry </recipe/chocolate-cake#lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f>, </recipe/chocolate-cake#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f>;
+      idx:belongsToIndexShard ifemm10v:shard, :shard, igemm10v:shard;
       sync:isGovernedBy (mappings1:recipe-v1);
       sync:managedResourceType schema:Recipe .
-  ns3:it a schema:Recipe;
+  </recipe/chocolate-cake#it> a schema:Recipe;
       schema:cookTime "PT30M";
       schema:dateCreated "2024-01-01T02:00:00Z"^^xsd:dateTime;
       schema:description "A delicious chocolate cake recipe";
@@ -48,8 +49,8 @@ GRAPH <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlL
       schema:prepTime "PT20M";
       schema:recipeCategory "Desserts";
       schema:recipeYield "8 servings" .
-  ns3:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+  </recipe/chocolate-cake#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f> cm:logicalTime 1;
       cm:physicalTime 1704074400000 .
-  ns3:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
+  </recipe/chocolate-cake#lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f> cm:logicalTime 1;
       cm:physicalTime 1704088800000 .
 }

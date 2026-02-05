@@ -174,16 +174,16 @@ Future<void> _executeSaveTestWithSteps(
   final backendIriTranslator = IriTranslator.forConfig(
     resourceLocator: LocalResourceLocator(iriTermFactory: IriTerm.validated),
     resourceConfigs: installationConfigs.values
+        .map((config) => buildEffectiveConfig(config))
         .expand((config) => config.resources)
         .map((config) => config.copyWith(
             documentIriTemplate:
-                'https://example.com/${config.typeIri.localName.toLowerCase()}/{id}}'))
+                'https://example.com/${config.typeIri.localName.toLowerCase()}/{id}'))
         .toList(),
   );
   final sharedBackend = InMemoryBackend(
     useShardDatasets: useShardDatasets,
-    // TODO
-    iriTranslator: null, //backendIriTranslator,
+    iriTranslator: backendIriTranslator,
   );
 
   // Map of installation_id -> SyncEngine instance
@@ -254,6 +254,7 @@ Future<void> _executeSaveTestWithSteps(
       sharedBackend: sharedBackend,
       installationContext: installationContext,
       testFetcher: fetcher,
+      backendIriTranslator: backendIriTranslator,
     );
   }
 }
@@ -270,6 +271,7 @@ Future<void> _executeStep({
   required InMemoryBackend sharedBackend,
   required _InstallationContext installationContext,
   required TestFetcher testFetcher,
+  required IriTranslator backendIriTranslator,
 }) async {
   // Make sure to reset property changes for next step
   installationContext.storage.resetPropertyChanges();
@@ -347,6 +349,7 @@ Future<void> _executeStep({
         storage: storage,
         config: buildEffectiveConfig(config),
         iriTranslator: iriTranslator,
+        backendIriTranslator: backendIriTranslator,
         sharedBackend: sharedBackend,
       );
     }
@@ -432,6 +435,7 @@ Future<void> _executeStep({
         storage: storage,
         config: effectiveConfig,
         iriTranslator: iriTranslator,
+        backendIriTranslator: backendIriTranslator,
         sharedBackend: sharedBackend,
       );
     }
@@ -493,6 +497,7 @@ Future<void> _executeStep({
       storage: storage,
       config: config,
       iriTranslator: iriTranslator,
+      backendIriTranslator: backendIriTranslator,
       sharedBackend: sharedBackend,
       externalDocumentIri: externalDocumentIri,
       typeIri: typeIri,
@@ -526,6 +531,7 @@ Future<void> _verifyExpectations({
   required SyncEngineConfig config,
   required IriTranslator iriTranslator,
   required InMemoryBackend sharedBackend,
+  required IriTranslator backendIriTranslator,
   IriTerm? externalDocumentIri,
   IriTerm? typeIri,
 }) async {
@@ -590,7 +596,8 @@ Future<void> _verifyExpectations({
       await _recordDocumentsDirectory(
         testAssetsDir: testAssetsDir,
         relativeDir: remoteDocumentsDir,
-        actualDocuments: _getRemoteDocumentsForTesting(sharedBackend),
+        actualDocuments:
+            _getRemoteDocumentsForTesting(sharedBackend, backendIriTranslator),
         allowDatasets: true,
       );
     } else {
@@ -599,7 +606,8 @@ Future<void> _verifyExpectations({
         stepIndex: stepIndex,
         testAssetsDir: testAssetsDir,
         relativeDir: remoteDocumentsDir,
-        actualDocuments: _getRemoteDocumentsForTesting(sharedBackend),
+        actualDocuments:
+            _getRemoteDocumentsForTesting(sharedBackend, backendIriTranslator),
         allowDatasets: true,
       );
     }
@@ -875,12 +883,13 @@ List<_ActualDocument> _getLocalDocumentsForTesting(InMemoryStorage storage) {
 }
 
 List<_ActualDocument> _getRemoteDocumentsForTesting(
-    InMemoryBackend sharedBackend) {
+    InMemoryBackend sharedBackend, IriTranslator backendIriTranslator) {
   final remote = sharedBackend.remotes.first;
   return remote
       .getStoredDocumentsForTesting()
-      .map((doc) =>
-          _ActualDocument(documentIri: doc.documentIri, data: doc.data))
+      .map((doc) => _ActualDocument(
+          documentIri: backendIriTranslator.externalToInternal(doc.documentIri),
+          data: doc.data))
       .toList();
 }
 
