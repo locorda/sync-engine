@@ -65,7 +65,7 @@ class GDriveWorkerHandler implements RemoteWorkerHandler {
     // Receive config from main thread
     final config = await GDriveAuthConnector.receiveConfig(context, id);
 
-    return GDriveBackend(
+    return GDriveBackend.create(
       auth: GDriveAuthConnector.receiver(context, id),
       config: config,
       iriTermFactory: _iriTermFactory,

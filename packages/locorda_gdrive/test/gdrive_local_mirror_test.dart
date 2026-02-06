@@ -142,6 +142,11 @@ class FakeGDriveClient implements GDriveApiClient {
   }) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<void> dispose() {
+    return Future.value();
+  }
 }
 
 void main() {

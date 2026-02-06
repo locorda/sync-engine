@@ -80,6 +80,8 @@ abstract interface class GDriveApiClient {
     required String spaces,
     required int maxConcurrentRequests,
   });
+
+  Future<void> dispose();
 }
 
 /// Flattened representation of a remote Drive file for local mirroring.
@@ -101,25 +103,140 @@ final class GDriveListedEntry {
   });
 }
 
+class DriveApiImpl implements DriveApi {
+  final drive.DriveApi _driveApi;
+  DriveApiImpl(this._driveApi);
+
+  Future<drive.FileList> list({
+    required String q,
+    required String spaces,
+    required String $fields,
+    int? pageSize,
+    String? pageToken,
+  }) =>
+      _driveApi.files.list(
+        q: q,
+        spaces: spaces,
+        $fields: $fields,
+        pageSize: pageSize,
+        pageToken: pageToken,
+      );
+
+  Future<drive.File> create(drive.File folderMetadata,
+          {drive.Media? uploadMedia, required String $fields}) =>
+      _driveApi.files
+          .create(folderMetadata, uploadMedia: uploadMedia, $fields: $fields);
+
+  Future<Object> get(String fileId,
+          {String? $fields,
+          drive.DownloadOptions downloadOptions =
+              drive.DownloadOptions.metadata}) =>
+      _driveApi.files
+          .get(fileId, $fields: $fields, downloadOptions: downloadOptions);
+
+  Future<drive.File> update(drive.File file, String fileId,
+          {required drive.Media uploadMedia, required String $fields}) =>
+      _driveApi.files
+          .update(file, fileId, uploadMedia: uploadMedia, $fields: $fields);
+}
+
+abstract interface class DriveApi {
+  Future<drive.FileList> list({
+    required String q,
+    required String spaces,
+    required String $fields,
+    int? pageSize,
+    String? pageToken,
+  });
+
+  Future<drive.File> create(drive.File folderMetadata,
+      {drive.Media? uploadMedia, required String $fields});
+
+  Future<Object> get(String fileId,
+      {String? $fields,
+      drive.DownloadOptions downloadOptions = drive.DownloadOptions.metadata});
+
+  Future<drive.File> update(drive.File file, String fileId,
+      {required drive.Media uploadMedia, required String $fields});
+}
+
+class PerflogDriveApi implements DriveApi {
+  final Perflog _perflog;
+  final DriveApi _inner;
+  PerflogDriveApi(this._inner,
+      {required Perflog perflog, String name = 'raw_gdrive'})
+      : _perflog = perflog.create(name, _inner);
+
+  @override
+  Future<drive.File> create(drive.File folderMetadata,
+          {drive.Media? uploadMedia, required String $fields}) =>
+      _perflog.measure(
+          'create',
+          args: [folderMetadata.name ?? ''],
+          () => _inner.create(folderMetadata,
+              uploadMedia: uploadMedia, $fields: $fields));
+
+  @override
+  Future<Object> get(String fileId,
+          {String? $fields,
+          drive.DownloadOptions downloadOptions =
+              drive.DownloadOptions.metadata}) =>
+      _perflog.measure(
+          'get',
+          args: [fileId],
+          () => _inner.get(fileId,
+              $fields: $fields, downloadOptions: downloadOptions));
+
+  @override
+  Future<drive.FileList> list(
+          {required String q,
+          required String spaces,
+          required String $fields,
+          int? pageSize,
+          String? pageToken}) =>
+      _perflog.measure(
+          'list',
+          args: [q],
+          () => _inner.list(
+              q: q,
+              spaces: spaces,
+              $fields: $fields,
+              pageSize: pageSize,
+              pageToken: pageToken));
+
+  @override
+  Future<drive.File> update(drive.File file, String fileId,
+          {required drive.Media uploadMedia, required String $fields}) =>
+      _perflog.measure(
+          'update',
+          args: [fileId],
+          () => _inner.update(file, fileId,
+              uploadMedia: uploadMedia, $fields: $fields));
+}
+
 /// Google Drive API client for RDF document storage.
 ///
 /// Provides low-level Google Drive operations with OAuth2 authentication,
 /// ETag-based concurrency control, and automatic token refresh on 401 errors.
 class GDriveClient implements GDriveApiClient {
-  final drive.DriveApi _driveApi;
+  final DriveApi _driveApi;
 
   GDriveClient._({
-    required drive.DriveApi driveApi,
+    required DriveApi driveApi,
   }) : _driveApi = driveApi;
 
   factory GDriveClient({
     required GDriveAuthProvider authProvider,
     required http.Client httpClient,
+    Perflog? perflog,
   }) {
     final client = _GoogleAuthClient(httpClient, authProvider);
-    final driveApi = drive.DriveApi(client);
+    final driveApi = DriveApiImpl(drive.DriveApi(client));
+
     return GDriveClient._(
-      driveApi: driveApi,
+      driveApi: perflog == null
+          ? driveApi
+          : PerflogDriveApi(driveApi, perflog: perflog),
     );
   }
 
@@ -152,7 +269,7 @@ class GDriveClient implements GDriveApiClient {
       final query =
           "name='$escapedName' and mimeType='application/vnd.google-apps.folder' and '$parent' in parents and trashed=false";
 
-      final fileList = await _driveApi.files.list(
+      final fileList = await _driveApi.list(
         q: query,
         spaces: spaces,
         $fields: 'files(id, name)',
@@ -176,7 +293,7 @@ class GDriveClient implements GDriveApiClient {
         folderMetadata.parents = [parent];
       }
 
-      final createdFolder = await _driveApi.files.create(
+      final createdFolder = await _driveApi.create(
         folderMetadata,
         $fields: 'id',
       );
@@ -243,7 +360,7 @@ class GDriveClient implements GDriveApiClient {
       // 4. Upload with media
       final media = drive.Media(Stream.value(bytes), bytes.length);
 
-      final createdFile = await _driveApi.files.create(
+      final createdFile = await _driveApi.create(
         fileMetadata,
         uploadMedia: media,
         $fields: 'id, md5Checksum',
@@ -291,7 +408,7 @@ class GDriveClient implements GDriveApiClient {
         ..mimeType = contentType;
 
       final media = drive.Media(Stream.value(bytes), bytes.length);
-      final createdFile = await _driveApi.files.create(
+      final createdFile = await _driveApi.create(
         fileMetadata,
         uploadMedia: media,
         $fields: 'id, md5Checksum',
@@ -383,7 +500,7 @@ class GDriveClient implements GDriveApiClient {
       final query =
           "name='$escapedName' and '$parentId' in parents and trashed=false";
 
-      final fileList = await _driveApi.files.list(
+      final fileList = await _driveApi.list(
         q: query,
         spaces: spaces,
         $fields: 'files(id, name)',
@@ -412,7 +529,7 @@ class GDriveClient implements GDriveApiClient {
 
     try {
       // 1. Get file metadata (for ETag check)
-      final metadata = await _driveApi.files.get(
+      final metadata = await _driveApi.get(
         fileId,
         $fields: 'md5Checksum',
       ) as drive.File;
@@ -426,7 +543,7 @@ class GDriveClient implements GDriveApiClient {
       }
 
       // 3. Download file content
-      final media = await _driveApi.files.get(
+      final media = await _driveApi.get(
         fileId,
         downloadOptions: drive.DownloadOptions.fullMedia,
       ) as drive.Media;
@@ -464,7 +581,7 @@ class GDriveClient implements GDriveApiClient {
   Future<List<int>> downloadRawBytes(String fileId) async {
     _clientLog.fine('Downloading raw bytes for file $fileId');
     try {
-      final media = await _driveApi.files.get(
+      final media = await _driveApi.get(
         fileId,
         downloadOptions: drive.DownloadOptions.fullMedia,
       ) as drive.Media;
@@ -497,7 +614,7 @@ class GDriveClient implements GDriveApiClient {
 
     try {
       // 1. Fetch current ETag for conflict detection
-      final metadata = await _driveApi.files.get(
+      final metadata = await _driveApi.get(
         fileId,
         $fields: 'md5Checksum',
       ) as drive.File;
@@ -519,7 +636,7 @@ class GDriveClient implements GDriveApiClient {
 
       // 4. Upload updated content
       final media = drive.Media(Stream.value(bytes), bytes.length);
-      final updated = await _driveApi.files.update(
+      final updated = await _driveApi.update(
         drive.File() // Empty metadata (no property changes)
         // ..mimeType = _contentType, // FIXME: make sure the mimeType is correct?
         ,
@@ -556,7 +673,7 @@ class GDriveClient implements GDriveApiClient {
     _clientLog.fine('Uploading raw file $fileId');
 
     try {
-      final metadata = await _driveApi.files.get(
+      final metadata = await _driveApi.get(
         fileId,
         $fields: 'md5Checksum',
       ) as drive.File;
@@ -569,7 +686,7 @@ class GDriveClient implements GDriveApiClient {
       }
 
       final media = drive.Media(Stream.value(bytes), bytes.length);
-      final updated = await _driveApi.files.update(
+      final updated = await _driveApi.update(
         drive.File(),
         fileId,
         uploadMedia: media,
@@ -651,7 +768,7 @@ class GDriveClient implements GDriveApiClient {
 
     String? pageToken;
     do {
-      final fileList = await _driveApi.files.list(
+      final fileList = await _driveApi.list(
         spaces: spaces,
         q: 'trashed=false',
         pageSize: 1000,
@@ -713,7 +830,7 @@ class GDriveClient implements GDriveApiClient {
 
     do {
       final query = "'${task.folderId}' in parents and trashed=false";
-      final fileList = await _driveApi.files.list(
+      final fileList = await _driveApi.list(
         q: query,
         spaces: spaces,
         pageSize: 1000,
@@ -753,6 +870,12 @@ class GDriveClient implements GDriveApiClient {
     return value
         .replaceAll('\\', '\\\\') // Backslash must be escaped first!
         .replaceAll("'", "\\'"); // Then escape single quotes
+  }
+
+  @override
+  Future<void> dispose() {
+    // No resources to clean up in this implementation
+    return Future.value();
   }
 }
 
@@ -1686,13 +1809,18 @@ class GDriveRemoteStorage implements RemoteStorage {
     // check for online/offline status or similar.
     return Future.value(true);
   }
+
+  @override
+  Future<void> dispose() {
+    return Future.value();
+  }
 }
 
 class GDriveBackend implements Backend {
   @override
   String get name => 'gdrive';
   final GDriveAuthProvider _auth;
-  final GDriveClient _client;
+  final GDriveApiClient _client;
   final GDriveTypeIndexManager _typeIndexManager;
   final ResourceLocator _resourceLocator;
   final GDriveConfig _config;
@@ -1703,7 +1831,7 @@ class GDriveBackend implements Backend {
   List<RemoteStorage> _remotes = [];
   late final BehaviorSubject<List<RemoteStorage>> _remotesChangedSubject;
 
-  factory GDriveBackend({
+  static Backend create({
     required GDriveAuthProvider auth,
     required GDriveConfig config,
     IriTermFactory? iriTermFactory,
@@ -1712,24 +1840,29 @@ class GDriveBackend implements Backend {
     required String contentType,
     required String datasetContentType,
   }) {
+    final perflog = Perflog.root();
     final client = GDriveClient(
       authProvider: auth,
       httpClient: httpClient,
+      perflog: perflog,
     );
-    return GDriveBackend._(
+
+    final backend = GDriveBackend._(
       auth: auth,
       config: config,
+      //  PerfLogGDriveApiClient(client, perflog: perflog)
       client: client,
       iriTermFactory: iriTermFactory,
       contentType: contentType,
       datasetContentType: datasetContentType,
       rdfCore: rdfCore,
     );
+    return PerflogBackend(backend, perflog: perflog, name: 'gdrive');
   }
 
   GDriveBackend._({
     required GDriveAuthProvider auth,
-    required GDriveClient client,
+    required GDriveApiClient client,
     required GDriveConfig config,
     required RdfCore rdfCore,
     required String contentType,

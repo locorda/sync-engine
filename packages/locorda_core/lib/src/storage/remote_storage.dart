@@ -200,6 +200,8 @@ abstract interface class RemoteStorage {
   ///
   /// This is a global flag (not per-type) to simplify the experimental phase.
   bool get useShardDatasets => false;
+
+  Future<void> dispose() async {}
 }
 
 /// Exception thrown when remote storage operations fail due to authentication or authorization issues.
@@ -295,6 +297,9 @@ class AuthAwareRemoteStorage implements RemoteStorage {
 
   @override
   bool get useShardDatasets => _inner.useShardDatasets;
+
+  @override
+  Future<void> dispose() => _inner.dispose();
 }
 
 /// Wraps a [RemoteSyncStorage] to automatically handle authentication failures.

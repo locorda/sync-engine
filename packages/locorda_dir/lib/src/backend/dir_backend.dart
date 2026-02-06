@@ -162,6 +162,12 @@ class DirRemoteStorage implements RemoteStorage {
       datasetContentType: _datasetContentType,
     );
   }
+
+  @override
+  Future<void> dispose() {
+    // No resources to dispose for directory storage
+    return Future.value();
+  }
 }
 
 /// Per-sync-session storage for directory backend.

@@ -1,0 +1,227 @@
+import 'dart:async';
+
+import 'package:locorda_core/src/backend/backend.dart';
+import 'package:locorda_core/src/config/sync_engine_config.dart';
+import 'package:locorda_core/src/storage/remote_id.dart';
+import 'package:locorda_core/src/storage/remote_storage.dart';
+import 'package:locorda_rdf_core/src/dataset/rdf_dataset.dart';
+import 'package:locorda_rdf_core/src/graph/rdf_graph.dart';
+import 'package:locorda_rdf_core/src/graph/rdf_term.dart';
+import 'package:logging/logging.dart';
+import 'package:rxdart/rxdart.dart';
+
+final _performanceLog = Logger('perf.backend');
+final _operationsLog = Logger('perf.ops.backend');
+
+class Perflog {
+  final List<String> _names;
+  final List<String> _targetTypeNames;
+  final bool _includeArgs;
+  Perflog._(
+      {required List<String> names,
+      required List<String> targetTypeNames,
+      bool includeArgs = false})
+      : _names = names,
+        _targetTypeNames = targetTypeNames,
+        _includeArgs = includeArgs;
+
+  static Perflog root({bool includeArgs = true}) =>
+      Perflog._(names: [], targetTypeNames: [], includeArgs: includeArgs);
+
+  static String _toTargetTypeName(Object target) =>
+      target is String ? target : target.runtimeType.toString();
+
+  Perflog create(String name, Object target, {bool? includeArgs}) => Perflog._(
+      names: [..._names, name],
+      targetTypeNames: [..._targetTypeNames, _toTargetTypeName(target)],
+      includeArgs: includeArgs ?? _includeArgs);
+
+  /// Shortens a string to maxLength by placing ellipsis in the middle
+  static String _shortenMiddle(String text, int maxLength,
+      {bool preferEnd = false, String borderEllipis = '...'}) {
+    if (text.length <= maxLength) return text;
+    if (maxLength < 3) return text.substring(0, maxLength);
+    if (maxLength < 10)
+      return text.substring(0, maxLength - borderEllipis.length) +
+          borderEllipis;
+    if (maxLength < 10 && preferEnd)
+      return borderEllipis +
+          text.substring(text.length - (maxLength - borderEllipis.length));
+    final leftLen = (maxLength - 3) ~/ 2;
+    final rightLen = maxLength - 3 - leftLen;
+    return '${text.substring(0, leftLen)}...${text.substring(text.length - rightLen)}';
+  }
+
+  /// Formats args for display: shows first and last (if multiple), shortened with ellipsis
+  static String _formatArgs(List<String> args, int maxLength) {
+    if (args.isEmpty) return '';
+    if (args.length == 1) return _shortenMiddle(args[0], maxLength);
+    //final listMiddle=', ..., ';
+    final listMiddle = '|||';
+    var maxArgLength = (maxLength - listMiddle.length) ~/ 2;
+    final first = _shortenMiddle(args.first, maxArgLength,
+        borderEllipis: ''); // No ellipsis for first arg to maximize info
+    maxArgLength = (maxLength - listMiddle.length) - first.length;
+    final last = _shortenMiddle(args.last, maxArgLength,
+        preferEnd: true, borderEllipis: '');
+    return '$first$listMiddle$last';
+  }
+
+  Future<T> measure<T>(String operation, Future<T> Function() action,
+      {List<String>? args}) async {
+    const contextWidth = 20;
+    const operationWidth = 20;
+    const argsWidth = 50;
+
+    final opPadded =
+        _shortenMiddle(operation, operationWidth).padRight(operationWidth);
+    final argsStr = _includeArgs ? _formatAndPadList(args, argsWidth) : '';
+    final contextStr = _formatAndPadList(_names, contextWidth);
+
+    _operationsLog.info('$contextStr.$opPadded $argsStr');
+    final stopwatch = Stopwatch()..start();
+    try {
+      return await action();
+    } finally {
+      stopwatch.stop();
+      final duration = '${stopwatch.elapsedMilliseconds} ms'.padLeft(8);
+      _performanceLog.info('$contextStr.$opPadded $duration $argsStr');
+    }
+  }
+
+  String _formatAndPadList(List<String>? args, int argsWidth) {
+    return (args != null && args.isNotEmpty ? _formatArgs(args, argsWidth) : '')
+        .padRight(argsWidth);
+  }
+
+  Future<void> dispose() async {
+    // No resources to clean up in this implementation, but method provided for symmetry and future extensibility.
+  }
+}
+
+class PerflogBackend implements Backend {
+  final Backend _inner;
+  final Perflog _perflog;
+  late final BehaviorSubject<List<RemoteStorage>> _remotesSubject;
+  late final StreamSubscription _remotesSubscription;
+
+  PerflogBackend(
+    this._inner, {
+    String name = 'Backend',
+    bool includeArgs = false,
+    required Perflog perflog,
+  }) : _perflog = perflog.create(name, _inner, includeArgs: includeArgs) {
+    _remotesSubject = BehaviorSubject.seeded(wrapRemotes(_inner.remotes));
+    _remotesSubscription = _inner.remotesChanged.listen((remotes) {
+      _remotesSubject.add(wrapRemotes(remotes));
+    });
+  }
+  List<RemoteStorage> wrapRemotes(List<RemoteStorage> remotes) =>
+      remotes.map((r) => PerflogRemoteStorage(r, perflog: _perflog)).toList();
+
+  @override
+  Future<void> dispose() async {
+    await _perflog.measure('Backend.dispose', () async {
+      await _remotesSubscription.cancel();
+      return _inner.dispose();
+    });
+    await _perflog.dispose();
+  }
+
+  @override
+  String get name => _inner.name;
+
+  @override
+  List<RemoteStorage> get remotes => _remotesSubject.value;
+
+  @override
+  Stream<List<RemoteStorage>> get remotesChanged => _remotesSubject.stream;
+}
+
+class PerflogRemoteStorage implements RemoteStorage {
+  final RemoteStorage _inner;
+  final Perflog _perflog;
+
+  PerflogRemoteStorage(
+    this._inner, {
+    required Perflog perflog,
+    String name = 'RemoteStorage',
+    bool includeArgs = false,
+  }) : _perflog = perflog.create(name, _inner, includeArgs: includeArgs);
+
+  @override
+  Future<RemoteSyncStorage> createSyncStorage(SyncEngineConfig config) =>
+      _perflog.measure(
+          'createSyncStorage',
+          () async => PerflogRemoteSyncStorage(
+              await _inner.createSyncStorage(config),
+              perflog: _perflog));
+
+  @override
+  Future<bool> isAvailable() =>
+      _perflog.measure('isAvailable', () => _inner.isAvailable());
+
+  @override
+  RemoteId get remoteId => _inner.remoteId;
+
+  @override
+  bool get useShardDatasets => _inner.useShardDatasets;
+
+  @override
+  Future<void> dispose() async {
+    await _perflog.dispose();
+  }
+}
+
+class PerflogRemoteSyncStorage implements RemoteSyncStorage {
+  final RemoteSyncStorage _inner;
+  final Perflog _perflog;
+
+  PerflogRemoteSyncStorage(this._inner,
+      {required Perflog perflog,
+      String name = 'RemoteSyncStorage',
+      bool includeArgs = false})
+      : _perflog = perflog.create(name, _inner, includeArgs: includeArgs);
+
+  @override
+  Future<RemoteDownloadResult<RdfGraph>> download(IriTerm documentIri,
+          {String? ifNoneMatch}) =>
+      _perflog.measure('download',
+          () => _inner.download(documentIri, ifNoneMatch: ifNoneMatch),
+          args: [documentIri.value]);
+
+  @override
+  Future<RemoteDownloadResult<RdfDataset>> downloadDataset(IriTerm documentIri,
+          {String? ifNoneMatch}) =>
+      _perflog.measure('downloadDataset',
+          () => _inner.downloadDataset(documentIri, ifNoneMatch: ifNoneMatch),
+          args: [documentIri.value]);
+
+  @override
+  Future<void> finalizeSync() async {
+    await _perflog.measure('finalizeSync', () => _inner.finalizeSync());
+    await _perflog.dispose();
+  }
+
+  @override
+  int get maxConcurrentDocumentSyncs => _inner.maxConcurrentDocumentSyncs;
+
+  @override
+  int get maxConcurrentIndexSyncs => _inner.maxConcurrentIndexSyncs;
+
+  @override
+  int get maxConcurrentShardSyncs => _inner.maxConcurrentShardSyncs;
+  @override
+  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfGraph graph,
+          {String? ifMatch}) =>
+      _perflog.measure(
+          'upload', () => _inner.upload(documentIri, graph, ifMatch: ifMatch),
+          args: [documentIri.value]);
+
+  @override
+  Future<RemoteUploadResult> uploadDataset(
+          IriTerm documentIri, RdfDataset dataset, {String? ifMatch}) =>
+      _perflog.measure('uploadDataset',
+          () => _inner.uploadDataset(documentIri, dataset, ifMatch: ifMatch),
+          args: [documentIri.value]);
+}

@@ -502,6 +502,12 @@ class SolidRemoteStorage implements RemoteStorage {
       iriTranslator: iriTranslator,
     );
   }
+
+  @override
+  Future<void> dispose() {
+    // No resources to dispose for Solid remote storage
+    return Future.value();
+  }
 }
 
 /// Per-sync-session storage for Solid backend.

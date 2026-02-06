@@ -130,6 +130,11 @@ class InMemoryRemoteStorage implements RemoteStorage {
   void clear() {
     _store.clear();
   }
+
+  @override
+  Future<void> dispose() async {
+    // No resources to dispose in in-memory backend
+  }
 }
 
 class _Store {
