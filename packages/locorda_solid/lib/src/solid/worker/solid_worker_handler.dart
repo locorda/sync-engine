@@ -8,6 +8,8 @@ import 'package:locorda_solid_auth_worker/worker.dart';
 import 'package:locorda_worker/worker.dart';
 import 'package:http/http.dart' as http;
 
+import 'solid_config_connector_worker.dart';
+
 /// Worker-thread [RemoteWorkerHandler] implementation for Solid Pod backend.
 ///
 /// Creates [SolidBackend] instances in the worker thread for Pod communication.
@@ -46,13 +48,17 @@ class SolidWorkerHandler implements RemoteWorkerHandler {
 
   @override
   Future<Backend> createBackend(
-          WorkerHandlerContext context, SyncEngineConfig config) async =>
-      SolidBackend(
-        auth: SolidAuthConnector.receiver(context),
-        rdfCore: _rdfCore,
-        iriTermFactory: _iriTermFactory,
-        httpClient: _httpClient,
-        contentType: _contentType,
-        datasetContentType: _datasetContentType,
-      );
+      WorkerHandlerContext context, SyncEngineConfig config) async {
+    final solidConfig = await SolidConfigConnector.receiveConfig(context);
+
+    return SolidBackend(
+      auth: SolidAuthConnector.receiver(context),
+      rdfCore: _rdfCore,
+      iriTermFactory: _iriTermFactory,
+      httpClient: _httpClient,
+      contentType: _contentType,
+      datasetContentType: _datasetContentType,
+      config: solidConfig,
+    );
+  }
 }

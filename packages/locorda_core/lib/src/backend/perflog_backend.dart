@@ -235,7 +235,7 @@ class PerflogRemoteSyncStorage implements RemoteSyncStorage {
   PerflogRemoteSyncStorage(this._inner,
       {required Perflog perflog,
       String name = 'RemoteSyncStorage',
-      bool includeArgs = false})
+      bool? includeArgs})
       : this.perflog = perflog.create(name, _inner, includeArgs: includeArgs);
 
   @override

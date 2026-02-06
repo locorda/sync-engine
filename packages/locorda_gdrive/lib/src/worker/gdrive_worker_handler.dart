@@ -73,6 +73,7 @@ class GDriveWorkerHandler implements RemoteWorkerHandler {
       httpClient: _httpClient,
       contentType: _contentType,
       datasetContentType: _datasetContentType,
+      
     );
   }
 }

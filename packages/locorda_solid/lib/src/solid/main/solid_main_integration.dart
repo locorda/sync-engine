@@ -6,9 +6,12 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_flutter_core/locorda_flutter_core.dart';
 import 'package:locorda_solid_auth/locorda_solid_auth.dart';
 import 'package:locorda_solid_auth_worker/locorda_solid_auth_worker.dart';
+import 'package:locorda_solid_core/locorda_solid_core.dart';
 import 'package:locorda_worker/worker_main.dart';
 import 'package:solid_auth/solid_auth.dart';
 import 'package:oidc_core/oidc_core.dart' show OidcStore;
+
+import 'solid_config_connector.dart';
 
 /// Main-thread [RemoteIntegration] implementation for Solid Pod backend.
 ///
@@ -39,20 +42,24 @@ import 'package:oidc_core/oidc_core.dart' show OidcStore;
 class SolidMainIntegration implements RemoteIntegration {
   final SolidAuth _solidAuth;
   final SolidProviderService _providerService;
+  final SolidConfig _config;
   late final SolidAuthBridge _authBridge;
 
   SolidMainIntegration._({
     required SolidAuth solidAuth,
     SolidProviderService? providerService,
+    SolidConfig config = const SolidConfig(),
   })  : _solidAuth = solidAuth,
         _providerService =
             providerService ?? const DefaultSolidProviderService(),
+        _config = config,
         _authBridge = SolidAuthBridge(solidAuth);
 
   static Future<SolidMainIntegration> create({
     required String oidcClientId,
     required String appUrlScheme,
     required Uri frontendRedirectUrl,
+    SolidConfig config = const SolidConfig(),
     SolidAuthSettings? settings,
     SolidProviderService? providerService,
     OidcStore? store,
@@ -69,6 +76,7 @@ class SolidMainIntegration implements RemoteIntegration {
     return SolidMainIntegration._(
       solidAuth: solidAuth,
       providerService: providerService,
+      config: config,
     );
   }
 
@@ -88,6 +96,7 @@ class SolidMainIntegration implements RemoteIntegration {
 
   @override
   List<MainHandlerFactory> get workerConnectors => [
+      SolidConfigConnector.sender(_config),
         SolidAuthConnector.sender(_solidAuth),
       ];
 

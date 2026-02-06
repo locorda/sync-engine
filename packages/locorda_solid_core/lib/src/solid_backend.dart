@@ -8,6 +8,7 @@ import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart';
 
 import 'auth/solid_auth_provider.dart';
+import 'solid_config.dart';
 import 'solid_profile_parser.dart';
 
 final _log = Logger('SolidRemoteStorage');
@@ -58,6 +59,7 @@ class SolidBackend implements Backend {
   final RdfCore _rdfCore;
   final String _contentType;
   final String _datasetContentType;
+  final SolidConfig _config;
   List<RemoteStorage> _remotes = [];
   late final BehaviorSubject<List<RemoteStorage>> _remotesChangedSubject;
 
@@ -68,6 +70,7 @@ class SolidBackend implements Backend {
     required RdfCore rdfCore,
     required String contentType,
     required String datasetContentType,
+    SolidConfig config = const SolidConfig(),
   })  : _authProvider = auth,
         _iriTermFactory = iriTermFactory,
         _solidClient = SolidClient(
@@ -76,7 +79,8 @@ class SolidBackend implements Backend {
         ),
         _contentType = contentType,
         _datasetContentType = datasetContentType,
-        _rdfCore = rdfCore {
+        _rdfCore = rdfCore,
+        _config = config {
     _remotesChangedSubject = BehaviorSubject<List<RemoteStorage>>();
     auth.isAuthenticatedNotifier.addListener(_authStateChanged);
     // initialize based on current auth state
@@ -109,6 +113,7 @@ class SolidBackend implements Backend {
         rdfCore: _rdfCore,
         contentType: _contentType,
         datasetContentType: _datasetContentType,
+        config: _config,
       );
 
       // Wrap with auth-aware retry logic
@@ -425,6 +430,7 @@ class SolidRemoteStorage implements RemoteStorage {
   final RdfCore _rdfCore;
   final String _contentType;
   final String _datasetContentType;
+  final SolidConfig _config;
 
   late final Future<String> _podUrlFuture;
 
@@ -435,11 +441,13 @@ class SolidRemoteStorage implements RemoteStorage {
     required RdfCore rdfCore,
     required String contentType,
     required String datasetContentType,
+    required SolidConfig config,
   })  : _client = client,
         _iriTermFactory = iriTermFactory,
         _rdfCore = rdfCore,
         _contentType = contentType,
-        _datasetContentType = datasetContentType {
+        _datasetContentType = datasetContentType,
+        _config = config {
     _podUrlFuture = _resolvePodUrl(webId);
   }
 
@@ -447,7 +455,7 @@ class SolidRemoteStorage implements RemoteStorage {
   // not be really good Solid practice since solid is based on linked data principles
   // and on the idea that we have resources identified by IRIs described by separate documents.
   @override
-  bool get useShardDatasets => false;
+  bool get useShardDatasets => _config.useShardDatasets;
 
   Future<String> _resolvePodUrl(String webId) async {
     final profile = await _client.download(
@@ -495,6 +503,7 @@ class SolidRemoteStorage implements RemoteStorage {
       contentType: _contentType,
       datasetContentType: _datasetContentType,
       rdfCore: _rdfCore,
+      config: _config,
     );
 
     return IriTranslatingRemoteSyncStorage(
@@ -519,16 +528,28 @@ class SolidSyncStorage extends RemoteSyncStorage {
   final String _datasetContentType;
 
   final RdfCore _rdfCore;
+  final SolidConfig _config;
 
   SolidSyncStorage({
     required SolidClient client,
     required String contentType,
     required String datasetContentType,
     required RdfCore rdfCore,
+    required SolidConfig config,
   })  : _client = client,
         _contentType = contentType,
         _datasetContentType = datasetContentType,
-        _rdfCore = rdfCore;
+        _rdfCore = rdfCore,
+        _config = config;
+
+  @override
+  int get maxConcurrentDocumentSyncs => _config.maxConcurrentDocumentSyncs;
+
+  @override
+  int get maxConcurrentIndexSyncs => _config.maxConcurrentIndexSyncs;
+
+  @override
+  int get maxConcurrentShardSyncs => _config.maxConcurrentShardSyncs;
 
   @override
   Future<RemoteDownloadResult<RdfGraph>> download(IriTerm documentIri,

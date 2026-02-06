@@ -11,3 +11,4 @@ library locorda_solid;
 
 export 'src/solid_backend.dart';
 export 'src/auth/solid_auth_provider.dart';
+export 'src/solid_config.dart';
