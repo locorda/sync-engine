@@ -300,6 +300,9 @@ class AuthAwareRemoteStorage implements RemoteStorage {
 
   @override
   Future<void> dispose() => _inner.dispose();
+
+  @override
+  String toString() => 'AuthAware(${_inner.toString()})';
 }
 
 /// Wraps a [RemoteSyncStorage] to automatically handle authentication failures.
@@ -373,6 +376,9 @@ class AuthAwareSyncStorage implements RemoteSyncStorage {
 
   @override
   int get maxConcurrentIndexSyncs => _inner.maxConcurrentIndexSyncs;
+
+  @override
+  String toString() => 'AuthAware(${_inner.toString()})';
 }
 
 Future<T> _retryOnAuthFailure<T>(

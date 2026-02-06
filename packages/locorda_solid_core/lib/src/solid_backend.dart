@@ -153,6 +153,9 @@ class SolidBackend implements Backend {
   @override
   Stream<List<RemoteStorage>> get remotesChanged =>
       _remotesChangedSubject.stream;
+
+  @override
+  String toString() => 'SolidBackend(config:${_config})';
 }
 
 class SolidClientException implements Exception {
@@ -462,8 +465,8 @@ class SolidRemoteStorage implements RemoteStorage {
       webId,
       requiresAuth: true,
       acceptContentType: 'text/turtle, application/ld+json;q=0.9, */*;q=0.8',
-      convert: (data, {documentUrl, mimeType}) =>
-          _rdfCore.decode(data, contentType: mimeType ?? 'text/turtle'),
+      convert: (data, {documentUrl, mimeType}) => _rdfCore.decode(data,
+          contentType: mimeType ?? 'text/turtle', documentUrl: documentUrl),
     );
     if (profile.graph == null) {
       throw StateError('Profile document is empty for WebID: $webId');
@@ -480,7 +483,11 @@ class SolidRemoteStorage implements RemoteStorage {
   Future<bool> isAvailable() {
     // TODO: implement availability check, maybe by using some API to
     // check for online/offline status or similar.
-    return _podUrlFuture.then((_) => true).catchError((_) => false);
+    return _podUrlFuture.then((_) => true).catchError((e) {
+      _log.severe(
+          'Error resolving Pod URL for webId=$webId (will disable solid sync): $e');
+      return false;
+    });
   }
 
   @override
@@ -516,6 +523,11 @@ class SolidRemoteStorage implements RemoteStorage {
   Future<void> dispose() {
     // No resources to dispose for Solid remote storage
     return Future.value();
+  }
+
+  @override
+  String toString() {
+    return 'SolidRemoteStorage(webId: $webId, podUrl: ${_podUrlFuture}, config: $_config)';
   }
 }
 
@@ -631,5 +643,10 @@ class SolidSyncStorage extends RemoteSyncStorage {
   @override
   Future<void> finalizeSync() async {
     // No cleanup needed for Solid backend
+  }
+
+  @override
+  String toString() {
+    return 'SolidSyncStorage(config: $_config)';
   }
 }

@@ -192,6 +192,9 @@ class PerflogBackend implements Backend {
 
   @override
   Stream<List<RemoteStorage>> get remotesChanged => _remotesSubject.stream;
+
+  @override
+  String toString() => 'Perflog(${_inner.toString()})';
 }
 
 class PerflogRemoteStorage implements RemoteStorage {
@@ -227,6 +230,9 @@ class PerflogRemoteStorage implements RemoteStorage {
   Future<void> dispose() async {
     await _perflog.dispose();
   }
+
+  @override
+  String toString() => 'Perflog(${_inner.toString()})';
 }
 
 class PerflogRemoteSyncStorage implements RemoteSyncStorage {
@@ -280,4 +286,6 @@ class PerflogRemoteSyncStorage implements RemoteSyncStorage {
       perflog.measure('uploadDataset',
           () => _inner.uploadDataset(documentIri, dataset, ifMatch: ifMatch),
           args: [documentIri.debug]);
+  @override
+  String toString() => 'Perflog(${_inner.toString()})';
 }

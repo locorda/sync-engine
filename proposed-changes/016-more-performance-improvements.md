@@ -28,12 +28,18 @@ But, looking at our request logs I do believe that there must be a lot of potent
 
 - we store the installations (e.g. the clients) in the shards - this causes us to write every shard file back on initial sync, slowing down our highly optimized gdrive mirrored sync by appr. 1.5 sec - without it we should be slightly below 3 seconds 
 
-----
+---
+## new benchmarks
+I checked solid now and got for datasets initial upload 7.3 seconds, but for initial download 14 seconds - I guess this is due to files being replaced. This is a very strong hint that we need to revisit our concept before. Apparently, updating solid files is very expensive! 1-1.4 seconds vs. 300-400ms!
 
+gdrive mirror initial download now is at 4.1 seconds - but it feels buggy and the concept is sort of broken. I saw data loss when testing with gdrive - not 100% sure it is caused by gdrive mirror, but it feels like it.
+
+---
 ## Next Steps (ideas)
 
 - Investigate Bug: Using dataset for both local and mirrored gdrive, I seem to sometimes loose notes and/or categories in gdrive? Could this be caused by mirror?
 - Revisit concept to try to get rid of the reader references in the index documents - what would happen if we did not have them? Can we maybe move them somewhere else to reduce the amount of files touched during initial sync? What about reverting this and keeping track of the indices in the installation document instead?
 - reality check: port chat essence to sync-engine and check how the performance is
-- continue work on 
-- new benchmarks
+- continue work on gdrive client to fix the non-mirror-mode
+- dataset mode parallelization? What happens if we parallelize shards using dataset mode? What about content in multiple shards?
+- benchmarks: solid "normal" mode?

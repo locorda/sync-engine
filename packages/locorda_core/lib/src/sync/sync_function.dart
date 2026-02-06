@@ -175,7 +175,8 @@ class SyncFunction {
         // Check if remote storage is available
         final remoteAvailable = await remote.isAvailable();
         if (!remoteAvailable) {
-          _log.info('Remote storage not available - skipping remote sync');
+          _log.info(
+              'Remote storage $remote not available - skipping remote sync');
           continue;
         }
 

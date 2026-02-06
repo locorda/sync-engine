@@ -57,4 +57,14 @@ class SolidConfig {
       useShardDatasets: useShardDatasets ?? this.useShardDatasets,
     );
   }
+
+  @override
+  String toString() {
+    return 'SolidConfig('
+        'maxConcurrentDocumentSyncs: $maxConcurrentDocumentSyncs, '
+        'maxConcurrentShardSyncs: $maxConcurrentShardSyncs, '
+        'maxConcurrentIndexSyncs: $maxConcurrentIndexSyncs, '
+        'useShardDatasets: $useShardDatasets'
+        ')';
+  }
 }
