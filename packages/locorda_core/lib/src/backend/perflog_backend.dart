@@ -13,28 +13,87 @@ import 'package:rxdart/rxdart.dart';
 final _performanceLog = Logger('perf.backend');
 final _operationsLog = Logger('perf.ops.backend');
 
-class Perflog {
+abstract interface class Perflog {
+  static const disabled = DisabledPerflog();
+
+  const Perflog();
+
+  static Perflog root({
+    bool includeArgs = true,
+    int contextWidth = 30,
+    int operationWidth = 20,
+    int argsWidth = 50,
+  }) =>
+      LoggingPerflog.root(
+          includeArgs: includeArgs,
+          contextWidth: contextWidth,
+          operationWidth: operationWidth,
+          argsWidth: argsWidth);
+
+  Perflog create(String name, Object target, {bool? includeArgs});
+
+  Future<T> measure<T>(String operation, Future<T> Function() action,
+      {List<String>? args});
+
+  Future<void> dispose() => Future.value();
+}
+
+class DisabledPerflog extends Perflog {
+  const DisabledPerflog();
+  @override
+  Perflog create(String name, Object target, {bool? includeArgs}) => this;
+
+  @override
+  Future<T> measure<T>(String operation, Future<T> Function() action,
+          {List<String>? args}) =>
+      action();
+}
+
+class LoggingPerflog implements Perflog {
   final List<String> _names;
   final List<String> _targetTypeNames;
   final bool _includeArgs;
-  Perflog._(
-      {required List<String> names,
-      required List<String> targetTypeNames,
-      bool includeArgs = false})
-      : _names = names,
+  final int contextWidth;
+  final int operationWidth;
+  final int argsWidth;
+
+  LoggingPerflog._({
+    required List<String> names,
+    required List<String> targetTypeNames,
+    bool includeArgs = false,
+    required this.contextWidth,
+    required this.operationWidth,
+    required this.argsWidth,
+  })  : _names = names,
         _targetTypeNames = targetTypeNames,
         _includeArgs = includeArgs;
 
-  static Perflog root({bool includeArgs = true}) =>
-      Perflog._(names: [], targetTypeNames: [], includeArgs: includeArgs);
+  static Perflog root({
+    bool includeArgs = true,
+    int contextWidth = 30,
+    int operationWidth = 20,
+    int argsWidth = 50,
+  }) =>
+      LoggingPerflog._(
+          names: [],
+          targetTypeNames: [],
+          includeArgs: includeArgs,
+          contextWidth: contextWidth,
+          operationWidth: operationWidth,
+          argsWidth: argsWidth);
 
   static String _toTargetTypeName(Object target) =>
       target is String ? target : target.runtimeType.toString();
 
-  Perflog create(String name, Object target, {bool? includeArgs}) => Perflog._(
-      names: [..._names, name],
-      targetTypeNames: [..._targetTypeNames, _toTargetTypeName(target)],
-      includeArgs: includeArgs ?? _includeArgs);
+  Perflog create(String name, Object target, {bool? includeArgs}) =>
+      LoggingPerflog._(
+        names: [..._names, name],
+        targetTypeNames: [..._targetTypeNames, _toTargetTypeName(target)],
+        includeArgs: includeArgs ?? _includeArgs,
+        contextWidth: contextWidth,
+        operationWidth: operationWidth,
+        argsWidth: argsWidth,
+      );
 
   /// Shortens a string to maxLength by placing ellipsis in the middle
   static String _shortenMiddle(String text, int maxLength,
@@ -69,10 +128,6 @@ class Perflog {
 
   Future<T> measure<T>(String operation, Future<T> Function() action,
       {List<String>? args}) async {
-    const contextWidth = 20;
-    const operationWidth = 20;
-    const argsWidth = 50;
-
     final opPadded =
         _shortenMiddle(operation, operationWidth).padRight(operationWidth);
     final argsStr = _includeArgs ? _formatAndPadList(args, argsWidth) : '';
@@ -175,32 +230,32 @@ class PerflogRemoteStorage implements RemoteStorage {
 
 class PerflogRemoteSyncStorage implements RemoteSyncStorage {
   final RemoteSyncStorage _inner;
-  final Perflog _perflog;
+  final Perflog perflog;
 
   PerflogRemoteSyncStorage(this._inner,
       {required Perflog perflog,
       String name = 'RemoteSyncStorage',
       bool includeArgs = false})
-      : _perflog = perflog.create(name, _inner, includeArgs: includeArgs);
+      : this.perflog = perflog.create(name, _inner, includeArgs: includeArgs);
 
   @override
   Future<RemoteDownloadResult<RdfGraph>> download(IriTerm documentIri,
           {String? ifNoneMatch}) =>
-      _perflog.measure('download',
+      perflog.measure('download',
           () => _inner.download(documentIri, ifNoneMatch: ifNoneMatch),
           args: [documentIri.value]);
 
   @override
   Future<RemoteDownloadResult<RdfDataset>> downloadDataset(IriTerm documentIri,
           {String? ifNoneMatch}) =>
-      _perflog.measure('downloadDataset',
+      perflog.measure('downloadDataset',
           () => _inner.downloadDataset(documentIri, ifNoneMatch: ifNoneMatch),
           args: [documentIri.value]);
 
   @override
   Future<void> finalizeSync() async {
-    await _perflog.measure('finalizeSync', () => _inner.finalizeSync());
-    await _perflog.dispose();
+    await perflog.measure('finalizeSync', () => _inner.finalizeSync());
+    await perflog.dispose();
   }
 
   @override
@@ -214,14 +269,14 @@ class PerflogRemoteSyncStorage implements RemoteSyncStorage {
   @override
   Future<RemoteUploadResult> upload(IriTerm documentIri, RdfGraph graph,
           {String? ifMatch}) =>
-      _perflog.measure(
+      perflog.measure(
           'upload', () => _inner.upload(documentIri, graph, ifMatch: ifMatch),
           args: [documentIri.value]);
 
   @override
   Future<RemoteUploadResult> uploadDataset(
           IriTerm documentIri, RdfDataset dataset, {String? ifMatch}) =>
-      _perflog.measure('uploadDataset',
+      perflog.measure('uploadDataset',
           () => _inner.uploadDataset(documentIri, dataset, ifMatch: ifMatch),
           args: [documentIri.value]);
 }

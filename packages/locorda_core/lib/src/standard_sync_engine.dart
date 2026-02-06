@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:http/http.dart' as http;
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_core/src/backend/perflog_backend.dart';
 import 'package:locorda_core/src/crdt/crdt_types.dart';
 import 'package:locorda_core/src/crdt_document_manager.dart';
 import 'package:locorda_core/src/hlc_service.dart';
@@ -318,7 +319,7 @@ class StandardSyncEngine implements SyncEngine {
     );
 
     await indexManager.initializeIndices();
-
+    final perflog = Perflog.root();
     final remoteDocumentMerger = RemoteDocumentMerger(
       storage: storage,
       hlcService: hlcService,
@@ -350,15 +351,16 @@ class StandardSyncEngine implements SyncEngine {
           physicalTimestampFactory: timestampFactory,
           useShardDatasets: useShardDatasets,
         );
-
+    final syncFunction = SyncFunction(
+      storage: storage,
+      configService: configService,
+      shardDocumentGenerator: shardDocumentGenerator,
+      backends: backends,
+      remoteSyncOrchestratorFactory: remoteSyncOrchestratorFactory,
+    );
     final syncManager = StandardSyncManager(
-        syncFunction: SyncFunction(
-          storage: storage,
-          configService: configService,
-          shardDocumentGenerator: shardDocumentGenerator,
-          backends: backends,
-          remoteSyncOrchestratorFactory: remoteSyncOrchestratorFactory,
-        ),
+        syncFunction: (DateTime syncTime) =>
+            perflog.measure('syncFunction', () => syncFunction(syncTime)),
         configService: configService,
         physicalTimestampFactory: timestampFactory);
 
