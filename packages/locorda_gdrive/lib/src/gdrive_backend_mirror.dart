@@ -25,48 +25,76 @@ class GDriveLocalMirror {
   final ResourceLocator _resourceLocator;
   final GDriveLocalMirrorConfig _config;
   final String _spaces;
-  final String _userId;
 
-  late final Directory _rootDir;
-  late final Directory _filesDir;
-  late final File _indexFile;
-  late _GDriveMirrorIndex _index;
+  final Directory _filesDir;
+  final File _indexFile;
+  _GDriveMirrorIndex _index;
   late final Map<String, IriTerm> _folderNameToType;
 
-  GDriveLocalMirror({
+  GDriveLocalMirror._({
     required GDriveApiClient client,
     required TypeIndexMappings typeIndexMappings,
     required ResourceLocator resourceLocator,
     required GDriveLocalMirrorConfig config,
     required String spaces,
-    required String userId,
+    required Directory filesDir,
+    required File indexFile,
+    required _GDriveMirrorIndex index,
   })  : _client = client,
         _typeIndexMappings = typeIndexMappings,
         _resourceLocator = resourceLocator,
         _config = config,
         _spaces = spaces,
-        _userId = userId {
+        _filesDir = filesDir,
+        _indexFile = indexFile,
+        _index = index {
     _folderNameToType = {
       for (final entry in _typeIndexMappings.typeMappings.entries)
         entry.value.folderName: entry.key,
     };
   }
 
-  Future<void> initialize() async {
-    _rootDir = await _resolveRootDir();
-    _filesDir = Directory(path.join(_rootDir.path, 'files'));
-    _indexFile = File(path.join(_rootDir.path, 'index.json'));
+  static Future<GDriveLocalMirror> initialize({
+    required GDriveLocalMirrorConfig config,
+    required String userId,
+    required String spaces,
+    required GDriveApiClient client,
+    required TypeIndexMappings typeIndexMappings,
+    required ResourceLocator resourceLocator,
+  }) async {
+    final _rootDir =
+        await _resolveRootDir(config: config, userId: userId, spaces: spaces);
+    final filesDir = Directory(path.join(_rootDir.path, 'files'));
+    final indexFile = File(path.join(_rootDir.path, 'index.json'));
 
-    await _filesDir.create(recursive: true);
+    await filesDir.create(recursive: true);
 
-    final existingIndex = await _loadIndex();
+    final existingIndex = await _loadIndex(indexFile);
 
     // Streaming pipeline: start downloads while listing is still in progress
     final updatedIndex = existingIndex.copy();
-    await _streamingListAndDownload(updatedIndex);
+    await _streamingListAndDownload(
+      updatedIndex,
+      filesDir: filesDir,
+      config: config,
+      client: client,
+      appFolderId: typeIndexMappings.appFolderId,
+      spaces: spaces,
+    );
 
-    _index = updatedIndex;
-    await _saveIndex(_index);
+    final index = updatedIndex;
+    await _saveIndex(indexFile, index);
+    
+    return GDriveLocalMirror._(
+      client: client,
+      typeIndexMappings: typeIndexMappings,
+      resourceLocator: resourceLocator,
+      config: config,
+      spaces: spaces,
+      filesDir: filesDir,
+      indexFile: indexFile,
+      index: index,
+    );
   }
 
   Future<RemoteDownloadResult<T>> download<T>(
@@ -81,7 +109,7 @@ class GDriveLocalMirror {
           graph: null, etag: null, notModified: false);
     }
 
-    final file = File(_localFilePath(relativePath));
+    final file = File(_localFilePath(_filesDir, relativePath));
     if (!await file.exists()) {
       return RemoteDownloadResult<T>(
           graph: null, etag: null, notModified: false);
@@ -121,7 +149,7 @@ class GDriveLocalMirror {
     final bytes = utf8.encode(content);
     final newMd5 = _computeMd5(bytes);
 
-    final file = File(_localFilePath(relativePath));
+    final file = File(_localFilePath(_filesDir, relativePath));
     await file.parent.create(recursive: true);
     await file.writeAsBytes(bytes);
 
@@ -144,7 +172,7 @@ class GDriveLocalMirror {
       dirtyEntries,
       _config.maxConcurrentUploads,
       (entry) async {
-        final filePath = _localFilePath(entry.path);
+        final filePath = _localFilePath(_filesDir, entry.path);
         final file = File(filePath);
         if (!await file.exists()) {
           _mirrorLog
@@ -209,14 +237,17 @@ class GDriveLocalMirror {
       },
     );
 
-    await _saveIndex(_index);
+    await _saveIndex(_indexFile, _index);
   }
 
-  Future<Directory> _resolveRootDir() async {
-    final rootPath = _config.cacheRootPath ?? Directory.systemTemp.path;
-    final userSegment = base64Url.encode(utf8.encode(_userId));
+  static Future<Directory> _resolveRootDir(
+      {required GDriveLocalMirrorConfig config,
+      required String userId,
+      required String spaces}) async {
+    final rootPath = config.cacheRootPath ?? Directory.systemTemp.path;
+    final userSegment = base64Url.encode(utf8.encode(userId));
     final dir = Directory(
-        path.join(rootPath, 'locorda_gdrive_cache', userSegment, _spaces));
+        path.join(rootPath, 'locorda_gdrive_cache', userSegment, spaces));
     await dir.create(recursive: true);
     return dir;
   }
@@ -227,17 +258,17 @@ class GDriveLocalMirror {
     return path.normalize(path.join(folderName, doc.id));
   }
 
-  String _localFilePath(String relativePath) {
-    return path.join(_filesDir.path, relativePath);
+  static String _localFilePath(Directory filesDir, String relativePath) {
+    return path.join(filesDir.path, relativePath);
   }
 
-  Future<_GDriveMirrorIndex> _loadIndex() async {
-    if (!await _indexFile.exists()) {
+  static Future<_GDriveMirrorIndex> _loadIndex(File indexFile) async {
+    if (!await indexFile.exists()) {
       return _GDriveMirrorIndex.empty();
     }
 
     try {
-      final content = await _indexFile.readAsString();
+      final content = await indexFile.readAsString();
       final json = jsonDecode(content) as Map<String, dynamic>;
       return _GDriveMirrorIndex.fromJson(json);
     } catch (e, stackTrace) {
@@ -247,16 +278,25 @@ class GDriveLocalMirror {
     }
   }
 
-  Future<void> _saveIndex(_GDriveMirrorIndex index) async {
+  static Future<void> _saveIndex(
+      File indexFile, _GDriveMirrorIndex index) async {
     final json = jsonEncode(index.toJson());
-    await _indexFile.writeAsString(json, flush: true);
+    await indexFile.writeAsString(json, flush: true);
   }
 
   /// Streaming pipeline: list files and download them concurrently as they're discovered.
   ///
   /// This replaces the two-phase approach (list all, then download all) with a
   /// single-pass pipeline that starts downloads immediately when files are found.
-  Future<void> _streamingListAndDownload(_GDriveMirrorIndex index) async {
+  static Future<void> _streamingListAndDownload(
+    _GDriveMirrorIndex index, {
+    required Directory filesDir,
+    required GDriveLocalMirrorConfig config,
+    required GDriveApiClient client,
+    //_typeIndexMappings.appFolderId
+    required String appFolderId,
+    required String spaces,
+  }) async {
     final downloadQueue = Queue<_GDriveMirrorIndexEntry>();
     final downloadCompleter = Completer<void>();
     final listCompleter = Completer<void>();
@@ -267,12 +307,13 @@ class GDriveLocalMirror {
 
     // Download worker pool
     Future<void> scheduleDownloads() async {
-      while (activeDownloads < _config.maxConcurrentDownloads &&
+      while (activeDownloads < config.maxConcurrentDownloads &&
           downloadQueue.isNotEmpty) {
         final entry = downloadQueue.removeFirst();
         activeDownloads++;
 
-        _downloadFile(entry, index).whenComplete(() {
+        _downloadFile(entry, index, filesDir: filesDir, client: client)
+            .whenComplete(() {
           activeDownloads--;
           if (listingComplete &&
               downloadQueue.isEmpty &&
@@ -287,15 +328,17 @@ class GDriveLocalMirror {
     }
 
     // Listing phase: stream entries and queue downloads
-    _streamListFiles((remoteEntry) {
+    _streamListFiles(
+        spaces: spaces,
+        appFolderId: appFolderId,
+        client: client,
+        config: config, (remoteEntry) {
       if (remoteEntry.isFolder) return;
       seenPaths.add(remoteEntry.path);
 
       final existingEntry = index.entries[remoteEntry.path];
-      final needsDownload = _shouldDownload(
-        remoteEntry,
-        existingEntry,
-      );
+      final needsDownload =
+          _shouldDownload(remoteEntry, existingEntry, filesDir: filesDir);
 
       // Update index with remote metadata
       final updatedEntry = (existingEntry ??
@@ -325,20 +368,21 @@ class GDriveLocalMirror {
     await listCompleter.future;
     await downloadCompleter.future;
 
-    _purgeMissingRemoteEntries(index, seenPaths);
+    _purgeMissingRemoteEntries(index, seenPaths, filesDir: filesDir);
   }
 
-  void _purgeMissingRemoteEntries(
+  static void _purgeMissingRemoteEntries(
     _GDriveMirrorIndex index,
-    Set<String> seenPaths,
-  ) {
+    Set<String> seenPaths, {
+    required Directory filesDir,
+  }) {
     final missingPaths =
         index.entries.keys.where((path) => !seenPaths.contains(path)).toList();
     if (missingPaths.isEmpty) return;
 
     for (final pathEntry in missingPaths) {
       index.entries.remove(pathEntry);
-      final file = File(_localFilePath(pathEntry));
+      final file = File(_localFilePath(filesDir, pathEntry));
       if (file.existsSync()) {
         file.deleteSync();
       }
@@ -350,26 +394,29 @@ class GDriveLocalMirror {
   }
 
   /// Stream files from Drive API, calling callback for each entry.
-  Future<void> _streamListFiles(
-    void Function(GDriveListedEntry) onEntry,
-  ) async {
-    final entries = await _client.listFilesRecursively(
-      rootFolderId: _typeIndexMappings.appFolderId,
-      spaces: _spaces,
-      maxConcurrentRequests: _config.maxConcurrentListings,
+  static Future<void> _streamListFiles(void Function(GDriveListedEntry) onEntry,
+      {required String spaces,
+      required String appFolderId,
+      required GDriveApiClient client,
+      required GDriveLocalMirrorConfig config}) async {
+    final entries = await client.listFilesRecursively(
+      rootFolderId: appFolderId,
+      spaces: spaces,
+      maxConcurrentRequests: config.maxConcurrentListings,
     );
     for (final entry in entries) {
       onEntry(entry);
     }
   }
 
-  bool _shouldDownload(
+  static bool _shouldDownload(
     GDriveListedEntry remote,
-    _GDriveMirrorIndexEntry? existing,
-  ) {
+    _GDriveMirrorIndexEntry? existing, {
+    required Directory filesDir,
+  }) {
     if (remote.fileId.isEmpty) return false;
 
-    final localFile = File(_localFilePath(remote.path));
+    final localFile = File(_localFilePath(filesDir, remote.path));
     if (!localFile.existsSync()) return true;
 
     if (existing == null) return true;
@@ -382,13 +429,12 @@ class GDriveLocalMirror {
     return false;
   }
 
-  Future<void> _downloadFile(
-    _GDriveMirrorIndexEntry entry,
-    _GDriveMirrorIndex index,
-  ) async {
+  static Future<void> _downloadFile(
+      _GDriveMirrorIndexEntry entry, _GDriveMirrorIndex index,
+      {required GDriveApiClient client, required Directory filesDir}) async {
     try {
-      final bytes = await _client.downloadRawBytes(entry.fileId!);
-      final file = File(_localFilePath(entry.path));
+      final bytes = await client.downloadRawBytes(entry.fileId!);
+      final file = File(_localFilePath(filesDir, entry.path));
       await file.parent.create(recursive: true);
       await file.writeAsBytes(bytes);
 
@@ -438,7 +484,7 @@ class GDriveLocalMirror {
     return _computeMd5(bytes);
   }
 
-  String _computeMd5(List<int> bytes) {
+  static String _computeMd5(List<int> bytes) {
     return md5.convert(bytes).toString();
   }
 

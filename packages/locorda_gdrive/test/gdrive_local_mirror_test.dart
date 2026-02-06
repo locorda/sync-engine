@@ -194,7 +194,7 @@ void main() {
       maxConcurrentUploads: 2,
     );
 
-    final mirror = GDriveLocalMirror(
+    final mirror = await GDriveLocalMirror.initialize(
       client: client,
       typeIndexMappings: TypeIndexMappings(
         appFolderId: 'root',
@@ -207,8 +207,6 @@ void main() {
       spaces: 'drive',
       userId: 'user-1',
     );
-
-    await mirror.initialize();
 
     final download = await mirror.download(docIri, convert: rdfCore.decode);
     expect(download.graph, isNotNull);
@@ -258,7 +256,7 @@ void main() {
       cacheRootPath: tempDir.path,
     );
 
-    final mirror = GDriveLocalMirror(
+    final mirror = await GDriveLocalMirror.initialize(
       client: client,
       typeIndexMappings: TypeIndexMappings(
         appFolderId: 'root',
@@ -271,8 +269,6 @@ void main() {
       spaces: 'drive',
       userId: 'user-2',
     );
-
-    await mirror.initialize();
 
     final updatedGraph = RdfGraph(triples: {
       Triple(
@@ -332,7 +328,7 @@ void main() {
       cacheRootPath: tempDir.path,
     );
 
-    final mirror = GDriveLocalMirror(
+    final mirror = await GDriveLocalMirror.initialize(
       client: client,
       typeIndexMappings: TypeIndexMappings(
         appFolderId: 'root',
@@ -345,8 +341,6 @@ void main() {
       spaces: 'drive',
       userId: 'user-3',
     );
-
-    await mirror.initialize();
 
     final updatedGraph = RdfGraph(triples: {
       Triple(
@@ -416,7 +410,8 @@ void main() {
       ],
     }));
 
-    final mirror = GDriveLocalMirror(
+    // ignore: unused_local_variable
+    final mirror = await GDriveLocalMirror.initialize(
       client: client,
       typeIndexMappings: TypeIndexMappings(
         appFolderId: 'root',
@@ -429,8 +424,6 @@ void main() {
       spaces: 'drive',
       userId: 'user-4',
     );
-
-    await mirror.initialize();
 
     expect(await staleFile.exists(), isFalse);
   });

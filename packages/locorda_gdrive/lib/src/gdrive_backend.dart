@@ -295,7 +295,7 @@ class GDriveRemoteStorage implements RemoteStorage {
     final typeIndexMappings =
         await _typeIndexManager.loadOrCreateTypeIndex(engineConfig);
     if (_mirrorConfig.enabled) {
-      GDriveLocalMirror? mirror = GDriveLocalMirror(
+      GDriveLocalMirror? mirror = await GDriveLocalMirror.initialize(
         client: _client,
         typeIndexMappings: typeIndexMappings,
         resourceLocator: _resourceLocator,
@@ -303,7 +303,6 @@ class GDriveRemoteStorage implements RemoteStorage {
         spaces: _spaces,
         userId: _userId,
       );
-      await mirror.initialize();
       return MirroredGDriveSyncStorage(
         rdfCore: _rdfCore,
         contentType: _contentType,
