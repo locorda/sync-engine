@@ -96,7 +96,7 @@ class SolidMainIntegration implements RemoteIntegration {
 
   @override
   List<MainHandlerFactory> get workerConnectors => [
-      SolidConfigConnector.sender(_config),
+        SolidConfigConnector.sender(_config),
         SolidAuthConnector.sender(_solidAuth),
       ];
 

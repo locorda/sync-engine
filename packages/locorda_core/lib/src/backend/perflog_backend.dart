@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:locorda_core/src/backend/backend.dart';
 import 'package:locorda_core/src/config/sync_engine_config.dart';
+import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/remote_id.dart';
 import 'package:locorda_core/src/storage/remote_storage.dart';
 import 'package:locorda_rdf_core/src/dataset/rdf_dataset.dart';
@@ -22,7 +23,7 @@ abstract interface class Perflog {
     bool includeArgs = true,
     int contextWidth = 30,
     int operationWidth = 20,
-    int argsWidth = 50,
+    int argsWidth = 150,
   }) =>
       LoggingPerflog.root(
           includeArgs: includeArgs,
@@ -243,14 +244,14 @@ class PerflogRemoteSyncStorage implements RemoteSyncStorage {
           {String? ifNoneMatch}) =>
       perflog.measure('download',
           () => _inner.download(documentIri, ifNoneMatch: ifNoneMatch),
-          args: [documentIri.value]);
+          args: [documentIri.debug]);
 
   @override
   Future<RemoteDownloadResult<RdfDataset>> downloadDataset(IriTerm documentIri,
           {String? ifNoneMatch}) =>
       perflog.measure('downloadDataset',
           () => _inner.downloadDataset(documentIri, ifNoneMatch: ifNoneMatch),
-          args: [documentIri.value]);
+          args: [documentIri.debug]);
 
   @override
   Future<void> finalizeSync() async {
@@ -271,12 +272,12 @@ class PerflogRemoteSyncStorage implements RemoteSyncStorage {
           {String? ifMatch}) =>
       perflog.measure(
           'upload', () => _inner.upload(documentIri, graph, ifMatch: ifMatch),
-          args: [documentIri.value]);
+          args: [documentIri.debug]);
 
   @override
   Future<RemoteUploadResult> uploadDataset(
           IriTerm documentIri, RdfDataset dataset, {String? ifMatch}) =>
       perflog.measure('uploadDataset',
           () => _inner.uploadDataset(documentIri, dataset, ifMatch: ifMatch),
-          args: [documentIri.value]);
+          args: [documentIri.debug]);
 }
