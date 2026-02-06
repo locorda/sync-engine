@@ -2,10 +2,10 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_gdrive/src/gdrive_api.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 
-import 'gdrive_backend.dart';
 import 'rdf/rdf_extensions.dart';
 import 'shared/gdrive_config.dart';
 

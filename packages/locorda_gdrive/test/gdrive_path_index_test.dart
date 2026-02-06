@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:locorda_gdrive/src/gdrive_backend.dart';
+import 'package:locorda_gdrive/src/gdrive_api.dart';
 
 void main() {
   test('GDrivePathIndex describes file IDs by path', () {

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_gdrive/src/gdrive_backend.dart';
+import 'package:locorda_gdrive/src/gdrive_api.dart';
 
 class PerfLogGDriveApiClient implements GDriveApiClient {
   final GDriveApiClient _inner;

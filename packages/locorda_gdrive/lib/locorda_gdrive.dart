@@ -64,25 +64,21 @@
 /// Scopes are set automatically based on configuration.
 library locorda_gdrive;
 
-// Core backend
-export 'src/gdrive_backend.dart' show /*GDriveBackend,*/ GDriveClientException;
-export 'src/shared/gdrive_config.dart'
-    show GDriveConfig, GDriveFolderMode, GDriveLocalMirrorConfig;
-
+// Localizations
+export 'l10n/gdrive_localizations.dart';
 // Authentication (internal use only, managed by GDriveMainIntegration)
 export 'src/auth/gdrive_auth_provider.dart' show GDriveAuthProvider;
 export 'src/gdrive_auth.dart' show GDriveAuth;
-
+// Core backend
+export 'src/gdrive_api.dart' show /*GDriveBackend,*/ GDriveClientException;
+// Plugin integration
+export 'src/main/gdrive_main_integration.dart' show GDriveMainIntegration;
+export 'src/shared/gdrive_config.dart'
+    show GDriveConfig, GDriveFolderMode, GDriveLocalMirrorConfig;
 // Worker integration
 //export 'src/main/gdrive_auth_connector.dart' show GDriveAuthConnector;
 
 // UI components
 export 'src/ui/gdrive_login_screen.dart' show GDriveLoginScreen;
-export 'src/ui/gdrive_status_widget.dart' show GDriveStatusWidget;
 export 'src/ui/gdrive_status_defaults.dart' show GDriveStatusDefaults;
-
-// Plugin integration
-export 'src/main/gdrive_main_integration.dart' show GDriveMainIntegration;
-
-// Localizations
-export 'l10n/gdrive_localizations.dart';
+export 'src/ui/gdrive_status_widget.dart' show GDriveStatusWidget;
