@@ -235,7 +235,7 @@ class PerflogDriveApi implements DriveApi {
               drive.DownloadOptions.metadata}) =>
       _perflog.measure(
           'get',
-        args: [_pathIndex?.describeFileId(fileId) ?? fileId],
+          args: [_pathIndex?.describeFileId(fileId) ?? fileId],
           () => _inner.get(fileId,
               $fields: $fields, downloadOptions: downloadOptions));
 
@@ -261,7 +261,7 @@ class PerflogDriveApi implements DriveApi {
           {required drive.Media uploadMedia, required String $fields}) =>
       _perflog.measure(
           'update',
-        args: [_pathIndex?.describeFileId(fileId) ?? fileId],
+          args: [_pathIndex?.describeFileId(fileId) ?? fileId],
           () => _inner.update(file, fileId,
               uploadMedia: uploadMedia, $fields: $fields));
 }

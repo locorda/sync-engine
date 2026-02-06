@@ -73,7 +73,9 @@ Future<Locorda> initializeLocorda() async {
               '${kDebugMode ? 'http://localhost:3815' : appBaseUrl}/redirect.html'),
           config: SolidConfig()),
       await GDriveMainIntegration.create(
-          config: GDriveConfig(useShardDatasets: false)),
+          config: GDriveConfig(
+              useShardDatasets: true,
+              localMirrorConfig: GDriveLocalMirrorConfig(enabled: false))),
     ],
 
     // Provide storage - we have configured drift in setupWorkerEngine

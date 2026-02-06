@@ -49,7 +49,9 @@ export 'package:locorda_gdrive/locorda_gdrive.dart'
         GDriveAuth,
         GDriveAuthProvider,
         GDriveLocalizations,
-        GDriveConfig;
+        GDriveConfig,
+        GDriveFolderMode,
+        GDriveLocalMirrorConfig;
 export 'package:locorda_solid/locorda_solid.dart'
     show SolidMainIntegration, SolidConfig;
 export 'package:locorda_solid_auth/locorda_solid_auth.dart'
