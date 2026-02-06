@@ -70,7 +70,8 @@ Future<Locorda> initializeLocorda() async {
           oidcClientId: '$appBaseUrl/auth/client-config.json',
           appUrlScheme: 'dev.locorda.example.personalNotesApp',
           frontendRedirectUrl: Uri.parse(
-              '${kDebugMode ? 'http://localhost:3815' : appBaseUrl}/redirect.html')),
+              '${kDebugMode ? 'http://localhost:3815' : appBaseUrl}/redirect.html'),
+          config: SolidConfig()),
       await GDriveMainIntegration.create(
           config: GDriveConfig(useShardDatasets: false)),
     ],

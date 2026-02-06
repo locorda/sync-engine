@@ -19,7 +19,7 @@ class SolidConfig {
     this.maxConcurrentDocumentSyncs = 1,
     this.maxConcurrentShardSyncs = 1,
     this.maxConcurrentIndexSyncs = 1,
-    this.useShardDatasets = true,
+    this.useShardDatasets = false,
   });
 
   /// Encode config to JSON.

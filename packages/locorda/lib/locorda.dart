@@ -50,7 +50,8 @@ export 'package:locorda_gdrive/locorda_gdrive.dart'
         GDriveAuthProvider,
         GDriveLocalizations,
         GDriveConfig;
-export 'package:locorda_solid/locorda_solid.dart' show SolidMainIntegration;
+export 'package:locorda_solid/locorda_solid.dart'
+    show SolidMainIntegration, SolidConfig;
 export 'package:locorda_solid_auth/locorda_solid_auth.dart'
     show SolidAuthLocalizations;
 export 'package:locorda_objects/locorda_objects.dart'
