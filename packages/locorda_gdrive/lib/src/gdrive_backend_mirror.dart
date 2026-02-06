@@ -29,6 +29,7 @@ class GDriveLocalMirror {
   final Directory _filesDir;
   final File _indexFile;
   _GDriveMirrorIndex _index;
+  final _GDriveMirrorStore _store;
   late final Map<String, IriTerm> _folderNameToType;
 
   GDriveLocalMirror._({
@@ -40,6 +41,7 @@ class GDriveLocalMirror {
     required Directory filesDir,
     required File indexFile,
     required _GDriveMirrorIndex index,
+    required _GDriveMirrorStore store,
   })  : _client = client,
         _typeIndexMappings = typeIndexMappings,
         _resourceLocator = resourceLocator,
@@ -47,7 +49,8 @@ class GDriveLocalMirror {
         _spaces = spaces,
         _filesDir = filesDir,
         _indexFile = indexFile,
-        _index = index {
+        _index = index,
+        _store = store {
     _folderNameToType = {
       for (final entry in _typeIndexMappings.typeMappings.entries)
         entry.value.folderName: entry.key,
@@ -86,8 +89,23 @@ class GDriveLocalMirror {
 
     final index = updatedIndex;
     await _saveIndex(indexFile, index);
-    final TypeIndexManagerBackend backend;
+    final store = _GDriveMirrorStore(filesDir: filesDir, index: index);
+    final TypeIndexManagerBackend backend = GDriveMirrorTypeIndexBackend(
+      store: store,
+      getOrCreateFolder: ({
+        required String folderName,
+        required String parentId,
+        required String spaces,
+      }) =>
+          client.getOrCreateFolder(
+        folderName: folderName,
+        parentId: parentId,
+        spaces: spaces,
+      ),
+      onIndexChanged: () => _saveIndex(indexFile, index),
+    );
     final typeIndexMappings = await typeIndexMappingsProvider(backend);
+    await _saveIndex(indexFile, index);
 
     return GDriveLocalMirror._(
       client: client,
@@ -98,6 +116,7 @@ class GDriveLocalMirror {
       filesDir: filesDir,
       indexFile: indexFile,
       index: index,
+      store: store,
     );
   }
 
@@ -107,26 +126,17 @@ class GDriveLocalMirror {
     required T Function(String) convert,
   }) async {
     final relativePath = _relativePathForDocument(documentIri);
-    final entry = _index.entries[relativePath];
-    if (entry == null) {
+    final result =
+        await _store.download(relativePath, ifNoneMatch: ifNoneMatch);
+    if (result.notModified) {
+      return RemoteDownloadResult<T>.notModified(etag: result.etag ?? '');
+    }
+    if (result.graph == null) {
       return RemoteDownloadResult<T>(
           graph: null, etag: null, notModified: false);
     }
-
-    final file = File(_localFilePath(_filesDir, relativePath));
-    if (!await file.exists()) {
-      return RemoteDownloadResult<T>(
-          graph: null, etag: null, notModified: false);
-    }
-
-    final currentEtag = entry.localMd5 ?? await _computeFileMd5(file);
-    if (ifNoneMatch != null && ifNoneMatch == currentEtag) {
-      return RemoteDownloadResult<T>.notModified(etag: currentEtag);
-    }
-
-    final content = await file.readAsString();
-    final graph = convert(content);
-    return RemoteDownloadResult<T>(graph: graph, etag: currentEtag);
+    final graph = convert(result.graph!);
+    return RemoteDownloadResult<T>(graph: graph, etag: result.etag);
   }
 
   Future<RemoteUploadResult> upload<T>(IriTerm documentIri, T updatedGraph,
@@ -134,38 +144,14 @@ class GDriveLocalMirror {
       required String Function(T) convert,
       required String contentType}) async {
     final relativePath = _relativePathForDocument(documentIri);
-    final entry = _index.entries[relativePath];
-
-    if (ifMatch == null) {
-      if (entry != null) {
-        return RemoteUploadResult.conflict();
-      }
-    } else {
-      if (entry == null) {
-        return RemoteUploadResult.conflict();
-      }
-      final currentEtag = entry.localMd5 ?? entry.remoteMd5;
-      if (currentEtag != ifMatch) {
-        return RemoteUploadResult.conflict();
-      }
-    }
     final content = convert(updatedGraph);
     final bytes = utf8.encode(content);
-    final newMd5 = _computeMd5(bytes);
-
-    final file = File(_localFilePath(_filesDir, relativePath));
-    await file.parent.create(recursive: true);
-    await file.writeAsBytes(bytes);
-
-    final updatedEntry =
-        (entry ?? _GDriveMirrorIndexEntry.newLocal(relativePath)).copyWith(
-      localMd5: newMd5,
-      dirty: true,
+    return _store.upload(
+      relativePath,
+      bytes,
+      ifMatch: ifMatch,
       contentType: contentType,
     );
-
-    _index.entries[relativePath] = updatedEntry;
-    return RemoteUploadResult.success(newMd5);
   }
 
   Future<void> finalize() async {
@@ -483,11 +469,6 @@ class GDriveLocalMirror {
     );
   }
 
-  Future<String> _computeFileMd5(File file) async {
-    final bytes = await file.readAsBytes();
-    return _computeMd5(bytes);
-  }
-
   static String _computeMd5(List<int> bytes) {
     return md5.convert(bytes).toString();
   }
@@ -520,6 +501,196 @@ class GDriveLocalMirror {
     if (items.isEmpty) return;
     await schedule();
     await done.future;
+  }
+}
+
+class GDriveMirrorTypeIndexBackend extends TypeIndexManagerBackend {
+  final _GDriveMirrorStore _store;
+  final Future<String> Function({
+    required String folderName,
+    required String parentId,
+    required String spaces,
+  }) _getOrCreateFolder;
+  final Future<void> Function()? _onIndexChanged;
+
+  GDriveMirrorTypeIndexBackend({
+    required _GDriveMirrorStore store,
+    required Future<String> Function({
+      required String folderName,
+      required String parentId,
+      required String spaces,
+    }) getOrCreateFolder,
+    Future<void> Function()? onIndexChanged,
+  })  : _store = store,
+        _getOrCreateFolder = getOrCreateFolder,
+        _onIndexChanged = onIndexChanged;
+
+  @override
+  Future<({String fileId, String etag})> createFile<T>(
+    String fileName,
+    T data, {
+    required String folderId,
+    required String spaces,
+    required String contentType,
+    required String Function(T) convert,
+  }) async {
+    final bytes = utf8.encode(convert(data));
+    final result = await _store.upload(
+      fileName,
+      bytes,
+      ifMatch: null,
+      contentType: contentType,
+    );
+
+    if (result is SuccessUploadResult) {
+      await _onIndexChanged?.call();
+      return (fileId: fileName, etag: result.etag);
+    }
+
+    final existing = await _store.download(fileName);
+    if (existing.graph == null) {
+      throw StateError('Failed to create or read file: $fileName');
+    }
+    await _onIndexChanged?.call();
+    return (fileId: fileName, etag: existing.etag ?? '');
+  }
+
+  @override
+  Future<({T? graph, String? etag, bool notModified})> download<T>(
+    fileId, {
+    required T Function(String) convert,
+  }) async {
+    final result = await _store.download(fileId as String);
+    return (
+      graph: result.graph == null ? null : convert(result.graph!),
+      etag: result.etag,
+      notModified: result.notModified,
+    );
+  }
+
+  @override
+  Future<String?> findFile({
+    required String fileName,
+    required String parentId,
+    required String spaces,
+  }) async {
+    final exists = await _store.exists(fileName);
+    return exists ? fileName : null;
+  }
+
+  @override
+  Future<RemoteUploadResult> upload<T>(
+    fileId,
+    T updatedGraph, {
+    required String ifMatch,
+    required String Function(T) convert,
+  }) async {
+    final bytes = utf8.encode(convert(updatedGraph));
+    final result = await _store.upload(
+      fileId as String,
+      bytes,
+      ifMatch: ifMatch,
+    );
+    await _onIndexChanged?.call();
+    return result;
+  }
+
+  @override
+  Future<String> getOrCreateFolder({
+    required String folderName,
+    required String parentId,
+    required String spaces,
+  }) {
+    return _getOrCreateFolder(
+      folderName: folderName,
+      parentId: parentId,
+      spaces: spaces,
+    );
+  }
+}
+
+class _GDriveMirrorStore {
+  final Directory _filesDir;
+  final _GDriveMirrorIndex _index;
+
+  _GDriveMirrorStore({
+    required Directory filesDir,
+    required _GDriveMirrorIndex index,
+  })  : _filesDir = filesDir,
+        _index = index;
+
+  Future<RemoteDownloadResult<String>> download(
+    String relativePath, {
+    String? ifNoneMatch,
+  }) async {
+    final entry = _index.entries[relativePath];
+    final file =
+        File(GDriveLocalMirror._localFilePath(_filesDir, relativePath));
+    if (!await file.exists()) {
+      return RemoteDownloadResult<String>(
+        graph: null,
+        etag: null,
+        notModified: false,
+      );
+    }
+
+    final currentEtag = entry?.localMd5 ?? await _computeFileMd5(file);
+    if (ifNoneMatch != null && ifNoneMatch == currentEtag) {
+      return RemoteDownloadResult<String>.notModified(etag: currentEtag);
+    }
+
+    final content = await file.readAsString();
+    return RemoteDownloadResult<String>(graph: content, etag: currentEtag);
+  }
+
+  Future<RemoteUploadResult> upload(
+    String relativePath,
+    List<int> bytes, {
+    String? ifMatch,
+    String? contentType,
+  }) async {
+    final entry = _index.entries[relativePath];
+
+    if (ifMatch == null) {
+      if (entry != null) {
+        return RemoteUploadResult.conflict();
+      }
+    } else {
+      if (entry == null) {
+        return RemoteUploadResult.conflict();
+      }
+      final currentEtag = entry.localMd5 ?? entry.remoteMd5;
+      if (currentEtag != ifMatch) {
+        return RemoteUploadResult.conflict();
+      }
+    }
+
+    final newMd5 = GDriveLocalMirror._computeMd5(bytes);
+    final file =
+        File(GDriveLocalMirror._localFilePath(_filesDir, relativePath));
+    await file.parent.create(recursive: true);
+    await file.writeAsBytes(bytes);
+
+    final updatedEntry =
+        (entry ?? _GDriveMirrorIndexEntry.newLocal(relativePath)).copyWith(
+      localMd5: newMd5,
+      dirty: true,
+      contentType: contentType ?? entry?.contentType,
+    );
+
+    _index.entries[relativePath] = updatedEntry;
+    return RemoteUploadResult.success(newMd5);
+  }
+
+  Future<bool> exists(String relativePath) async {
+    final file =
+        File(GDriveLocalMirror._localFilePath(_filesDir, relativePath));
+    return file.exists();
+  }
+
+  Future<String> _computeFileMd5(File file) async {
+    final bytes = await file.readAsBytes();
+    return GDriveLocalMirror._computeMd5(bytes);
   }
 }
 

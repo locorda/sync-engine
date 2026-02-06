@@ -66,6 +66,30 @@ void main() {
       });
     });
 
+    group('getAllCategories', () {
+      test('deduplicates categories by id using latest modifiedAt', () async {
+        final older = Category(
+          id: 'dup_id',
+          name: 'Older',
+          modifiedAt: DateTime.utc(2025, 1, 1),
+        );
+        final newer = Category(
+          id: 'dup_id',
+          name: 'Newer',
+          modifiedAt: DateTime.utc(2026, 1, 1),
+        );
+
+        mockCategoryRepository.storedCategories
+          ..add(older)
+          ..add(newer);
+
+        final result = await categoriesService.getAllCategories().first;
+
+        expect(result, hasLength(1));
+        expect(result.single.name, equals('Newer'));
+      });
+    });
+
     // Note: More comprehensive tests would be added once the Locorda
     // API is fully implemented. These tests demonstrate the basic structure
     // and test the logic that doesn't depend on the sync system.

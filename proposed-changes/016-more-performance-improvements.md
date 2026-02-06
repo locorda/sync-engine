@@ -23,3 +23,17 @@ Or we have to think about what enabling this means in the long term - can we tak
 Performance of non-mirror currently is totally unacceptable. Even regular re-sync without any changes (dataset mode) takes nearly 9 seconds every time! And the initial download took 25 seconds!
 
 But, looking at our request logs I do believe that there must be a lot of potential for improvements.
+
+### conceptual problems
+
+- we store the installations (e.g. the clients) in the shards - this causes us to write every shard file back on initial sync, slowing down our highly optimized gdrive mirrored sync by appr. 1.5 sec - without it we should be slightly below 3 seconds 
+
+----
+
+## Next Steps (ideas)
+
+- Investigate Bug: Using dataset for both local and mirrored gdrive, I seem to sometimes loose notes and/or categories in gdrive? Could this be caused by mirror?
+- Revisit concept to try to get rid of the reader references in the index documents - what would happen if we did not have them? Can we maybe move them somewhere else to reduce the amount of files touched during initial sync? What about reverting this and keeping track of the indices in the installation document instead?
+- reality check: port chat essence to sync-engine and check how the performance is
+- continue work on 
+- new benchmarks

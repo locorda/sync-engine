@@ -51,7 +51,7 @@ class SolidWorkerHandler implements RemoteWorkerHandler {
       WorkerHandlerContext context, SyncEngineConfig config) async {
     final solidConfig = await SolidConfigConnector.receiveConfig(context);
 
-    return SolidBackend(
+    final backend = SolidBackend(
       auth: SolidAuthConnector.receiver(context),
       rdfCore: _rdfCore,
       iriTermFactory: _iriTermFactory,
@@ -60,5 +60,6 @@ class SolidWorkerHandler implements RemoteWorkerHandler {
       datasetContentType: _datasetContentType,
       config: solidConfig,
     );
+    return PerflogBackend(backend, perflog: Perflog.root());
   }
 }

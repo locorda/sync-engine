@@ -24,12 +24,25 @@ class CategoriesService {
   /// Watch all categories sorted by name (non-archived only)
   Stream<List<Category>> getAllCategories() {
     // Query from repository - fast and flexible
-    return _categoryRepository.getAllCategories();
+    return _categoryRepository.getAllCategories().map(_deduplicateById);
   }
 
   /// Watch all categories including archived ones, sorted by name
   Stream<List<Category>> getAllCategoriesIncludingArchived() {
-    return _categoryRepository.getAllCategoriesIncludingArchived();
+    return _categoryRepository
+        .getAllCategoriesIncludingArchived()
+        .map(_deduplicateById);
+  }
+
+  List<Category> _deduplicateById(List<Category> categories) {
+    final byId = <String, Category>{};
+    for (final category in categories) {
+      final existing = byId[category.id];
+      if (existing == null || category.modifiedAt.isAfter(existing.modifiedAt)) {
+        byId[category.id] = category;
+      }
+    }
+    return byId.values.toList();
   }
 
   /// Get a specific category by ID

@@ -75,7 +75,7 @@ Future<Locorda> initializeLocorda() async {
       await GDriveMainIntegration.create(
           config: GDriveConfig(
               useShardDatasets: true,
-              localMirrorConfig: GDriveLocalMirrorConfig(enabled: false))),
+              localMirrorConfig: GDriveLocalMirrorConfig(enabled: true))),
     ],
 
     // Provide storage - we have configured drift in setupWorkerEngine

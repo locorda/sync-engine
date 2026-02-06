@@ -236,8 +236,13 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                     return const CircularProgressIndicator();
                   }
                   final categories = snapshot.data ?? [];
+                  final effectiveSelectedCategoryId = _selectedCategoryId != null &&
+                          categories.every(
+                              (category) => category.id != _selectedCategoryId)
+                      ? null
+                      : _selectedCategoryId;
                   return DropdownButtonFormField<String?>(
-                    initialValue: _selectedCategoryId,
+                    value: effectiveSelectedCategoryId,
                     decoration: const InputDecoration(
                       labelText: 'Category',
                       border: OutlineInputBorder(),

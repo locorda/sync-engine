@@ -9,6 +9,7 @@ import 'package:locorda_gdrive/src/gdrive_backend_mirror.dart';
 import 'package:locorda_gdrive/src/gdrive_type_index_manager.dart';
 import 'package:locorda_gdrive/src/shared/gdrive_config.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:path/path.dart' as path;
 
 class _FakeRemoteFile {
   _FakeRemoteFile({
@@ -372,6 +373,78 @@ void main() {
     );
     final recreatedMd5 = md5.convert(recreated.bytes).toString();
     expect(recreatedMd5, isNot(md5Checksum));
+  });
+
+  test('GDriveMirrorTypeIndexBackend stores the type index in the mirror',
+      () async {
+    final client = FakeGDriveClient();
+    final tempDir = await Directory.systemTemp.createTemp('gdrive-mirror-test');
+    final mirrorConfig = GDriveLocalMirrorConfig(
+      cacheRootPath: tempDir.path,
+      maxConcurrentDownloads: 1,
+      maxConcurrentListings: 1,
+      maxConcurrentUploads: 1,
+    );
+
+    String? createdFileId;
+    String? createdEtag;
+    String? downloadedContent;
+    RemoteUploadResult? uploadResult;
+
+    await GDriveLocalMirror.initialize(
+      client: client,
+      typeIndexMappingsProvider: (backend) async {
+        final created = await backend.createFile(
+          'gdrive-index.ttl',
+          'initial',
+          folderId: 'root',
+          spaces: 'drive',
+          contentType: 'text/turtle',
+          convert: (value) => value,
+        );
+        createdFileId = created.fileId;
+        createdEtag = created.etag;
+
+        final downloaded = await backend.download<String>(
+          created.fileId,
+          convert: (value) => value,
+        );
+        downloadedContent = downloaded.graph;
+
+        uploadResult = await backend.upload<String>(
+          created.fileId,
+          'updated',
+          ifMatch: created.etag,
+          convert: (value) => value,
+        );
+
+        return TypeIndexMappings(
+          appFolderId: 'root',
+          typeMappings: {},
+        );
+      },
+      resourceLocator: LocalResourceLocator(iriTermFactory: IriTerm.validated),
+      config: mirrorConfig,
+      spaces: 'drive',
+      userId: 'user-type-index',
+      appFolderProvider: () => Future.value('root'),
+    );
+
+    final userSegment = base64Url.encode(utf8.encode('user-type-index'));
+    final rootDir = path.join(
+      tempDir.path,
+      'locorda_gdrive_cache',
+      userSegment,
+      'drive',
+    );
+    final typeIndexFile = File(path.join(rootDir, 'files', 'gdrive-index.ttl'));
+
+    expect(createdFileId, 'gdrive-index.ttl');
+    expect(createdEtag, isNotNull);
+    expect(downloadedContent, 'initial');
+    expect(uploadResult, isA<SuccessUploadResult>());
+    expect(await typeIndexFile.exists(), isTrue);
+    expect(await typeIndexFile.readAsString(), 'updated');
   });
 
   test('GDriveLocalMirror removes entries missing on remote', () async {
