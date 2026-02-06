@@ -20,6 +20,53 @@ final _log = Logger('GDriveBackend');
 final _clientLog = Logger('GDriveClient');
 final _mirrorLog = Logger('GDriveLocalMirror');
 
+/// In-memory mapping from Drive IDs to human-readable paths.
+///
+/// Used to improve performance logs by showing paths instead of opaque IDs.
+class GDrivePathIndex {
+  final Map<String, String> _fileIdToPath = {};
+  final Map<String, String> _folderIdToPath = {};
+
+  void registerEntry(GDriveListedEntry entry) {
+    if (entry.fileId.isEmpty || entry.path.isEmpty) return;
+    if (entry.isFolder) {
+      _folderIdToPath[entry.fileId] = entry.path;
+    } else {
+      _fileIdToPath[entry.fileId] = entry.path;
+    }
+  }
+
+  void registerEntries(Iterable<GDriveListedEntry> entries) {
+    for (final entry in entries) {
+      registerEntry(entry);
+    }
+  }
+
+  void registerFolderId(String folderId, String pathValue) {
+    if (folderId.isEmpty || pathValue.isEmpty) return;
+    _folderIdToPath[folderId] = pathValue;
+  }
+
+  void registerFileId(String fileId, String pathValue) {
+    if (fileId.isEmpty || pathValue.isEmpty) return;
+    _fileIdToPath[fileId] = pathValue;
+  }
+
+  String? pathForFileId(String fileId) => _fileIdToPath[fileId];
+
+  String? pathForFolderId(String folderId) => _folderIdToPath[folderId];
+
+  String describeFileId(String fileId) => _fileIdToPath[fileId] ?? fileId;
+
+  String buildChildPath({required String? parentId, required String name}) {
+    if (parentId == null || parentId.isEmpty) return name;
+    if (parentId == 'root' || parentId == 'appDataFolder') return name;
+    final parentPath = _folderIdToPath[parentId];
+    if (parentPath == null || parentPath.isEmpty) return name;
+    return path.join(parentPath, name);
+  }
+}
+
 /// Minimal client abstraction to enable testable and swappable GDrive backends.
 abstract interface class GDriveApiClient {
   Future<String> getOrCreateFolder({
@@ -163,9 +210,14 @@ abstract interface class DriveApi {
 class PerflogDriveApi implements DriveApi {
   final Perflog _perflog;
   final DriveApi _inner;
+  final GDrivePathIndex? _pathIndex;
   PerflogDriveApi(this._inner,
-      {required Perflog perflog, String name = 'raw_gdrive', bool? includeArgs})
-      : _perflog = perflog.create(name, _inner, includeArgs: includeArgs);
+      {required Perflog perflog,
+      String name = 'raw_gdrive',
+      bool? includeArgs,
+      GDrivePathIndex? pathIndex})
+      : _perflog = perflog.create(name, _inner, includeArgs: includeArgs),
+        _pathIndex = pathIndex;
 
   @override
   Future<drive.File> create(drive.File folderMetadata,
@@ -183,7 +235,7 @@ class PerflogDriveApi implements DriveApi {
               drive.DownloadOptions.metadata}) =>
       _perflog.measure(
           'get',
-          args: [fileId],
+        args: [_pathIndex?.describeFileId(fileId) ?? fileId],
           () => _inner.get(fileId,
               $fields: $fields, downloadOptions: downloadOptions));
 
@@ -209,7 +261,7 @@ class PerflogDriveApi implements DriveApi {
           {required drive.Media uploadMedia, required String $fields}) =>
       _perflog.measure(
           'update',
-          args: [fileId],
+        args: [_pathIndex?.describeFileId(fileId) ?? fileId],
           () => _inner.update(file, fileId,
               uploadMedia: uploadMedia, $fields: $fields));
 }
@@ -220,10 +272,13 @@ class PerflogDriveApi implements DriveApi {
 /// ETag-based concurrency control, and automatic token refresh on 401 errors.
 class GDriveClient implements GDriveApiClient {
   final DriveApi _driveApi;
+  final GDrivePathIndex _pathIndex;
 
   GDriveClient._({
     required DriveApi driveApi,
-  }) : _driveApi = driveApi;
+    required GDrivePathIndex pathIndex,
+  })  : _driveApi = driveApi,
+        _pathIndex = pathIndex;
 
   factory GDriveClient({
     required GDriveAuthProvider authProvider,
@@ -232,11 +287,13 @@ class GDriveClient implements GDriveApiClient {
   }) {
     final client = _GoogleAuthClient(httpClient, authProvider);
     final driveApi = DriveApiImpl(drive.DriveApi(client));
+    final pathIndex = GDrivePathIndex();
 
     return GDriveClient._(
       driveApi: perflog == null
           ? driveApi
-          : PerflogDriveApi(driveApi, perflog: perflog),
+          : PerflogDriveApi(driveApi, perflog: perflog, pathIndex: pathIndex),
+      pathIndex: pathIndex,
     );
   }
 
@@ -278,6 +335,10 @@ class GDriveClient implements GDriveApiClient {
       if (fileList.files != null && fileList.files!.isNotEmpty) {
         final folderId = fileList.files!.first.id!;
         _clientLog.fine('Found existing folder: $folderId');
+        _pathIndex.registerFolderId(
+          folderId,
+          _pathIndex.buildChildPath(parentId: parentId, name: folderName),
+        );
         return folderId;
       }
 
@@ -300,6 +361,10 @@ class GDriveClient implements GDriveApiClient {
 
       final folderId = createdFolder.id!;
       _clientLog.info('Created folder "$folderName" with ID: $folderId');
+      _pathIndex.registerFolderId(
+        folderId,
+        _pathIndex.buildChildPath(parentId: parentId, name: folderName),
+      );
       return folderId;
     } catch (e, stackTrace) {
       handleGDriveAuthError(e);
@@ -370,6 +435,11 @@ class GDriveClient implements GDriveApiClient {
       final etag = createdFile.md5Checksum!;
       _clientLog.info('Created file: $fileId with ETag: $etag');
 
+      _pathIndex.registerFileId(
+        fileId,
+        _pathIndex.buildChildPath(parentId: parentId, name: actualFileName),
+      );
+
       return (fileId: fileId, etag: etag);
     } catch (e, stackTrace) {
       handleGDriveAuthError(e);
@@ -417,6 +487,11 @@ class GDriveClient implements GDriveApiClient {
       final fileId = createdFile.id!;
       final md5Checksum = createdFile.md5Checksum ?? '';
       _clientLog.info('Created raw file: $fileId with md5: $md5Checksum');
+
+      _pathIndex.registerFileId(
+        fileId,
+        _pathIndex.buildChildPath(parentId: parentId, name: actualFileName),
+      );
 
       return (fileId: fileId, md5Checksum: md5Checksum);
     } catch (e, stackTrace) {
@@ -471,15 +546,30 @@ class GDriveClient implements GDriveApiClient {
         }
 
         // Search for file in final folder
-        return await _findFileInFolder(
+        final fileId = await _findFileInFolder(
             fileName: actualFileName,
             parentId: currentParentId,
             spaces: spaces);
+        if (fileId != null) {
+          _pathIndex.registerFileId(
+            fileId,
+            _pathIndex.buildChildPath(
+                parentId: currentParentId, name: actualFileName),
+          );
+        }
+        return fileId;
       }
 
       // Direct search in parent folder
-      return await _findFileInFolder(
+      final fileId = await _findFileInFolder(
           fileName: fileName, parentId: parentId, spaces: spaces);
+      if (fileId != null) {
+        _pathIndex.registerFileId(
+          fileId,
+          _pathIndex.buildChildPath(parentId: parentId, name: fileName),
+        );
+      }
+      return fileId;
     } catch (e, stackTrace) {
       _clientLog.severe('Failed to find file "$fileName"', e, stackTrace);
       throw GDriveClientException('Failed to find file "$fileName": $e');
@@ -509,6 +599,10 @@ class GDriveClient implements GDriveApiClient {
       if (fileList.files != null && fileList.files!.isNotEmpty) {
         final fileId = fileList.files!.first.id!;
         _clientLog.fine('Found file: $fileId');
+        _pathIndex.registerFileId(
+          fileId,
+          _pathIndex.buildChildPath(parentId: parentId, name: fileName),
+        );
         return fileId;
       }
 
@@ -720,7 +814,9 @@ class GDriveClient implements GDriveApiClient {
     required int maxConcurrentRequests,
   }) async {
     if (rootFolderId == 'appDataFolder') {
-      return _listAppDataFolder(spaces);
+      final entries = await _listAppDataFolder(spaces);
+      _pathIndex.registerEntries(entries);
+      return entries;
     }
     final results = <GDriveListedEntry>[];
     final queue = Queue<_DriveFolderTask>();
@@ -738,11 +834,13 @@ class GDriveClient implements GDriveApiClient {
         _listFolder(task, spaces).then((children) {
           for (final child in children) {
             if (child.isFolder) {
+              _pathIndex.registerEntry(child);
               queue.add(_DriveFolderTask(
                 folderId: child.fileId,
                 prefix: child.path,
               ));
             } else {
+              _pathIndex.registerEntry(child);
               results.add(child);
             }
           }
