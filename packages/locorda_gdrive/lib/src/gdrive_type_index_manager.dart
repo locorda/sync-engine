@@ -11,6 +11,84 @@ import 'shared/gdrive_config.dart';
 
 final _log = Logger('GDriveTypeIndexManager');
 
+abstract class TypeIndexManagerBackend {
+  Future<({String fileId, String etag})> createFile<T>(String s, T emptyGraph,
+      {required String folderId,
+      required String spaces,
+      required String contentType,
+      required String Function(T) convert});
+
+  Future<({T? graph, String? etag, bool notModified})> download<T>(fileId,
+      {required T Function(String) convert});
+
+  Future<String?> findFile(
+      {required String fileName,
+      required String parentId,
+      required String spaces});
+
+  Future<RemoteUploadResult> upload<T>(fileId, T updatedGraph,
+      {required String ifMatch, required String Function(T) convert});
+
+  Future<String> getOrCreateFolder(
+      {required String folderName,
+      required String parentId,
+      required String spaces});
+}
+
+class GDriveTypeIndexManagerBackend extends TypeIndexManagerBackend {
+  final GDriveApiClient _client;
+
+  GDriveTypeIndexManagerBackend({required GDriveApiClient client})
+      : _client = client;
+
+  Future<({String fileId, String etag})> createFile<T>(String s, T emptyGraph,
+          {required String folderId,
+          required String spaces,
+          required String contentType,
+          required String Function(T) convert}) =>
+      _client.createFile<T>(
+        s,
+        emptyGraph,
+        folderId: folderId,
+        spaces: spaces,
+        contentType: contentType,
+        convert: convert,
+      );
+
+  Future<({T? graph, String? etag, bool notModified})> download<T>(fileId,
+          {required T Function(String) convert}) =>
+      _client.download(fileId, convert: convert);
+
+  Future<String?> findFile(
+          {required String fileName,
+          required String parentId,
+          required String spaces}) =>
+      _client.findFile(
+        fileName: fileName,
+        parentId: parentId,
+        spaces: spaces,
+      );
+
+  Future<RemoteUploadResult> upload<T>(fileId, T updatedGraph,
+          {required String ifMatch, required String Function(T) convert}) =>
+      _client.upload(
+        fileId,
+        updatedGraph,
+        ifMatch: ifMatch,
+        convert: convert,
+      );
+
+  Future<String> getOrCreateFolder(
+          {required String folderName,
+          required String parentId,
+          required String spaces}) =>
+      _client.getOrCreateFolder(
+        folderName: folderName,
+        parentId: parentId,
+        spaces: spaces,
+      );
+}
+
 /// Manages the Type Index file for Google Drive backend.
 ///
 /// The Type Index is a special RDF file (`gdrive-index.ttl`) that maps
@@ -28,11 +106,12 @@ final _log = Logger('GDriveTypeIndexManager');
 /// 4. Write with If-Match: ETag
 /// 5. If conflict (412): Re-read and verify type was added
 class GDriveTypeIndexManager {
-  final GDriveApiClient _client;
+  final TypeIndexManagerBackend _backend;
   final ResourceLocator _localResourceLocator;
   final GDriveConfig _config;
   final String _contentType = turtle.primaryMimeType;
   final RdfCore _rdfCore;
+  final AppFolderProvider _appFolderProvider;
 
   late final String _spaces =
       _config.folderMode == GDriveFolderMode.appDataFolder
@@ -47,12 +126,14 @@ class GDriveTypeIndexManager {
   };
 
   GDriveTypeIndexManager({
-    required GDriveApiClient client,
+    required TypeIndexManagerBackend backend,
     required IriTermFactory iriTermFactory,
     required GDriveConfig config,
     required RdfCore rdfCore,
-  })  : _client = client,
+    required AppFolderProvider appFolderProvider,
+  })  : _backend = backend,
         _rdfCore = rdfCore,
+        _appFolderProvider = appFolderProvider,
         _config = _fillInDefaults(config),
         _localResourceLocator =
             LocalResourceLocator(iriTermFactory: iriTermFactory);
@@ -75,7 +156,7 @@ class GDriveTypeIndexManager {
         'Loading Type Index for ${engineConfig.resources.length} resource types');
 
     // Step 1: Get or create app root folder
-    final appFolderId = await _getOrCreateAppFolder();
+    final appFolderId = await _appFolderProvider.appFolderId;
     _log.fine('App folder ID: $appFolderId');
 
     // Step 2: Load or create gdrive-index.ttl
@@ -124,27 +205,6 @@ class GDriveTypeIndexManager {
     );
   }
 
-  /// Get or create the app root folder in Google Drive.
-  ///
-  /// Returns:
-  /// - 'appDataFolder' (reserved alias) for appDataFolder mode
-  /// - Actual folder ID for visibleFolder mode
-  Future<String> _getOrCreateAppFolder() async {
-    switch (_config.folderMode) {
-      case GDriveFolderMode.appDataFolder:
-        _log.fine('Using appDataFolder (private app-specific space)');
-        return 'appDataFolder'; // Reserved Google Drive alias
-
-      case GDriveFolderMode.visibleFolder:
-        _log.fine(
-            'Getting or creating visible folder: ${_config.appFolderName}');
-        return await _client.getOrCreateFolder(
-          folderName: _config.appFolderName!,
-          spaces: 'drive',
-        );
-    }
-  }
-
   /// Load or create the gdrive-index.ttl file.
   Future<_TypeIndexFile> _loadOrCreateTypeIndexFile(String appFolderId) async {
     // Try to load existing file
@@ -158,7 +218,7 @@ class GDriveTypeIndexManager {
     final emptyGraph = _createEmptyTypeIndex();
 
     // Upload to Drive (returns fileId and etag directly)
-    final result = await _client.createFile(
+    final result = await _backend.createFile(
       'gdrive-index.ttl',
       emptyGraph,
       folderId: appFolderId,
@@ -179,7 +239,7 @@ class GDriveTypeIndexManager {
   /// Load existing gdrive-index.ttl file.
   Future<_TypeIndexFile?> _loadTypeIndexFile(String appFolderId) async {
     // Search for gdrive-index.ttl in app folder
-    final fileId = await _client.findFile(
+    final fileId = await _backend.findFile(
       fileName: 'gdrive-index.ttl',
       parentId: appFolderId,
       spaces: _spaces,
@@ -192,7 +252,7 @@ class GDriveTypeIndexManager {
 
     // Download with ETag
     _log.fine('Downloading Type Index file: $fileId');
-    final result = await _client.download(fileId,
+    final result = await _backend.download(fileId,
         convert: (c) => _rdfCore.decode(
               c,
               contentType: _contentType,
@@ -316,7 +376,7 @@ class GDriveTypeIndexManager {
     );
 
     // Step 4: Find Type Index file ID
-    final fileId = await _client.findFile(
+    final fileId = await _backend.findFile(
       fileName: 'gdrive-index.ttl',
       parentId: appFolderId,
       spaces: _spaces,
@@ -328,7 +388,7 @@ class GDriveTypeIndexManager {
 
     // Step 5: Upload with If-Match: existingETag (optimistic locking)
     try {
-      final uploadResult = await _client.upload(
+      final uploadResult = await _backend.upload(
         fileId,
         updatedGraph,
         ifMatch: existingETag,
@@ -406,7 +466,7 @@ class GDriveTypeIndexManager {
       final folderName = _determineFolderName(type, usedFolderNames);
       usedFolderNames.add(folderName);
 
-      final folderId = await _client.getOrCreateFolder(
+      final folderId = await _backend.getOrCreateFolder(
         folderName: folderName,
         parentId: appFolderId,
         spaces: _spaces,
@@ -548,6 +608,40 @@ class GDriveTypeIndexManager {
           if (!config.typeFolderNames.containsKey(it)) it: 'indices',
       },
     );
+  }
+}
+
+class AppFolderProvider {
+  final GDriveApiClient _client;
+  final GDriveConfig _config;
+
+  late final Future<String> appFolderId = _getOrCreateAppFolder();
+
+  AppFolderProvider({
+    required GDriveApiClient client,
+    required GDriveConfig config,
+  })  : _client = client,
+        _config = config;
+
+  /// Get or create the app root folder in Google Drive.
+  ///
+  /// Returns:
+  /// - 'appDataFolder' (reserved alias) for appDataFolder mode
+  /// - Actual folder ID for visibleFolder mode
+  Future<String> _getOrCreateAppFolder() async {
+    switch (_config.folderMode) {
+      case GDriveFolderMode.appDataFolder:
+        _log.fine('Using appDataFolder (private app-specific space)');
+        return 'appDataFolder'; // Reserved Google Drive alias
+
+      case GDriveFolderMode.visibleFolder:
+        _log.fine(
+            'Getting or creating visible folder: ${_config.appFolderName}');
+        return await _client.getOrCreateFolder(
+          folderName: _config.appFolderName!,
+          spaces: 'drive',
+        );
+    }
   }
 }
 

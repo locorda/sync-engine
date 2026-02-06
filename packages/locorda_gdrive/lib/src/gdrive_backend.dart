@@ -246,7 +246,6 @@ class GDriveRemoteStorage implements RemoteStorage {
   final RemoteId _remoteId;
   final String _userId;
   final GDriveApiClient _client;
-  final GDriveTypeIndexManager _typeIndexManager;
   final ResourceLocator _resourceLocator;
   final String _spaces;
   final GDriveLocalMirrorConfig _mirrorConfig;
@@ -254,6 +253,8 @@ class GDriveRemoteStorage implements RemoteStorage {
   final String _contentType;
   final String _datasetContentType;
   final GDriveConfig _config;
+  final AppFolderProvider _appFolderProvider;
+  final IriTermFactory _iriTermFactory;
 
   // Severely reduces the number of files that have to be transferred between
   // the client and Google Drive, improving performance significantly.
@@ -267,24 +268,26 @@ class GDriveRemoteStorage implements RemoteStorage {
   GDriveRemoteStorage({
     required GDriveApiClient client,
     required String userId,
-    required GDriveTypeIndexManager typeIndexManager,
     required ResourceLocator resourceLocator,
     required String spaces,
     required GDriveLocalMirrorConfig mirrorConfig,
+    required IriTermFactory iriTermFactory,
     required RdfCore rdfCore,
     required String contentType,
     required String datasetContentType,
+    required AppFolderProvider appFolderProvider,
     required GDriveConfig config,
   })  : _client = client,
         _userId = userId,
         _config = config,
-        _typeIndexManager = typeIndexManager,
         _resourceLocator = resourceLocator,
         _spaces = spaces,
         _mirrorConfig = mirrorConfig,
         _remoteId = RemoteId("google", userId),
         _rdfCore = rdfCore,
+        _iriTermFactory = iriTermFactory,
         _contentType = contentType,
+        _appFolderProvider = appFolderProvider,
         _datasetContentType = datasetContentType;
 
   RemoteId get remoteId => _remoteId;
@@ -292,16 +295,24 @@ class GDriveRemoteStorage implements RemoteStorage {
   @override
   Future<RemoteSyncStorage> createSyncStorage(
       SyncEngineConfig engineConfig) async {
-    final typeIndexMappings =
-        await _typeIndexManager.loadOrCreateTypeIndex(engineConfig);
     if (_mirrorConfig.enabled) {
       GDriveLocalMirror? mirror = await GDriveLocalMirror.initialize(
         client: _client,
-        typeIndexMappings: typeIndexMappings,
+        typeIndexMappingsProvider: (backend) {
+          final typeIndexManager = GDriveTypeIndexManager(
+            backend: backend,
+            iriTermFactory: _iriTermFactory,
+            config: _config,
+            rdfCore: _rdfCore,
+            appFolderProvider: _appFolderProvider,
+          );
+          return typeIndexManager.loadOrCreateTypeIndex(engineConfig);
+        },
         resourceLocator: _resourceLocator,
         config: _mirrorConfig,
         spaces: _spaces,
         userId: _userId,
+        appFolderProvider: () => _appFolderProvider.appFolderId,
       );
       return MirroredGDriveSyncStorage(
         rdfCore: _rdfCore,
@@ -311,15 +322,26 @@ class GDriveRemoteStorage implements RemoteStorage {
         localMirror: mirror,
       );
     }
+    final typeIndexManager = GDriveTypeIndexManager(
+      backend: GDriveTypeIndexManagerBackend(client: _client),
+      iriTermFactory: _iriTermFactory,
+      config: _config,
+      rdfCore: _rdfCore,
+      appFolderProvider: _appFolderProvider,
+    );
+    final typeIndexMappings =
+        await typeIndexManager.loadOrCreateTypeIndex(engineConfig);
+
     return GDriveSyncStorage(
-        client: _client,
-        resourceLocator: _resourceLocator,
-        typeIndexMappings: typeIndexMappings,
-        spaces: _spaces,
-        rdfCore: _rdfCore,
-        contentType: _contentType,
-        datasetContentType: _datasetContentType,
-        config: _config);
+      client: _client,
+      resourceLocator: _resourceLocator,
+      typeIndexMappings: typeIndexMappings,
+      spaces: _spaces,
+      rdfCore: _rdfCore,
+      contentType: _contentType,
+      datasetContentType: _datasetContentType,
+      config: _config,
+    );
   }
 
   @override
@@ -340,12 +362,13 @@ class GDriveBackend implements Backend {
   String get name => 'gdrive';
   final GDriveAuthProvider _auth;
   final GDriveApiClient _client;
-  final GDriveTypeIndexManager _typeIndexManager;
+  final IriTermFactory _iriTermFactory;
   final ResourceLocator _resourceLocator;
   final GDriveConfig _config;
   final RdfCore _rdfCore;
   final String _contentType;
   final String _datasetContentType;
+  final AppFolderProvider _appFolderProvider;
 
   List<RemoteStorage> _remotes = [];
   late final BehaviorSubject<List<RemoteStorage>> _remotesChangedSubject;
@@ -365,7 +388,7 @@ class GDriveBackend implements Backend {
       httpClient: httpClient,
       perflog: perflog,
     );
-
+    final appFolderProvider = AppFolderProvider(client: client, config: config);
     final backend = GDriveBackend._(
       auth: auth,
       config: config,
@@ -375,6 +398,7 @@ class GDriveBackend implements Backend {
       contentType: contentType,
       datasetContentType: datasetContentType,
       rdfCore: rdfCore,
+      appFolderProvider: appFolderProvider,
     );
     return PerflogBackend(backend, perflog: perflog, name: 'gdrive');
   }
@@ -386,16 +410,13 @@ class GDriveBackend implements Backend {
     required RdfCore rdfCore,
     required String contentType,
     required String datasetContentType,
+    required AppFolderProvider appFolderProvider,
     IriTermFactory? iriTermFactory,
   })  : _auth = auth,
         _client = client,
         _config = config,
-        _typeIndexManager = GDriveTypeIndexManager(
-          client: client,
-          iriTermFactory: iriTermFactory ?? IriTerm.validated,
-          config: config,
-          rdfCore: rdfCore,
-        ),
+        _appFolderProvider = appFolderProvider,
+        _iriTermFactory = iriTermFactory ?? IriTerm.validated,
         _resourceLocator = LocalResourceLocator(
           iriTermFactory: iriTermFactory ?? IriTerm.validated,
         ),
@@ -433,7 +454,7 @@ class GDriveBackend implements Backend {
       final baseRemote = GDriveRemoteStorage(
         userId: userId,
         client: _client,
-        typeIndexManager: _typeIndexManager,
+        iriTermFactory: _iriTermFactory,
         resourceLocator: _resourceLocator,
         spaces: spaces,
         mirrorConfig: _config.localMirrorConfig,
@@ -441,6 +462,7 @@ class GDriveBackend implements Backend {
         datasetContentType: _datasetContentType,
         rdfCore: _rdfCore,
         config: _config,
+        appFolderProvider: _appFolderProvider,
       );
 
       // Wrap with auth-aware retry logic

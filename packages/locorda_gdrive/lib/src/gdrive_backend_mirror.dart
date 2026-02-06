@@ -59,8 +59,10 @@ class GDriveLocalMirror {
     required String userId,
     required String spaces,
     required GDriveApiClient client,
-    required TypeIndexMappings typeIndexMappings,
+    required Future<TypeIndexMappings> Function(TypeIndexManagerBackend)
+        typeIndexMappingsProvider,
     required ResourceLocator resourceLocator,
+    required Future<String> Function() appFolderProvider,
   }) async {
     final _rootDir =
         await _resolveRootDir(config: config, userId: userId, spaces: spaces);
@@ -78,13 +80,15 @@ class GDriveLocalMirror {
       filesDir: filesDir,
       config: config,
       client: client,
-      appFolderId: typeIndexMappings.appFolderId,
+      appFolderId: await appFolderProvider(),
       spaces: spaces,
     );
 
     final index = updatedIndex;
     await _saveIndex(indexFile, index);
-    
+    final TypeIndexManagerBackend backend;
+    final typeIndexMappings = await typeIndexMappingsProvider(backend);
+
     return GDriveLocalMirror._(
       client: client,
       typeIndexMappings: typeIndexMappings,

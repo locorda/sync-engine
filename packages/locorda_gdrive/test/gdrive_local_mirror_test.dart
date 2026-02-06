@@ -196,7 +196,7 @@ void main() {
 
     final mirror = await GDriveLocalMirror.initialize(
       client: client,
-      typeIndexMappings: TypeIndexMappings(
+      typeIndexMappingsProvider: (_) async => TypeIndexMappings(
         appFolderId: 'root',
         typeMappings: {
           typeIri: const TypeMapping(folderId: 'folder-1', folderName: 'Note'),
@@ -206,6 +206,7 @@ void main() {
       config: mirrorConfig,
       spaces: 'drive',
       userId: 'user-1',
+      appFolderProvider: () => Future.value('root'),
     );
 
     final download = await mirror.download(docIri, convert: rdfCore.decode);
@@ -258,7 +259,7 @@ void main() {
 
     final mirror = await GDriveLocalMirror.initialize(
       client: client,
-      typeIndexMappings: TypeIndexMappings(
+      typeIndexMappingsProvider: (_) async => TypeIndexMappings(
         appFolderId: 'root',
         typeMappings: {
           typeIri: const TypeMapping(folderId: 'folder-1', folderName: 'Note'),
@@ -268,6 +269,7 @@ void main() {
       config: mirrorConfig,
       spaces: 'drive',
       userId: 'user-2',
+      appFolderProvider: () => Future.value('root'),
     );
 
     final updatedGraph = RdfGraph(triples: {
@@ -330,7 +332,7 @@ void main() {
 
     final mirror = await GDriveLocalMirror.initialize(
       client: client,
-      typeIndexMappings: TypeIndexMappings(
+      typeIndexMappingsProvider: (_) async => TypeIndexMappings(
         appFolderId: 'root',
         typeMappings: {
           typeIri: const TypeMapping(folderId: 'folder-1', folderName: 'Note'),
@@ -340,6 +342,7 @@ void main() {
       config: mirrorConfig,
       spaces: 'drive',
       userId: 'user-3',
+      appFolderProvider: () => Future.value('root'),
     );
 
     final updatedGraph = RdfGraph(triples: {
@@ -413,7 +416,7 @@ void main() {
     // ignore: unused_local_variable
     final mirror = await GDriveLocalMirror.initialize(
       client: client,
-      typeIndexMappings: TypeIndexMappings(
+      typeIndexMappingsProvider: (_) async => TypeIndexMappings(
         appFolderId: 'root',
         typeMappings: {
           typeIri: const TypeMapping(folderId: 'folder-1', folderName: 'Note'),
@@ -423,6 +426,7 @@ void main() {
       config: mirrorConfig,
       spaces: 'drive',
       userId: 'user-4',
+      appFolderProvider: () => Future.value('root'),
     );
 
     expect(await staleFile.exists(), isFalse);
