@@ -8,8 +8,10 @@ class PerfLogGDriveApiClient implements GDriveApiClient {
   final Perflog _perflog;
 
   PerfLogGDriveApiClient(this._inner,
-      {required Perflog perflog, String name = 'gdrive_api_client'})
-      : _perflog = perflog.create(name, _inner);
+      {required Perflog perflog,
+      String name = 'gdrive_api_client',
+      bool? includeArgs})
+      : _perflog = perflog.create(name, _inner, includeArgs: includeArgs);
 
   @override
   Future<String> getOrCreateFolder(

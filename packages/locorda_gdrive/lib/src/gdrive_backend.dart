@@ -164,8 +164,8 @@ class PerflogDriveApi implements DriveApi {
   final Perflog _perflog;
   final DriveApi _inner;
   PerflogDriveApi(this._inner,
-      {required Perflog perflog, String name = 'raw_gdrive'})
-      : _perflog = perflog.create(name, _inner);
+      {required Perflog perflog, String name = 'raw_gdrive', bool? includeArgs})
+      : _perflog = perflog.create(name, _inner, includeArgs: includeArgs);
 
   @override
   Future<drive.File> create(drive.File folderMetadata,
@@ -1856,7 +1856,6 @@ class GDriveBackend implements Backend {
       contentType: contentType,
       datasetContentType: datasetContentType,
       rdfCore: rdfCore,
-
     );
     return PerflogBackend(backend, perflog: perflog, name: 'gdrive');
   }
@@ -1923,7 +1922,6 @@ class GDriveBackend implements Backend {
         datasetContentType: _datasetContentType,
         rdfCore: _rdfCore,
         config: _config,
-        
       );
 
       // Wrap with auth-aware retry logic

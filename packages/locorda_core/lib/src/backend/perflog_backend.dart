@@ -163,7 +163,7 @@ class PerflogBackend implements Backend {
   PerflogBackend(
     this._inner, {
     String name = 'Backend',
-    bool includeArgs = false,
+    bool? includeArgs,
     required Perflog perflog,
   }) : _perflog = perflog.create(name, _inner, includeArgs: includeArgs) {
     _remotesSubject = BehaviorSubject.seeded(wrapRemotes(_inner.remotes));
@@ -201,7 +201,7 @@ class PerflogRemoteStorage implements RemoteStorage {
     this._inner, {
     required Perflog perflog,
     String name = 'RemoteStorage',
-    bool includeArgs = false,
+    bool? includeArgs,
   }) : _perflog = perflog.create(name, _inner, includeArgs: includeArgs);
 
   @override
