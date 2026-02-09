@@ -54,7 +54,7 @@ class Locorda {
   ///
   /// ## Complete Working Example
   ///
-  /// See the Personal Notes App in `packages/locorda/example/` for a full implementation.
+  /// See the Personal Notes App in `packages/locorda/example/personal_notes_app` for a full implementation.
   ///
   /// **1. Main thread** (lib/main.dart):
   ///

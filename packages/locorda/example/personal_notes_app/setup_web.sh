@@ -10,7 +10,7 @@ echo ""
 
 # Check if we're in the right directory
 if [[ ! -f "pubspec.yaml" ]] || ! grep -q "personal_notes_app" pubspec.yaml; then
-    echo "❌ Error: Run this script from the packages/locorda/example directory"
+    echo "❌ Error: Run this script from the packages/locorda/example/personal_notes_app directory"
     echo "   Current directory: $(pwd)"
     exit 1
 fi

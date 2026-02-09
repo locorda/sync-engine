@@ -82,7 +82,7 @@ Initial approaches had issues:
 
 **Main Thread API** (application code):
 ```dart
-// packages/locorda/example/lib/main.dart
+// packages/locorda/example/personal_notes_app/lib/main.dart
 Future<void> main() async {
   // 1. Create worker handle (framework abstracts platform)
   final workerHandle = await LocordaWorker.start(
@@ -559,8 +559,8 @@ class WorkerContext {
 4. API documentation
 
 **Files**:
-- `packages/locorda/example/lib/worker.dart` - Example worker
-- `packages/locorda/example/lib/main.dart` - Updated setup
+- `packages/locorda/example/personal_notes_app/lib/worker.dart` - Example worker
+- `packages/locorda/example/personal_notes_app/lib/main.dart` - Updated setup
 - `WORKER-MIGRATION-GUIDE.md` - Migration docs
 
 **Tests**:
@@ -786,7 +786,7 @@ class ProxysyncEngine {
 
 **Files to modify**:
 - [ ] `locorda/lib/src/locorda_sync.dart` - Use proxy by default
-- [ ] `locorda/example/lib/main.dart` - Update initialization
+- [ ] `locorda/example/personal_notes_app/lib/main.dart` - Update initialization
 
 **Tests**:
 - [ ] Run existing example app tests

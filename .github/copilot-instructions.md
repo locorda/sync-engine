@@ -198,7 +198,7 @@ syncSystem.deleteDocument<Note>(id); // Framework-level deletion
 ### Core Implementation
 - `packages/locorda_core/lib/src/sync_engine.dart` - Main API facade (`SyncEngine`)
 - `packages/locorda_core/lib/src/crdt_document_manager.dart` - CRDT merge logic
-- `packages/locorda/example/` - Personal notes app (reference implementation)
+- `packages/locorda/example/personal_notes_app` - Personal notes app (reference implementation)
 
 ## Code Quality Standards
 
@@ -227,7 +227,7 @@ syncSystem.deleteDocument<Note>(id); // Framework-level deletion
 ## When in Doubt
 
 1. Check `CLAUDE.md` for development philosophy
-2. Look at `packages/locorda/example/` for usage patterns
+2. Look at `packages/locorda/example/personal_notes_app` for usage patterns
 3. Ask before implementing - discuss API design first
 4. Run tests frequently during development
 5. Keep it simple - solve real needs, not imagined ones

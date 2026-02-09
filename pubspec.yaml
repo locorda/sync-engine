@@ -26,8 +26,8 @@ workspace:
   - packages/locorda_ui
   - packages/locorda_worker
   - packages/locorda_gdrive
-  - packages/locorda/example
-  - packages/locorda/example/examples/minimal
+  - packages/locorda/example/personal_notes_app
+  - packages/locorda/example/minimal
 
 dev_dependencies:
   melos: ^7.3.0

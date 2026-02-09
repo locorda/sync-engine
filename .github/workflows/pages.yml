@@ -14,7 +14,7 @@ on:
   #     - 'doc/**'
   #     - 'spec/vocabularies/**'
   #     - 'spec/mappings/**'
-  #     - 'packages/locorda/example/**'
+  #     - 'packages/locorda/example/personal_notes_app/**'
   #     - '.github/workflows/pages.yml'
   #     - 'pubspec.yaml'
   #     - 'README.md'
@@ -52,7 +52,7 @@ jobs:
 
       - name: Build Flutter web app
         run: |
-          cd packages/locorda/example
+          cd packages/locorda/example/personal_notes_app
           flutter build web --release --base-href /example/personal_notes_app/
 
       - name: Setup deployment structure
@@ -73,13 +73,13 @@ jobs:
           # Create example app directory and copy built web app
           mkdir -p docs/example/personal_notes_app/mappings
           mkdir -p docs/example/personal_notes_app/auth
-          cp -r packages/locorda/example/build/web/* docs/example/personal_notes_app/
+          cp -r packages/locorda/example/personal_notes_app/build/web/* docs/example/personal_notes_app/
 
           # Copy example-specific mappings to the app's mappings directory
-          cp packages/locorda/example/contracts/mappings/* docs/example/personal_notes_app/mappings/
+          cp packages/locorda/example/personal_notes_app/contracts/mappings/* docs/example/personal_notes_app/mappings/
 
           # Copy auth configuration files
-          cp packages/locorda/example/contracts/auth/client-config.json docs/example/personal_notes_app/auth/
+          cp packages/locorda/example/personal_notes_app/contracts/auth/client-config.json docs/example/personal_notes_app/auth/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

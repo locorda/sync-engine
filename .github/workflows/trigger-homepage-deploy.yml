@@ -6,7 +6,7 @@ on:
     paths:
       - 'spec/vocabularies/**'
       - 'spec/mappings/**'
-      - 'packages/locorda/example/**'
+      - 'packages/locorda/example/personal_notes_app/**'
       - '.github/workflows/trigger-homepage-deploy.yml'
 
 jobs:

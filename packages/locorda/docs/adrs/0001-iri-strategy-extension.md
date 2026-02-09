@@ -133,7 +133,7 @@ This is a fundamental annotation API design challenge that requires careful rese
 - Offline fallback mechanisms
 
 **Related files:**
-- `/packages/locorda/example/lib/models/note.dart`
+- `/packages/locorda/example/personal_notes_app/lib/models/note.dart`
 - RDF mapper annotation processing
 - Future Pod connection architecture
 

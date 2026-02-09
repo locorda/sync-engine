@@ -82,7 +82,7 @@ jobs:
         run: melos bootstrap
       
       - name: Build sync-engine Flutter example app
-        working-directory: sync-engine/packages/locorda/example
+        working-directory: sync-engine/packages/locorda/example/personal_notes_app
         run: flutter build web --release --base-href /example/personal_notes_app/
       
       - name: Integrate sync-engine content into site
@@ -100,13 +100,13 @@ jobs:
           cp sync-engine/spec/mappings/* dist/mappings/
           
           # Copy built Flutter app directly to /example/
-          cp -r sync-engine/packages/locorda/example/build/web/* dist/example/personal_notes_app/
+          cp -r sync-engine/packages/locorda/example/personal_notes_app/build/web/* dist/example/personal_notes_app/
           
           # Copy example-specific mappings
-          cp sync-engine/packages/locorda/example/contracts/mappings/* dist/example/personal_notes_app/mappings/
+          cp sync-engine/packages/locorda/example/personal_notes_app/contracts/mappings/* dist/example/personal_notes_app/mappings/
           
           # Copy auth configuration
-          cp sync-engine/packages/locorda/example/contracts/auth/client-config.json dist/example/personal_notes_app/auth/
+          cp sync-engine/packages/locorda/example/personal_notes_app/contracts/auth/client-config.json dist/example/personal_notes_app/auth/
       
       # 6. Deploy combined site
       - name: Upload artifact
