@@ -1,0 +1,39 @@
+name: minimal_task_sync
+description: Minimal example demonstrating Locorda sync (~150 LOC)
+publish_to: none
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+    
+  # Locorda sync packages
+  locorda: any
+  locorda_annotations: any
+  locorda_core: any
+  locorda_dir: any
+  locorda_worker: any
+  
+  # RDF mapping
+  locorda_rdf_core: ^0.11.6
+  locorda_rdf_mapper: ^0.11.6
+  locorda_rdf_terms_schema: ^0.11.4
+  locorda_rdf_mapper_annotations: ^0.11.6
+  
+  # Reactive streams
+  rxdart: ^0.28.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  
+  # Code generation for RDF mapper
+  build_runner: ^2.4.0
+  locorda_builder: any
+  locorda_rdf_mapper_generator: ^0.11.6
