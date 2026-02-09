@@ -297,6 +297,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.8"
+  excerpter:
+    dependency: transitive
+    description:
+      path: "pkgs/excerpter"
+      ref: HEAD
+      resolved-ref: "9f69a576f6242b33b21c6b44cbf663de208243d2"
+      url: "https://github.com/dart-lang/site-shared.git"
+    source: git
+    version: "0.1.0"
   fake_async:
     dependency: transitive
     description:

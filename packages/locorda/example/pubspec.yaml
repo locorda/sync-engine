@@ -62,6 +62,12 @@ dev_dependencies:
   locorda_rdf_mapper_generator: ^0.11.6
   locorda_builder: any
   
+  # Documentation
+  excerpter:
+    git:
+      url: https://github.com/dart-lang/site-shared.git
+      path: pkgs/excerpter
+  
 flutter:
   uses-material-design: true
 
