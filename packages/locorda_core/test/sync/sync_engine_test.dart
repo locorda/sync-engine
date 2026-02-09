@@ -910,7 +910,8 @@ Future<void> _verifyDocumentsDirectory({
       testAssetsDir: testAssetsDir,
       relativeDir: relativeDir,
       allowDatasets: allowDatasets,
-      allowMissing: false,
+      // relevant is what is inside the directory, not if the directory itself is missing - we want to allow missing directory for empty expectations
+      allowMissing: true,
       backendIriTranslator: backendIriTranslator);
 
   final actualByIri = {
