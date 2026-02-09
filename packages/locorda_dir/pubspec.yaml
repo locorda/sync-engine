@@ -22,7 +22,7 @@ dependencies:
   # File system paths
   path: ^1.9.1
   path_provider: ^2.1.5
-  file_picker: ^8.1.4
+  file_picker: ^10.3.10
   
   # Utilities
   crypto: ^3.0.6
