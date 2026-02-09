@@ -1,0 +1,15 @@
+builders:
+  mapping_bootstrap:
+    import: "package:locorda_mapping_bootstrap_generator/builder.dart"
+    builder_factories: ["mappingBootstrapBuilder"]
+    build_extensions:
+      pubspec.yaml:
+        - lib/src/generated/mapping_bootstrap.g.dart
+    auto_apply: dependents
+    build_to: source
+    defaults:
+      generate_for:
+        - pubspec.yaml
+      options:
+          mapping_roots:
+            - assets/contracts/mappings

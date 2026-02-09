@@ -76,10 +76,10 @@ jobs:
           cp -r packages/locorda/example/personal_notes_app/build/web/* docs/example/personal_notes_app/
 
           # Copy example-specific mappings to the app's mappings directory
-          cp packages/locorda/example/personal_notes_app/contracts/mappings/* docs/example/personal_notes_app/mappings/
+          cp packages/locorda/example/personal_notes_app/assets/contracts/mappings/* docs/example/personal_notes_app/mappings/
 
           # Copy auth configuration files
-          cp packages/locorda/example/personal_notes_app/contracts/auth/client-config.json docs/example/personal_notes_app/auth/
+          cp packages/locorda/example/personal_notes_app/assets/contracts/auth/client-config.json docs/example/personal_notes_app/auth/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

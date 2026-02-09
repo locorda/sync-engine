@@ -31,10 +31,18 @@ class DocumentMappingDependencyExtractor implements DependencyExtractor {
 
 class CachingMergeContractLoader extends MergeContractLoader {
   final MergeContractLoader _inner;
+  final MergeContractLoader? _bootstrapInner;
+  final Duration refreshInterval;
   final LRUCache<String, Future<MergeContract>> _cache;
+  final Map<String, DateTime> _lastRefresh = {};
+  final Map<String, Future<void>> _refreshInFlight = {};
 
-  CachingMergeContractLoader(this._inner, {int maxCacheSize = 50})
-      : _cache = LRUCache(maxCacheSize: maxCacheSize);
+  CachingMergeContractLoader(this._inner,
+      {MergeContractLoader? bootstrapInner,
+      this.refreshInterval = const Duration(minutes: 30),
+      int maxCacheSize = 50})
+      : _bootstrapInner = bootstrapInner,
+        _cache = LRUCache(maxCacheSize: maxCacheSize);
 
   String _cacheKey(List<IriTerm> iris) => iris.length == 1
       ? iris.first.value
@@ -46,19 +54,59 @@ class CachingMergeContractLoader extends MergeContractLoader {
 
     // Check if already in cache (and move to end for LRU)
     if (_cache.containsKey(key)) {
+      _maybeRefresh(key, isGovernedBy);
       return _cache[key]!;
     }
 
-    // Load and cache the result
-    final future = _inner.load(isGovernedBy).catchError((error) {
+    return _loadCold(key, isGovernedBy);
+  }
+
+  Future<MergeContract> _loadCold(String key, List<IriTerm> isGovernedBy) {
+    return _loadAndCache(key, () async {
+      if (_bootstrapInner != null) {
+        try {
+          final result = await _bootstrapInner.load(isGovernedBy);
+          _maybeRefresh(key, isGovernedBy, force: true);
+          return result;
+        } catch (_) {
+          return _inner.load(isGovernedBy);
+        }
+      }
+      return _inner.load(isGovernedBy);
+    });
+  }
+
+  Future<MergeContract> _loadAndCache(
+      String key, Future<MergeContract> Function() loader) {
+    final future = loader().catchError((error) {
       // Remove from cache on error to allow retry
       _cache.remove(key);
       return Future<MergeContract>.error(error);
     });
-
     _cache[key] = future;
-
     return future;
+  }
+
+  void _maybeRefresh(String key, List<IriTerm> isGovernedBy,
+      {bool force = false}) {
+    if (_refreshInFlight.containsKey(key)) return;
+    if (!force) {
+      final last = _lastRefresh[key];
+      if (last != null && DateTime.now().difference(last) < refreshInterval) {
+        return;
+      }
+    }
+
+    final refresh = _inner.load(isGovernedBy).then((result) {
+      _cache[key] = Future.value(result);
+      _lastRefresh[key] = DateTime.now();
+    }).catchError((_) {
+      // Keep cached value on refresh failure.
+    }).whenComplete(() {
+      _refreshInFlight.remove(key);
+    });
+
+    _refreshInFlight[key] = refresh;
   }
 }
 

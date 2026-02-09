@@ -61,6 +61,7 @@ dev_dependencies:
   drift_dev: ^2.19.0
   locorda_rdf_mapper_generator: ^0.11.6
   locorda_builder: any
+  locorda_mapping_bootstrap_generator: any
   
   # Documentation
   excerpter:

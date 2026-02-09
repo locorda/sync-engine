@@ -15,5 +15,6 @@ Future<EngineParams> toEngineParams(
     rdfCore: wp.rdfCore,
     httpClient: wp.httpClient,
     fetcher: wp.fetcher,
+    mappingBootstrapSources: wp.mappingBootstrapSources,
   );
 }

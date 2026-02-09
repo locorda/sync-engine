@@ -103,10 +103,10 @@ jobs:
           cp -r sync-engine/packages/locorda/example/personal_notes_app/build/web/* dist/example/personal_notes_app/
           
           # Copy example-specific mappings
-          cp sync-engine/packages/locorda/example/personal_notes_app/contracts/mappings/* dist/example/personal_notes_app/mappings/
+          cp sync-engine/packages/locorda/example/personal_notes_app/assets/contracts/mappings/* dist/example/personal_notes_app/mappings/
           
           # Copy auth configuration
-          cp sync-engine/packages/locorda/example/personal_notes_app/contracts/auth/client-config.json dist/example/personal_notes_app/auth/
+          cp sync-engine/packages/locorda/example/personal_notes_app/assets/contracts/auth/client-config.json dist/example/personal_notes_app/auth/
       
       # 6. Deploy combined site
       - name: Upload artifact

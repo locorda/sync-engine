@@ -25,6 +25,7 @@ class EngineParams {
   final RdfCore? rdfCore;
   final http.Client? httpClient;
   final Fetcher? fetcher;
+  final Iterable<String>? mappingBootstrapSources;
 
   EngineParams({
     required this.storage,
@@ -35,6 +36,7 @@ class EngineParams {
     this.rdfCore,
     this.httpClient,
     this.fetcher,
+    this.mappingBootstrapSources,
   });
 
   EngineParams copyWith({
@@ -46,6 +48,7 @@ class EngineParams {
     RdfCore? rdfCore,
     http.Client? httpClient,
     Fetcher? fetcher,
+    Iterable<String>? mappingBootstrapSources,
   }) {
     return EngineParams(
       storage: storage ?? this.storage,
@@ -58,6 +61,8 @@ class EngineParams {
       rdfCore: rdfCore ?? this.rdfCore,
       httpClient: httpClient ?? this.httpClient,
       fetcher: fetcher ?? this.fetcher,
+      mappingBootstrapSources:
+          mappingBootstrapSources ?? this.mappingBootstrapSources,
     );
   }
 }
@@ -93,6 +98,7 @@ abstract interface class SyncEngine {
       rdfCore: engineParams.rdfCore,
       httpClient: engineParams.httpClient,
       fetcher: engineParams.fetcher,
+      mappingBootstrapSources: engineParams.mappingBootstrapSources,
     );
   }
 

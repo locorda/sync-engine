@@ -19,6 +19,7 @@ class WorkerParams {
   final RdfCore? rdfCore;
   final http.Client? httpClient;
   final Fetcher? fetcher;
+  final Iterable<String>? mappingBootstrapSources;
 
   const WorkerParams({
     required this.storage,
@@ -29,5 +30,6 @@ class WorkerParams {
     this.rdfCore,
     this.httpClient,
     this.fetcher,
+    this.mappingBootstrapSources,
   });
 }

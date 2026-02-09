@@ -1,8 +1,10 @@
-// TODO: generalize to a generic fetcher that also does etag caching etc?
+import 'package:locorda_core/src/generated/mapping_bootstrap.g.dart';
+import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/vocab/generated/rdf.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:http/http.dart' as http;
+import 'package:logging/logging.dart';
 
 abstract interface class Fetcher {
   Future<String> fetch(String url, {String? contentType});
@@ -83,8 +85,66 @@ class StandardRdfGraphFetcher implements RdfGraphFetcher {
     // Parse the RDF graph from the response body
     return rdfCore.decode(
         await fetcher.fetch(iri.value, contentType: turtle.primaryMimeType),
-        contentType: turtle.primaryMimeType,
+        // Lets not assume turtle, maybe the fetcher returns some other content type - but we can still try to decode it as RDF
+        // contentType: turtle.primaryMimeType,
         documentUrl: iri.value);
+  }
+}
+
+class BootstrapRdfGraphFetcher implements RdfGraphFetcher {
+  static final _log = Logger('BootstrapOnlyRdfGraphFetcher');
+  final RdfCore rdfCore;
+  final IriTermFactory iriFactory;
+  final Iterable<String>? _bootstrapSources;
+
+  // Lazy-initialized map of document IRI to decoded RdfGraph for bootstrap sources
+  // only if we actually need to do bootstrap - to avoid unnecessary decoding at startup for
+  // subsequent startups after the first one
+  late final Map<IriTerm, RdfGraph> _bootstrapSourcesMap =
+      _buildBootstrapMap(_bootstrapSources);
+  final RdfGraphFetcher? onlineFetcher;
+
+  BootstrapRdfGraphFetcher({
+    required this.rdfCore,
+    required this.iriFactory,
+    required Iterable<String>? bootstrapSources,
+    this.onlineFetcher,
+  }) : _bootstrapSources = bootstrapSources;
+
+  Map<IriTerm, RdfGraph> _buildBootstrapMap(
+      Iterable<String>? bootstrapSources) {
+    final allSources = [...bootstrapMappings, ...?bootstrapSources];
+    final graphEntries = allSources.map((source) {
+      final graph = rdfCore.decode(source);
+      final documentIri = _extractDocumentIri(graph, iriFactory);
+      return MapEntry(documentIri, graph);
+    });
+    return Map.fromEntries(graphEntries);
+  }
+
+  static IriTerm _extractDocumentIri(
+          RdfGraph graph, IriTermFactory iriFactory) =>
+      graph.getIdentifier(Mc.DocumentMapping).getDocumentIri(iriFactory);
+
+  @override
+  Future<RdfGraph> fetch(IriTerm iri) async {
+    final documentIri = iri.getDocumentIri(iriFactory);
+    final bootstrapContent = _bootstrapSourcesMap[documentIri];
+    if (bootstrapContent == null) {
+      if (onlineFetcher != null) {
+        try {
+          _log.info(
+              'No bootstrap mapping for ${documentIri.value}, attempting online fetch');
+          return await onlineFetcher!.fetch(iri);
+        } catch (e) {
+          // ignore and fall back to error below
+          throw Exception(
+              'No bootstrap mapping for ${documentIri.value} and online fetch failed: $e');
+        }
+      }
+      throw Exception('No bootstrap mapping for ${documentIri.value}');
+    }
+    return bootstrapContent;
   }
 }
 

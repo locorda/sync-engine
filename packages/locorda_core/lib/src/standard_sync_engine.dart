@@ -5,7 +5,6 @@ import 'dart:async';
 
 import 'package:http/http.dart' as http;
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_core/src/backend/perflog_backend.dart';
 import 'package:locorda_core/src/crdt/crdt_types.dart';
 import 'package:locorda_core/src/crdt_document_manager.dart';
 import 'package:locorda_core/src/hlc_service.dart';
@@ -32,8 +31,8 @@ import 'package:locorda_core/src/sync/standard_sync_manager.dart';
 import 'package:locorda_core/src/sync/sync_function.dart';
 import 'package:locorda_core/src/util/build_effective_config.dart';
 import 'package:locorda_core/src/util/retry.dart';
-import 'package:logging/logging.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart';
 
 final _log = Logger('StandardSyncEngine');
@@ -217,6 +216,7 @@ class StandardSyncEngine implements SyncEngine {
     RdfCore? rdfCore,
     http.Client? httpClient,
     Fetcher? fetcher,
+    Iterable<String>? mappingBootstrapSources,
   }) async {
     rdfCore ??= RdfCore.withStandardCodecs();
     httpClient ??= http.Client();
@@ -257,14 +257,30 @@ class StandardSyncEngine implements SyncEngine {
     );
     final crdtTypeRegistry = CrdtTypeRegistry.forStandardTypes();
 
-    // TODO: the HttpRdfGraphFetcher should be db-cached (ideally with initialization from deployment and etag)
+    final onlineLoader = StandardMergeContractLoader(
+      RecursiveRdfLoader(
+          fetcher: StandardRdfGraphFetcher(fetcher: fetcher, rdfCore: rdfCore),
+          iriFactory: iriFactory),
+      crdtTypeRegistry,
+    );
+
+    final bootstrapLoader = StandardMergeContractLoader(
+        RecursiveRdfLoader(
+            fetcher: BootstrapRdfGraphFetcher(
+              rdfCore: rdfCore,
+              iriFactory: iriFactory,
+              bootstrapSources: mappingBootstrapSources,
+              onlineFetcher:
+                  StandardRdfGraphFetcher(fetcher: fetcher, rdfCore: rdfCore),
+            ),
+            iriFactory: iriFactory),
+        crdtTypeRegistry);
+
+    // TODO: the HttpRdfGraphFetcher should be db-cached (storage can optionally implement MergeContractCache which can be used here for persistent caching)
     final mergeContractLoader = CachingMergeContractLoader(
-        StandardMergeContractLoader(
-            RecursiveRdfLoader(
-                fetcher:
-                    StandardRdfGraphFetcher(fetcher: fetcher, rdfCore: rdfCore),
-                iriFactory: iriFactory),
-            crdtTypeRegistry));
+      onlineLoader,
+      bootstrapInner: bootstrapLoader,
+    );
 
     final shardManager = const ShardManager();
 

@@ -1,0 +1,14 @@
+name: locorda_mapping_bootstrap_generator
+description: Build-time generator for embedding CRDT mapping TTL files.
+version: 0.1.0-dev
+resolution: workspace
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  build: ^4.0.0
+  glob: ^2.1.2
+  path: ^1.9.0
+
