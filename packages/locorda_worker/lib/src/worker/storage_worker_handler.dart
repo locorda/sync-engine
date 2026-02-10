@@ -34,6 +34,11 @@ import 'package:locorda_worker/worker.dart';
 /// Implementations create and configure the local storage backend
 /// (typically Drift/SQLite) that provides offline-first capabilities.
 abstract class StorageWorkerHandler {
+  /// Stable identifier used to match main/worker handler instances.
+  ///
+  /// Must be unique among storage handlers available in the worker.
+  String get id;
+
   /// Creates a storage instance for the worker thread.
   ///
   /// Called once during worker initialization. The [config] provides

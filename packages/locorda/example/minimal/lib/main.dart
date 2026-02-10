@@ -13,6 +13,11 @@ import 'worker.dart';
 // InMemoryStorage doesn't need plugins, just an empty handler
 class InMemoryStorageMainHandler extends StorageMainHandler {
   @override
+  final String id;
+
+  InMemoryStorageMainHandler({this.id = 'in_memory'});
+
+  @override
   List<MainHandlerFactory> create() => [];
 }
 

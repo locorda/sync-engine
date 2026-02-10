@@ -29,6 +29,11 @@ import 'main_handler.dart';
 /// Provides worker thread connector factories for communicating storage
 /// configuration from main thread to worker thread.
 abstract class StorageMainHandler {
+  /// Stable identifier used to match main/worker handler instances.
+  ///
+  /// Must match the worker-side storage handler id.
+  String get id;
+
   /// Creates worker connector factories for storage configuration.
   ///
   /// Returns a list of factories that create plugins for bridging
