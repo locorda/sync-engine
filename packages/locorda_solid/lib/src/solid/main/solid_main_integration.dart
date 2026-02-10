@@ -44,11 +44,13 @@ class SolidMainIntegration implements RemoteIntegration {
   final SolidProviderService _providerService;
   final SolidConfig _config;
   late final SolidAuthBridge _authBridge;
+  final String id;
 
   SolidMainIntegration._({
     required SolidAuth solidAuth,
     SolidProviderService? providerService,
     SolidConfig config = const SolidConfig(),
+    this.id = 'solid',
   })  : _solidAuth = solidAuth,
         _providerService =
             providerService ?? const DefaultSolidProviderService(),
@@ -63,6 +65,7 @@ class SolidMainIntegration implements RemoteIntegration {
     SolidAuthSettings? settings,
     SolidProviderService? providerService,
     OidcStore? store,
+    String id = 'solid',
   }) async {
     final solidAuth = SolidAuth(
       oidcClientId: oidcClientId,
@@ -77,11 +80,9 @@ class SolidMainIntegration implements RemoteIntegration {
       solidAuth: solidAuth,
       providerService: providerService,
       config: config,
+      id: id,
     );
   }
-
-  @override
-  String get id => 'solid';
 
   @override
   String get displayName => 'Solid Pod';
@@ -96,8 +97,8 @@ class SolidMainIntegration implements RemoteIntegration {
 
   @override
   List<MainHandlerFactory> get workerConnectors => [
-        SolidConfigConnector.sender(_config),
-        SolidAuthConnector.sender(_solidAuth),
+        SolidConfigConnector.sender(_config, id),
+        SolidAuthConnector.sender(_solidAuth, id),
       ];
 
   @override

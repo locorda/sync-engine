@@ -29,6 +29,7 @@ class SolidWorkerHandler implements RemoteWorkerHandler {
   final http.Client _httpClient;
   final String _contentType;
   final String _datasetContentType;
+  final String id;
 
   SolidWorkerHandler({
     RdfCore? rdfCore,
@@ -36,6 +37,7 @@ class SolidWorkerHandler implements RemoteWorkerHandler {
     http.Client? httpClient,
     String? contentType,
     String? datasetContentType,
+    this.id = 'solid',
   })  : _rdfCore = rdfCore ??
             RdfCore.withStandardCodecs(
                 iriTermFactory: iriTermFactory ?? IriTerm.validated),
@@ -43,16 +45,14 @@ class SolidWorkerHandler implements RemoteWorkerHandler {
         _httpClient = httpClient ?? http.Client(),
         _contentType = contentType ?? turtle.primaryMimeType,
         _datasetContentType = datasetContentType ?? trig.primaryMimeType;
-  @override
-  String get id => 'solid';
 
   @override
   Future<Backend> createBackend(
       WorkerHandlerContext context, SyncEngineConfig config) async {
-    final solidConfig = await SolidConfigConnector.receiveConfig(context);
+    final solidConfig = await SolidConfigConnector.receiveConfig(context, id);
 
     final backend = SolidBackend(
-      auth: SolidAuthConnector.receiver(context),
+      auth: SolidAuthConnector.receiver(context, id),
       rdfCore: _rdfCore,
       iriTermFactory: _iriTermFactory,
       httpClient: _httpClient,

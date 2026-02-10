@@ -54,12 +54,12 @@ class SolidAuthConnector {
   ///
   /// Pass the main thread's [solidAuth] instance. The returned factory will be
   /// called by the worker framework with the [MainHandlerContext].
-  static MainHandlerFactory sender(SolidAuth solidAuth) {
+  static MainHandlerFactory sender(SolidAuth solidAuth, String id) {
     return (MainHandlerContext context) {
       return SolidAuthSender(
         solidAuth: solidAuth,
         workerHandle:
-            context.createChannel('locorda_solid_auth_worker/solid_auth'),
+            context.createChannel('locorda_solid_auth_worker/$id/solid_auth'),
       );
     };
   }

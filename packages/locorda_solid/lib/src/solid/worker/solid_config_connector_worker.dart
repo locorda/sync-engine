@@ -9,9 +9,10 @@ import 'worker_solid_config_receiver.dart';
 /// Worker-side config connector (Pure Dart).
 class SolidConfigConnector {
   /// Receives SolidConfig from main thread.
-  static Future<SolidConfig> receiveConfig(WorkerHandlerContext context) {
+  static Future<SolidConfig> receiveConfig(
+      WorkerHandlerContext context, String id) {
     final receiver = WorkerSolidConfigReceiver(
-      context.createChannel('locorda_solid/solid_config'),
+      context.createChannel('locorda_solid/$id/solid_config'),
     );
     return receiver.getConfig();
   }
