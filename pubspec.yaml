@@ -14,6 +14,7 @@ workspace:
   - packages/locorda_flutter_core
   - packages/locorda_flutter
   - packages/locorda_annotations
+  - packages/locorda_dev
   - packages/locorda_builder
   - packages/locorda_mapping_bootstrap_generator
   - packages/locorda_core

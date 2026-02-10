@@ -1,0 +1,16 @@
+builders:
+  # Meta builder that triggers all Locorda builders via applies_builders.
+  locorda_dev:
+    import: "package:locorda_dev/builder.dart"
+    builder_factories: ["locordaDevBuilder"]
+    build_extensions:
+      pubspec.yaml:
+        - .locorda_dev
+    auto_apply: dependents
+    build_to: cache
+    applies_builders:
+      - locorda_mapping_bootstrap_generator:mapping_bootstrap
+      - locorda_rdf_mapper_generator:cache_builder
+      - locorda_rdf_mapper_generator:source_builder
+      - locorda_rdf_mapper_generator:init_file_builder
+      - locorda_builder:web_worker

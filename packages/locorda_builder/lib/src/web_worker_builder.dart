@@ -13,6 +13,8 @@ import 'package:path/path.dart' as p;
 /// - Uses `dart compile js` with production optimizations
 /// - Generates source maps for debugging
 /// - Supports watch mode for incremental rebuilds
+/// - Materializes same-package `*.g.dart` imports to the filesystem before
+///   invoking the compiler
 ///
 /// ## Compilation Options
 ///
@@ -51,16 +53,27 @@ class WebWorkerBuilder implements Builder {
     final stopwatch = Stopwatch()..start();
 
     // Read the worker source (validates it exists and triggers rebuild on changes)
-    await buildStep.readAsString(inputId);
+    final workerSource = await buildStep.readAsString(inputId);
 
     // Create temporary directory for compilation output
     final tempDir = await Directory.systemTemp.createTemp('worker_build_');
     final tempOutputPath = p.join(tempDir.path, 'worker.dart.js');
 
     try {
-      // Get absolute path to input file
-      // Note: We need to resolve the actual file path from the AssetId
-      final inputPath = inputId.path;
+      // Resolve package root so the compiler can see generated source outputs.
+      final packageRoot = await _resolvePackageRoot(buildStep, inputId);
+      final inputPath = p.join(packageRoot, inputId.path);
+
+      final generatedImports =
+          _collectGeneratedImports(workerSource, inputId.package, inputId.path);
+      for (final assetPath in generatedImports) {
+        await _materializeAsset(
+          buildStep,
+          packageRoot,
+          assetPath,
+          inputId,
+        );
+      }
 
       // Run dart compile js with production flags
       final result = await Process.run(
@@ -74,6 +87,7 @@ class WebWorkerBuilder implements Builder {
           inputPath,
         ],
         runInShell: true,
+        workingDirectory: packageRoot,
       );
 
       if (result.exitCode != 0) {
@@ -129,6 +143,102 @@ class WebWorkerBuilder implements Builder {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  Future<String> _resolvePackageRoot(
+      BuildStep buildStep, AssetId inputId) async {
+    final packageConfig = await buildStep.packageConfig;
+    final package = packageConfig.packages.firstWhere(
+      (pkg) => pkg.name == inputId.package,
+      orElse: () => throw StateError(
+        'Package not found in config: ${inputId.package}',
+      ),
+    );
+
+    if (package.root.scheme == 'file') {
+      return p.fromUri(package.root);
+    }
+
+    var current = Directory.current;
+    while (true) {
+      final pubspec = File(p.join(current.path, 'pubspec.yaml'));
+      if (await pubspec.exists()) {
+        final content = await pubspec.readAsString();
+        final match = RegExp(
+          r'^name:\s*([A-Za-z0-9_\-]+)\s*$',
+          multiLine: true,
+        ).firstMatch(content);
+        if (match?.group(1) == inputId.package) {
+          return current.path;
+        }
+      }
+      final parent = current.parent;
+      if (parent.path == current.path) {
+        break;
+      }
+      current = parent;
+    }
+
+    throw StateError(
+      'Unable to resolve package root for ${inputId.package} '
+      '(package root uri: ${package.root})',
+    );
+  }
+
+  Future<void> _materializeAsset(
+    BuildStep buildStep,
+    String packageRoot,
+    String assetPath,
+    AssetId inputId,
+  ) async {
+    final assetId = AssetId(inputId.package, assetPath);
+    final content = await buildStep.readAsString(assetId);
+    final targetFile = File(p.join(packageRoot, assetPath));
+    if (await targetFile.exists()) {
+      return;
+    }
+
+    await targetFile.parent.create(recursive: true);
+    await targetFile.writeAsString(content);
+  }
+
+  Set<String> _collectGeneratedImports(
+    String source,
+    String packageName,
+    String inputPath,
+  ) {
+    final result = <String>{};
+    final importRegex = RegExp("import\\s+['\\\"]([^'\\\"]+)['\\\"]");
+    for (final match in importRegex.allMatches(source)) {
+      final rawImport = match.group(1);
+      if (rawImport == null || !rawImport.endsWith('.g.dart')) {
+        continue;
+      }
+
+      if (rawImport.startsWith('package:')) {
+        final withoutScheme = rawImport.substring('package:'.length);
+        final parts = withoutScheme.split('/');
+        if (parts.isEmpty || parts.first != packageName) {
+          continue;
+        }
+        final relativePath = parts.skip(1).join('/');
+        if (relativePath.isEmpty) {
+          continue;
+        }
+        result.add(p.join('lib', relativePath));
+        continue;
+      }
+
+      if (rawImport.startsWith('dart:') || rawImport.startsWith('asset:')) {
+        continue;
+      }
+
+      final resolved = p.normalize(p.join(p.dirname(inputPath), rawImport));
+      if (p.isWithin('lib', resolved) || resolved.startsWith('lib/')) {
+        result.add(resolved);
+      }
+    }
+    return result;
   }
 }
 

@@ -72,7 +72,6 @@ class MappingBootstrapBuilder implements Builder {
 }
 
 List<String>? _parseMappingRoots(BuilderOptions options) {
-  log.warning('options for mapping bootstrap builder: ${options.config}');
   final roots = options.config['mapping_roots'];
   if (roots is List) {
     final parsed = roots.whereType<String>().toList();

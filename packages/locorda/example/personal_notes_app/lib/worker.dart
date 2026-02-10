@@ -12,7 +12,8 @@ library;
 import 'package:locorda/worker.dart';
 import 'package:locorda_dir/worker.dart';
 import 'package:personal_notes_app/utils/logging_setup.dart';
-import 'src/generated/mapping_bootstrap.g.dart' show bootstrapMappings;
+import 'package:personal_notes_app/src/generated/mapping_bootstrap.g.dart'
+    show bootstrapMappings;
 
 /// Worker entry point for web workers.
 ///

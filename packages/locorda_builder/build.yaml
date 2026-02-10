@@ -8,6 +8,8 @@ builders:
         - web/worker.dart.js
         - web/worker.dart.js.map
     auto_apply: dependents
+    required_inputs:
+      - ".g.dart"
     build_to: source
     defaults:
       generate_for:

@@ -1,0 +1,25 @@
+name: locorda_dev
+description: >
+  Unified dev_dependency for all Locorda build-time tools.
+  Applies locorda builders (web worker, mapping bootstrap, RDF mapper) via build_runner.
+version: 0.1.0-dev
+resolution: workspace
+publish_to: none
+publisher: locorda.dev
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  build: ^4.0.0
+  locorda_builder: any
+  locorda_mapping_bootstrap_generator: any
+  locorda_rdf_mapper_generator: ^0.11.6
+
+dev_dependencies:
+  test: ^1.26.3
+  build_test: ^3.0.0
+
+topics:
+  - build
+  - code-generation

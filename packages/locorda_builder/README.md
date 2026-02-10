@@ -93,6 +93,10 @@ Compiles Dart worker to JavaScript with production optimizations:
 The builder uses `dart compile js` with production flags and ensures proper
 integration with build_runner by compiling to a temporary directory first.
 
+It also materializes same-package `*.g.dart` imports referenced by
+`lib/worker.dart` to the filesystem before invoking the compiler. This avoids
+cache timing issues with external filesystem tools.
+
 ## Development Workflow
 
 1. Create your worker entry point: `lib/worker.dart`

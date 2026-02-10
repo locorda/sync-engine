@@ -19823,9 +19823,10 @@
     },
     SyncStateUpdateMessage_SyncStateUpdateMessage$fromJson_closure0: function SyncStateUpdateMessage_SyncStateUpdateMessage$fromJson_closure0() {
     },
-    WorkerParams: function WorkerParams(t0, t1) {
+    WorkerParams: function WorkerParams(t0, t1, t2) {
       this.storage = t0;
       this.remotes = t1;
+      this.mappingBootstrapSources = t2;
     },
     StorageWorkerHandler: function StorageWorkerHandler() {
     },
@@ -20113,7 +20114,7 @@
               return A._asyncAwait(A.Future_wait(new A.MappedListIterable(t1, t2._eval$1("Future<Backend>(1)")._as(new A.toEngineParams_closure(value, config)), t2._eval$1("MappedListIterable<1,Future<Backend>>")), false, type$.Backend), $async$toEngineParams);
             case 4:
               // returning from await.
-              $async$returnValue = new $async$temp1.EngineParams($async$temp2, $async$result, null, null, null, null, null, null, null);
+              $async$returnValue = new $async$temp1.EngineParams($async$temp2, $async$result, null, null, null, null, null, null, wp.mappingBootstrapSources);
               // goto return
               $async$goto = 1;
               break;
@@ -25127,7 +25128,7 @@
               if (t3 == null)
                 t3 = new A.BrowserClient(A._setArrayType([], type$.JSArray_JSObject));
               t1.push(new A.GDriveWorkerHandler(A.rdf_term_IriTerm___validated_tearOff$closure(), t2, t3, "text/turtle", "application/trig"));
-              $async$returnValue = new A.WorkerParams(new A.DriftWorkerHandler(new A.LocordaDriftWebOptions(A.Uri_parse("sqlite3.wasm"), A.Uri_parse("drift_worker.js"))), t1);
+              $async$returnValue = new A.WorkerParams(new A.DriftWorkerHandler(new A.LocordaDriftWebOptions(A.Uri_parse("sqlite3.wasm"), A.Uri_parse("drift_worker.js"))), t1, B.List_VtV);
               // goto return
               $async$goto = 1;
               break;
@@ -56165,9 +56166,12 @@
   };
   A.BootstrapRdfGraphFetcher.prototype = {
     _buildBootstrapMap$1(bootstrapSources) {
-      var t1 = A.List_List$_of(B.List_E2d, type$.String),
-        t2 = A._arrayInstanceType(t1),
-        t3 = A.LinkedHashMap_LinkedHashMap$_empty(type$.IriTerm, type$.RdfGraph);
+      var t1, t2, t3;
+      type$.nullable_Iterable_String._as(bootstrapSources);
+      t1 = A.List_List$_of(B.List_E2d, type$.String);
+      B.JSArray_methods.addAll$1(t1, bootstrapSources);
+      t2 = A._arrayInstanceType(t1);
+      t3 = A.LinkedHashMap_LinkedHashMap$_empty(type$.IriTerm, type$.RdfGraph);
       t3.addEntries$1(new A.MappedListIterable(t1, t2._eval$1("MapEntry<IriTerm,RdfGraph>(1)")._as(new A.BootstrapRdfGraphFetcher__buildBootstrapMap_closure(this)), t2._eval$1("MappedListIterable<1,MapEntry<IriTerm,RdfGraph>>")));
       return t3;
     },
@@ -95812,6 +95816,7 @@
       nullable_Iterable_RdfObject: findType("Iterable<RdfObject>?"),
       nullable_Iterable_RdfPredicate: findType("Iterable<RdfPredicate>?"),
       nullable_Iterable_RdfSubject: findType("Iterable<RdfSubject>?"),
+      nullable_Iterable_String: findType("Iterable<String>?"),
       nullable_JSObject: findType("JSObject?"),
       nullable_JavaScriptFunction: findType("JavaScriptFunction?"),
       nullable_List_CrdtIndexData: findType("List<CrdtIndexData>?"),
@@ -96280,6 +96285,7 @@
     B.List_Rvs = makeConstList([B.WasmStorageImplementation_WebStorageApi_1_2_sharedIndexedDb, B.WasmStorageImplementation_WebStorageApi_1_3_unsafeIndexedDb], type$.JSArray_WasmStorageImplementation);
     B.List_TrJ = makeConstList([99, 124, 119, 123, 242, 107, 111, 197, 48, 1, 103, 43, 254, 215, 171, 118, 202, 130, 201, 125, 250, 89, 71, 240, 173, 212, 162, 175, 156, 164, 114, 192, 183, 253, 147, 38, 54, 63, 247, 204, 52, 165, 229, 241, 113, 216, 49, 21, 4, 199, 35, 195, 24, 150, 5, 154, 7, 18, 128, 226, 235, 39, 178, 117, 9, 131, 44, 26, 27, 110, 90, 160, 82, 59, 214, 179, 41, 227, 47, 132, 83, 209, 0, 237, 32, 252, 177, 91, 106, 203, 190, 57, 74, 76, 88, 207, 208, 239, 170, 251, 67, 77, 51, 133, 69, 249, 2, 127, 80, 60, 159, 168, 81, 163, 64, 143, 146, 157, 56, 245, 188, 182, 218, 33, 16, 255, 243, 210, 205, 12, 19, 236, 95, 151, 68, 23, 196, 167, 126, 61, 100, 93, 25, 115, 96, 129, 79, 220, 34, 42, 144, 136, 70, 238, 184, 20, 222, 94, 11, 219, 224, 50, 58, 10, 73, 6, 36, 92, 194, 211, 172, 98, 145, 149, 228, 121, 231, 200, 55, 109, 141, 213, 78, 169, 108, 86, 244, 234, 101, 122, 174, 8, 186, 120, 37, 46, 28, 166, 180, 198, 232, 221, 116, 31, 75, 189, 139, 138, 112, 62, 181, 102, 72, 3, 246, 14, 97, 53, 87, 185, 134, 193, 29, 158, 225, 248, 152, 17, 105, 217, 142, 148, 155, 30, 135, 233, 206, 85, 40, 223, 140, 161, 137, 13, 191, 230, 66, 104, 65, 153, 45, 15, 176, 84, 187, 22], type$.JSArray_int);
     B.List_Uwk = makeConstList([B.IriRole_0, B.IriRole_1, B.IriRole_2, B.IriRole_3, B.IriRole_4], A.findType("JSArray<IriRole>"));
+    B.List_VtV = makeConstList(['@prefix : <https://locorda.dev/example/personal_notes_app/mappings/category-v1#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix mc: <https://w3id.org/solid-crdt-sync/vocab/merge-contract#> .\n@prefix algo: <https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#> .\n@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .\n@prefix schema: <https://schema.org/> .\n@prefix pnotes: <https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#> .\n\n# CRDT Document Mapping for Notes Categories\n# Defines merge strategies for NotesCategory properties\n# TODO: generate from Dart code annotations\n\n<> a mc:DocumentMapping ;\n    rdfs:label "Notes Category CRDT Document Mapping v1" ;\n    rdfs:comment "Defines how note categories should merge when conflicts occur during sync." ;\n    mc:imports ( mappings:core-v1 ) ;\n    mc:predicateMapping ( <#settings-mappings> ) ;\n    mc:classMapping ( [\n        a mc:ClassMapping ;\n        mc:appliesToClass pnotes:NotesCategory ;\n        mc:rule\n            [ mc:predicate schema:name ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:description ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate pnotes:displaySettings ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate pnotes:archived ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:dateCreated ; algo:mergeWith algo:LWW_Register ]\n    ] ) .\n\n\n<#settings-mappings> a mc:PredicateMapping;\n  # we were a bit lazy and did not assign a RDF class IRI to CategoryDisplaySettings\n  # so we use a PredicateMapping with rules for all predicates used in that blank node\n   mc:rule\n     [ mc:predicate pnotes:categoryColor; algo:mergeWith algo:LWW_Register ], \n     [ mc:predicate pnotes:categoryIcon; algo:mergeWith algo:LWW_Register ] . \n', '@prefix : <https://locorda.dev/example/personal_notes_app/mappings/note-v1#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix mc: <https://w3id.org/solid-crdt-sync/vocab/merge-contract#> .\n@prefix algo: <https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#> .\n@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .\n@prefix schema: <https://schema.org/> .\n@prefix pnotes: <https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#> .\n\n# CRDT Document Mapping for Personal Notes\n# Defines merge strategies for PersonalNote properties\n# TODO: generate from Dart code annotations\n\n<> a mc:DocumentMapping ;\n    rdfs:label "Personal Note CRDT Document Mapping v1" ;\n    rdfs:comment "Defines how personal notes should merge when conflicts occur during sync." ;\n    mc:imports ( mappings:core-v1 ) ;\n    mc:classMapping ( [\n        a mc:ClassMapping ;\n        mc:appliesToClass pnotes:PersonalNote ;\n        mc:rule\n            [ mc:predicate schema:name ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:text ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:keywords ; algo:mergeWith algo:OR_Set ],\n            [ mc:predicate pnotes:belongsToCategory ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:dateCreated ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:dateModified ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:relatedLink ; algo:mergeWith algo:OR_Set ]\n    ] [\n       a mc:ClassMapping ;\n        mc:appliesToClass pnotes:Weblink ;\n        mc:rule\n            [ mc:predicate schema:url ; mc:isIdentifying true ; algo:mergeWith algo:Immutable ],\n            [ mc:predicate schema:name ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:description ; algo:mergeWith algo:LWW_Register ]\n    ] ) .'], type$.JSArray_String);
     B.WebStorageApi_0 = new A.WebStorageApi(0, "opfs");
     B.List_WebStorageApi_0_WebStorageApi_1 = makeConstList([B.WebStorageApi_0, B.WebStorageApi_1], A.findType("JSArray<WebStorageApi>"));
     B.C_DocumentMappingDependencyExtractor = new A.DocumentMappingDependencyExtractor();
