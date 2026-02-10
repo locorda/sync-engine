@@ -142,7 +142,10 @@ class WorkerGeneratorBuilder implements Builder {
     // Generate imports for manifests
     for (final manifest in manifests) {
       final alias = _sanitizePackageName(manifest.packageName);
-      final importPath = manifest.manifestPath;
+      // Remove 'lib/' prefix from manifest path for package imports
+      final importPath = manifest.manifestPath.startsWith('lib/')
+          ? manifest.manifestPath.substring(4)
+          : manifest.manifestPath;
       buffer.writeln(
           "import 'package:${manifest.packageName}/$importPath' as $alias;");
     }
