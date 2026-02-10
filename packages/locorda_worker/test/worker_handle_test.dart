@@ -9,7 +9,7 @@ import 'package:locorda_worker/worker.dart';
 import 'package:test/test.dart';
 
 Future<WorkerParams> _setupWorker() async =>
-    WorkerParams(storage: InMemoryStorageWorkerHandler(), remotes: []);
+  WorkerParams(storages: [InMemoryStorageWorkerHandler()], remotes: []);
 
 SyncEngineConfig _createTestConfig() => SyncEngineConfig(
       resources: [],

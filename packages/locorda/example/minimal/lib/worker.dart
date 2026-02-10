@@ -14,9 +14,9 @@ void main() {
 /// Configure SyncEngine in the worker.
 Future<WorkerParams> setupWorkerEngine() async => WorkerParams(
       // Must match main thread remotes
-      remotes: [DirWorkerHandler(id: 'local_dir')],
-      
+      remotes: [DirWorkerHandler()],
+
       // InMemoryStorage for worker
-      storage: InMemoryStorageWorkerHandler(),
+      storages: [InMemoryStorageWorkerHandler()],
     );
 // #enddocregion worker-setup

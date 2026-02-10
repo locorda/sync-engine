@@ -11,7 +11,7 @@ import 'package:http/http.dart' as http;
 typedef WorkerSetup = Future<WorkerParams> Function();
 
 class WorkerParams {
-  final StorageWorkerHandler storage;
+  final List<StorageWorkerHandler> storages;
   final List<RemoteWorkerHandler> remotes;
   final PhysicalTimestampFactory? physicalTimestampFactory;
   final InstallationIdFactory? installationIdFactory;
@@ -22,7 +22,7 @@ class WorkerParams {
   final Iterable<String>? mappingBootstrapSources;
 
   const WorkerParams({
-    required this.storage,
+    required this.storages,
     this.remotes = const [],
     this.physicalTimestampFactory,
     this.installationIdFactory,

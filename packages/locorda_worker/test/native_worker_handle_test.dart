@@ -9,7 +9,7 @@ import 'package:test/test.dart';
 Future<WorkerParams> _setupWorker() async {
   return WorkerParams(
     remotes: [],
-    storage: InMemoryStorageWorkerHandler(),
+    storages: [InMemoryStorageWorkerHandler()],
   );
 }
 
