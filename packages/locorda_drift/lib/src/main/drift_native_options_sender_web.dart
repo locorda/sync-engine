@@ -17,6 +17,7 @@ class DriftNativeOptionsSender implements MainHandler {
   const DriftNativeOptionsSender._();
 
   static MainHandlerFactory sender({
+    required String id,
     final Future<String> Function()? databasePath,
     final Future<Object> Function()? databaseDirectory,
     final Future<String?> Function()? tempDirectoryPath,

@@ -42,7 +42,8 @@ library locorda;
 export 'package:locorda_flutter_core/locorda_flutter_core.dart'
     show LocordaGraph;
 export 'package:locorda_flutter/locorda_flutter.dart' show Locorda;
-export 'package:locorda_drift/locorda_drift.dart' show DriftMainHandler;
+export 'package:locorda_drift/locorda_drift.dart'
+    show DriftMainHandler, LocordaDriftWebOptions;
 export 'package:locorda_gdrive/locorda_gdrive.dart'
     show
         GDriveMainIntegration,

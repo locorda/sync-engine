@@ -50,13 +50,7 @@ Future<WorkerParams> setupWorkerEngine() async => WorkerParams(
       ],
 
       // in main, we also configured DriftStorage as the storage
-      storages: [
-        DriftWorkerHandler(
-            web: LocordaDriftWebOptions(
-          sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-          driftWorker: Uri.parse('drift_worker.js'),
-        )),
-      ],
+      storages: [DriftWorkerHandler()],
 
       mappingBootstrapSources: bootstrapMappings,
     );

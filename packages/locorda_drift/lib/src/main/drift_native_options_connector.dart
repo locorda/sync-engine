@@ -77,11 +77,13 @@ class DriftNativeOptionsConnector {
   /// By default, uses [getApplicationDocumentsDirectory] and [getTemporaryDirectory].
   /// For testing or custom paths, provide custom provider functions.
   static MainHandlerFactory sender({
+    required String id,
     final Future<String> Function()? databasePath,
     final Future<Object> Function()? databaseDirectory,
     final Future<String?> Function()? tempDirectoryPath,
   }) =>
       DriftNativeOptionsSender.sender(
+        id: id,
         databasePath: databasePath,
         databaseDirectory: databaseDirectory,
         tempDirectoryPath: tempDirectoryPath,

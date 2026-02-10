@@ -79,8 +79,13 @@ Future<Locorda> initializeLocorda() async {
               localMirrorConfig: GDriveLocalMirrorConfig(enabled: true))),
     ],
 
-    // Provide storage - we have configured drift in setupWorkerEngine
-    storage: DriftMainHandler(),
+    // Provide storage - web options are sent to worker via connector
+    storage: DriftMainHandler(
+      webOptions: LocordaDriftWebOptions(
+        sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+        driftWorker: Uri.parse('drift_worker.js'),
+      ),
+    ),
 
     // TODO: this should be able to reference generated code, like `mapperInitializer: mapperInitializer,`
     mapperInitializer: (context) => initRdfMapper(

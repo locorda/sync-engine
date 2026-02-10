@@ -44,13 +44,14 @@ class DriftNativeOptionsSender implements MainHandler {
   /// By default, uses [getApplicationDocumentsDirectory] and [getTemporaryDirectory].
   /// For testing or custom paths, provide custom provider functions.
   static MainHandlerFactory sender({
+    required String id,
     final Future<String> Function()? databasePath,
     final Future<Object> Function()? databaseDirectory,
     final Future<String?> Function()? tempDirectoryPath,
   }) {
     return (MainHandlerContext context) {
       return DriftNativeOptionsSender._(
-        context.createChannel('locorda_drift/drift_native_options'),
+        context.createChannel('locorda_drift/$id/drift_native_options'),
         databasePath: databasePath,
         databaseDirectory: databaseDirectory,
         tempDirectoryPath: tempDirectoryPath,
