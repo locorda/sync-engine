@@ -11,6 +11,7 @@ import 'package:locorda_worker/worker_main.dart';
 import 'package:solid_auth/solid_auth.dart';
 import 'package:oidc_core/oidc_core.dart' show OidcStore;
 
+import '../shared/consts.dart';
 import 'solid_config_connector.dart';
 
 /// Main-thread [RemoteIntegration] implementation for Solid Pod backend.
@@ -50,7 +51,7 @@ class SolidMainIntegration implements RemoteIntegration {
     required SolidAuth solidAuth,
     SolidProviderService? providerService,
     SolidConfig config = const SolidConfig(),
-    this.id = 'solid',
+    this.id = solidRemoteHandlerId,
   })  : _solidAuth = solidAuth,
         _providerService =
             providerService ?? const DefaultSolidProviderService(),
@@ -65,7 +66,7 @@ class SolidMainIntegration implements RemoteIntegration {
     SolidAuthSettings? settings,
     SolidProviderService? providerService,
     OidcStore? store,
-    String id = 'solid',
+    String id = solidRemoteHandlerId,
   }) async {
     final solidAuth = SolidAuth(
       oidcClientId: oidcClientId,

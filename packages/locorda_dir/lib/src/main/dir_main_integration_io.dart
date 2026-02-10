@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_dir/src/shared/consts.dart';
 import 'package:locorda_flutter_core/locorda_flutter_core.dart';
 import 'package:locorda_worker/worker_main.dart';
 import 'package:path_provider/path_provider.dart';
@@ -51,7 +52,7 @@ class DirMainIntegration implements RemoteIntegration {
   static Future<DirMainIntegration> create({
     String appName = 'locorda',
     bool initiallyEnabled = false,
-    String id = 'local_dir',
+    String id = directoryRemoteHandlerId,
     String displayName = 'Local Directory',
   }) async {
     final syncPath = await _getSyncDirectoryPath(appName, id);

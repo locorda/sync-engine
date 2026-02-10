@@ -1,12 +1,12 @@
 library;
 
-import 'package:locorda_dir/src/shared/consts.dart';
+import 'package:locorda/worker.dart';
 import 'package:locorda_dir/worker.dart';
-import 'package:locorda_worker/worker.dart';
 
+const dirDatasetPerShardRemoteId = 'personal_notes_app:dir:dataset_sharded';
 final locordaAdapterManifest = [
   RemoteManifestEntry(
-    key: directoryRemoteHandlerId,
+    key: dirDatasetPerShardRemoteId,
     factory: (id) => DirWorkerHandler(id: id),
   ),
 ];

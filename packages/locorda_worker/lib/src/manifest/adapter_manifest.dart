@@ -15,7 +15,7 @@ typedef RemoteWorkerHandlerFactory = RemoteWorkerHandler Function(String id);
 
 /// Describes a worker-side handler available from an adapter package.
 sealed class AdapterManifestEntry {
-  /// Unique handler key, e.g. 'drift', 'solid', 'gdrive', 'local_dir'.
+  /// Unique handler key, e.g. 'locorda_drift:default', 'locorda_solid:default'.
   ///
   /// Corresponds to StorageWorkerHandler.id / RemoteWorkerHandler.id.
   final String key;

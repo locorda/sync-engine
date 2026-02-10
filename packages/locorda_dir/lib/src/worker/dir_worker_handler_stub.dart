@@ -2,6 +2,7 @@
 library;
 
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_dir/src/shared/consts.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_worker/worker.dart';
 import 'package:rxdart/rxdart.dart';
@@ -26,6 +27,8 @@ class DirWorkerHandler implements RemoteWorkerHandler {
   static bool get isPlatformSupported => false;
 
   final String appName;
+  @override
+  final String id;
 
   DirWorkerHandler({
     this.appName = 'locorda',
@@ -34,11 +37,8 @@ class DirWorkerHandler implements RemoteWorkerHandler {
     RdfCore? rdfCore,
     IriTermFactory? iriTermFactory,
     bool useShardDatasets = false,
-    String id = 'local_dir',
+    this.id = directoryRemoteHandlerId,
   });
-
-  @override
-  String get id => 'local_dir';
 
   @override
   Future<Backend> createBackend(

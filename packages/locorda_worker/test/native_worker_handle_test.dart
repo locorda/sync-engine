@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_worker/worker.dart';
 import 'package:locorda_worker/src/main/native_worker_handle.dart';
+import 'package:locorda_worker/src/shared/consts.dart';
 import 'package:test/test.dart';
 
 Future<WorkerParams> _setupWorker() async {
@@ -24,7 +25,7 @@ void main() {
         _setupWorker,
         _createTestConfig().toJson(),
         'test-worker',
-        'in_memory',
+        inMemoryStorageHandlerId,
         const [],
         (_) async {}, // No plugins
       );
@@ -39,7 +40,7 @@ void main() {
         _setupWorker,
         _createTestConfig().toJson(),
         'test-worker',
-        'in_memory',
+        inMemoryStorageHandlerId,
         const [],
         (_) async {}, // No plugins
       );
@@ -55,7 +56,7 @@ void main() {
         _setupWorker,
         _createTestConfig().toJson(),
         'test-worker',
-        'in_memory',
+        inMemoryStorageHandlerId,
         const [],
         (_) async {}, // No plugins
       );
@@ -78,7 +79,7 @@ void main() {
         _setupWorker,
         _createTestConfig().toJson(),
         'test-worker',
-        'in_memory',
+        inMemoryStorageHandlerId,
         const [],
         (_) async {}, // No plugins
       );
@@ -92,7 +93,7 @@ void main() {
         _setupWorker,
         _createTestConfig().toJson(),
         'worker-1',
-        'in_memory',
+        inMemoryStorageHandlerId,
         const [],
         (_) async {}, // No plugins
       );
@@ -100,7 +101,7 @@ void main() {
         _setupWorker,
         _createTestConfig().toJson(),
         'worker-2',
-        'in_memory',
+        inMemoryStorageHandlerId,
         const [],
         (_) async {}, // No plugins
       );

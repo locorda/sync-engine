@@ -1,11 +1,13 @@
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_worker/worker.dart';
 
+import '../shared/consts.dart';
+
 class InMemoryStorageWorkerHandler extends StorageWorkerHandler {
   @override
   final String id;
 
-  InMemoryStorageWorkerHandler({this.id = 'in_memory'});
+  InMemoryStorageWorkerHandler({this.id = inMemoryStorageHandlerId});
 
   @override
   Future<Storage> create(

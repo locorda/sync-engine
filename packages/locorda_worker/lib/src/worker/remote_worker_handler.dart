@@ -65,7 +65,7 @@ abstract interface class RemoteWorkerHandler {
   /// Unique identifier matching the main-thread handler.
   ///
   /// Must be identical to [RemoteMainHandler.id] for the same backend.
-  /// Examples: 'solid', 'gdrive'
+  /// Examples: 'locorda_solid:default', 'locorda_gdrive:default'
   String get id;
 
   /// Creates a backend instance for this remote handler.

@@ -7,6 +7,7 @@ import 'package:locorda_flutter_core/locorda_flutter_core.dart';
 import 'package:locorda_worker/worker_main.dart';
 
 import '../gdrive_auth.dart';
+import '../shared/consts.dart';
 import '../shared/gdrive_config.dart';
 import '../ui/gdrive_login_screen.dart';
 import 'gdrive_auth_connector.dart';
@@ -59,7 +60,7 @@ class GDriveMainIntegration implements RemoteIntegration {
   static Future<GDriveMainIntegration> create({
     GDriveConfig config = const GDriveConfig(),
     String? clientId,
-    String id = 'gdrive',
+    String id = gDriveRemoteHandlerId,
     String displayName = 'Google Drive',
   }) async {
     final auth = await GDriveAuth.create(

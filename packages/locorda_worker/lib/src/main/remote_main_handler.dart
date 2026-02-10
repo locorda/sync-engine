@@ -52,7 +52,8 @@ import 'main_handler.dart';
 /// }
 /// ```
 abstract interface class RemoteMainHandler {
-  /// Unique identifier for this remote backend (e.g., 'solid', 'gdrive').
+  /// Unique identifier for this remote backend
+  /// (e.g., 'locorda_solid:default', 'locorda_gdrive:default').
   ///
   /// Must match [RemoteWorkerHandler.id] of the corresponding worker-side handler.
   /// Used for validation and routing between main and worker threads.

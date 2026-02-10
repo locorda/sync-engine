@@ -7,6 +7,7 @@ import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_worker/worker.dart';
 
 import '../gdrive_backend.dart';
+import '../shared/consts.dart';
 import 'gdrive_auth_connector_worker.dart';
 
 /// Worker-thread [RemoteWorkerHandler] implementation for Google Drive backend.
@@ -50,7 +51,7 @@ class GDriveWorkerHandler implements RemoteWorkerHandler {
     http.Client? httpClient,
     String? contentType,
     String? datasetContentType,
-    this.id = 'gdrive',
+    this.id = gDriveRemoteHandlerId,
   })  : _iriTermFactory = iriTermFactory ?? IriTerm.validated,
         _rdfCore = rdfCore ??
             RdfCore.withStandardCodecs(
@@ -73,7 +74,6 @@ class GDriveWorkerHandler implements RemoteWorkerHandler {
       httpClient: _httpClient,
       contentType: _contentType,
       datasetContentType: _datasetContentType,
-      
     );
   }
 }

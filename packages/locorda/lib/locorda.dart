@@ -84,7 +84,12 @@ export 'package:locorda_ui/locorda_ui.dart'
         UiAdapterRegistry,
         SyncRefreshIndicator;
 export 'package:locorda_worker/worker_main.dart'
-    show RemoteMainHandler, StorageMainHandler, MainHandler, MainHandlerFactory;
+    show
+        RemoteMainHandler,
+        StorageMainHandler,
+        MainHandler,
+        MainHandlerFactory,
+        InMemoryStorageMainHandler;
 export 'package:locorda_annotations/locorda_annotations.dart'
     show
         CrdtImmutable,

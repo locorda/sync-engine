@@ -3,6 +3,7 @@ import 'package:locorda_worker/worker.dart';
 
 import '../drift_options.dart' show LocordaDriftWebOptions;
 import '../drift_storage.dart' show DriftStorage;
+import '../shared/consts.dart';
 import 'drift_native_options_connector_worker.dart';
 
 export '../drift_options.dart' show LocordaDriftWebOptions;
@@ -13,7 +14,9 @@ class DriftWorkerHandler extends StorageWorkerHandler {
   final LocordaDriftWebOptions? _web;
   final bool _native;
   DriftWorkerHandler(
-      {this.id = 'drift', LocordaDriftWebOptions? web, bool native = true})
+      {this.id = driftStorageHandlerId,
+      LocordaDriftWebOptions? web,
+      bool native = true})
       : _web = web,
         _native = native;
 

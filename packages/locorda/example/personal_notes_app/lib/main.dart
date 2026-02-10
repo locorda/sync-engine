@@ -19,6 +19,7 @@ import 'package:personal_notes_app/models/category.dart';
 import 'package:personal_notes_app/models/note.dart';
 import 'package:personal_notes_app/models/note_group_key.dart';
 import 'package:personal_notes_app/models/note_index_entry.dart';
+import 'package:personal_notes_app/src/locorda_adapter_registry.manifest.dart';
 import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
 import 'package:personal_notes_app/worker.dart';
 
@@ -57,10 +58,10 @@ Future<Locorda> initializeLocorda() async {
     // Provide remotes - those must be configured correspondingly in setupWorkerEngine as well
     remotes: [
       if (DirMainIntegration.isPlatformSupported) ...[
+        await DirMainIntegration.create(),
         await DirMainIntegration.create(
-            id: 'local_dir', displayName: 'Local Directory'),
-        await DirMainIntegration.create(
-            id: 'local_dir_sd', displayName: 'Local Directory (Sharded)'),
+            id: dirDatasetPerShardRemoteId,
+            displayName: 'Local Directory (Sharded)'),
       ],
       await SolidMainIntegration.create(
           // SECURITY: This example demonstrates secure redirect URI configuration.

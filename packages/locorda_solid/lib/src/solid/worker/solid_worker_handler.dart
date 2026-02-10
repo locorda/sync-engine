@@ -8,6 +8,7 @@ import 'package:locorda_solid_auth_worker/worker.dart';
 import 'package:locorda_worker/worker.dart';
 import 'package:http/http.dart' as http;
 
+import '../shared/consts.dart';
 import 'solid_config_connector_worker.dart';
 
 /// Worker-thread [RemoteWorkerHandler] implementation for Solid Pod backend.
@@ -37,7 +38,7 @@ class SolidWorkerHandler implements RemoteWorkerHandler {
     http.Client? httpClient,
     String? contentType,
     String? datasetContentType,
-    this.id = 'solid',
+    this.id = solidRemoteHandlerId,
   })  : _rdfCore = rdfCore ??
             RdfCore.withStandardCodecs(
                 iriTermFactory: iriTermFactory ?? IriTerm.validated),

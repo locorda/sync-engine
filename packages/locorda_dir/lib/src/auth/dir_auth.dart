@@ -8,6 +8,7 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../shared/consts.dart';
 import 'dir_auth_provider.dart';
 
 final _log = Logger('DirAuth');
@@ -59,9 +60,9 @@ class DirAuth implements DirAuthProvider {
   }
 
   static String _getKPathKey(String id) =>
-      id == 'local_dir' ? _kPathKey : '${_kPathKey}_$id';
+      id == directoryRemoteHandlerId ? _kPathKey : '${_kPathKey}_$id';
   static String _getKEnabledKey(String id) =>
-      id == 'local_dir' ? _kEnabledKey : '${_kEnabledKey}_$id';
+      id == directoryRemoteHandlerId ? _kEnabledKey : '${_kEnabledKey}_$id';
 
   /// Creates DirAuth with initial state.
   ///
@@ -75,7 +76,7 @@ class DirAuth implements DirAuthProvider {
   static Future<DirAuth> create({
     required String syncDirectoryPath,
     bool initiallyEnabled = false,
-    String id = 'local_dir',
+    String id = directoryRemoteHandlerId,
   }) async {
     final prefs = await SharedPreferences.getInstance();
 

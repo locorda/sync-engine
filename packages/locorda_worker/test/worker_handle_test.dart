@@ -5,6 +5,7 @@ import 'package:locorda_worker/src/main/locorda_worker.dart';
 import 'package:locorda_worker/src/main/locorda_worker_impl_native.dart'
     if (dart.library.html) 'package:locorda_worker/src/worker/locorda_worker_impl_web.dart'
     as impl;
+import 'package:locorda_worker/src/shared/consts.dart';
 import 'package:locorda_worker/worker.dart';
 import 'package:test/test.dart';
 
@@ -27,7 +28,7 @@ Future<LocordaWorker> _createWorker({
     config,
     jsScript,
     debugName,
-    'in_memory',
+    inMemoryStorageHandlerId,
     const [],
     (_) async {}, // No plugins
   );

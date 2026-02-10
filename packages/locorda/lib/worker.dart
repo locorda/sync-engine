@@ -4,4 +4,15 @@ export 'package:locorda_drift/worker.dart'
 export 'package:locorda_gdrive/worker.dart' show GDriveWorkerHandler;
 export 'package:locorda_solid/worker.dart' show SolidWorkerHandler;
 export 'package:locorda_worker/worker.dart'
-    show WorkerHandlerContext, WorkerParams, workerMain;
+    show
+        WorkerHandlerContext,
+        WorkerParams,
+        workerMain,
+        RemoteWorkerHandler,
+        StorageWorkerHandler,
+        StorageWorkerHandlerFactory,
+        RemoteManifestEntry,
+        StorageManifestEntry,
+        AdapterManifestEntry,
+        InMemoryStorageWorkerHandler,
+        RemoteWorkerHandlerFactory;

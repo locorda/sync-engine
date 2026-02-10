@@ -4,6 +4,7 @@ library;
 import 'dart:io';
 
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_dir/src/shared/consts.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_worker/worker.dart';
 
@@ -43,7 +44,7 @@ class DirWorkerHandler implements RemoteWorkerHandler {
       RdfCore? rdfCore,
       IriTermFactory? iriTermFactory,
       bool useShardDatasets = false,
-      this.id = 'local_dir'})
+      this.id = directoryRemoteHandlerId})
       : _rdfCore = rdfCore ??
             RdfCore.withStandardCodecs(
                 iriTermFactory: iriTermFactory ?? IriTerm.validated),

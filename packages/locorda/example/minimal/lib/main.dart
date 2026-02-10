@@ -10,17 +10,6 @@ import 'task.dart';
 import 'task_repository.dart';
 import 'worker.dart';
 
-// InMemoryStorage doesn't need plugins, just an empty handler
-class InMemoryStorageMainHandler extends StorageMainHandler {
-  @override
-  final String id;
-
-  InMemoryStorageMainHandler({this.id = 'in_memory'});
-
-  @override
-  List<MainHandlerFactory> create() => [];
-}
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MinimalTaskApp());
@@ -36,7 +25,6 @@ Future<Locorda> setupLocorda() async {
     // Local Dir for testing/debugging (not for production!)
     remotes: [
       await DirMainIntegration.create(
-        id: 'local_dir',
         displayName: 'Local Directory (Testing)',
       ),
     ],

@@ -11,6 +11,7 @@ library;
 
 import 'package:locorda/worker.dart';
 import 'package:locorda_dir/worker.dart';
+import 'package:personal_notes_app/src/locorda_adapter_registry.manifest.dart';
 import 'package:personal_notes_app/utils/logging_setup.dart';
 import 'package:personal_notes_app/src/generated/mapping_bootstrap.g.dart'
     show bootstrapMappings;
@@ -40,8 +41,9 @@ Future<WorkerParams> setupWorkerEngine() async => WorkerParams(
       // in main, we configured Solid and GDrive as remotes
       remotes: [
         if (DirWorkerHandler.isPlatformSupported) ...[
-          DirWorkerHandler(id: 'local_dir'),
-          DirWorkerHandler(id: 'local_dir_sd', useShardDatasets: true)
+          DirWorkerHandler(),
+          DirWorkerHandler(
+              id: dirDatasetPerShardRemoteId, useShardDatasets: true)
         ],
         SolidWorkerHandler(),
         GDriveWorkerHandler()
