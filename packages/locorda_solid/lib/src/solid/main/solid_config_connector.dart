@@ -14,11 +14,11 @@ class SolidConfigConnector {
   ///
   /// Pass the main thread's [config] instance. The returned factory will be
   /// called by the worker framework with the [MainHandlerContext].
-  static MainHandlerFactory sender(SolidConfig config) {
+  static MainHandlerFactory sender(SolidConfig config, String id) {
     return (MainHandlerContext context) {
       return SolidConfigSender(
         config: config,
-        workerHandle: context.createChannel('locorda_solid/solid_config'),
+        workerHandle: context.createChannel('locorda_solid/$id/solid_config'),
       );
     };
   }
