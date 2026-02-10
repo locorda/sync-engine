@@ -11,7 +11,7 @@ void main() {
     final bootstrapContent = '''@base <https://example.com/mapping#> .
 @prefix ex: <https://example.com/> .
 
-<> a ex:Thing .
+<> a <https://w3id.org/solid-crdt-sync/vocab/merge-contract#DocumentMapping> .
 ''';
 
     final fetcher = BootstrapRdfGraphFetcher(
@@ -23,7 +23,8 @@ void main() {
     final graph = await fetcher.fetch(documentIri);
     final triples = graph.findTriples(
       predicate: Rdf.type,
-      object: IriTerm.validated('https://example.com/Thing'),
+      object: IriTerm.validated(
+          'https://w3id.org/solid-crdt-sync/vocab/merge-contract#DocumentMapping'),
     );
     expect(triples, isNotEmpty);
   });
