@@ -1,7 +1,6 @@
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_worker/worker.dart';
 
-import '../drift_options.dart' show LocordaDriftWebOptions;
 import '../drift_storage.dart' show DriftStorage;
 import '../shared/consts.dart';
 import 'drift_config_connector_worker.dart';

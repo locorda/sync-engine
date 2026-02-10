@@ -9,9 +9,4 @@ export 'package:locorda_worker/worker.dart'
         workerMain,
         RemoteWorkerHandler,
         StorageWorkerHandler,
-        StorageWorkerHandlerFactory,
-        RemoteManifestEntry,
-        StorageManifestEntry,
-        AdapterManifestEntry,
-        InMemoryStorageWorkerHandler,
-        RemoteWorkerHandlerFactory;
+        InMemoryStorageWorkerHandler;

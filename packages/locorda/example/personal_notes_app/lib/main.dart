@@ -19,7 +19,7 @@ import 'package:personal_notes_app/models/category.dart';
 import 'package:personal_notes_app/models/note.dart';
 import 'package:personal_notes_app/models/note_group_key.dart';
 import 'package:personal_notes_app/models/note_index_entry.dart';
-import 'package:personal_notes_app/src/locorda_adapter_registry.manifest.dart';
+import 'package:personal_notes_app/locorda_worker.manifest.dart';
 import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
 import 'package:personal_notes_app/worker.dart';
 

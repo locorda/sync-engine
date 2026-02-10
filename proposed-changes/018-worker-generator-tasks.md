@@ -6,7 +6,7 @@ Parent document: [018-worker-generator.md](018-worker-generator.md)
 
 Currently, users must manually write both `worker.dart` and the main-side `initLocorda()` call,
 carefully keeping handler registrations in sync. This proposal introduces a **manifest-based
-adapter registry** that allows a builder to auto-generate the worker entry point. The key
+worker setup** that allows a builder to auto-generate the worker entry point. The key
 architectural insight is that `BuildStep.findAssets` only searches the current package, so
 discovery of manifests across transitive dependencies must use `buildStep.packageConfig` +
 `buildStep.canRead(AssetId(...))` per package.
@@ -92,98 +92,80 @@ support multiple instances (e.g., Dir with different IDs).
 
 ## Phase 2: Manifest Format
 
-### Task 2.1: Define the manifest Dart contract
+### Task 2.1: Define the manifest Dart format
 
-**New file**: `packages/locorda_worker/lib/src/manifest/adapter_manifest.dart` (or in `locorda_worker/worker.dart` exports)
+Each adapter package provides a public manifest file with concrete handler
+instances. The handlers remain lightweight until `toEngineParams()` selects
+the active IDs.
 
-Define types that a manifest file will use:
+**New file**: `lib/locorda_worker.manifest.dart`
 
 ```dart
-/// Describes a worker-side handler available from an adapter package.
-///
-/// Manifest files use these to declare what handlers they provide.
-/// The aggregator builder collects them across all dependencies.
-class AdapterManifestEntry {
-  /// Unique handler key, e.g. 'drift', 'solid', 'gdrive', 'local_dir'.
-  /// Corresponds to StorageWorkerHandler.id / RemoteWorkerHandler.id.
-  final String key;
+import 'package:locorda_worker/worker.dart';
 
-  /// Whether this is a storage or remote handler.
-  final AdapterKind kind;
+final storages = <StorageWorkerHandler>[
+  // DriftWorkerHandler(id: driftStorageHandlerId),
+];
 
-  /// Factory that creates a worker handler instance for a given id.
-  /// The id parameter allows multiple instances of the same handler type.
-  final WorkerHandlerFactory factory;
-
-  const AdapterManifestEntry({
-    required this.key,
-    required this.kind,
-    required this.factory,
-  });
-}
-
-enum AdapterKind { storage, remote }
-
-/// Factory signature: given an instance id, create the handler.
-/// The id may differ from the key (e.g., key='local_dir', id='local_dir_sd').
-typedef StorageWorkerHandlerFactory = StorageWorkerHandler Function(String id);
-typedef RemoteWorkerHandlerFactory = RemoteWorkerHandler Function(String id);
+final remotes = <RemoteWorkerHandler>[
+  // SolidWorkerHandler(id: solidRemoteHandlerId),
+];
 ```
-
-**Open question**: Should the factory accept additional config (Map) or only the id?
-If all config comes via main→worker connectors, only the id may suffice.
-But DriftWorkerHandler currently takes `web: LocordaDriftWebOptions(...)` in its constructor —
-this needs to come from main as well (see Task 2.3).
 
 ### Task 2.2: Create manifest files in existing adapter packages
 
 Each adapter package provides a hand-written manifest at:
-`lib/src/locorda_adapter_registry.manifest.dart`
+`lib/locorda_worker.manifest.dart`
 
-**locorda_drift** — `packages/locorda_drift/lib/src/locorda_adapter_registry.manifest.dart`:
+**locorda_drift** — `packages/locorda_drift/lib/locorda_worker.manifest.dart`:
 ```dart
+import 'package:locorda_drift/src/shared/consts.dart';
+import 'package:locorda_drift/worker.dart';
 import 'package:locorda_worker/worker.dart';
-import '../worker/drift_worker_handler.dart';
 
-final locordaAdapterManifest = [
-  AdapterManifestEntry(
-    key: 'drift',
-    kind: AdapterKind.storage,
-    factory: (id) => DriftWorkerHandler(id: id),
-  ),
+final storages = <StorageWorkerHandler>[
+  DriftWorkerHandler(id: driftStorageHandlerId),
+];
+
+final remotes = <RemoteWorkerHandler>[];
+```
+
+**locorda_solid** — `packages/locorda_solid/lib/locorda_worker.manifest.dart`:
+```dart
+import 'package:locorda_solid/src/solid/shared/consts.dart';
+import 'package:locorda_solid/worker.dart';
+import 'package:locorda_worker/worker.dart';
+
+final storages = <StorageWorkerHandler>[];
+
+final remotes = <RemoteWorkerHandler>[
+  SolidWorkerHandler(id: solidRemoteHandlerId),
 ];
 ```
 
-**locorda_solid** — `packages/locorda_solid/lib/src/locorda_adapter_registry.manifest.dart`:
+**locorda_gdrive** — `packages/locorda_gdrive/lib/locorda_worker.manifest.dart`:
 ```dart
-final locordaAdapterManifest = [
-  AdapterManifestEntry(
-    key: 'solid',
-    kind: AdapterKind.remote,
-    factory: (id) => SolidWorkerHandler(id: id),
-  ),
+import 'package:locorda_gdrive/src/shared/consts.dart';
+import 'package:locorda_gdrive/worker.dart';
+import 'package:locorda_worker/worker.dart';
+
+final storages = <StorageWorkerHandler>[];
+
+final remotes = <RemoteWorkerHandler>[
+  GDriveWorkerHandler(id: gDriveRemoteHandlerId),
 ];
 ```
 
-**locorda_gdrive** — `packages/locorda_gdrive/lib/src/locorda_adapter_registry.manifest.dart`:
+**locorda_dir** — `packages/locorda_dir/lib/locorda_worker.manifest.dart`:
 ```dart
-final locordaAdapterManifest = [
-  AdapterManifestEntry(
-    key: 'gdrive',
-    kind: AdapterKind.remote,
-    factory: (id) => GDriveWorkerHandler(id: id),
-  ),
-];
-```
+import 'package:locorda_dir/src/shared/consts.dart';
+import 'package:locorda_dir/worker.dart';
+import 'package:locorda_worker/worker.dart';
 
-**locorda_dir** — `packages/locorda_dir/lib/src/locorda_adapter_registry.manifest.dart`:
-```dart
-final locordaAdapterManifest = [
-  AdapterManifestEntry(
-    key: 'local_dir',
-    kind: AdapterKind.remote,
-    factory: (id) => DirWorkerHandler(id: id),
-  ),
+final storages = <StorageWorkerHandler>[];
+
+final remotes = <RemoteWorkerHandler>[
+  DirWorkerHandler(id: directoryRemoteHandlerId),
 ];
 ```
 
@@ -200,30 +182,29 @@ constructor in worker.dart. For the generated worker to work, this config must c
 
 ---
 
-## Phase 3: Registry Aggregator Builder
+## Phase 3: Worker Setup Builder
 
-### Task 3.1: Create the aggregator builder
+### Task 3.1: Create the worker setup builder
 
 **New package or in `locorda_builder`**: Add a builder that:
 
 1. Triggers on `pubspec.yaml` (like mapping_bootstrap).
 2. Reads `buildStep.packageConfig` to list all packages.
-3. For each package, probes `buildStep.canRead(AssetId(pkg, 'lib/src/locorda_adapter_registry.manifest.dart'))`.
-4. Reads all found manifests.
-5. Applies `exclude_packages` filter from builder options.
-6. Generates an aggregated worker setup file.
+3. For each package, probes `buildStep.canRead(AssetId(pkg, 'lib/locorda_worker.manifest.dart'))`.
+4. Applies `exclude_packages` filter from builder options.
+5. Generates an aggregated worker setup file.
 
-**Output**: `lib/src/generated/worker_registry.g.dart` (build_to: source).
+**Output**: `lib/src/generated/worker_setup.g.dart` (build_to: source).
 
 **build.yaml** config:
 ```yaml
 builders:
-  worker_registry:
+  worker_setup:
     import: "package:locorda_builder/builder.dart"
-    builder_factories: ["workerRegistryBuilder"]
+    builder_factories: ["workerSetupBuilder"]
     build_extensions:
       pubspec.yaml:
-        - lib/src/generated/worker_registry.g.dart
+        - lib/src/generated/worker_setup.g.dart
     auto_apply: dependents
     build_to: source
     defaults:
@@ -235,90 +216,74 @@ builders:
 
 ### Task 3.2: Define the generated output format
 
-The generated `worker_registry.g.dart` should contain:
+The generated `worker_setup.g.dart` should contain:
 
 ```dart
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-import 'package:locorda_drift/src/locorda_adapter_registry.manifest.dart' as drift;
-import 'package:locorda_solid/src/locorda_adapter_registry.manifest.dart' as solid;
-import 'package:locorda_gdrive/src/locorda_adapter_registry.manifest.dart' as gdrive;
-import 'package:locorda_dir/src/locorda_adapter_registry.manifest.dart' as dir;
+import 'package:locorda_drift/locorda_worker.manifest.dart' as locorda_drift;
+import 'package:locorda_solid/locorda_worker.manifest.dart' as locorda_solid;
+import 'package:locorda_gdrive/locorda_worker.manifest.dart' as locorda_gdrive;
+import 'package:locorda_dir/locorda_worker.manifest.dart' as locorda_dir;
+import 'package:personal_notes_app/locorda_worker.manifest.dart'
+  as personal_notes_app;
 import 'package:locorda_worker/worker.dart';
-
-/// Aggregated adapter manifest from all dependencies.
-final List<AdapterManifestEntry> workerAdapterRegistry = [
-  ...drift.locordaAdapterManifest,
-  ...solid.locordaAdapterManifest,
-  ...gdrive.locordaAdapterManifest,
-  ...dir.locordaAdapterManifest,
-];
-```
-
-### Task 3.3: Implement manifest file parsing in the builder
-
-The builder needs to:
-1. Read each manifest file as a string.
-2. Extract the package name and import path.
-3. No need to parse Dart AST — just generate import + spread.
-4. The variable name is always `locordaAdapterManifest` (convention).
-
-### Task 3.4: Add to locorda_dev applies_builders
-
-**File**: `packages/locorda_dev/build.yaml`
-
-Add the registry aggregator to the meta-builder's `applies_builders` list.
-
----
-
-## Phase 4: Worker Generator
-
-### Task 4.1: Generate `worker.dart` (or a worker setup function)
-
-**New builder** (or extend existing web_worker builder):
-
-Generate `lib/src/generated/worker_setup.g.dart`:
-
-```dart
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
-import 'package:locorda_worker/worker.dart';
-import 'worker_registry.g.dart';
 import 'mapping_bootstrap.g.dart';
 
 /// Generated worker setup that registers all discovered adapters.
 ///
 /// Active handlers are selected at runtime based on IDs received from main.
 Future<WorkerParams> generatedWorkerSetup() async => WorkerParams(
-  storages: workerAdapterRegistry
-      .where((e) => e.kind == AdapterKind.storage)
-      .map((e) => e.factory(e.key) as StorageWorkerHandler)
-      .toList(),
-  remotes: workerAdapterRegistry
-      .where((e) => e.kind == AdapterKind.remote)
-      .map((e) => e.factory(e.key) as RemoteWorkerHandler)
-      .toList(),
+  storages: [
+    ...locorda_drift.storages,
+    ...locorda_solid.storages,
+    ...locorda_gdrive.storages,
+    ...locorda_dir.storages,
+    ...personal_notes_app.storages,
+  ],
+  remotes: [
+    ...locorda_drift.remotes,
+    ...locorda_solid.remotes,
+    ...locorda_gdrive.remotes,
+    ...locorda_dir.remotes,
+    ...personal_notes_app.remotes,
+  ],
   mappingBootstrapSources: bootstrapMappings,
 );
 ```
 
-**Alternative**: User still writes `worker.dart` by hand but imports the generated registry
-and setup function. This is simpler and more flexible:
+### Task 3.3: Implement manifest file parsing in the builder
+
+The builder needs to:
+1. Find all packages that expose `lib/locorda_worker.manifest.dart`.
+2. Generate imports for each package.
+3. Use `...packageAlias.storages` and `...packageAlias.remotes` for aggregation.
+
+### Task 3.4: Add to locorda_dev applies_builders
+
+**File**: `packages/locorda_dev/build.yaml`
+
+Add the worker setup builder to the meta-builder's `applies_builders` list.
+
+---
+
+## Phase 4: Worker Generator
+
+### Task 4.1: Use generated worker setup in `worker.dart`
 
 ```dart
-// user-written worker.dart
-import 'package:locorda/worker.dart';
-import 'src/generated/worker_setup.g.dart';
+// GENERATED CODE - DO NOT MODIFY BY HAND
 
-void main() {
-  workerMain(generatedWorkerSetup);
-}
+import 'package:locorda_worker/worker.dart';
+import 'src/generated/worker_setup.g.dart';
 ```
+
+The worker entry point stays minimal and delegates setup to generated code.
 
 ### Task 4.2: Handle user-written manifest for custom instances
 
 Users who need custom handler configurations (e.g., two Dir instances with different settings)
-can write their own `lib/src/locorda_adapter_registry.manifest.dart` in their app package.
+can write their own `lib/locorda_worker.manifest.dart` in their app package.
 The aggregator picks it up alongside dependency manifests.
 
 Example (in personal_notes_app):
@@ -326,16 +291,16 @@ Example (in personal_notes_app):
 import 'package:locorda_dir/worker.dart';
 import 'package:locorda_worker/worker.dart';
 
-final locordaAdapterManifest = [
-  AdapterManifestEntry(
-    key: 'local_dir_sd',
-    kind: AdapterKind.remote,
-    factory: (id) => DirWorkerHandler(id: id, useShardDatasets: true),
-  ),
+const dirDatasetPerShardRemoteId = 'personal_notes_app:dir:dataset_sharded';
+
+final storages = <StorageWorkerHandler>[];
+
+final remotes = <RemoteWorkerHandler>[
+  DirWorkerHandler(id: dirDatasetPerShardRemoteId, useShardDatasets: true),
 ];
 ```
 
-This adds `local_dir_sd` alongside the standard `local_dir` from `locorda_dir`'s own manifest.
+This adds the custom Dir instance alongside the standard one from `locorda_dir`'s manifest.
 
 ---
 
@@ -377,7 +342,7 @@ which are separate efforts.
 
 ## Phase 7: Tests
 
-### Task 7.1: Unit test registry aggregation
+### Task 7.1: Unit test worker setup aggregation
 
 - Test that the aggregator correctly discovers manifests across packages.
 - Test `exclude_packages` filtering.
@@ -405,7 +370,7 @@ Phase 1 (Tasks 1.1–1.6)   Core infrastructure: id fields, list storage, select
     ↓
 Phase 2 (Tasks 2.1–2.3)   Manifest format, adapter manifests, drift config transfer
     ↓
-Phase 3 (Tasks 3.1–3.4)   Registry aggregator builder
+Phase 3 (Tasks 3.1–3.4)   Worker setup builder
     ↓
 Phase 4 (Tasks 4.1–4.2)   Worker generator / setup function
     ↓
