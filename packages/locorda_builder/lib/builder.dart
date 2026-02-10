@@ -1,7 +1,8 @@
 /// Build-time transformations for Locorda applications.
 ///
 /// Provides builders for:
-/// - **WebWorkerBuilder**: Compiles `lib/worker.dart` to `web/worker.dart.js`
+/// - **WorkerGeneratorBuilder**: Auto-generates `lib/worker.g.dart` from manifest files
+/// - **WebWorkerBuilder**: Compiles `lib/worker.dart` or `lib/worker.g.dart` to `web/worker.dart.js`
 ///
 /// ## Usage
 ///
@@ -13,16 +14,17 @@
 ///   build_runner: ^2.4.0
 /// ```
 ///
-/// The builder is automatically applied to projects that depend on `locorda_builder`.
+/// The builders are automatically applied to projects that depend on `locorda_builder`.
 ///
 /// Run `dart run build_runner build` or use watch mode during development:
 /// `dart run build_runner watch`
 ///
 /// ## Convention over Configuration
 ///
-/// - Worker source: `lib/worker.dart`
+/// - Worker generator discovers manifests automatically and generates `lib/worker.g.dart`
+/// - Worker source: `lib/worker.dart` (manual) or `lib/worker.g.dart` (generated)
 /// - Output: `web/worker.dart.js`
-/// - No additional configuration needed
+/// - No additional configuration needed for basic usage
 ///
 /// ## Web Assets
 ///
@@ -36,3 +38,4 @@
 library;
 
 export 'src/web_worker_builder.dart';
+export 'src/worker_generator_builder.dart';

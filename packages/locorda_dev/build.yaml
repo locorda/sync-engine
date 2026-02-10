@@ -13,4 +13,5 @@ builders:
       - locorda_rdf_mapper_generator:cache_builder
       - locorda_rdf_mapper_generator:source_builder
       - locorda_rdf_mapper_generator:init_file_builder
+      - locorda_builder:worker_generator
       - locorda_builder:web_worker
