@@ -16,6 +16,8 @@ Future<LocordaWorker> createImpl(
   SyncEngineConfig config,
   String jsScript,
   String? debugName,
+  String activeStorageId,
+  List<String> activeRemoteIds,
   Future<void> Function(LocordaWorker handle) initializePlugins, {
   void onWorkerSpawn()?,
 }) {
@@ -24,6 +26,8 @@ Future<LocordaWorker> createImpl(
     workerSetup,
     config.toJson(),
     debugName,
+    activeStorageId,
+    activeRemoteIds,
     initializePlugins,
     onWorkerSpawn: onWorkerSpawn,
   );

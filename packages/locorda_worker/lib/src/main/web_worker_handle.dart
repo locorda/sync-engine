@@ -32,6 +32,8 @@ class WebWorkerHandle implements LocordaWorker {
     String jsScript,
     SyncEngineConfig config,
     String? debugName,
+    String activeStorageId,
+    List<String> activeRemoteIds,
     Future<void> Function(WebWorkerHandle handle) initializePlugins,
   ) async {
     // 1. Spawn web worker
@@ -64,7 +66,12 @@ class WebWorkerHandle implements LocordaWorker {
 
     // 3. Send config
     _log.info('Sending InitConfig to worker...');
-    handle.sendMessage({'type': 'InitConfig', 'config': config.toJson()});
+    handle.sendMessage({
+      'type': 'InitConfig',
+      'config': config.toJson(),
+      'activeStorageId': activeStorageId,
+      'activeRemoteIds': activeRemoteIds,
+    });
     _log.info('InitConfig sent');
 
     // 4. Wait for ready

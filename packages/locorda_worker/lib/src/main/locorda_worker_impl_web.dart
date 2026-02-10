@@ -16,11 +16,20 @@ Future<LocordaWorker> createImpl(
   SyncEngineConfig config,
   String jsScript,
   String? debugName,
+  String activeStorageId,
+  List<String> activeRemoteIds,
   Future<void> Function(LocordaWorker handle) initializePlugins, {
   void onWorkerSpawn()?,
 }) {
   // Note: workerSetup cannot be passed to web worker (not serializable)
   // It must be defined in the worker's JS file via workerMain()
   // workerInitializer is also handled in worker's main() on web
-  return WebWorkerHandle.create(jsScript, config, debugName, initializePlugins);
+  return WebWorkerHandle.create(
+    jsScript,
+    config,
+    debugName,
+    activeStorageId,
+    activeRemoteIds,
+    initializePlugins,
+  );
 }

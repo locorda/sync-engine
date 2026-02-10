@@ -9,7 +9,7 @@ import 'package:locorda_worker/worker.dart';
 import 'package:test/test.dart';
 
 Future<WorkerParams> _setupWorker() async =>
-  WorkerParams(storages: [InMemoryStorageWorkerHandler()], remotes: []);
+    WorkerParams(storages: [InMemoryStorageWorkerHandler()], remotes: []);
 
 SyncEngineConfig _createTestConfig() => SyncEngineConfig(
       resources: [],
@@ -27,6 +27,8 @@ Future<LocordaWorker> _createWorker({
     config,
     jsScript,
     debugName,
+    'in_memory',
+    const [],
     (_) async {}, // No plugins
   );
 }

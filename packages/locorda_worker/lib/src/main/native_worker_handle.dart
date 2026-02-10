@@ -42,6 +42,8 @@ class NativeWorkerHandle implements LocordaWorker {
     WorkerSetup workerSetup,
     Map<String, dynamic> configJson,
     String? debugName,
+    String activeStorageId,
+    List<String> activeRemoteIds,
     Future<void> Function(NativeWorkerHandle handle) initializePlugins, {
     void onWorkerSpawn()?,
   }) async {
@@ -80,7 +82,12 @@ class NativeWorkerHandle implements LocordaWorker {
     await initializePlugins(handle);
 
     // 3. Send config (triggers worker initialization)
-    handle.sendMessage({'type': 'InitConfig', 'config': configJson});
+    handle.sendMessage({
+      'type': 'InitConfig',
+      'config': configJson,
+      'activeStorageId': activeStorageId,
+      'activeRemoteIds': activeRemoteIds,
+    });
 
     // 4. Wait for ready (worker has created SyncEngine)
     await handle.messages.firstWhere((msg) => msg == 'ready');

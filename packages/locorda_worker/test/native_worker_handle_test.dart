@@ -24,6 +24,8 @@ void main() {
         _setupWorker,
         _createTestConfig().toJson(),
         'test-worker',
+        'in_memory',
+        const [],
         (_) async {}, // No plugins
       );
 
@@ -37,6 +39,8 @@ void main() {
         _setupWorker,
         _createTestConfig().toJson(),
         'test-worker',
+        'in_memory',
+        const [],
         (_) async {}, // No plugins
       );
 
@@ -51,6 +55,8 @@ void main() {
         _setupWorker,
         _createTestConfig().toJson(),
         'test-worker',
+        'in_memory',
+        const [],
         (_) async {}, // No plugins
       );
       final pluginHandle =
@@ -72,6 +78,8 @@ void main() {
         _setupWorker,
         _createTestConfig().toJson(),
         'test-worker',
+        'in_memory',
+        const [],
         (_) async {}, // No plugins
       );
 
@@ -84,12 +92,16 @@ void main() {
         _setupWorker,
         _createTestConfig().toJson(),
         'worker-1',
+        'in_memory',
+        const [],
         (_) async {}, // No plugins
       );
       final worker2 = await NativeWorkerHandle.create(
         _setupWorker,
         _createTestConfig().toJson(),
         'worker-2',
+        'in_memory',
+        const [],
         (_) async {}, // No plugins
       );
 

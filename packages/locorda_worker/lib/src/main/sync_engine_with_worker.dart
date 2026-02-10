@@ -24,6 +24,9 @@ class SyncEngineWithWorker {
       required String jsScript,
       String? debugName,
       void Function()? onWorkerSpawn}) async {
+    final activeStorageId = storage.id;
+    final activeRemoteIds = remotes.map((remote) => remote.id).toList();
+
     // Extract worker connectors from storage plugins and merge with other plugins
     final List<MainHandlerFactory> allPluginFactories = [
       ...remotes.expand((r) => r.workerConnectors),
@@ -42,6 +45,8 @@ class SyncEngineWithWorker {
       jsScript: jsScript,
       debugName: debugName,
       onWorkerSpawn: onWorkerSpawn,
+      activeStorageId: activeStorageId,
+      activeRemoteIds: activeRemoteIds,
       pluginFactories: allPluginFactories,
     );
 
@@ -66,6 +71,8 @@ class SyncEngineWithWorker {
     required SyncEngineConfig config,
     required String jsScript,
     required List<MainHandlerFactory> pluginFactories,
+    required String activeStorageId,
+    required List<String> activeRemoteIds,
     String? debugName,
     void onWorkerSpawn()?,
   }) async {
@@ -76,6 +83,8 @@ class SyncEngineWithWorker {
       config,
       jsScript,
       debugName,
+      activeStorageId,
+      activeRemoteIds,
       (handle) async {
         final context = handle.mainHandlerContext;
         // Initialize all plugins with the handle

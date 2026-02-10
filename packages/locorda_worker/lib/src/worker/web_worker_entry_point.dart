@@ -170,12 +170,18 @@ Future<void> _handleWorkerMessage(
 
       // Parse config (recursively convert JsLinkedHashMaps)
       final configMap = data['config'] as Map<String, dynamic>;
+        final activeStorageId = data['activeStorageId'] as String?;
+        final activeRemoteList = data['activeRemoteIds'] as List?;
+        final activeRemoteIds =
+          activeRemoteList?.map((id) => id.toString()).toList();
       final config = SyncEngineConfig.fromJson(
           configMap); // Create context and initialize sync system
       final newContext = WorkerContext(WebWorkerSender(), channel);
       final workerParams = await workerSetup();
       final engineParams =
-          await toEngineParams(workerParams, newContext, config);
+          await toEngineParams(workerParams, newContext, config,
+            activeStorageId: activeStorageId,
+            activeRemoteIds: activeRemoteIds);
       final syncSystem =
           await SyncEngine.create(engineParams: engineParams, config: config);
       newContext.setSyncSystem(syncSystem);

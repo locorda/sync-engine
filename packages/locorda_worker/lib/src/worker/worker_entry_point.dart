@@ -507,6 +507,8 @@ void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
   // 4. Wait for InitConfig message with configuration
   SyncEngineConfig? config;
   final configCompleter = Completer<SyncEngineConfig>();
+  String? activeStorageId;
+  List<String>? activeRemoteIds;
 
   receivePort.listen((message) async {
     // After config received, handle normal messages
@@ -522,6 +524,10 @@ void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
         if (message['type'] == 'InitConfig') {
           config = SyncEngineConfig.fromJson(
               message['config'] as Map<String, dynamic>);
+          activeStorageId = message['activeStorageId'] as String?;
+          final activeRemoteList = message['activeRemoteIds'] as List?;
+          activeRemoteIds =
+              activeRemoteList?.map((id) => id.toString()).toList();
           configCompleter.complete(config);
           return;
         } else {
@@ -547,7 +553,9 @@ void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
   try {
     final workerParams = await workerSetup();
     final engineParams =
-        await toEngineParams(workerParams, context, receivedConfig);
+      await toEngineParams(workerParams, context, receivedConfig,
+        activeStorageId: activeStorageId,
+        activeRemoteIds: activeRemoteIds);
     final syncSystem = await SyncEngine.create(
         config: receivedConfig, engineParams: engineParams);
     context.setSyncSystem(syncSystem);
