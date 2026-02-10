@@ -5,6 +5,13 @@
 library;
 
 export 'src/shared/worker_params.dart' show WorkerParams, WorkerSetup;
+export 'src/manifest/adapter_manifest.dart'
+    show
+        AdapterManifestEntry,
+        StorageManifestEntry,
+        RemoteManifestEntry,
+        StorageWorkerHandlerFactory,
+        RemoteWorkerHandlerFactory;
 export 'src/worker/in_memory_storage_worker.dart'
     show InMemoryStorageWorkerHandler;
 export 'src/worker/worker_channel.dart' show WorkerHandlerChannel;
