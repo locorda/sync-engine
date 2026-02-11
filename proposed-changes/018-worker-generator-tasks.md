@@ -449,268 +449,439 @@ Future<void> build(BuildStep buildStep) async {
 
 ---
 
-## Phase 5: initLocorda Generator (Optional / Future)
+## Phase 5: initLocorda Generator
 
-**Scope**: This is a stretch goal. It can be implemented later — manual `Locorda.create` calls
-work fine with the generated worker. This phase depends on:
-- RDF mapper generator (for `init_rdf_mapper.g.dart`)
-- Worker generator (Phase 3, for `worker_generated.g.dart`)
-- Optional: LocordaConfig generator (future work)
+### Overview
 
-### Task 5.1: Create `init_locorda_generator_builder`
+**Status**: Active development (not optional/stretch goal)
 
-**New builder in `locorda_builder`**: Add a builder that generates `lib/init_locorda.g.dart`:
+**Goal**: Generate a convenience wrapper `initLocorda()` that automatically configures `Locorda.create()` by:
+1. Detecting and auto-setting `workerSetup` and `jsScript` when `worker_generated.g.dart` exists
+2. Detecting and auto-generating `mapperInitializer` when `init_rdf_mapper.g.dart` exists
+3. Propagating all other parameters from `Locorda.create` dynamically
+4. Propagating custom parameters from `initRdfMapper` (excluding `rdfMapper` and `$*` params)
 
-1. Triggers on `pubspec.yaml` (like worker_generator).
-2. Detects presence of `init_rdf_mapper.g.dart` and `worker_generated.g.dart`.
-3. Analyzes `initRdfMapper` signature to extract custom parameters.
-4. Optionally detects `locorda_config.g.dart` for LocordaConfig.
-5. Generates `initLocorda()` function that simplifies Locorda initialization.
+**Key Challenge**: This requires **full Dart code analysis** using `analyzer` package to:
+- Parse `Locorda.create` factory constructor signature (which may evolve)
+- Parse generated `initRdfMapper` function signature (which varies per application)
+- Extract parameter names, types, defaults, required/optional status
 
-**Output**: `lib/init_locorda.g.dart` (build_to: source).
+**Architecture Decision**: Separate package `locorda_init_generator` because:
+- Requires heavy `analyzer` dependency (~20MB, complex API)
+- More advanced than other builders
+- Should not burden apps that don't use this feature
 
-**build.yaml** config:
+### Task 5.1: Create locorda_init_generator package
+
+**New package**: `packages/locorda_init_generator/`
+
+**Structure**:
+```
+locorda_init_generator/
+├── lib/
+│   ├── builder.dart                     # Public API
+│   └── src/
+│       ├── init_locorda_generator.dart  # Main builder class
+│       ├── locorda_analyzer.dart        # Analyzes Locorda.create signature
+│       ├── mapper_analyzer.dart         # Analyzes initRdfMapper signature
+│       └── code_generator.dart          # Generates initLocorda.g.dart
+├── pubspec.yaml
+├── build.yaml
+└── README.md
+```
+
+**Package setup commands**:
+```bash
+# Create package structure
+cd packages/
+mkdir -p locorda_init_generator/{lib/src,test}
+cd locorda_init_generator
+
+# Initialize basic pubspec.yaml
+cat > pubspec.yaml << 'EOF'
+name: locorda_init_generator
+description: Code generator for Locorda convenience wrapper (initLocorda)
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  # CRITICAL: Must support range from stable Flutter (8.4.x) to latest (10.x)
+  # See: https://github.com/flutter/flutter/blob/stable/packages/flutter_tools/lib/src/web/compile.dart
+  analyzer: '>=8.1.0 <11.0.0'
+
+dev_dependencies:
+  test: any
+EOF
+
+# Add other dependencies using pub (ensures current versions)
+dart pub add build source_gen locorda_flutter
+dart pub add -d build_runner
+
+# Verify analyzer constraint is correct
+grep 'analyzer:' pubspec.yaml
+```
+
+**Rationale for analyzer version constraint**:
+- Flutter stable (as of Feb 2026) pins `analyzer: 8.4.x`
+- Latest analyzer is at `10.x.x`
+- Range `'>=8.1.0 <11.0.0'` covers both
+- **Critical**: Narrow ranges break in Flutter projects
+
+**build.yaml**:
 ```yaml
 builders:
   init_locorda_generator:
-    import: "package:locorda_builder/builder.dart"
-    builder_factories: ["initLocordaGeneratorBuilder"]
+    import: "package:locorda_init_generator/builder.dart"
+    builder_factories: ["initLocordaBuilder"]
     build_extensions:
       pubspec.yaml:
         - lib/init_locorda.g.dart
     auto_apply: dependents
     build_to: source
+    required_inputs:
+      - .dart
+      - lib/worker_generated.g.dart       # Optional: for worker detection
+      - lib/init_rdf_mapper.g.dart        # Optional: for mapper detection
+    defaults:
+      generate_for:
+        - pubspec.yaml
 ```
 
-**Builder options**:
-```yaml
-targets:
-  $default:
-    builders:
-      locorda_builder|init_locorda_generator:
-        options:
-          # Package name for imports (defaults to package name from pubspec)
-          package_name: null
-          # Output file name (defaults to 'lib/init_locorda.g.dart')
-          output_file: null
-```
+### Task 5.2: Implement Locorda.create signature analyzer
 
-### Task 5.2: Implement initRdfMapper signature analyzer
+**File**: `lib/src/locorda_analyzer.dart`
 
-**Purpose**: Extract custom parameters from generated `initRdfMapper()` to propagate them through `initLocorda()`.
+**Goal**: Dynamically extract all parameters from `Locorda.create` factory constructor.
 
-**Implementation**:
-1. Use `analyzer` package to parse `init_rdf_mapper.g.dart`.
-2. Find the `initRdfMapper` function declaration.
-3. Extract all parameters with their types and nullability.
-4. Filter out framework parameters:
-   - `rdfMapper` (optional RdfMapper) → EXCLUDE (framework-managed)
-   - Parameters starting with `$` → EXCLUDE (framework-injected: `$indexItemIriFactory`, `$resourceIriFactory`, `$resourceRefFactory`)
-5. Return list of custom parameters to propagate.
+**Implementation requirements**:
+1. Use `analyzer` to resolve `Locorda` class from `package:locorda_flutter/locorda_flutter.dart`
+2. Find `create` factory constructor using AST traversal
+3. Extract all parameters with full metadata:
+   - Parameter name
+   - Parameter type (as string, preserving generic types)
+   - Whether required/optional/named
+   - Default value (if any)
+   - Documentation comment
+4. Return structured `ParameterInfo` objects
 
-**Data structure**:
+**Key considerations**:
+- Must handle generic types: `List<RemoteIntegration>`, `Future<Locorda>`
+- Must preserve defaults: `jsScript = 'worker.dart.js'`
+- Must distinguish positional vs named parameters
+- Must handle imports for types (preserve full qualified names if needed)
+
+**Output example** (for current signature):
 ```dart
-class ParameterInfo {
-  final String name;
-  final String type;
-  final bool isRequired;
-  final bool isNamed;
-}
-```
-
-**Example** (current personal_notes_app):
-```dart
-// Generated initRdfMapper signature:
-RdfMapper initRdfMapper({
-  RdfMapper? rdfMapper,                           // EXCLUDE (framework)
-  required IriTermMapper<(String id,)> Function<T>(Type) $indexItemIriFactory,  // EXCLUDE ($-prefix)
-  required IriTermMapper<(String id,)> Function<T>(RootIriConfig) $resourceIriFactory,  // EXCLUDE
-  required IriTermMapper<String> Function<T>(Type) $resourceRefFactory,  // EXCLUDE
-})
-
-// Result: Empty list (no custom params to propagate)
-List<ParameterInfo> customParams = [];
-```
-
-**Example** (hypothetical app with custom dependencies):
-```dart
-// Generated initRdfMapper with custom params:
-RdfMapper initRdfMapper({
-  RdfMapper? rdfMapper,                           // EXCLUDE
-  required CategoryService categoryService,       // INCLUDE (custom dependency)
-  String? defaultLocale,                          // INCLUDE (custom config)
-  required IriTermMapper<(String id,)> Function<T>(Type) $indexItemIriFactory,  // EXCLUDE
-  required IriTermMapper<(String id,)> Function<T>(RootIriConfig) $resourceIriFactory,  // EXCLUDE
-  required IriTermMapper<String> Function<T>(Type) $resourceRefFactory,  // EXCLUDE
-})
-
-// Result: Custom params to propagate
-List<ParameterInfo> customParams = [
-  ParameterInfo(name: 'categoryService', type: 'CategoryService', isRequired: true, isNamed: true),
-  ParameterInfo(name: 'defaultLocale', type: 'String?', isRequired: false, isNamed: true),
+List<ParameterInfo> parameters = [
+  ParameterInfo(
+    name: 'workerSetup',
+    type: 'WorkerSetup',
+    isRequired: true,
+    isNamed: true,
+    defaultValue: null,
+  ),
+  ParameterInfo(
+    name: 'onWorkerSpawn',
+    type: 'void Function()?',
+    isRequired: false,
+    isNamed: true,
+    defaultValue: null,
+  ),
+  ParameterInfo(
+    name: 'config',
+    type: 'LocordaConfig',
+    isRequired: true,
+    isNamed: true,
+    defaultValue: null,
+  ),
+  // ... all other parameters
 ];
 ```
 
-### Task 5.3: Implement LocordaConfig detection
+### Task 5.3: Implement initRdfMapper signature analyzer
 
-**Purpose**: Detect if `locorda_config.g.dart` exists (from future LocordaConfig generator).
+**File**: `lib/src/mapper_analyzer.dart`
+
+**Goal**: Dynamically extract parameters from generated `initRdfMapper` function (if exists).
+
+**Implementation requirements**:
+1. Check if `lib/init_rdf_mapper.g.dart` exists in the current package
+2. If not found: return empty parameter list (graceful degradation)
+3. If found:
+   - Parse the file using `analyzer`
+   - Find `initRdfMapper` function declaration
+   - Extract all parameters except:
+     - `rdfMapper` (provided by context)
+     - Parameters starting with `$` (framework-provided: `$indexItemIriFactory`, etc.)
+4. Return structured `ParameterInfo` objects
+
+**Parameter filtering rules**:
+- **Exclude**: `rdfMapper` (always provided by `context.baseRdfMapper`)
+- **Exclude**: Any parameter name starting with `$` (framework injections)
+- **Include**: All other parameters (required and optional)
+
+**Example** (current personal_notes_app has no custom params):
+```dart
+// initRdfMapper has ONLY these parameters:
+// - rdfMapper (optional) → EXCLUDE
+// - $indexItemIriFactory (required) → EXCLUDE (starts with $)
+// - $resourceIriFactory (required) → EXCLUDE (starts with $)
+// - $resourceRefFactory (required) → EXCLUDE (starts with $)
+
+// Result: Empty list (no params to propagate)
+List<ParameterInfo> mapperParams = [];
+```
+
+**Example** (hypothetical app with custom mapper dependencies):
+```dart
+// Generated initRdfMapper signature:
+RdfMapper initRdfMapper({
+  RdfMapper? rdfMapper,
+  required CategoryService categoryService,  // Custom dependency
+  String? defaultLocale,                      // Custom config
+  required IriTermMapper<(String id,)> Function<T>(Type) $indexItemIriFactory,
+  required IriTermMapper<(String id,)> Function<T>(RootIriConfig) $resourceIriFactory,
+  required IriTermMapper<String> Function<T>(Type) $resourceRefFactory,
+})
+
+// Result after filtering:
+List<ParameterInfo> mapperParams = [
+  ParameterInfo(
+    name: 'categoryService',
+    type: 'CategoryService',
+    isRequired: true,
+    isNamed: true,
+    defaultValue: null,
+  ),
+  ParameterInfo(
+    name: 'defaultLocale',
+    type: 'String?',
+    isRequired: false,
+    isNamed: true,
+    defaultValue: null,
+  ),
+];
+```
+
+### Task 5.4: Implement worker detection logic
+
+**File**: `lib/src/init_locorda_generator.dart` (part of main builder)
+
+**Goal**: Detect presence of `worker_generated.g.dart` to auto-configure worker params.
 
 **Implementation**:
-1. Use `buildStep.canRead()` to check for `lib/src/generated/locorda_config.g.dart`.
-2. If exists: Import and use generated config.
-3. If not exists: Keep `config` as required parameter in `initLocorda()` signature.
-
-**Generated code difference**:
-
-**With config generator**:
 ```dart
-import 'src/generated/locorda_config.g.dart' show generatedLocordaConfig;
-
-Future<Locorda> initLocorda({
-  required StorageMainHandler storage,
-  List<RemoteIntegration> remotes = const [],
-  // ... other params
-}) async {
-  return Locorda.create(
-    config: generatedLocordaConfig,  // Auto-injected
-    // ...
-  );
-}
+final hasGeneratedWorker = await buildStep.canRead(
+  AssetId(inputId.package, 'lib/worker_generated.g.dart'),
+);
 ```
 
-**Without config generator**:
-```dart
-Future<Locorda> initLocorda({
-  required LocordaConfig config,  // User must provide
-  required StorageMainHandler storage,
-  List<RemoteIntegration> remotes = const [],
-  // ... other params
-}) async {
-  return Locorda.create(
-    config: config,  // Pass-through
-    // ...
-  );
-}
-```
+**Decision rules**:
 
-### Task 5.4: Implement mapperInitializer lambda generation
-
-**Purpose**: Generate the `mapperInitializer` parameter for `Locorda.create()`.
-
-**Behavior**:
-1. **If `init_rdf_mapper.g.dart` exists**:
-   - Import the generated `initRdfMapper` function
-   - Generate lambda that calls `initRdfMapper` with framework params from context
-   - Pass through any custom parameters from Task 5.2
-   - Example:
-     ```dart
-     import 'init_rdf_mapper.g.dart' show initRdfMapper;
-     
-     mapperInitializer: (context) => initRdfMapper(
-       rdfMapper: context.baseRdfMapper,
-       $indexItemIriFactory: context.indexItemIriFactory,
-       $resourceIriFactory: context.resourceIriFactory,
-       $resourceRefFactory: context.resourceRefFactory,
-       categoryService: categoryService,  // Propagated custom param
-       defaultLocale: defaultLocale,       // Propagated custom param
-     ),
-     ```
-
-2. **If `init_rdf_mapper.g.dart` does NOT exist**:
-   - Keep `mapperInitializer` as required parameter in `initLocorda()` signature
-   - Pass through directly to `Locorda.create()`
-
-### Task 5.5: Generate complete `initLocorda()` function
-
-**Purpose**: Generate the main initialization function with all pieces integrated.
-
-**Generated function signature** (without LocordaConfig generator, with custom mapper params):
-```dart
-/// Initialize Locorda with generated worker and RDF mapper.
-///
-/// This function is generated to simplify Locorda initialization by:
-/// - Automatically wiring up the generated worker setup
-/// - Connecting the RDF mapper with framework-injected dependencies
-/// - Propagating application-specific parameters
-///
-/// ## Parameters
-/// - [config]: Resource configuration with types, CRDT mappings, and indices
-/// - [storage]: Main thread handler for storage backend (typically Drift)
-/// - [remotes]: Main thread handlers for remote backends (Solid, GDrive, etc.)
-/// - [categoryService]: Custom dependency for CategoryMapper
-/// - [defaultLocale]: Custom configuration for localization
-/// - [iriTermFactory]: Optional custom IRI term factory
-/// - [rdfCore]: Optional custom RDF core
-/// - [jsScript]: Web worker JS filename (default: 'worker_generated.dart.js')
-/// - [plugins]: Additional worker plugins for custom functionality
-/// - [onWorkerSpawn]: Optional callback to run when worker thread spawns
-/// - [debugName]: Optional name for debugging worker communication
-Future<Locorda> initLocorda({
-  required LocordaConfig config,
-  required StorageMainHandler storage,
-  List<RemoteIntegration> remotes = const [],
-  required CategoryService categoryService,  // Propagated from initRdfMapper
-  String? defaultLocale,                      // Propagated from initRdfMapper
-  IriTermFactory? iriTermFactory,
-  RdfCore? rdfCore,
-  String jsScript = 'worker_generated.dart.js',
-  List<MainHandlerFactory> plugins = const [],
-  void Function()? onWorkerSpawn,
-  String? debugName,
-}) async {
+**If `worker_generated.g.dart` exists**:
+- **Remove** `workerSetup` from generated `initLocorda` signature
+- **Remove** `jsScript` from generated `initLocorda` signature
+- **Auto-set** these in the body:
+  ```dart
   return Locorda.create(
     workerSetup: generatedWorkerSetup,
-    onWorkerSpawn: onWorkerSpawn,
-    config: config,
-    mapperInitializer: (context) => initRdfMapper(
-      rdfMapper: context.baseRdfMapper,
-      $indexItemIriFactory: context.indexItemIriFactory,
-      $resourceIriFactory: context.resourceIriFactory,
-      $resourceRefFactory: context.resourceRefFactory,
-      categoryService: categoryService,
-      defaultLocale: defaultLocale,
-    ),
-    storage: storage,
-    jsScript: jsScript,
-    remotes: remotes,
-    plugins: plugins,
-    iriTermFactory: iriTermFactory,
-    rdfCore: rdfCore,
-    debugName: debugName,
+    jsScript: 'worker_generated.dart.js',
+    // ... other params
   );
+  ```
+- **Add import**: `import 'worker_generated.g.dart' show generatedWorkerSetup;`
+
+**If `worker_generated.g.dart` does NOT exist**:
+- **Keep** `workerSetup` in signature (required, pass-through)
+- **Keep** `jsScript` in signature (optional with default, pass-through)
+
+**Rationale for REMOVE (not optional)**:
+- When detected, values are guaranteed correct
+- Optional params would add complexity without benefit
+- User can still override by editing generated code (it's in source control)
+- Simpler mental model: "generator configures what it detects"
+
+### Task 5.5: Implement mapper detection and Lambda generation
+
+**File**: `lib/src/init_locorda_generator.dart`
+
+**Goal**: Detect `init_rdf_mapper.g.dart` and auto-generate `mapperInitializer` parameter.
+
+**Implementation**:
+```dart
+final hasInitMapper = await buildStep.canRead(
+  AssetId(inputId.package, 'lib/init_rdf_mapper.g.dart'),
+);
+
+List<ParameterInfo> mapperParams = [];
+if (hasInitMapper) {
+  mapperParams = await MapperAnalyzer.analyzeInitRdfMapper(buildStep, inputId.package);
 }
 ```
 
-**Simplest case** (no custom params, no config generator):
+**Decision rules**:
+
+**If `init_rdf_mapper.g.dart` exists**:
+1. **Remove** `mapperInitializer` from `initLocorda` signature
+2. **Propagate** all filtered parameters from `initRdfMapper` to `initLocorda` signature
+3. **Auto-generate** `mapperInitializer` lambda in body:
+   ```dart
+   mapperInitializer: (context) => initRdfMapper(
+     rdfMapper: context.baseRdfMapper,
+     $indexItemIriFactory: context.indexItemIriFactory,
+     $resourceIriFactory: context.resourceIriFactory,
+     $resourceRefFactory: context.resourceRefFactory,
+     // ... pass-through any propagated params
+   ),
+   ```
+4. **Add import**: `import 'init_rdf_mapper.g.dart' show initRdfMapper;`
+
+**If `init_rdf_mapper.g.dart` does NOT exist**:
+- **Keep** `mapperInitializer` in signature (required, pass-through)
+
+**Lambda generation logic**:
 ```dart
+// Always include framework params (from context):
+mapperInitializer: (context) => initRdfMapper(
+  rdfMapper: context.baseRdfMapper,
+  ${includeIfDetected('$indexItemIriFactory', '$indexItemIriFactory: context.indexItemIriFactory,')}
+  ${includeIfDetected('$resourceIriFactory', '$resourceIriFactory: context.resourceIriFactory,')}
+  ${includeIfDetected('$resourceRefFactory', '$resourceRefFactory: context.resourceRefFactory,')}
+  ${includeIfDetected('$indexShardIriFactory', '$indexShardIriFactory: context.indexShardIriFactory,')}
+  // Pass-through any custom params:
+  ${for (param in propagatedMapperParams) '${param.name}: ${param.name},'}
+),
+```
+
+**Note**: Must inspect actual `initRdfMapper` signature to know which `$*` params exist!
+
+### Task 5.6: Implement code generator
+
+**File**: `lib/src/code_generator.dart`
+
+**Goal**: Generate `lib/init_locorda.g.dart` combining all analyzed information.
+
+**Input data**:
+- `hasGeneratedWorker`: bool
+- `hasInitMapper`: bool  
+- `locordaParams`: List<ParameterInfo> (from Locorda.create analysis)
+- `mapperParams`: List<ParameterInfo> (from initRdfMapper analysis, filtered)
+- `detectedMapperFrameworkParams`: Set<String> (which `$*` params exist)
+
+**Generation steps**:
+
+1. **Header**:
+   ```dart
+   // GENERATED CODE - DO NOT MODIFY BY HAND
+   // ignore_for_file: unused_import
+   ```
+
+2. **Imports**:
+   ```dart
+   import 'package:locorda/locorda.dart';
+   ${if hasGeneratedWorker} import 'worker_generated.g.dart' show generatedWorkerSetup;
+   ${if hasInitMapper} import 'init_rdf_mapper.g.dart' show initRdfMapper;
+   ```
+
+3. **Function signature**:
+   ```dart
+   /// Convenience wrapper for Locorda.create with auto-detected settings.
+   ///
+   /// Auto-configures:
+   ${if hasGeneratedWorker}
+   /// - workerSetup: generatedWorkerSetup (from worker_generated.g.dart)
+   /// - jsScript: 'worker_generated.dart.js'
+   ${endif}
+   ${if hasInitMapper}
+   /// - mapperInitializer: Generated from initRdfMapper
+   ${endif}
+   Future<Locorda> initLocorda({
+     ${for param in buildFinalSignature(locordaParams, mapperParams, hasGeneratedWorker, hasInitMapper)}
+       ${if param.isRequired}required ${endif}
+       ${param.type} ${param.name}
+       ${if param.defaultValue != null} = ${param.defaultValue}${endif},
+     ${endfor}
+   }) async {
+   ```
+
+4. **Function body**:
+   ```dart
+     return Locorda.create(
+       ${if hasGeneratedWorker}
+       workerSetup: generatedWorkerSetup,
+       jsScript: 'worker_generated.dart.js',
+       ${endif}
+       ${if hasInitMapper}
+       mapperInitializer: (context) => initRdfMapper(
+         rdfMapper: context.baseRdfMapper,
+         ${for frameworkParam in detectedMapperFrameworkParams}
+         ${frameworkParam}: context.${frameworkParam.substring(1)},
+         ${endfor}
+         ${for param in mapperParams}
+         ${param.name}: ${param.name},
+         ${endfor}
+       ),
+       ${endif}
+       ${for param in locordaPassThroughParams(locordaParams, hasGeneratedWorker, hasInitMapper)}
+       ${param.name}: ${param.name},
+       ${endfor}
+     );
+   }
+   ```
+
+**Signature building logic** (`buildFinalSignature`):
+1. Start with all `Locorda.create` parameters
+2. Filter out auto-configured params:
+   - Remove `workerSetup` if `hasGeneratedWorker`
+   - Remove `jsScript` if `hasGeneratedWorker`
+   - Remove `mapperInitializer` if `hasInitMapper`
+3. Prepend any propagated `mapperParams` (they become required deps for `initLocorda`)
+4. Preserve parameter order, types, defaults, required/optional status
+
+**Example output** (personal_notes_app with all features):
+```dart
+// lib/init_locorda.g.dart
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: unused_import
+
 import 'package:locorda/locorda.dart';
-import 'init_rdf_mapper.g.dart' show initRdfMapper;
 import 'worker_generated.g.dart' show generatedWorkerSetup;
+import 'init_rdf_mapper.g.dart' show initRdfMapper;
 
-/// Initialize Locorda with generated worker and RDF mapper.
+/// Convenience wrapper for Locorda.create with auto-detected settings.
+///
+/// Auto-configures:
+/// - workerSetup: generatedWorkerSetup (from worker_generated.g.dart)
+/// - jsScript: 'worker_generated.dart.js'
+/// - mapperInitializer: Generated from initRdfMapper
 Future<Locorda> initLocorda({
+  // No mapper params to propagate (initRdfMapper has no custom params in this app)
+  
+  // Filtered Locorda.create params (workerSetup, jsScript, mapperInitializer removed):
+  void onWorkerSpawn()?,
   required LocordaConfig config,
   required StorageMainHandler storage,
   List<RemoteIntegration> remotes = const [],
+  List<MainHandlerFactory> plugins = const [],
   IriTermFactory? iriTermFactory,
   RdfCore? rdfCore,
-  String jsScript = 'worker_generated.dart.js',
-  List<MainHandlerFactory> plugins = const [],
-  void Function()? onWorkerSpawn,
   String? debugName,
 }) async {
   return Locorda.create(
     workerSetup: generatedWorkerSetup,
-    onWorkerSpawn: onWorkerSpawn,
-    config: config,
+    jsScript: 'worker_generated.dart.js',
     mapperInitializer: (context) => initRdfMapper(
       rdfMapper: context.baseRdfMapper,
       $indexItemIriFactory: context.indexItemIriFactory,
       $resourceIriFactory: context.resourceIriFactory,
       $resourceRefFactory: context.resourceRefFactory,
     ),
+    onWorkerSpawn: onWorkerSpawn,
+    config: config,
     storage: storage,
-    jsScript: jsScript,
     remotes: remotes,
     plugins: plugins,
     iriTermFactory: iriTermFactory,
@@ -720,30 +891,75 @@ Future<Locorda> initLocorda({
 }
 ```
 
-### Task 5.6: Update analyzer dependency
+### Task 5.7: Implement main builder
 
-**File**: `packages/locorda_builder/pubspec.yaml`
+**File**: `lib/src/init_locorda_generator.dart`
 
-**Change**:
-```yaml
-dependencies:
-  # OLD:
-  analyzer: '>=7.4.0 <10.0.0'
-  
-  # NEW:
-  analyzer: '>=8.1.0 <11.0.0'
+**Goal**: Orchestrate analysis and generation.
+
+**Implementation outline**:
+```dart
+class InitLocordaBuilder implements Builder {
+  @override
+  Map<String, List<String>> get buildExtensions => {
+    'pubspec.yaml': ['lib/init_locorda.g.dart'],
+  };
+
+  @override
+  Future<void> build(BuildStep buildStep) async {
+    final inputId = buildStep.inputId;
+    
+    // Only process pubspec.yaml
+    if (inputId.path != 'pubspec.yaml') return;
+    
+    // Step 1: Detect worker_generated.g.dart
+    final hasGeneratedWorker = await buildStep.canRead(
+      AssetId(inputId.package, 'lib/worker_generated.g.dart'),
+    );
+    
+    // Step 2: Detect init_rdf_mapper.g.dart
+    final hasInitMapper = await buildStep.canRead(
+      AssetId(inputId.package, 'lib/init_rdf_mapper.g.dart'),
+    );
+    
+    // Step 3: Analyze Locorda.create signature
+    final locordaAnalyzer = LocordaAnalyzer(buildStep);
+    final locordaParams = await locordaAnalyzer.analyzeCreateSignature();
+    
+    // Step 4: Analyze initRdfMapper signature (if exists)
+    List<ParameterInfo> mapperParams = [];
+    Set<String> detectedFrameworkParams = {};
+    if (hasInitMapper) {
+      final mapperAnalyzer = MapperAnalyzer(buildStep, inputId.package);
+      final result = await mapperAnalyzer.analyzeInitRdfMapper();
+      mapperParams = result.customParams;
+      detectedFrameworkParams = result.frameworkParams;
+    }
+    
+    // Step 5: Generate code
+    final generator = CodeGenerator(
+      hasGeneratedWorker: hasGeneratedWorker,
+      hasInitMapper: hasInitMapper,
+      locordaParams: locordaParams,
+      mapperParams: mapperParams,
+      detectedMapperFrameworkParams: detectedFrameworkParams,
+    );
+    final generatedCode = generator.generate();
+    
+    // Step 6: Write output
+    final outputId = AssetId(inputId.package, 'lib/init_locorda.g.dart');
+    await buildStep.writeAsString(outputId, generatedCode);
+    
+    log.info('Generated init_locorda.g.dart for ${inputId.package}');
+  }
+}
 ```
 
-**Rationale**: 
-- Avoid outdated and deprecated dependencies
-- Ensure compatibility with latest analyzer features
-- Follow project guideline: "We must never use outdated and deprecated dependencies"
-
-### Task 5.7: Add to locorda_dev applies_builders
+### Task 5.8: Add to locorda_dev applies_builders
 
 **File**: `packages/locorda_dev/build.yaml`
 
-Add the init_locorda generator to the meta-builder's `applies_builders` list:
+Add the init generator to the meta-builder's `applies_builders` list:
 ```yaml
 applies_builders:
   - locorda_mapping_bootstrap_generator:mapping_bootstrap
@@ -751,11 +967,87 @@ applies_builders:
   - locorda_rdf_mapper_generator:source_builder
   - locorda_rdf_mapper_generator:init_file_builder
   - locorda_builder:worker_generator
-  - locorda_builder:init_locorda_generator  # <-- Add this
   - locorda_builder:web_worker
+  - locorda_init_generator:init_locorda_generator  # <-- Add this
 ```
 
-**Note**: `init_locorda_generator` must run after `worker_generator` and `init_file_builder` because it depends on their outputs (`worker_generated.g.dart` and `init_rdf_mapper.g.dart`).
+**Dependency order**: Must run after worker_generator and mapper generators
+(because it detects their outputs).
+
+### Task 5.9: Add to locorda_dev pubspec.yaml
+
+**File**: `packages/locorda_dev/pubspec.yaml`
+
+Add dependency:
+```yaml
+dependencies:
+  # ... existing dependencies
+  locorda_init_generator: any
+```
+
+### Task 5.10: Handle edge cases and validation
+
+**Edge cases to handle**:
+
+1. **Neither worker nor mapper detected**:
+   - Generate full pass-through (all Locorda.create params)
+   - Still useful as migration helper
+   - Log info: "No auto-configuration available; generating pass-through"
+
+2. **Locorda.create signature changes** (future-proofing):
+   - Analyzer dynamically extracts params
+   - Generated code automatically includes new params
+   - No generator code changes needed
+
+3. **initRdfMapper signature varies** (per-app):
+   - Analyzer dynamically extracts filtered params
+   - Propagated params vary per app
+   - Generator handles 0-N custom params gracefully
+
+4. **Circular dependency risk**:
+   - `init_locorda.g.dart` imports `worker_generated.g.dart` and `init_rdf_mapper.g.dart`
+   - Those files don't import `init_locorda.g.dart`
+   - No circular dependency possible
+
+5. **Build order**:
+   - `worker_generator` runs on `pubspec.yaml` → outputs `worker_generated.g.dart`
+   - `mapper_generator` runs on `*.dart` → outputs `init_rdf_mapper.g.dart`
+   - `init_locorda_generator` runs on `pubspec.yaml` → can read both outputs
+   - Build system ensures correct order via `required_inputs`
+
+### Task 5.11: Error handling and logging
+
+**Error scenarios**:
+
+1. **Cannot resolve Locorda class**:
+   - Log error with package version mismatch hint
+   - Skip generation (fail gracefully)
+
+2. **Cannot parse initRdfMapper**:
+   - Log warning
+   - Proceed without mapper integration (partial generation)
+
+3. **Conflicting parameter names**:
+   - If mapper param name conflicts with Locorda param name
+   - Log error with parameter names
+   - Skip generation
+
+**Logging strategy**:
+```dart
+// Info: Normal operation
+log.info('Generated init_locorda.g.dart with worker and mapper integration');
+
+// Fine: Detection results
+log.fine('Detected worker_generated.g.dart: $hasGeneratedWorker');
+log.fine('Detected init_rdf_mapper.g.dart: $hasInitMapper');
+log.fine('Propagating ${mapperParams.length} mapper parameters');
+
+// Warning: Partial generation
+log.warning('Could not analyze initRdfMapper, proceeding without mapper integration');
+
+// Severe: Generation failed
+log.severe('Failed to analyze Locorda.create signature', error, stackTrace);
+```
 
 ---
 
@@ -887,6 +1179,49 @@ locorda_builder|worker_generator:
 - Materialization still works (imports like `mapping_bootstrap.g.dart` are included in compiled output).
 - Verify `jsScript` parameter is correctly set in `Locorda.create()` calls.
 
+### Task 7.7: Unit test Locorda.create analyzer
+
+- Test that analyzer correctly extracts all parameters from `Locorda.create`.
+- Test handling of generic types: `List<RemoteIntegration>`.
+- Test handling of function types: `void Function()?`.
+- Test extraction of default values: `jsScript = 'worker.dart.js'`.
+- Test distinction between required/optional/named parameters.
+- Mock different Locorda.create signatures to test future-proofing.
+
+### Task 7.8: Unit test initRdfMapper analyzer
+
+- Test detection of `init_rdf_mapper.g.dart` existence.
+- Test graceful degradation when file doesn't exist (empty result).
+- Test filtering of `rdfMapper` parameter.
+- Test filtering of `$*` parameters (`$indexItemIriFactory`, etc.).
+- Test extraction of custom parameters (required and optional).
+- Test detection of which framework params exist in signature.
+- Mock various initRdfMapper signatures with different param combinations.
+
+### Task 7.9: Unit test code generator
+
+- Test signature building with various parameter combinations.
+- Test parameter filtering based on detection flags.
+- Test mapper parameter propagation.
+- Test framework parameter detection and Lambda generation.
+- Test import generation (conditional imports).
+- Test documentation comment generation.
+- Test edge case: no detections (full pass-through).
+- Test edge case: only worker detected, no mapper.
+- Test edge case: only mapper detected, no worker.
+- Test edge case: both detected.
+
+### Task 7.10: Integration test init_locorda generation
+
+- Generate `init_locorda.g.dart` for personal_notes_app.
+- Verify correct signature (no workerSetup, jsScript, mapperInitializer).
+- Verify correct imports (worker_generated, init_rdf_mapper).
+- Verify correct Lambda generation with all framework params.
+- Verify generated code compiles and type-checks.
+- Test with modified initRdfMapper (add custom param) - verify propagation.
+- Test without worker_generated.g.dart - verify workerSetup kept in signature.
+- Test without init_rdf_mapper.g.dart - verify mapperInitializer kept.
+
 ---
 
 ## Dependency Order
@@ -900,15 +1235,34 @@ Phase 3 (Tasks 3.1–3.4)   Worker generator (generates worker_generated.g.dart,
     ↓
 Phase 4 (Task 4.1)        Update web worker builder (distinct outputs: worker.dart.js vs worker_generated.dart.js)
     ↓
-Phase 5 (Task 5.1)        initLocorda generator (stretch goal)
+Phase 5 (Tasks 5.1–5.11)  initLocorda generator (new package: locorda_init_generator)
+    │                      - Task 5.1: Package setup with analyzer dependency
+    │                      - Task 5.2: Locorda.create signature analyzer
+    │                      - Task 5.3: initRdfMapper signature analyzer
+    │                      - Task 5.4: Worker detection logic
+    │                      - Task 5.5: Mapper detection and Lambda generation
+    │                      - Task 5.6: Code generator implementation
+    │                      - Task 5.7: Main builder orchestration
+    │                      - Task 5.8–5.9: Integration with locorda_dev
+    │                      - Task 5.10–5.11: Edge cases and error handling
     ↓
 Phase 6 (Tasks 6.1–6.3)   Update examples and documentation
+    │                      - Update to use init_locorda.g.dart
+    │                      - Document generated convenience API
     ↓
-Phase 7 (Tasks 7.1–7.6)   Tests
+Phase 7 (Tasks 7.1–7.10)  Tests
+    │                      - Tasks 7.1–7.6: Worker generator tests (existing)
+    │                      - Tasks 7.7–7.10: initLocorda generator tests (new)
 ```
 
-Phases 1 and 2 can be partially parallelized (Task 2.1 depends on nothing,
-Task 2.2 depends on 1.1/1.2, Task 2.3 is independent).
+**Parallelization opportunities**:
+- Phases 1 and 2 can be partially parallelized (Task 2.1 depends on nothing, Task 2.2 depends on 1.1/1.2, Task 2.3 is independent)
+- Phase 5 can start after Phase 3 completes (worker_generated.g.dart must exist for detection testing)
+- Phase 5 requires RDF mapper generator to be complete (for init_rdf_mapper.g.dart detection)
+
+**Critical path**:
+- Phase 5 is on critical path for Phase 6 (examples want to use generated convenience API)
+- Phase 5 can be skipped initially - manual `Locorda.create()` works fine with generated worker
 
 ---
 
@@ -924,3 +1278,11 @@ Task 2.2 depends on 1.1/1.2, Task 2.3 is independent).
 | Breaking change for existing projects | Distinct outputs prevent collisions; manual `worker.dart` prevents generation entirely |
 | mapping_bootstrap.g.dart not always present | Builder conditionally imports using `canRead()`; uses empty list if not found |
 | source_gen collision on worker.g.dart filename | Renamed output to `worker_generated.g.dart` to avoid collision with combining_builder |
+| **Phase 5: analyzer package adds ~20MB dependency** | Separate package `locorda_init_generator`; only apps using feature pay the cost |
+| **Phase 5: Locorda.create signature changes break generator** | Dynamic analysis via `analyzer` package auto-adapts to signature changes |
+| **Phase 5: initRdfMapper signature varies per app** | Dynamic parameter extraction and filtering; handles 0-N custom params |
+| **Phase 5: Complex AST traversal for generic types** | Use `analyzer` TypeSystem for robust type resolution; extensive testing with various signatures |
+| **Phase 5: Parameter name conflicts (mapper vs Locorda)** | Detect conflicts, log error, skip generation; unlikely in practice (mapper uses domain names) |
+| **Phase 5: Build order issues (dependencies on generated files)** | Use `required_inputs` in build.yaml; Phase 5 runs after worker and mapper generators |
+| **Phase 5: Generated code has syntax errors** | Extensive unit tests for code generation; integration tests compile generated code |
+| **Phase 5: Users expect config auto-generation too** | Phase 5 explicitly does NOT generate config (future work); document clearly |
