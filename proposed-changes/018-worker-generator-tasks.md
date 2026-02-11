@@ -451,20 +451,311 @@ Future<void> build(BuildStep buildStep) async {
 
 ## Phase 5: initLocorda Generator (Optional / Future)
 
-### Task 5.1: Generate `initLocorda()` function
-
 **Scope**: This is a stretch goal. It can be implemented later — manual `Locorda.create` calls
-work fine with the generated worker.
+work fine with the generated worker. This phase depends on:
+- RDF mapper generator (for `init_rdf_mapper.g.dart`)
+- Worker generator (Phase 3, for `worker_generated.g.dart`)
+- Optional: LocordaConfig generator (future work)
 
-If implemented, the builder would generate a main-side init function that:
-- Accepts storage and remote integration parameters.
-- Derives `activeStorageId` / `activeRemoteIds` automatically.
-- References the generated worker setup.
-- References the generated RDF mapper initializer.
-- References the generated mapping bootstrap sources.
+### Task 5.1: Create `init_locorda_generator_builder`
 
-This task depends on the RDF mapper generator and LocordaConfig generator being available,
-which are separate efforts.
+**New builder in `locorda_builder`**: Add a builder that generates `lib/init_locorda.g.dart`:
+
+1. Triggers on `pubspec.yaml` (like worker_generator).
+2. Detects presence of `init_rdf_mapper.g.dart` and `worker_generated.g.dart`.
+3. Analyzes `initRdfMapper` signature to extract custom parameters.
+4. Optionally detects `locorda_config.g.dart` for LocordaConfig.
+5. Generates `initLocorda()` function that simplifies Locorda initialization.
+
+**Output**: `lib/init_locorda.g.dart` (build_to: source).
+
+**build.yaml** config:
+```yaml
+builders:
+  init_locorda_generator:
+    import: "package:locorda_builder/builder.dart"
+    builder_factories: ["initLocordaGeneratorBuilder"]
+    build_extensions:
+      pubspec.yaml:
+        - lib/init_locorda.g.dart
+    auto_apply: dependents
+    build_to: source
+```
+
+**Builder options**:
+```yaml
+targets:
+  $default:
+    builders:
+      locorda_builder|init_locorda_generator:
+        options:
+          # Package name for imports (defaults to package name from pubspec)
+          package_name: null
+          # Output file name (defaults to 'lib/init_locorda.g.dart')
+          output_file: null
+```
+
+### Task 5.2: Implement initRdfMapper signature analyzer
+
+**Purpose**: Extract custom parameters from generated `initRdfMapper()` to propagate them through `initLocorda()`.
+
+**Implementation**:
+1. Use `analyzer` package to parse `init_rdf_mapper.g.dart`.
+2. Find the `initRdfMapper` function declaration.
+3. Extract all parameters with their types and nullability.
+4. Filter out framework parameters:
+   - `rdfMapper` (optional RdfMapper) → EXCLUDE (framework-managed)
+   - Parameters starting with `$` → EXCLUDE (framework-injected: `$indexItemIriFactory`, `$resourceIriFactory`, `$resourceRefFactory`)
+5. Return list of custom parameters to propagate.
+
+**Data structure**:
+```dart
+class ParameterInfo {
+  final String name;
+  final String type;
+  final bool isRequired;
+  final bool isNamed;
+}
+```
+
+**Example** (current personal_notes_app):
+```dart
+// Generated initRdfMapper signature:
+RdfMapper initRdfMapper({
+  RdfMapper? rdfMapper,                           // EXCLUDE (framework)
+  required IriTermMapper<(String id,)> Function<T>(Type) $indexItemIriFactory,  // EXCLUDE ($-prefix)
+  required IriTermMapper<(String id,)> Function<T>(RootIriConfig) $resourceIriFactory,  // EXCLUDE
+  required IriTermMapper<String> Function<T>(Type) $resourceRefFactory,  // EXCLUDE
+})
+
+// Result: Empty list (no custom params to propagate)
+List<ParameterInfo> customParams = [];
+```
+
+**Example** (hypothetical app with custom dependencies):
+```dart
+// Generated initRdfMapper with custom params:
+RdfMapper initRdfMapper({
+  RdfMapper? rdfMapper,                           // EXCLUDE
+  required CategoryService categoryService,       // INCLUDE (custom dependency)
+  String? defaultLocale,                          // INCLUDE (custom config)
+  required IriTermMapper<(String id,)> Function<T>(Type) $indexItemIriFactory,  // EXCLUDE
+  required IriTermMapper<(String id,)> Function<T>(RootIriConfig) $resourceIriFactory,  // EXCLUDE
+  required IriTermMapper<String> Function<T>(Type) $resourceRefFactory,  // EXCLUDE
+})
+
+// Result: Custom params to propagate
+List<ParameterInfo> customParams = [
+  ParameterInfo(name: 'categoryService', type: 'CategoryService', isRequired: true, isNamed: true),
+  ParameterInfo(name: 'defaultLocale', type: 'String?', isRequired: false, isNamed: true),
+];
+```
+
+### Task 5.3: Implement LocordaConfig detection
+
+**Purpose**: Detect if `locorda_config.g.dart` exists (from future LocordaConfig generator).
+
+**Implementation**:
+1. Use `buildStep.canRead()` to check for `lib/src/generated/locorda_config.g.dart`.
+2. If exists: Import and use generated config.
+3. If not exists: Keep `config` as required parameter in `initLocorda()` signature.
+
+**Generated code difference**:
+
+**With config generator**:
+```dart
+import 'src/generated/locorda_config.g.dart' show generatedLocordaConfig;
+
+Future<Locorda> initLocorda({
+  required StorageMainHandler storage,
+  List<RemoteIntegration> remotes = const [],
+  // ... other params
+}) async {
+  return Locorda.create(
+    config: generatedLocordaConfig,  // Auto-injected
+    // ...
+  );
+}
+```
+
+**Without config generator**:
+```dart
+Future<Locorda> initLocorda({
+  required LocordaConfig config,  // User must provide
+  required StorageMainHandler storage,
+  List<RemoteIntegration> remotes = const [],
+  // ... other params
+}) async {
+  return Locorda.create(
+    config: config,  // Pass-through
+    // ...
+  );
+}
+```
+
+### Task 5.4: Implement mapperInitializer lambda generation
+
+**Purpose**: Generate the `mapperInitializer` parameter for `Locorda.create()`.
+
+**Behavior**:
+1. **If `init_rdf_mapper.g.dart` exists**:
+   - Import the generated `initRdfMapper` function
+   - Generate lambda that calls `initRdfMapper` with framework params from context
+   - Pass through any custom parameters from Task 5.2
+   - Example:
+     ```dart
+     import 'init_rdf_mapper.g.dart' show initRdfMapper;
+     
+     mapperInitializer: (context) => initRdfMapper(
+       rdfMapper: context.baseRdfMapper,
+       $indexItemIriFactory: context.indexItemIriFactory,
+       $resourceIriFactory: context.resourceIriFactory,
+       $resourceRefFactory: context.resourceRefFactory,
+       categoryService: categoryService,  // Propagated custom param
+       defaultLocale: defaultLocale,       // Propagated custom param
+     ),
+     ```
+
+2. **If `init_rdf_mapper.g.dart` does NOT exist**:
+   - Keep `mapperInitializer` as required parameter in `initLocorda()` signature
+   - Pass through directly to `Locorda.create()`
+
+### Task 5.5: Generate complete `initLocorda()` function
+
+**Purpose**: Generate the main initialization function with all pieces integrated.
+
+**Generated function signature** (without LocordaConfig generator, with custom mapper params):
+```dart
+/// Initialize Locorda with generated worker and RDF mapper.
+///
+/// This function is generated to simplify Locorda initialization by:
+/// - Automatically wiring up the generated worker setup
+/// - Connecting the RDF mapper with framework-injected dependencies
+/// - Propagating application-specific parameters
+///
+/// ## Parameters
+/// - [config]: Resource configuration with types, CRDT mappings, and indices
+/// - [storage]: Main thread handler for storage backend (typically Drift)
+/// - [remotes]: Main thread handlers for remote backends (Solid, GDrive, etc.)
+/// - [categoryService]: Custom dependency for CategoryMapper
+/// - [defaultLocale]: Custom configuration for localization
+/// - [iriTermFactory]: Optional custom IRI term factory
+/// - [rdfCore]: Optional custom RDF core
+/// - [jsScript]: Web worker JS filename (default: 'worker_generated.dart.js')
+/// - [plugins]: Additional worker plugins for custom functionality
+/// - [onWorkerSpawn]: Optional callback to run when worker thread spawns
+/// - [debugName]: Optional name for debugging worker communication
+Future<Locorda> initLocorda({
+  required LocordaConfig config,
+  required StorageMainHandler storage,
+  List<RemoteIntegration> remotes = const [],
+  required CategoryService categoryService,  // Propagated from initRdfMapper
+  String? defaultLocale,                      // Propagated from initRdfMapper
+  IriTermFactory? iriTermFactory,
+  RdfCore? rdfCore,
+  String jsScript = 'worker_generated.dart.js',
+  List<MainHandlerFactory> plugins = const [],
+  void Function()? onWorkerSpawn,
+  String? debugName,
+}) async {
+  return Locorda.create(
+    workerSetup: generatedWorkerSetup,
+    onWorkerSpawn: onWorkerSpawn,
+    config: config,
+    mapperInitializer: (context) => initRdfMapper(
+      rdfMapper: context.baseRdfMapper,
+      $indexItemIriFactory: context.indexItemIriFactory,
+      $resourceIriFactory: context.resourceIriFactory,
+      $resourceRefFactory: context.resourceRefFactory,
+      categoryService: categoryService,
+      defaultLocale: defaultLocale,
+    ),
+    storage: storage,
+    jsScript: jsScript,
+    remotes: remotes,
+    plugins: plugins,
+    iriTermFactory: iriTermFactory,
+    rdfCore: rdfCore,
+    debugName: debugName,
+  );
+}
+```
+
+**Simplest case** (no custom params, no config generator):
+```dart
+import 'package:locorda/locorda.dart';
+import 'init_rdf_mapper.g.dart' show initRdfMapper;
+import 'worker_generated.g.dart' show generatedWorkerSetup;
+
+/// Initialize Locorda with generated worker and RDF mapper.
+Future<Locorda> initLocorda({
+  required LocordaConfig config,
+  required StorageMainHandler storage,
+  List<RemoteIntegration> remotes = const [],
+  IriTermFactory? iriTermFactory,
+  RdfCore? rdfCore,
+  String jsScript = 'worker_generated.dart.js',
+  List<MainHandlerFactory> plugins = const [],
+  void Function()? onWorkerSpawn,
+  String? debugName,
+}) async {
+  return Locorda.create(
+    workerSetup: generatedWorkerSetup,
+    onWorkerSpawn: onWorkerSpawn,
+    config: config,
+    mapperInitializer: (context) => initRdfMapper(
+      rdfMapper: context.baseRdfMapper,
+      $indexItemIriFactory: context.indexItemIriFactory,
+      $resourceIriFactory: context.resourceIriFactory,
+      $resourceRefFactory: context.resourceRefFactory,
+    ),
+    storage: storage,
+    jsScript: jsScript,
+    remotes: remotes,
+    plugins: plugins,
+    iriTermFactory: iriTermFactory,
+    rdfCore: rdfCore,
+    debugName: debugName,
+  );
+}
+```
+
+### Task 5.6: Update analyzer dependency
+
+**File**: `packages/locorda_builder/pubspec.yaml`
+
+**Change**:
+```yaml
+dependencies:
+  # OLD:
+  analyzer: '>=7.4.0 <10.0.0'
+  
+  # NEW:
+  analyzer: '>=8.1.0 <11.0.0'
+```
+
+**Rationale**: 
+- Avoid outdated and deprecated dependencies
+- Ensure compatibility with latest analyzer features
+- Follow project guideline: "We must never use outdated and deprecated dependencies"
+
+### Task 5.7: Add to locorda_dev applies_builders
+
+**File**: `packages/locorda_dev/build.yaml`
+
+Add the init_locorda generator to the meta-builder's `applies_builders` list:
+```yaml
+applies_builders:
+  - locorda_mapping_bootstrap_generator:mapping_bootstrap
+  - locorda_rdf_mapper_generator:cache_builder
+  - locorda_rdf_mapper_generator:source_builder
+  - locorda_rdf_mapper_generator:init_file_builder
+  - locorda_builder:worker_generator
+  - locorda_builder:init_locorda_generator  # <-- Add this
+  - locorda_builder:web_worker
+```
+
+**Note**: `init_locorda_generator` must run after `worker_generator` and `init_file_builder` because it depends on their outputs (`worker_generated.g.dart` and `init_rdf_mapper.g.dart`).
 
 ---
 
