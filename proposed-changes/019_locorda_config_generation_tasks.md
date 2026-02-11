@@ -365,17 +365,32 @@ class IndexPropertyData {
 
 #### 2b. `packages/locorda_init_generator/lib/src/config/annotation_scanner.dart`
 
-Scans `.dart` source files for annotations using `package:analyzer`:
+Scans `.dart` source files using a **hybrid resolved + AST approach**:
 
 ```dart
 /// Scans Dart source files for Locorda config annotations.
 ///
-/// Extracts @LcrdRootResource, @LcrdGroupKey, and @LcrdIndexItem
-/// annotation data from AST nodes without requiring resolved elements.
+/// Uses a hybrid approach:
+/// - **Resolved analysis** (via `buildStep.resolver.libraryFor()`) for
+///   annotation detection, including type hierarchy walking to support
+///   custom property annotations that extend `RdfProperty`.
+/// - **AST analysis** (via `parseString()`) for extracting raw Dart source
+///   expressions (e.g., `crdtMapping` with const interpolation, property
+///   IRI references like `SchemaNoteDigitalDocument.name`).
+///
+/// This mirrors the approach used by `locorda_rdf_mapper_generator`'s
+/// `processor_utils.dart` for `@RdfProperty` subclass detection.
 class AnnotationScanner {
-  /// Scans a single compilation unit for config-relevant annotations.
-  /// Returns all found data grouped by type.
-  ScanResult scanUnit(CompilationUnit unit, String importUri);
+  /// Scans a resolved library + its AST for config-relevant annotations.
+  ///
+  /// [libraryElement] - resolved library from `buildStep.resolver`
+  /// [compilationUnit] - parsed AST from `parseString()` for source expressions
+  /// [importUri] - package URI for generated imports
+  ScanResult scanLibrary(
+    LibraryElement libraryElement,
+    CompilationUnit compilationUnit,
+    String importUri,
+  );
 }
 
 class ScanResult {
@@ -387,16 +402,16 @@ class ScanResult {
 ```
 
 **Implementation Notes:**
-- Parse annotation AST nodes using `package:analyzer/dart/ast/ast.dart`
-- For `@LcrdRootResource(classIri, crdtMapping, ...)`: extract from constructor arguments
-- For `@LcrdGroupKey(ResourceType, ...)`: extract `Type` argument and named parameters
-- For `@LcrdIndexItem.fullIndex(iriStrategy)` / `.groupIndex(type, iriStrategy)`: detect named constructor and extract arguments
-- For `@RdfProperty(iri)` on fields of IndexItem classes: extract the IRI source expression
-- **Critical**: Use AST-level analysis (unresolved), not element-model. The existing `InitLocordaBuilder` uses `parseString()` — follow the same pattern.
+- For `@LcrdRootResource`, `@LcrdGroupKey`, `@LcrdIndexItem`: Use `computeConstantValue()` on `ClassElement.metadata` and check `annotation.type?.element?.name` for a name match. These are framework annotations that users don't subclass, so simple name matching on the resolved type suffices.
+- For `@RdfProperty(iri)` on fields of IndexItem classes: Use `computeConstantValue()` + **type hierarchy walking** (see Task 3 for details). This detects both `@RdfProperty` and custom subclasses like `@NoteCategoryProperty()`.
+- For **source expression extraction** (crdtMapping, property IRIs): Use the parsed AST `CompilationUnit`. Locate the annotation's `Annotation` AST node via the class name + annotation name, then call `.toSource()` on the relevant argument expressions.
 - The `sourceImport` for each data item should be the `package:` URI of the file it was found in, so the generated code can import it.
 
 **How to find source files to scan:**
-The builder triggers on `pubspec.yaml`. To find all `.dart` files in the consumer package's `lib/` directory, use the build system's `findAssets()` or iterate known asset globs. Study how `build` package provides access to package sources. Alternatively, use `buildStep.findAssets(Glob('lib/**.dart'))` from `package:glob`.
+The builder triggers on `pubspec.yaml`. Use `buildStep.findAssets(Glob('lib/**.dart'))` to discover source files. For each file:
+1. Read content via `buildStep.readAsString()`
+2. Parse AST via `parseString()` (for source expression extraction)
+3. Resolve library via `buildStep.resolver.libraryFor()` (for annotation hierarchy detection)
 
 Add `glob` to the `pubspec.yaml` dependencies if it's not already present:
 ```yaml
@@ -495,7 +510,11 @@ Builder configBuilder(BuilderOptions options) => ConfigBuilder(options);
 
 **Trigger**: `pubspec.yaml` → `lib/locorda_config.g.dart` (same pattern as `init_locorda_generator`).
 
-**File scanning**: Use `buildStep.findAssets(Glob('lib/**.dart'))` to discover source files. For each file, read content via `buildStep.readAsString()`, parse via `parseString()`, and scan.
+**File scanning**: Use `buildStep.findAssets(Glob('lib/**.dart'))` to discover source files. For each file:
+1. Filter out `.g.dart` files
+2. Read content via `buildStep.readAsString()`, parse AST via `parseString()`
+3. Resolve library via `buildStep.resolver.libraryFor(assetId)` for annotation type resolution
+4. Pass both the resolved `LibraryElement` and parsed `CompilationUnit` to the scanner
 
 **Skip generated files**: Filter out files ending in `.g.dart` to avoid scanning generated code.
 
@@ -542,7 +561,7 @@ dependencies:
   # ... existing deps ...
 ```
 
-Also add `locorda_annotations` dependency (needed for annotation type references during scanning — or not, if doing pure AST string matching). **Decision**: Use pure AST string matching (comparing annotation names as strings, not resolved types). This avoids needing `locorda_annotations` as a dependency of the generator. The existing `InitLocordaBuilder` uses the same approach (string matching on AST).
+**Note**: `locorda_annotations` and `locorda_rdf_mapper_annotations` are NOT needed as direct dependencies of the generator. The build system's `Resolver` resolves annotation types from the consumer package's transitive dependencies. The generator only needs `analyzer`, `build`, and `glob`.
 
 ### Acceptance Criteria
 - [ ] `ConfigBuilder` triggers on `pubspec.yaml` and scans `lib/**.dart` files
@@ -558,61 +577,101 @@ Also add `locorda_annotations` dependency (needed for annotation type references
 ## Task 3: Implement the Annotation Scanner
 
 ### Objective
-Implement the `AnnotationScanner` class that extracts annotation data from Dart AST nodes.
+Implement the `AnnotationScanner` class that extracts annotation data using a hybrid resolved + AST approach.
 
 ### File
 `packages/locorda_init_generator/lib/src/config/annotation_scanner.dart`
 
 ### Implementation Details
 
-**Detecting annotations by name** (AST-level, no resolution):
+**Hybrid approach: Resolved analysis + AST source extraction**
 
-For a class declaration, iterate `node.metadata` (list of `Annotation` nodes). Check:
-- `@LcrdRootResource(...)` → `annotation.name.name == 'LcrdRootResource'`
-- `@LcrdGroupKey(...)` → `annotation.name.name == 'LcrdGroupKey'`
-- `@LcrdIndexItem.fullIndex(...)` → `annotation.name.name == 'LcrdIndexItem'` and `annotation.constructorName?.name == 'fullIndex'`
-- `@LcrdIndexItem.groupIndex(...)` → same with `'groupIndex'`
+The scanner uses two complementary mechanisms:
+1. **Resolved analysis** (via `LibraryElement` from `buildStep.resolver.libraryFor()`): Detects annotations including type hierarchy walking, which supports custom property annotations that extend `RdfProperty`.
+2. **AST analysis** (via `CompilationUnit` from `parseString()`): Extracts raw Dart source expressions (`.toSource()`) for values that must be preserved literally in generated code (crdtMapping with const interpolation, property IRI references).
 
-**Extracting constructor arguments:**
+This mirrors the approach used by `locorda_rdf_mapper_generator` (see `processor_utils.dart`).
 
-From the `Annotation` node, access `annotation.arguments?.arguments` (a `NodeList<Expression>`). Positional arguments come first, named arguments are `NamedExpression` nodes.
+**Detecting Lcrd\* annotations (resolved):**
 
-**Extracting `@LcrdRootResource(classIri, crdtMapping, {...})`:**
-- arg[0]: `classIri` — call `.toSource()` for the literal dart expression
-- arg[1]: `crdtMapping` — use `.toSource()` to capture the raw Dart expression (preserves const interpolation)
-- Named args: `iriStrategy`, `generateCrdtMapping`, `fullIndex` — detect by `NamedExpression.name`
-- For `fullIndex`: if the value is `LcrdFullIndex.disabled` or `LcrdFullIndex.disabled()`, set `isEnabled = false`. If it's a `LcrdFullIndex(...)` constructor call, extract its named args (`localName`, `policy`). Default: enabled with defaults.
+For each `ClassElement` in the resolved `LibraryElement`, iterate `element.metadata` (list of `ElementAnnotation`). Use `computeConstantValue()` to get the `DartObject`, then check `annotation.type?.element?.name`:
+- `'LcrdRootResource'` — extract classIri, crdtMapping, generateCrdtMapping, fullIndex
+- `'LcrdGroupKey'` — extract resourceType, localName, groupingProperties
+- `'LcrdIndexItem'` — detect fullIndex vs groupIndex constructor via DartObject fields
 
-**Extracting `@LcrdGroupKey(resourceType, {...})`:**
-- arg[0]: `resourceType` — `SimpleIdentifier.name` (the type name)
-- Named: `localName`, `groupingProperties` (list literal of `LcrdGroupingProperty(...)` constructor calls)
-- For each `LcrdGroupingProperty(iri, {transforms: [...]})`: extract IRI source and transform list
+These are framework annotations that users don't subclass, so simple name matching on the resolved type suffices.
 
-**Extracting `@LcrdIndexItem.fullIndex(iriStrategy)` / `.groupIndex(type, iriStrategy)`:**
-- For `.groupIndex`: arg[0] is `Type`, arg[1] is `IndexItemIriStrategy(ResourceType)`
-- For `.fullIndex`: arg[0] is `IndexItemIriStrategy(ResourceType)`
-- Extract `ResourceType` from `IndexItemIriStrategy(ResourceType)` → the argument of the constructor call
-- Then scan the class's fields for `@RdfProperty(iri)` to collect index properties
+**Detecting `@RdfProperty` and subclasses on IndexItem fields (resolved + hierarchy walk):**
 
-**Extracting index properties from fields:**
+For fields of `@LcrdIndexItem`-annotated classes, detect `@RdfProperty` annotations including custom subclasses (e.g., `@NoteCategoryProperty()`) using **type hierarchy walking**. This is the same pattern used by `locorda_rdf_mapper_generator/processor_utils.dart`:
 
-For each `FieldDeclaration` in the annotated class:
-- Check `metadata` for `@RdfProperty(...)` or custom property annotations (like `@NoteCategoryProperty()`)
-- For `@RdfProperty(iri)`: extract `iri.toSource()`
-- For custom annotations: these extend `RdfProperty` — the scanner cannot know this without resolution. **Pragmatic solution**: Extract the first annotation argument from any non-CRDT, non-Lcrd annotation on the field that takes an IRI-like argument. OR: only extract `@RdfProperty(...)` and require custom properties to also have explicit `@RdfProperty(...)`.
+```dart
+/// Checks if the given type or any of its supertypes match the target annotation name.
+/// Supports annotation subclassing by walking up the inheritance hierarchy.
+bool _matchesAnnotationInHierarchy(DartType? type, String targetAnnotationName) {
+  if (type == null) return false;
+  final visitedTypes = <String>{};
+  return _checkTypeHierarchy(type, targetAnnotationName, visitedTypes);
+}
 
-> **⚠️ Design decision needed**: Custom property annotations like `@NoteCategoryProperty()` wrap an IRI internally. At AST level, the scanner cannot resolve the parent class. Options:
-> 1. Only support `@RdfProperty(iri)` — users must add explicit `@RdfProperty` alongside custom annotations
-> 2. Let users declare included properties explicitly in the annotation — e.g., `@LcrdIndexItem.fullIndex(iriStrategy, properties: {...})` 
-> 3. Use resolved analysis (heavier, requires analyzer contexts)
-> 
-> **Recommended:** Option 1 — simplest, most predictable. Document that index item properties must have explicit `@RdfProperty(iri)`. Custom annotations without `@RdfProperty` are silently excluded.
+bool _checkTypeHierarchy(DartType type, String targetAnnotationName, Set<String> visitedTypes) {
+  final typeName = type.element?.name;
+  if (typeName == null || visitedTypes.contains(typeName)) return false;
+  visitedTypes.add(typeName);
+  if (typeName == targetAnnotationName) return true;
+  for (final supertype in type.allSupertypes) {
+    if (_checkTypeHierarchy(supertype, targetAnnotationName, visitedTypes)) return true;
+  }
+  return false;
+}
+```
+
+For each `FieldElement` in an IndexItem class:
+1. Iterate `field.metadata` (list of `ElementAnnotation`)
+2. Call `elementAnnotation.computeConstantValue()` to get the `DartObject`
+3. Check `_matchesAnnotationInHierarchy(dartObject.type, 'RdfProperty')`
+4. If matched: extract the `predicate` field value via `dartObject.getField('predicate')`
+
+This automatically supports `@RdfProperty(iri)`, `@NoteCategoryProperty()`, and any other custom subclass.
+
+**Extracting source expressions (AST):**
+
+For values that must be preserved as raw Dart source in generated code, use the parsed AST `CompilationUnit`:
+
+- **`crdtMapping`**: Locate the `@LcrdRootResource` annotation's AST node by matching the class name. Access `annotation.arguments?.arguments[1]` (second positional arg) and call `.toSource()`. This preserves const interpolation like `'$appBaseUrl/mappings/note-v1.ttl'`.
+- **Property IRI references**: Locate the field's `@RdfProperty(...)` (or subclass) AST annotation. Access `annotation.arguments?.arguments[0]` (first positional arg) and call `.toSource()`. This preserves references like `SchemaNoteDigitalDocument.name`.
+- **`classIri`**: Same approach — `annotation.arguments?.arguments[0].toSource()`.
+
+**Cross-referencing resolved ↔ AST**: Match by class name (`ClassElement.name` == `ClassDeclaration.name.lexeme`) to find the corresponding AST node for a resolved element.
+
+**Extracting `@LcrdRootResource` parameters (resolved):**
+- `classIri` — via `dartObject.getField('classIri')` (resolved value for validation) + AST `.toSource()` (for generated code)
+- `crdtMapping` — AST `.toSource()` only (preserves const interpolation)
+- `generateCrdtMapping` — `dartObject.getField('generateCrdtMapping')?.toBoolValue()`
+- `fullIndex` — `dartObject.getField('fullIndex')`: check `getField('isEnabled')?.toBoolValue()`, `getField('localName')?.toStringValue()`, `getField('policy')` enum value
+
+**Extracting `@LcrdGroupKey` parameters (resolved):**
+- `resourceType` — `dartObject.getField('resourceType')?.toTypeValue()?.element?.name`
+- `localName` — `dartObject.getField('localName')?.toStringValue()`
+- `groupingProperties` — iterate list field, extract nested `LcrdGroupingProperty` data
+- For each `LcrdGroupingProperty`: extract `property` IRI via `getField('property')` + AST `.toSource()`, extract `transforms` list
+
+**Extracting `@LcrdIndexItem` parameters (resolved):**
+- Detect `.fullIndex` vs `.groupIndex` via `dartObject.getField('groupKeyType')`: null means fullIndex
+- `resourceType` — extracted from the `IndexItemIriStrategy` parameter (via resolved field or AST)
+- `groupKeyType` — `dartObject.getField('groupKeyType')?.toTypeValue()?.element?.name`
+
+**Empty IndexItem handling:**
+
+If an `@LcrdIndexItem`-annotated class has no fields with `@RdfProperty` (or subclass), emit a **build warning** (via `log.warning(...)`) and generate `IndexItem(Type, {})` with an empty property set. This is valid but pointless — the warning alerts the developer.
 
 ### Acceptance Criteria
 - [ ] Correctly parses `@LcrdRootResource` with all parameter variants
 - [ ] Correctly parses `@LcrdGroupKey` with `groupingProperties` including nested `LcrdRegexTransform`
 - [ ] Correctly parses both `@LcrdIndexItem.fullIndex()` and `.groupIndex()`
-- [ ] Extracts `@RdfProperty` IRIs from index item class fields
+- [ ] Extracts `@RdfProperty` IRIs from index item class fields (using hierarchy walk)
+- [ ] Detects custom property annotations that extend `@RdfProperty` (e.g., `@NoteCategoryProperty()`)
+- [ ] Warns on empty IndexItem (no `@RdfProperty` fields) and generates empty property set
 - [ ] Returns empty results for files without relevant annotations
 - [ ] Handles edge cases: no annotations, unnamed files, abstract classes
 - [ ] Unit tests cover all parseable variants (see Task 6)
@@ -826,11 +885,17 @@ Test cases:
 7. **`@LcrdIndexItem.fullIndex()`** → `groupKeyType == null`, extracts resourceType from IriStrategy
 8. **`@LcrdIndexItem.groupIndex()`** → extracts both groupKeyType and resourceType
 9. **IndexItem field scanning** → extracts `@RdfProperty` IRIs from class fields
-10. **Multiple annotations in one file** → all collected
-11. **File with no relevant annotations** → empty result
-12. **`.g.dart` filename** → skipped (test at builder level)
+10. **Custom property annotation** → `@NoteCategoryProperty()` (extends `RdfProperty`) detected via hierarchy walk
+11. **Multiple annotations in one file** → all collected
+12. **File with no relevant annotations** → empty result
+13. **`.g.dart` filename** → skipped (test at builder level)
+14. **Empty IndexItem** → class with `@LcrdIndexItem` but no `@RdfProperty` fields → generates empty property set with warning
 
-**Test approach**: Create in-memory Dart source strings, call `parseString()`, then `scanner.scanUnit()`.
+**Test approach**: Because the scanner uses resolved analysis (hierarchy walking via `computeConstantValue()` and `type.allSupertypes`), scanner tests require a real analyzer context. Use the same test infrastructure pattern as `locorda_rdf_mapper_generator`:
+- Create source strings with proper imports
+- Use a test helper that sets up an analysis context (similar to how `annotation_subclass_processor_test.dart` in `locorda_rdf_mapper_generator` works, tagged `'pub-resolver', 'slow'`)
+- For simple structural tests (Lcrd\* annotation extraction), a lighter approach using `package:build_test` may suffice
+- Consider splitting into fast tests (code generator, data class construction) and slow tests (resolved scanner with hierarchy walking)
 
 #### 6b. `packages/locorda_init_generator/test/config/config_code_generator_test.dart`
 
@@ -857,11 +922,12 @@ Integration test using `package:build_test`:
 This is more complex and can be deferred. The unit tests in 6a and 6b provide the critical coverage.
 
 ### Acceptance Criteria
-- [ ] All scanner test cases pass
+- [ ] All scanner test cases pass (including custom property subclass detection)
 - [ ] All code generator test cases pass
-- [ ] Tests use in-memory source strings (no file I/O)
+- [ ] Scanner tests use resolved analysis context (may be tagged `'slow'`)
+- [ ] Code generator tests use in-memory data objects (fast, no I/O)
 - [ ] `dart test packages/locorda_init_generator` passes
-- [ ] Edge cases covered (empty input, missing annotations, defaults)
+- [ ] Edge cases covered (empty input, missing annotations, defaults, empty IndexItem)
 
 ---
 
@@ -1010,13 +1076,13 @@ Tasks 1+5 and Tasks 2+3+4 can be done in parallel. Task 6 requires Tasks 3+4. Ta
 
 ---
 
-## Open Design Decisions
+## Resolved Design Decisions
 
-These items need project-owner confirmation before or during implementation:
+These items were resolved during design review:
 
-1. **Custom property annotations in IndexItems**: `@NoteCategoryProperty()` (extends `RdfProperty`) cannot be detected at AST level. **Recommendation**: Require explicit `@RdfProperty(iri)` on index item fields; custom annotations are silently ignored in property extraction.
+1. **Custom property annotations in IndexItems**: ✅ **Resolved — use resolved analysis with hierarchy walking.** Custom property annotations like `@NoteCategoryProperty()` that extend `RdfProperty` are detected by walking the annotation's type hierarchy via `computeConstantValue()` and `type.allSupertypes`. This is the same approach used by `locorda_rdf_mapper_generator/processor_utils.dart` (`_matchesAnnotationInHierarchy()` / `_checkTypeHierarchy()`). No limitation on custom properties.
 
-2. **Index items without `@RdfProperty`**: Should the scanner warn or error when an `@LcrdIndexItem`-annotated class has no `@RdfProperty` fields? **Recommendation**: Generate `IndexItem(Type, {})` with empty properties — valid but pointless. Emit a build warning.
+2. **Index items without `@RdfProperty`**: ✅ **Resolved — warn and generate empty set.** When an `@LcrdIndexItem`-annotated class has no fields with `@RdfProperty` (or subclass), emit a build warning and generate `IndexItem(Type, {})` with an empty property set. Valid but pointless — the warning alerts the developer.
 
 ---
 

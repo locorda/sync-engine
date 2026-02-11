@@ -466,10 +466,11 @@ builders:
 ```
 
 ### Package Dependencies
-- **locorda_annotations**: Annotation definitions (`LcrdRootResource`, `LcrdFullIndex`, `LcrdGroupKey`, `LcrdIndexItem`)
-- **locorda_core**: Runtime config classes (`LocordaConfig`, `ResourceConfig`, `FullIndex`, `GroupIndex`)
-- **analyzer**: AST traversal for annotation scanning
+- **locorda_annotations**: Annotation definitions (`LcrdRootResource`, `LcrdFullIndex`, `LcrdGroupKey`, `LcrdIndexItem`) — NOT a dependency of the generator; resolved from consumer's transitive deps
+- **locorda_core**: Runtime config classes (`LocordaConfig`, `ResourceConfig`, `FullIndex`, `GroupIndex`) — NOT a dependency of the generator
+- **analyzer**: Resolved analysis for annotation detection + type hierarchy walking (supports custom `@RdfProperty` subclasses)
 - **build**: Code generation infrastructure
+- **glob**: File discovery for scanning `lib/` directory
 
 ## Implementation Phases
 
