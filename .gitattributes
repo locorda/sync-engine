@@ -1,0 +1,5 @@
+# Mark agent-generated files as generated to hide them from PR diffs by default
+.agents/** linguist-generated=true
+
+# Ensure Markdown files in the agent folder don't affect repo language statistics
+.agents/**/*.md linguist-documentation=true
