@@ -1,0 +1,21 @@
+name: locorda_init_generator
+description: Code generator for Locorda convenience wrapper (initLocorda)
+version: 0.0.1
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  # CRITICAL: Must support range from stable Flutter (8.4.x) to latest (10.x)
+  # See: https://github.com/flutter/flutter/blob/stable/packages/flutter_tools/lib/src/web/compile.dart
+  analyzer: '>=8.1.0 <11.0.0'
+  build: ^4.0.0
+  source_gen: ^1.6.0
+  path: ^1.9.0
+
+dev_dependencies:
+  test: ^1.26.3
+  build_runner: ^2.4.0
+  build_test: ^3.0.0

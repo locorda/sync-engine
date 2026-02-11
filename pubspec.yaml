@@ -17,6 +17,7 @@ workspace:
   - packages/locorda_dev
   - packages/locorda_builder
   - packages/locorda_mapping_bootstrap_generator
+  - packages/locorda_init_generator
   - packages/locorda_core
   - packages/locorda_objects
   - packages/locorda_dir
