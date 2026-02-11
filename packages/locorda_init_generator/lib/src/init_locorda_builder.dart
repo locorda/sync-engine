@@ -6,9 +6,9 @@ import 'package:build/build.dart';
 import 'package:logging/logging.dart';
 
 import 'code_generator.dart';
-import 'locorda_params.dart';
 import 'mapper_analyzer.dart';
 import 'parameter_info.dart';
+import 'parameter_parser.dart';
 
 final _log = Logger('InitLocordaBuilder');
 
@@ -53,8 +53,9 @@ class InitLocordaBuilder implements Builder {
       );
       _log.fine('Has init_rdf_mapper.g.dart: $hasInitMapper');
 
-      // Step 3: Get Locorda.create parameters (hardcoded for now)
-      final locordaParams = getLocordaCreateParameters();
+      // Step 3: Analyze Locorda.create parameters dynamically
+      final locordaAnalysis = await _analyzeLocordaSource(buildStep);
+      final locordaParams = locordaAnalysis.params;
 
       // Step 4: Analyze initRdfMapper signature (if exists)
       List<ParameterInfo> mapperParams = [];
@@ -68,12 +69,11 @@ class InitLocordaBuilder implements Builder {
         detectedFrameworkParams = result.frameworkParams;
         additionalImports.addAll(result.imports);
         _log.fine('Found ${mapperParams.length} custom mapper params');
-        _log.fine('Found ${detectedFrameworkParams.length} framework params: $detectedFrameworkParams');
+        _log.fine(
+            'Found ${detectedFrameworkParams.length} framework params: $detectedFrameworkParams');
       }
 
-      additionalImports.addAll(
-        await _collectImportsFromLocordaSource(buildStep),
-      );
+      additionalImports.addAll(locordaAnalysis.imports);
 
       // Step 5: Generate code
       final generator = CodeGenerator(
@@ -99,10 +99,21 @@ class InitLocordaBuilder implements Builder {
   }
 }
 
-Future<Set<String>> _collectImportsFromLocordaSource(BuildStep buildStep) async {
+class _LocordaSourceAnalysis {
+  final List<ParameterInfo> params;
+  final Set<String> imports;
+
+  const _LocordaSourceAnalysis({
+    required this.params,
+    required this.imports,
+  });
+}
+
+Future<_LocordaSourceAnalysis> _analyzeLocordaSource(
+    BuildStep buildStep) async {
   final assetId = AssetId('locorda_flutter', 'lib/src/locorda.dart');
   if (!await buildStep.canRead(assetId)) {
-    return {};
+    throw StateError('locorda_flutter/lib/src/locorda.dart not found');
   }
 
   final content = await buildStep.readAsString(assetId);
@@ -116,7 +127,31 @@ Future<Set<String>> _collectImportsFromLocordaSource(BuildStep buildStep) async 
     }
   }
 
-  return imports;
+  final params = _extractLocordaCreateParameters(unit);
+
+  return _LocordaSourceAnalysis(
+    params: params,
+    imports: imports,
+  );
+}
+
+List<ParameterInfo> _extractLocordaCreateParameters(CompilationUnit unit) {
+  for (final declaration in unit.declarations) {
+    if (declaration is ClassDeclaration &&
+        declaration.name.lexeme == 'Locorda') {
+      for (final member in declaration.members) {
+        if (member is MethodDeclaration && member.name.lexeme == 'create') {
+          final params = member.parameters;
+          if (params == null) {
+            throw StateError('Locorda.create has no parameters');
+          }
+          return parseParameterList(params);
+        }
+      }
+    }
+  }
+
+  throw StateError('Locorda.create method not found in locorda.dart');
 }
 
 /// Builder factory for build_runner integration.

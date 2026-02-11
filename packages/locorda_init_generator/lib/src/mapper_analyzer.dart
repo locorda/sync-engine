@@ -4,6 +4,7 @@ import 'package:build/build.dart';
 import 'package:logging/logging.dart';
 
 import 'parameter_info.dart';
+import 'parameter_parser.dart';
 
 final _log = Logger('MapperAnalyzer');
 
@@ -17,7 +18,7 @@ class MapperAnalyzer {
   /// Analyze initRdfMapper function and extract custom parameters.
   Future<MapperAnalysisResult> analyzeInitRdfMapper() async {
     final assetId = AssetId(packageName, 'lib/init_rdf_mapper.g.dart');
-    
+
     if (!await buildStep.canRead(assetId)) {
       _log.fine('init_rdf_mapper.g.dart not found, returning empty result');
       return const MapperAnalysisResult(
@@ -28,7 +29,7 @@ class MapperAnalyzer {
     }
 
     final content = await buildStep.readAsString(assetId);
-    
+
     try {
       return _parseInitRdfMapper(content);
     } catch (e) {
@@ -56,7 +57,8 @@ class MapperAnalyzer {
     }
 
     if (initRdfMapperFunc == null) {
-      _log.warning('initRdfMapper function not found in init_rdf_mapper.g.dart');
+      _log.warning(
+          'initRdfMapper function not found in init_rdf_mapper.g.dart');
       return const MapperAnalysisResult(
         customParams: [],
         frameworkParams: {},
@@ -76,33 +78,15 @@ class MapperAnalyzer {
 
     final parameters = initRdfMapperFunc.functionExpression.parameters;
     if (parameters != null) {
-      for (final param in parameters.parameters) {
-        if (param is DefaultFormalParameter) {
-          final normalParam = param.parameter;
-          if (normalParam is SimpleFormalParameter) {
-            final paramName = normalParam.name?.lexeme ?? '';
-            
-            // Skip framework parameters
-            if (paramName == 'rdfMapper' || paramName.startsWith(r'$')) {
-              if (paramName.startsWith(r'$')) {
-                frameworkParams.add(paramName);
-              }
-              continue;
-            }
-            
-            // Extract custom parameter
-            final paramType = normalParam.type?.toSource() ?? 'dynamic';
-            final isRequired = param.isRequired;
-            
-            customParams.add(ParameterInfo(
-              name: paramName,
-              type: paramType,
-              isRequired: isRequired,
-              isNamed: true,
-              defaultValue: param.defaultValue?.toSource(),
-            ));
+      final parsedParams = parseParameterList(parameters);
+      for (final param in parsedParams) {
+        if (param.name == 'rdfMapper' || param.name.startsWith(r'$')) {
+          if (param.name.startsWith(r'$')) {
+            frameworkParams.add(param.name);
           }
+          continue;
         }
+        customParams.add(param);
       }
     }
 
