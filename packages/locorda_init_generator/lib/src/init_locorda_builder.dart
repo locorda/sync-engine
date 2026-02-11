@@ -1,11 +1,14 @@
 import 'dart:async';
 
 import 'package:build/build.dart';
+import 'package:logging/logging.dart';
 
 import 'code_generator.dart';
 import 'locorda_params.dart';
 import 'mapper_analyzer.dart';
 import 'parameter_info.dart';
+
+final _log = Logger('InitLocordaBuilder');
 
 /// Builder that generates lib/init_locorda.g.dart
 ///
@@ -33,20 +36,20 @@ class InitLocordaBuilder implements Builder {
       return;
     }
 
-    log.info('Generating init_locorda.g.dart for package: ${inputId.package}');
+    _log.info('Generating init_locorda.g.dart for package: ${inputId.package}');
 
     try {
       // Step 1: Detect worker_generated.g.dart
       final hasGeneratedWorker = await buildStep.canRead(
         AssetId(inputId.package, 'lib/worker_generated.g.dart'),
       );
-      log.fine('Has worker_generated.g.dart: $hasGeneratedWorker');
+      _log.fine('Has worker_generated.g.dart: $hasGeneratedWorker');
 
       // Step 2: Detect init_rdf_mapper.g.dart
       final hasInitMapper = await buildStep.canRead(
         AssetId(inputId.package, 'lib/init_rdf_mapper.g.dart'),
       );
-      log.fine('Has init_rdf_mapper.g.dart: $hasInitMapper');
+      _log.fine('Has init_rdf_mapper.g.dart: $hasInitMapper');
 
       // Step 3: Get Locorda.create parameters (hardcoded for now)
       final locordaParams = getLocordaCreateParameters();
@@ -60,8 +63,8 @@ class InitLocordaBuilder implements Builder {
         final result = await mapperAnalyzer.analyzeInitRdfMapper();
         mapperParams = result.customParams;
         detectedFrameworkParams = result.frameworkParams;
-        log.fine('Found ${mapperParams.length} custom mapper params');
-        log.fine('Found ${detectedFrameworkParams.length} framework params: $detectedFrameworkParams');
+        _log.fine('Found ${mapperParams.length} custom mapper params');
+        _log.fine('Found ${detectedFrameworkParams.length} framework params: $detectedFrameworkParams');
       }
 
       // Step 5: Generate code
@@ -79,9 +82,9 @@ class InitLocordaBuilder implements Builder {
       final outputId = AssetId(inputId.package, 'lib/init_locorda.g.dart');
       await buildStep.writeAsString(outputId, generatedCode);
 
-      log.info('Generated init_locorda.g.dart successfully');
+      _log.info('Generated init_locorda.g.dart successfully');
     } catch (e, stackTrace) {
-      log.severe('Failed to generate init_locorda.g.dart: $e', e, stackTrace);
+      _log.severe('Failed to generate init_locorda.g.dart: $e', e, stackTrace);
       rethrow;
     }
   }
