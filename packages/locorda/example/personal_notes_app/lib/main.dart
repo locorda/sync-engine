@@ -21,7 +21,7 @@ import 'package:personal_notes_app/models/note_group_key.dart';
 import 'package:personal_notes_app/models/note_index_entry.dart';
 import 'package:personal_notes_app/locorda_worker.manifest.dart';
 import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
-import 'package:personal_notes_app/worker.dart';
+import 'package:personal_notes_app/worker_generated.g.dart';
 
 import 'screens/notes_list_screen.dart';
 import 'services/categories_service.dart';
@@ -52,7 +52,7 @@ void main() async {
 Future<Locorda> initializeLocorda() async {
   // Setup sync system with worker
   return Locorda.create(
-    workerSetup: setupWorkerEngine,
+    workerSetup: generatedWorkerSetup,
     onWorkerSpawn: setupWorkerLogging,
 
     // Provide remotes - those must be configured correspondingly in setupWorkerEngine as well
