@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:build/build.dart';
-import 'package:path/path.dart' as p;
 
 /// Generates worker.g.dart by discovering and aggregating manifest files.
 ///
