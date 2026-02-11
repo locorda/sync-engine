@@ -197,9 +197,12 @@ constructor in worker.dart. For the generated worker to work, this config must c
 2. Reads `buildStep.packageConfig` to list all packages.
 3. For each package, probes for manifest files (default: `lib/locorda_worker.manifest.dart`).
 4. Applies `exclude_packages` filter from builder options.
-5. Generates complete executable worker with `main()` entry point.
+5. Checks if manual `lib/worker.dart` exists - skips generation if found.
+6. Generates complete executable worker with `main()` entry point.
 
-**Output**: `lib/worker.g.dart` (build_to: source).
+**Output**: `lib/worker_generated.g.dart` (build_to: source).
+
+**Note**: Output renamed to avoid collision with `source_gen:combining_builder` which also generates `.g.dart` files.
 
 **build.yaml** config:
 ```yaml
@@ -209,7 +212,7 @@ builders:
     builder_factories: ["workerGeneratorBuilder"]
     build_extensions:
       pubspec.yaml:
-        - lib/worker.g.dart
+        - lib/worker_generated.g.dart
     auto_apply: dependents
     build_to: source
     required_inputs:
@@ -229,6 +232,8 @@ builders:
         on_worker_spawn_function: null
 ```
 
+**Note**: Output is `worker_generated.g.dart` to avoid collision with `source_gen:combining_builder`. The web_worker builder compiles this to `web/worker_generated.dart.js` for distinct outputs.
+
 **Dependency**: This builder runs after `mapping_bootstrap` generator (if present) because
 it conditionally imports `mapping_bootstrap.g.dart`.
 
@@ -245,7 +250,7 @@ targets:
 
 ### Task 3.2: Define the generated output format
 
-The generated `lib/worker.g.dart` is a complete, executable worker entry point:
+The generated `lib/worker_generated.g.dart` is a complete, executable worker entry point:
 
 **Without onWorkerSpawn or mapping_bootstrap** (minimal example):
 ```dart
@@ -337,19 +342,24 @@ The builder needs to:
 1. Read `manifest_files` option (default: `['lib/locorda_worker.manifest.dart']`).
 2. For each package in `buildStep.packageConfig`, check if any manifest file exists.
 3. Skip packages in `exclude_packages` list.
-4. Generate imports with sanitized aliases (replace `-` with `_` in package names).
-5. **Check if mapping_bootstrap.g.dart exists**:
+4. **Check if manual `lib/worker.dart` exists**:
+   - Use `buildStep.canRead(AssetId(inputId.package, 'lib/worker.dart'))`
+   - Skip generation entirely if manual worker exists (logs info message)
+   - This allows users to override generation for advanced use cases
+5. Generate imports with sanitized aliases (replace `-` with `_` in package names).
+6. **Check if mapping_bootstrap.g.dart exists**:
    - Use `buildStep.canRead(AssetId(inputId.package, 'lib/src/generated/mapping_bootstrap.g.dart'))`
    - Only import and reference `bootstrapMappings` if file exists
    - Otherwise use empty list `[]` for `mappingBootstrapSources`
-6. Generate `main()` function:
+7. Generate `main()` function:
    - Call `workerMain(generatedWorkerSetup)`
    - Optionally add `onWorkerSpawn` parameter if configured
-7. Generate `generatedWorkerSetup()` function (public, for isolate import):
+8. Generate `generatedWorkerSetup()` function (public, for isolate import):
    - Spread all `...packageAlias.storages`
    - Spread all `...packageAlias.remotes`
    - Include `bootstrapMappings` (if found) or `[]` (if not)
-8. If `on_worker_spawn_import` and `on_worker_spawn_function` are configured:
+9. Add `// ignore_for_file: depend_on_referenced_packages` comment at top of generated file
+10. If `on_worker_spawn_import` and `on_worker_spawn_function` are configured:
    - Add import statement
    - Pass function to `workerMain()`
 
@@ -369,64 +379,73 @@ applies_builders:
 ```
 
 **Note**: `worker_generator` must run before `web_worker` because the web worker
-builder compiles `lib/worker.dart` → `web/worker.dart.js`. With generation,
-it will compile `lib/worker.g.dart` instead (requires updating web_worker builder
-to look for `worker.g.dart`).
+builder compiles worker files to JavaScript. With generation, it compiles both:
+- Manual `lib/worker.dart` → `web/worker.dart.js`
+- Generated `lib/worker_generated.g.dart` → `web/worker_generated.dart.js`
+
+Distinct output names prevent collisions when both files exist.
 
 ---
 
 ## Phase 4: Update Web Worker Builder
 
-### Task 4.1: Support both manual and generated worker files
+### Task 4.1: Support both manual and generated worker files with distinct outputs
 
 **File**: `packages/locorda_builder/lib/src/web_worker_builder.dart`
 
-**Goal**: Support gradual migration and provide escape hatch for advanced use cases.
+**Goal**: Support coexistence of manual and generated workers with distinct JavaScript outputs.
 
-Update `buildExtensions` and `build()` method to check for both files:
+Update `buildExtensions` to handle both files with distinct output names:
 ```dart
 @override
 Map<String, List<String>> get buildExtensions => {
-  'lib/worker.dart': [  // Manual worker (priority)
+  'lib/worker.dart': [  // Manual worker
     'web/worker.dart.js',
     'web/worker.dart.js.map'
   ],
-  'lib/worker.g.dart': [  // Generated worker (fallback)
-    'web/worker.dart.js',
-    'web/worker.dart.js.map'
+  'lib/worker_generated.g.dart': [  // Generated worker (distinct output)
+    'web/worker_generated.dart.js',
+    'web/worker_generated.dart.js.map'
   ],
 };
+```
 
+Update `build()` method to use dynamic output names:
+```dart
 @override
 Future<void> build(BuildStep buildStep) async {
   final inputId = buildStep.inputId;
   
-  // Priority: manual worker.dart over generated worker.g.dart
-  AssetId? workerFile;
-  
+  // Determine output basename based on input file
+  final String outputBasename;
   if (inputId.path == 'lib/worker.dart') {
-    workerFile = inputId;
-  } else if (inputId.path == 'lib/worker.g.dart') {
-    // Only use worker.g.dart if worker.dart doesn't exist
-    final manualWorker = AssetId(inputId.package, 'lib/worker.dart');
-    if (await buildStep.canRead(manualWorker)) {
-      log.info('Skipping worker.g.dart because manual worker.dart exists');
-      return;
-    }
-    workerFile = inputId;
+    outputBasename = 'worker.dart';  // → worker.dart.js
+  } else if (inputId.path == 'lib/worker_generated.g.dart') {
+    outputBasename = 'worker_generated.dart';  // → worker_generated.dart.js
+  } else {
+    return;  // Unknown input, skip
   }
   
-  if (workerFile == null) return;
+  // Create output assets using dynamic basename
+  final jsOutput = AssetId(inputId.package, 'web/$outputBasename.js');
+  final mapOutput = AssetId(inputId.package, 'web/$outputBasename.js.map');
   
-  // ... existing compilation logic
+  // ... rest of compilation logic using jsOutput and mapOutput
 }
 ```
 
+**Key difference from original plan**: 
+- No priority/fallback logic - both files can coexist
+- Distinct outputs prevent collisions: `worker.dart.js` vs `worker_generated.dart.js`
+- User must specify correct `jsScript` parameter in `Locorda.create()`
+
 **Migration path**:
-1. Initially: Users have manual `worker.dart` → compiled as before
-2. After adding locorda_builder builder: `worker.g.dart` is generated but ignored
-3. User deletes `worker.dart` → `worker.g.dart` is now compiled
-4. Escape hatch: User can always add manual `worker.dart` to override generation
+1. Initially: Users have manual `worker.dart` → compiled to `worker.dart.js` as before
+2. After adding locorda_dev: 
+   - If manual `worker.dart` exists: No `worker_generated.g.dart` generated (skipped)
+   - If no manual worker: `worker_generated.g.dart` generated → compiled to `worker_generated.dart.js`
+3. User must update `Locorda.create(jsScript: 'worker_generated.dart.js')` when using generated worker
+4. Escape hatch: Keep manual `worker.dart` to prevent generation entirely
 
 ---
 
@@ -479,16 +498,18 @@ final remotes = <RemoteWorkerHandler>[
 ```
 
 **Migration**:
-- Remove manual `lib/worker.dart` (now generated as `lib/worker.g.dart`)
+- Remove manual `lib/worker.dart` to allow generation of `lib/worker_generated.g.dart`
+- Update `Locorda.create(jsScript: 'worker_generated.dart.js')` in main code
 - Verify build: `dart run build_runner clean && dart run build_runner build -d`
-- Verify `web/worker.dart.js` is generated correctly
+- Verify `web/worker_generated.dart.js` is generated correctly
 
 ### Task 6.2: Update minimal example
 
 **No configuration needed** (uses defaults):
 - No `build.yaml` required
 - No custom manifest needed
-- Remove manual `lib/worker.dart` (now generated)
+- Remove manual `lib/worker.dart` to allow generation
+- Update `Locorda.create(jsScript: 'worker_generated.dart.js')`
 - Verify build succeeds
 
 ### Task 6.3: Document configuration options
@@ -496,9 +517,11 @@ final remotes = <RemoteWorkerHandler>[
 Create usage guide covering:
 
 **Basic usage** (no config):
-- Builder automatically generates `worker.g.dart`
+- Builder automatically generates `worker_generated.g.dart` (if no manual `worker.dart` exists)
+- Compiled to `web/worker_generated.dart.js` by web_worker builder
 - Includes all adapter manifests from dependencies
 - Empty `mappingBootstrapSources` if no RDF mapper
+- Use `Locorda.create(jsScript: 'worker_generated.dart.js')` in main code
 
 **Custom manifest** for app-specific handlers:
 ```dart
@@ -523,7 +546,10 @@ locorda_builder|worker_generator:
 ```
 
 **Escape hatch** — Manual worker.dart:
-- Create `lib/worker.dart` to override generation
+- Create `lib/worker.dart` to prevent generation of `worker_generated.g.dart`
+- Worker generator skips generation when manual worker detected
+- Compiled to `web/worker.dart.js` (distinct from generated output)
+- Use `Locorda.create(jsScript: 'worker.dart.js')` when using manual worker
 - Useful for debugging or complex custom setups
 
 ---
@@ -555,17 +581,20 @@ locorda_builder|worker_generator:
 - Test that generated code uses empty list when file doesn't exist.
 - Test that builder uses `canRead()` to detect file presence.
 
-### Task 7.5: Unit test web worker builder file priority
+### Task 7.5: Unit test web worker builder distinct outputs
 
-- Test that manual `worker.dart` takes priority over `worker.g.dart`.
-- Test that `worker.g.dart` is compiled when `worker.dart` doesn't exist.
-- Test that `worker.g.dart` is skipped when both files exist.
+- Test that manual `worker.dart` compiles to `worker.dart.js`.
+- Test that generated `worker_generated.g.dart` compiles to `worker_generated.dart.js`.
+- Test that both can be compiled independently (distinct outputs).
+- Test that worker_generator skips generation when manual `worker.dart` exists.
 
 ### Task 7.6: Integration test with example apps
 
 - `dart run build_runner build -d` succeeds for personal_notes_app.
 - `dart run build_runner build -d` succeeds for minimal example.
-- Generated worker.js compiles correctly (materialization still works).
+- Generated `worker_generated.dart.js` compiles correctly.
+- Materialization still works (imports like `mapping_bootstrap.g.dart` are included in compiled output).
+- Verify `jsScript` parameter is correctly set in `Locorda.create()` calls.
 
 ---
 
@@ -576,9 +605,9 @@ Phase 1 (Tasks 1.1–1.6)   Core infrastructure: id fields, list storage, select
     ↓
 Phase 2 (Tasks 2.1–2.3)   Manifest format, adapter manifests, drift config transfer
     ↓
-Phase 3 (Tasks 3.1–3.4)   Worker generator (generates worker.g.dart, conditional bootstrapMappings)
+Phase 3 (Tasks 3.1–3.4)   Worker generator (generates worker_generated.g.dart, conditional bootstrapMappings, skip if manual exists)
     ↓
-Phase 4 (Task 4.1)        Update web worker builder (support both worker.dart and worker.g.dart)
+Phase 4 (Task 4.1)        Update web worker builder (distinct outputs: worker.dart.js vs worker_generated.dart.js)
     ↓
 Phase 5 (Task 5.1)        initLocorda generator (stretch goal)
     ↓
@@ -601,5 +630,6 @@ Task 2.2 depends on 1.1/1.2, Task 2.3 is independent).
 | DriftWorkerHandler config migration (Task 2.3) is complex | Already completed in Phase 2 using DriftConfigConnector |
 | Generated worker.js bundle includes unused handlers | Runtime selection via `toEngineParams` filters by active IDs; `exclude_packages` option for build-time exclusion |
 | onWorkerSpawn configuration discoverability | Document in builder options; provide clear examples in Phase 6 |
-| Breaking change for existing projects | Gradual migration: web_worker builder supports both files; manual `worker.dart` takes priority |
+| Breaking change for existing projects | Distinct outputs prevent collisions; manual `worker.dart` prevents generation entirely |
 | mapping_bootstrap.g.dart not always present | Builder conditionally imports using `canRead()`; uses empty list if not found |
+| source_gen collision on worker.g.dart filename | Renamed output to `worker_generated.g.dart` to avoid collision with combining_builder |
