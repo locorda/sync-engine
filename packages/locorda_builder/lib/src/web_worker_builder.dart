@@ -38,22 +38,44 @@ class WebWorkerBuilder implements Builder {
           'web/worker.dart$workerOutput',
           'web/worker.dart.js.map'
         ],
+        'lib/worker.g.dart': [
+          'web/worker.dart$workerOutput',
+          'web/worker.dart.js.map'
+        ],
       };
 
   @override
   Future<void> build(BuildStep buildStep) async {
     final inputId = buildStep.inputId;
 
-    // Only process lib/worker.dart
-    if (inputId.path != 'lib/worker.dart') {
+    // Determine which worker file to compile
+    AssetId? workerFile;
+
+    if (inputId.path == 'lib/worker.dart') {
+      // Manual worker.dart always takes priority
+      workerFile = inputId;
+      log.fine('Using manual worker.dart');
+    } else if (inputId.path == 'lib/worker.g.dart') {
+      // Only use worker.g.dart if worker.dart doesn't exist
+      final manualWorker = AssetId(inputId.package, 'lib/worker.dart');
+      if (await buildStep.canRead(manualWorker)) {
+        log.info(
+            'Skipping worker.g.dart compilation because manual worker.dart exists');
+        return;
+      }
+      workerFile = inputId;
+      log.fine('Using generated worker.g.dart');
+    }
+
+    if (workerFile == null) {
       return;
     }
 
-    log.info('Compiling worker for web platform: ${inputId.path}');
+    log.info('Compiling worker for web platform: ${workerFile.path}');
     final stopwatch = Stopwatch()..start();
 
     // Read the worker source (validates it exists and triggers rebuild on changes)
-    final workerSource = await buildStep.readAsString(inputId);
+    final workerSource = await buildStep.readAsString(workerFile);
 
     // Create temporary directory for compilation output
     final tempDir = await Directory.systemTemp.createTemp('worker_build_');
@@ -61,17 +83,17 @@ class WebWorkerBuilder implements Builder {
 
     try {
       // Resolve package root so the compiler can see generated source outputs.
-      final packageRoot = await _resolvePackageRoot(buildStep, inputId);
-      final inputPath = p.join(packageRoot, inputId.path);
+      final packageRoot = await _resolvePackageRoot(buildStep, workerFile);
+      final inputPath = p.join(packageRoot, workerFile.path);
 
       final generatedImports =
-          _collectGeneratedImports(workerSource, inputId.package, inputId.path);
+          _collectGeneratedImports(workerSource, workerFile.package, workerFile.path);
       for (final assetPath in generatedImports) {
         await _materializeAsset(
           buildStep,
           packageRoot,
           assetPath,
-          inputId,
+          workerFile,
         );
       }
 
@@ -111,7 +133,7 @@ class WebWorkerBuilder implements Builder {
       // Write the compiled JavaScript through build system
       // This ensures proper integration with build_runner
       await buildStep.writeAsString(
-        AssetId(inputId.package, 'web/worker.dart.js'),
+        AssetId(workerFile.package, 'web/worker.dart.js'),
         compiledJs,
       );
 
@@ -121,7 +143,7 @@ class WebWorkerBuilder implements Builder {
       if (await sourceMapFile.exists()) {
         final sourceMap = await sourceMapFile.readAsString();
         await buildStep.writeAsString(
-          AssetId(inputId.package, 'web/worker.dart.js.map'),
+          AssetId(workerFile.package, 'web/worker.dart.js.map'),
           sourceMap,
         );
         log.info('Source map written: worker.dart.js.map');

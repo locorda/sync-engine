@@ -1,10 +1,38 @@
 builders:
-  # Compiles lib/worker.dart to web/worker.dart.js
+  # Generates lib/worker.g.dart from discovered manifest files
+  worker_generator:
+    import: "package:locorda_builder/builder.dart"
+    builder_factories: ["workerGeneratorBuilder"]
+    build_extensions:
+      pubspec.yaml:
+        - lib/worker.g.dart
+    auto_apply: dependents
+    build_to: source
+    required_inputs:
+      - .dart  # For manifest discovery
+      - lib/src/generated/mapping_bootstrap.g.dart  # Optional dependency
+    defaults:
+      generate_for:
+        - pubspec.yaml
+      options:
+        # Packages to exclude from manifest discovery
+        exclude_packages: []
+        # Custom manifest file paths (for non-standard locations)
+        manifest_files: ['lib/locorda_worker.manifest.dart']
+        # Optional: Import path for onWorkerSpawn callback
+        on_worker_spawn_import: null
+        # Optional: Function name for onWorkerSpawn callback
+        on_worker_spawn_function: null
+
+  # Compiles lib/worker.dart or lib/worker.g.dart to web/worker.dart.js
   web_worker:
     import: "package:locorda_builder/builder.dart"
     builder_factories: ["webWorkerBuilder"]
     build_extensions:
       lib/worker.dart:
+        - web/worker.dart.js
+        - web/worker.dart.js.map
+      lib/worker.g.dart:
         - web/worker.dart.js
         - web/worker.dart.js.map
     auto_apply: dependents
@@ -14,3 +42,4 @@ builders:
     defaults:
       generate_for:
         - lib/worker.dart
+        - lib/worker.g.dart

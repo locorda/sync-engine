@@ -1,0 +1,7 @@
+targets:
+  $default:
+    builders:
+      locorda_builder|worker_generator:
+        options:
+          on_worker_spawn_import: 'package:personal_notes_app/utils/logging_setup.dart'
+          on_worker_spawn_function: 'setupWorkerLogging'
