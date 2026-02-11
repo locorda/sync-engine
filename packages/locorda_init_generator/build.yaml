@@ -1,0 +1,15 @@
+builders:
+  init_locorda_generator:
+    import: "package:locorda_init_generator/builder.dart"
+    builder_factories: ["initLocordaBuilder"]
+    build_extensions:
+      pubspec.yaml:
+        - lib/init_locorda.g.dart
+    auto_apply: dependents
+    build_to: source
+    required_inputs:
+      - lib/worker_generated.g.dart       # Optional: for worker detection
+      - lib/init_rdf_mapper.g.dart        # Optional: for mapper detection
+    defaults:
+      generate_for:
+        - pubspec.yaml

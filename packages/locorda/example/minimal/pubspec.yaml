@@ -35,5 +35,4 @@ dev_dependencies:
   
   # Code generation for RDF mapper
   build_runner: ^2.4.0
-  locorda_builder: any
-  locorda_rdf_mapper_generator: ^0.11.6
+  locorda_dev: any
