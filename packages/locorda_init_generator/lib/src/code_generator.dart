@@ -7,6 +7,7 @@ class CodeGenerator {
   final List<ParameterInfo> locordaParams;
   final List<ParameterInfo> mapperParams;
   final Set<String> detectedFrameworkParams;
+  final Set<String> additionalImports;
 
   const CodeGenerator({
     required this.hasGeneratedWorker,
@@ -14,6 +15,7 @@ class CodeGenerator {
     required this.locordaParams,
     required this.mapperParams,
     required this.detectedFrameworkParams,
+    required this.additionalImports,
   });
 
   /// Generate the complete initLocorda.g.dart content.
@@ -50,6 +52,18 @@ class CodeGenerator {
     
     if (hasInitMapper) {
       buffer.writeln("import 'init_rdf_mapper.g.dart' show initRdfMapper;");
+    }
+
+    final sortedImports = additionalImports.toList()..sort();
+    for (final importLine in sortedImports) {
+      final normalized = importLine.trim();
+      if (normalized.isEmpty) {
+        continue;
+      }
+      if (normalized == "import 'package:locorda_flutter/locorda_flutter.dart';") {
+        continue;
+      }
+      buffer.writeln(normalized.endsWith(';') ? normalized : '$normalized;');
     }
   }
 

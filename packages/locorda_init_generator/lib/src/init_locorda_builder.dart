@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:analyzer/dart/analysis/utilities.dart';
+import 'package:analyzer/dart/ast/ast.dart';
 import 'package:build/build.dart';
 import 'package:logging/logging.dart';
 
@@ -57,15 +59,21 @@ class InitLocordaBuilder implements Builder {
       // Step 4: Analyze initRdfMapper signature (if exists)
       List<ParameterInfo> mapperParams = [];
       Set<String> detectedFrameworkParams = {};
+      final additionalImports = <String>{};
 
       if (hasInitMapper) {
         final mapperAnalyzer = MapperAnalyzer(buildStep, inputId.package);
         final result = await mapperAnalyzer.analyzeInitRdfMapper();
         mapperParams = result.customParams;
         detectedFrameworkParams = result.frameworkParams;
+        additionalImports.addAll(result.imports);
         _log.fine('Found ${mapperParams.length} custom mapper params');
         _log.fine('Found ${detectedFrameworkParams.length} framework params: $detectedFrameworkParams');
       }
+
+      additionalImports.addAll(
+        await _collectImportsFromLocordaSource(buildStep),
+      );
 
       // Step 5: Generate code
       final generator = CodeGenerator(
@@ -74,6 +82,7 @@ class InitLocordaBuilder implements Builder {
         locordaParams: locordaParams,
         mapperParams: mapperParams,
         detectedFrameworkParams: detectedFrameworkParams,
+        additionalImports: additionalImports,
       );
 
       final generatedCode = generator.generate();
@@ -88,6 +97,26 @@ class InitLocordaBuilder implements Builder {
       rethrow;
     }
   }
+}
+
+Future<Set<String>> _collectImportsFromLocordaSource(BuildStep buildStep) async {
+  final assetId = AssetId('locorda_flutter', 'lib/src/locorda.dart');
+  if (!await buildStep.canRead(assetId)) {
+    return {};
+  }
+
+  final content = await buildStep.readAsString(assetId);
+  final parseResult = parseString(content: content);
+  final unit = parseResult.unit;
+
+  final imports = <String>{};
+  for (final directive in unit.directives) {
+    if (directive is ImportDirective) {
+      imports.add(directive.toSource());
+    }
+  }
+
+  return imports;
 }
 
 /// Builder factory for build_runner integration.

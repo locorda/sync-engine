@@ -29,9 +29,11 @@ class ParameterInfo {
 class MapperAnalysisResult {
   final List<ParameterInfo> customParams;
   final Set<String> frameworkParams;
+  final Set<String> imports;
 
   const MapperAnalysisResult({
     required this.customParams,
     required this.frameworkParams,
+    required this.imports,
   });
 }

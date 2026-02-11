@@ -8,7 +8,6 @@ builders:
     auto_apply: dependents
     build_to: source
     required_inputs:
-      - .dart
       - lib/worker_generated.g.dart       # Optional: for worker detection
       - lib/init_rdf_mapper.g.dart        # Optional: for mapper detection
     defaults:

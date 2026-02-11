@@ -11,7 +11,6 @@ builders:
     auto_apply: dependents
     build_to: source
     required_inputs:
-      - .dart  # For manifest discovery
       - lib/src/generated/mapping_bootstrap.g.dart  # Optional dependency
     defaults:
       generate_for:

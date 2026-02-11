@@ -24,6 +24,7 @@ void main() {
         ],
         mapperParams: const [],
         detectedFrameworkParams: const {},
+        additionalImports: const {},
       );
 
       final code = generator.generate();
@@ -54,6 +55,7 @@ void main() {
         ],
         mapperParams: const [],
         detectedFrameworkParams: const {},
+        additionalImports: const {},
       );
 
       final code = generator.generate();
@@ -89,6 +91,7 @@ void main() {
         ],
         mapperParams: const [],
         detectedFrameworkParams: const {'\$resourceIriFactory'},
+        additionalImports: const {},
       );
 
       final code = generator.generate();
@@ -126,6 +129,7 @@ void main() {
           ),
         ],
         detectedFrameworkParams: const {},
+        additionalImports: const {},
       );
 
       final code = generator.generate();

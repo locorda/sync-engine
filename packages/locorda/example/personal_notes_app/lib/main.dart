@@ -14,14 +14,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:locorda/locorda.dart';
 import 'package:locorda_dir/locorda_dir.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
-import 'package:personal_notes_app/init_rdf_mapper.g.dart';
+import 'package:personal_notes_app/init_locorda.g.dart';
+import 'package:personal_notes_app/locorda_worker.manifest.dart';
 import 'package:personal_notes_app/models/category.dart';
 import 'package:personal_notes_app/models/note.dart';
 import 'package:personal_notes_app/models/note_group_key.dart';
 import 'package:personal_notes_app/models/note_index_entry.dart';
-import 'package:personal_notes_app/locorda_worker.manifest.dart';
 import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
-import 'package:personal_notes_app/worker_generated.g.dart';
 
 import 'screens/notes_list_screen.dart';
 import 'services/categories_service.dart';
@@ -51,8 +50,7 @@ void main() async {
 /// - Returns a fully configured sync system
 Future<Locorda> initializeLocorda() async {
   // Setup sync system with worker
-  return Locorda.create(
-    workerSetup: generatedWorkerSetup,
+  return initLocorda(
     onWorkerSpawn: setupWorkerLogging,
 
     // Provide remotes - those must be configured correspondingly in setupWorkerEngine as well
@@ -86,13 +84,6 @@ Future<Locorda> initializeLocorda() async {
         driftWorker: Uri.parse('drift_worker.js'),
       ),
     ),
-
-    // TODO: this should be able to reference generated code, like `mapperInitializer: mapperInitializer,`
-    mapperInitializer: (context) => initRdfMapper(
-        rdfMapper: context.baseRdfMapper,
-        $indexItemIriFactory: context.indexItemIriFactory,
-        $resourceIriFactory: context.resourceIriFactory,
-        $resourceRefFactory: context.resourceRefFactory),
 
     /* resource-focused configuration */
     config: LocordaConfig(

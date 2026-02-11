@@ -23,6 +23,7 @@ class MapperAnalyzer {
       return const MapperAnalysisResult(
         customParams: [],
         frameworkParams: {},
+        imports: {},
       );
     }
 
@@ -35,6 +36,7 @@ class MapperAnalyzer {
       return const MapperAnalysisResult(
         customParams: [],
         frameworkParams: {},
+        imports: {},
       );
     }
   }
@@ -58,11 +60,19 @@ class MapperAnalyzer {
       return const MapperAnalysisResult(
         customParams: [],
         frameworkParams: {},
+        imports: {},
       );
     }
 
     final customParams = <ParameterInfo>[];
     final frameworkParams = <String>{};
+    final imports = <String>{};
+
+    for (final directive in unit.directives) {
+      if (directive is ImportDirective) {
+        imports.add(directive.toSource());
+      }
+    }
 
     final parameters = initRdfMapperFunc.functionExpression.parameters;
     if (parameters != null) {
@@ -99,6 +109,7 @@ class MapperAnalyzer {
     return MapperAnalysisResult(
       customParams: customParams,
       frameworkParams: frameworkParams,
+      imports: imports,
     );
   }
 }

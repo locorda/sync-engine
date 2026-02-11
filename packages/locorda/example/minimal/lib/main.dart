@@ -4,11 +4,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:locorda/locorda.dart';
 import 'package:locorda_dir/locorda_dir.dart';
+import 'package:minimal_task_sync/init_locorda.g.dart';
 
-import '../../../init_rdf_mapper.g.dart';
 import 'task.dart';
 import 'task_repository.dart';
-import 'worker.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,10 +17,7 @@ void main() async {
 // #docregion locorda-setup
 /// Initialize Locorda with worker architecture.
 Future<Locorda> setupLocorda() async {
-  return Locorda.create(
-    // Worker handles heavy operations (CRDT, HTTP, storage)
-    workerSetup: setupWorkerEngine,
-
+  return initLocorda(
     // Local Dir for testing/debugging (not for production!)
     remotes: [
       await DirMainIntegration.create(
@@ -31,12 +27,6 @@ Future<Locorda> setupLocorda() async {
 
     // InMemoryStorage requires empty main handler
     storage: InMemoryStorageMainHandler(),
-
-    // RDF mapper for Task model (generated)
-    mapperInitializer: (context) => initRdfMapper(
-      rdfMapper: context.baseRdfMapper,
-      $resourceIriFactory: context.resourceIriFactory,
-    ),
 
     // Configure Task resource with CRDT mapping
     config: LocordaConfig(
