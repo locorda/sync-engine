@@ -6,7 +6,12 @@ import 'package:path/path.dart' as p;
 
 /// Compiles Dart worker entry points to JavaScript for web platform.
 ///
-/// **Convention**: Compiles `lib/worker.dart` → `web/worker.dart.js`
+/// **Convention**: 
+/// - Manual: `lib/worker.dart` → `web/worker.dart.js`
+/// - Generated: `lib/worker_generated.g.dart` → `web/worker_generated.dart.js`
+///
+/// Different output names allow both manual and generated workers to coexist.
+/// Manual workers take priority if both exist.
 ///
 /// This builder:
 /// - Only runs for web builds
@@ -38,9 +43,9 @@ class WebWorkerBuilder implements Builder {
           'web/worker.dart$workerOutput',
           'web/worker.dart.js.map'
         ],
-        'lib/worker.g.dart': [
-          'web/worker.dart$workerOutput',
-          'web/worker.dart.js.map'
+        'lib/worker_generated.g.dart': [
+          'web/worker_generated.dart$workerOutput',
+          'web/worker_generated.dart.js.map'
         ],
       };
 
@@ -55,23 +60,36 @@ class WebWorkerBuilder implements Builder {
       // Manual worker.dart always takes priority
       workerFile = inputId;
       log.fine('Using manual worker.dart');
-    } else if (inputId.path == 'lib/worker.g.dart') {
-      // Only use worker.g.dart if worker.dart doesn't exist
+    } else if (inputId.path == 'lib/worker_generated.g.dart') {
+      // Only use worker_generated.g.dart if worker.dart doesn't exist
       final manualWorker = AssetId(inputId.package, 'lib/worker.dart');
       if (await buildStep.canRead(manualWorker)) {
         log.info(
-            'Skipping worker.g.dart compilation because manual worker.dart exists');
+            'Skipping worker_generated.g.dart compilation because manual worker.dart exists');
         return;
       }
       workerFile = inputId;
-      log.fine('Using generated worker.g.dart');
+      // make sure the generated worker file is materialized on disk for the compiler to read,
+      // it might have been generated in-memory and not exist on disk yet, which would cause the compiler to fail with a missing file error.
+      await _materializeAsset(
+        buildStep,
+        await _resolvePackageRoot(buildStep, workerFile),
+        workerFile.path,
+        workerFile,
+      );
+      log.fine('Using generated worker_generated.g.dart');
     }
 
     if (workerFile == null) {
       return;
     }
 
-    log.info('Compiling worker for web platform: ${workerFile.path}');
+    // Determine output filename based on input
+    final outputBasename = inputId.path == 'lib/worker.dart'
+        ? 'worker.dart'
+        : 'worker_generated.dart';
+
+    log.info('Compiling worker for web platform: ${workerFile.path} → web/$outputBasename.js');
     final stopwatch = Stopwatch()..start();
 
     // Read the worker source (validates it exists and triggers rebuild on changes)
@@ -86,8 +104,8 @@ class WebWorkerBuilder implements Builder {
       final packageRoot = await _resolvePackageRoot(buildStep, workerFile);
       final inputPath = p.join(packageRoot, workerFile.path);
 
-      final generatedImports =
-          _collectGeneratedImports(workerSource, workerFile.package, workerFile.path);
+      final generatedImports = _collectGeneratedImports(
+          workerSource, workerFile.package, workerFile.path);
       for (final assetPath in generatedImports) {
         await _materializeAsset(
           buildStep,
@@ -133,7 +151,7 @@ class WebWorkerBuilder implements Builder {
       // Write the compiled JavaScript through build system
       // This ensures proper integration with build_runner
       await buildStep.writeAsString(
-        AssetId(workerFile.package, 'web/worker.dart.js'),
+        AssetId(workerFile.package, 'web/$outputBasename.js'),
         compiledJs,
       );
 
@@ -143,10 +161,10 @@ class WebWorkerBuilder implements Builder {
       if (await sourceMapFile.exists()) {
         final sourceMap = await sourceMapFile.readAsString();
         await buildStep.writeAsString(
-          AssetId(workerFile.package, 'web/worker.dart.js.map'),
+          AssetId(workerFile.package, 'web/$outputBasename.js.map'),
           sourceMap,
         );
-        log.info('Source map written: worker.dart.js.map');
+        log.info('Source map written: $outputBasename.js.map');
       }
     } catch (e, stack) {
       log.severe('Error compiling worker', e, stack);

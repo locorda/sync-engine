@@ -5368,19 +5368,23 @@
       this._box_1 = t0;
       this._box_0 = t1;
     },
-    _Future_timeout_closure: function _Future_timeout_closure(t0, t1, t2, t3) {
+    _Future_timeout_closure: function _Future_timeout_closure(t0, t1) {
+      this._future = t0;
+      this.timeLimit = t1;
+    },
+    _Future_timeout_closure0: function _Future_timeout_closure0(t0, t1, t2, t3) {
       var _ = this;
       _.$this = t0;
       _._future = t1;
       _.zone = t2;
       _.onTimeoutHandler = t3;
     },
-    _Future_timeout_closure0: function _Future_timeout_closure0(t0, t1, t2) {
+    _Future_timeout_closure1: function _Future_timeout_closure1(t0, t1, t2) {
       this._box_0 = t0;
       this.$this = t1;
       this._future = t2;
     },
-    _Future_timeout_closure1: function _Future_timeout_closure1(t0, t1) {
+    _Future_timeout_closure2: function _Future_timeout_closure2(t0, t1) {
       this._box_0 = t0;
       this._future = t1;
     },
@@ -17411,6 +17415,14 @@
     DriftStorage__convertToStoredDocuments_closure: function DriftStorage__convertToStoredDocuments_closure(t0) {
       this.$this = t0;
     },
+    DriftWebOptionsMessage_fromJson(json) {
+      if (!J.$eq$(json.$index(0, "hasOptions"), true))
+        return new A.DriftWebOptionsMessage(null);
+      return new A.DriftWebOptionsMessage(new A.LocordaDriftWebOptions(A.Uri_parse(A._asString(json.$index(0, "sqlite3Wasm"))), A.Uri_parse(A._asString(json.$index(0, "driftWorker")))));
+    },
+    DriftWebOptionsMessage: function DriftWebOptionsMessage(t0) {
+      this.options = t0;
+    },
     $SyncIrisTable$(attachedDatabase, _alias) {
       return new A.$SyncIrisTable(attachedDatabase, _alias, null);
     },
@@ -17883,8 +17895,19 @@
     },
     _SyncPropertyChangeDao_DatabaseAccessor__$SyncPropertyChangeDaoMixin_IriBatchLoader: function _SyncPropertyChangeDao_DatabaseAccessor__$SyncPropertyChangeDaoMixin_IriBatchLoader() {
     },
-    DriftWorkerHandler: function DriftWorkerHandler(t0) {
-      this._web = t0;
+    DriftWorkerHandler: function DriftWorkerHandler() {
+    },
+    WorkerDriftConfigReceiver$(_channel) {
+      var t1 = new A.WorkerDriftConfigReceiver(_channel, new A._AsyncCompleter(new A._Future($.Zone__current, type$._Future_nullable_LocordaDriftWebOptions), type$._AsyncCompleter_nullable_LocordaDriftWebOptions));
+      t1.WorkerDriftConfigReceiver$1(_channel);
+      return t1;
+    },
+    WorkerDriftConfigReceiver: function WorkerDriftConfigReceiver(t0, t1) {
+      this._worker_drift_config_receiver$_channel = t0;
+      this._worker_drift_config_receiver$_configCompleter = t1;
+      this.__WorkerDriftConfigReceiver__subscription_F = $;
+    },
+    WorkerDriftConfigReceiver_closure: function WorkerDriftConfigReceiver_closure() {
     },
     GDriveClientException$(message) {
       return new A.GDriveClientException(message);
@@ -25054,7 +25077,7 @@
     SyncDatabaseImpl_create(native, web) {
       var $async$goto = 0,
         $async$completer = A._makeAsyncAwaitCompleter(type$.SyncDatabase),
-        $async$returnValue, t2, result, t1;
+        $async$returnValue, t1, result, t2;
       var $async$SyncDatabaseImpl_create = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
         if ($async$errorCode === 1)
           return A._asyncRethrow($async$result, $async$completer);
@@ -25062,8 +25085,11 @@
           switch ($async$goto) {
             case 0:
               // Function start
+              if (web == null)
+                throw A.wrapException(A.ArgumentError$("LocordaDriftWebOptions required for web platform. Provide sqlite3Wasm and driftWorker URIs.", null));
+              t1 = web.sqlite3Wasm;
               $async$goto = 3;
-              return A._asyncAwait(A.WasmDatabase_open("locorda_sync", web.driftWorker, null, web.sqlite3Wasm), $async$SyncDatabaseImpl_create);
+              return A._asyncAwait(A.WasmDatabase_open("locorda_sync", web.driftWorker, null, t1), $async$SyncDatabaseImpl_create);
             case 3:
               // returning from await.
               result = $async$result;
@@ -25181,7 +25207,7 @@
               if (t3 == null)
                 t3 = new A.BrowserClient(A._setArrayType([], type$.JSArray_JSObject));
               t1.push(new A.GDriveWorkerHandler(A.rdf_term_IriTerm___validated_tearOff$closure(), t2, t3, "text/turtle", "application/trig"));
-              $async$returnValue = new A.WorkerParams(A._setArrayType([new A.DriftWorkerHandler(new A.LocordaDriftWebOptions(A.Uri_parse("sqlite3.wasm"), A.Uri_parse("drift_worker.js")))], type$.JSArray_StorageWorkerHandler), t1, B.List_VtV);
+              $async$returnValue = new A.WorkerParams(A._setArrayType([new A.DriftWorkerHandler()], type$.JSArray_StorageWorkerHandler), t1, B.List_VtV);
               // goto return
               $async$goto = 1;
               break;
@@ -28704,7 +28730,7 @@
     call$1(o) {
       return this.getTag(o);
     },
-    $signature: 77
+    $signature: 78
   };
   A.initHooks_closure0.prototype = {
     call$2(o, tag) {
@@ -29541,7 +29567,7 @@
     call$2(errorCode, result) {
       this.$protected(A._asInt(errorCode), result);
     },
-    $signature: 404
+    $signature: 402
   };
   A._asyncStarHelper_closure.prototype = {
     call$0() {
@@ -30442,9 +30468,15 @@
       t3 = $.Zone__current;
       _future = new A._Future(t3, t2);
       t1.timer = null;
-      t1.timer = A.Timer_Timer(timeLimit, new A._Future_timeout_closure(_this, _future, t3, t3.registerCallback$1$1(onTimeout, t2._eval$1("1/"))));
-      _this.then$1$2$onError(new A._Future_timeout_closure0(t1, _this, _future), new A._Future_timeout_closure1(t1, _future), type$.Null);
+      if (onTimeout == null)
+        t1.timer = A.Timer_Timer(timeLimit, new A._Future_timeout_closure(_future, timeLimit));
+      else
+        t1.timer = A.Timer_Timer(timeLimit, new A._Future_timeout_closure0(_this, _future, t3, t3.registerCallback$1$1(onTimeout, t2._eval$1("1/"))));
+      _this.then$1$2$onError(new A._Future_timeout_closure1(t1, _this, _future), new A._Future_timeout_closure2(t1, _future), type$.Null);
       return _future;
+    },
+    timeout$1(timeLimit) {
+      return this.timeout$2$onTimeout(timeLimit, null);
     },
     $isFuture: 1
   };
@@ -30593,6 +30625,13 @@
   };
   A._Future_timeout_closure.prototype = {
     call$0() {
+      var t1 = A.StackTrace_current();
+      this._future._completeErrorObject$1(new A.AsyncError(new A.TimeoutException("Future not completed", this.timeLimit), t1));
+    },
+    $signature: 0
+  };
+  A._Future_timeout_closure0.prototype = {
+    call$0() {
       var e, s, exception, t1, t2, _this = this;
       try {
         _this._future._complete$1(_this.zone.run$1$1(_this.onTimeoutHandler, _this.$this.$ti._eval$1("1/")));
@@ -30608,7 +30647,7 @@
     },
     $signature: 0
   };
-  A._Future_timeout_closure0.prototype = {
+  A._Future_timeout_closure1.prototype = {
     call$1(v) {
       var t1;
       this.$this.$ti._precomputed1._as(v);
@@ -30622,7 +30661,7 @@
       return this.$this.$ti._eval$1("Null(1)");
     }
   };
-  A._Future_timeout_closure1.prototype = {
+  A._Future_timeout_closure2.prototype = {
     call$2(e, s) {
       var t1;
       A._asObject(e);
@@ -33705,7 +33744,7 @@
       t2 = A.S(v);
       t1._contents += t2;
     },
-    $signature: 71
+    $signature: 72
   };
   A.UnmodifiableMapBase.prototype = {};
   A._MapBaseValueIterable.prototype = {
@@ -34396,7 +34435,7 @@
       }
       return null;
     },
-    $signature: 82
+    $signature: 83
   };
   A._Utf8Decoder__decoderNonfatal_closure.prototype = {
     call$0() {
@@ -34408,7 +34447,7 @@
       }
       return null;
     },
-    $signature: 82
+    $signature: 83
   };
   A.AsciiCodec.prototype = {
     get$name() {
@@ -34912,7 +34951,7 @@
     call$1(sink) {
       return new A._ConverterStreamEventSink(sink, this.$this.startChunkedConversion$1(sink), type$._ConverterStreamEventSink_dynamic_dynamic);
     },
-    $signature: 449
+    $signature: 451
   };
   A._FusedConverter.prototype = {
     convert$1(input) {
@@ -35224,7 +35263,7 @@
       B.JSArray_methods.$indexSet(t1, t2.i++, key);
       B.JSArray_methods.$indexSet(t1, t2.i++, value);
     },
-    $signature: 71
+    $signature: 72
   };
   A._JsonPrettyPrintMixin.prototype = {
     writeList$1(list) {
@@ -35288,7 +35327,7 @@
       B.JSArray_methods.$indexSet(t1, t2.i++, key);
       B.JSArray_methods.$indexSet(t1, t2.i++, value);
     },
-    $signature: 71
+    $signature: 72
   };
   A._JsonStringStringifier.prototype = {
     get$_partialResult() {
@@ -36951,7 +36990,7 @@
         return 0;
       return A.int_parse(matched, null, null);
     },
-    $signature: 88
+    $signature: 89
   };
   A.DateTime_parse_parseMilliAndMicroseconds.prototype = {
     call$1(matched) {
@@ -36968,7 +37007,7 @@
       }
       return result;
     },
-    $signature: 88
+    $signature: 89
   };
   A.Duration.prototype = {
     get$inMicroseconds() {
@@ -38369,7 +38408,7 @@
       A._checkForErrorResponse(response, "Cannot open file", t1);
       return new A._RandomAccessFile(t1, A._RandomAccessFileOps__RandomAccessFileOps$_(response));
     },
-    $signature: 70
+    $signature: 71
   };
   A._File_length_closure.prototype = {
     call$1(response) {
@@ -38633,7 +38672,7 @@
       t2.lastWriteTime = $.$get$_IOResourceInfo__startTime() + B.JSInt_methods._tdivFast$1($.$get$_IOResourceInfo__sw().get$elapsedMicroseconds(), 1000);
       return t1;
     },
-    $signature: 70
+    $signature: 71
   };
   A._RandomAccessFile_length_closure.prototype = {
     call$1(response) {
@@ -38648,7 +38687,7 @@
       A._checkForErrorResponse(response, "flush failed", t1.path);
       return t1;
     },
-    $signature: 70
+    $signature: 71
   };
   A.FileSystemEntity.prototype = {};
   A.NullRejectionException.prototype = {
@@ -42222,20 +42261,20 @@
     call$3(executor, sql, vars) {
       return executor.runUpdate$2(sql, vars);
     },
-    $signature: 107
+    $signature: 110
   };
   A.DatabaseConnectionUser_customInsert_closure.prototype = {
     call$3(executor, sql, vars) {
       return executor.runInsert$2(sql, vars);
     },
-    $signature: 107
+    $signature: 110
   };
   A.DatabaseConnectionUser__customWrite_closure.prototype = {
     call$1(v) {
       type$.Variable_Object._as(v);
       return A.BaseSqlType_mapToSqlParameter(this.ctx, v._customType, v.value, v.$ti._precomputed1);
     },
-    $signature: 102
+    $signature: 106
   };
   A.DatabaseConnectionUser__customWrite_closure0.prototype = {
     call$1(e) {
@@ -42249,7 +42288,7 @@
     call$1(executor) {
       return executor.runCustom$2(this.statement, this.args);
     },
-    $signature: 450
+    $signature: 427
   };
   A.DatabaseConnectionUser_transaction_closure.prototype = {
     call$1(executor) {
@@ -42463,7 +42502,7 @@
     call$1(_) {
       return this.batch._commit$0();
     },
-    $signature: 451
+    $signature: 450
   };
   A._ExclusiveExecutor.prototype = {
     get$attachedDatabase() {
@@ -42554,7 +42593,7 @@
         t2 = A._instanceType(t1);
       return A.MappedIterable_MappedIterable(t1, t2._eval$1("String?(Iterable.E)")._as(new A.DriftRuntimeOptions_debugPrint__closure()), t2._eval$1("Iterable.E"), type$.nullable_String).forEach$1(0, A.core__print$closure());
     },
-    $signature: 141
+    $signature: 98
   };
   A.DriftRuntimeOptions_debugPrint__closure.prototype = {
     call$1(m) {
@@ -42563,7 +42602,7 @@
         return A.ioore(t1, 0);
       return t1[0];
     },
-    $signature: 641
+    $signature: 625
   };
   A.StreamQueryUpdateRules.prototype = {
     apply$1(input) {
@@ -42684,7 +42723,7 @@
     call$2(meta, result) {
       this.messageBuilder._contents += "\u2022 " + type$.VerificationMeta._as(meta).dartGetterName + ": " + A.S(type$.VerificationResult._as(result).message) + "\n";
     },
-    $signature: 646
+    $signature: 641
   };
   A.TrackedDatabase.prototype = {};
   A.DriftServiceExtension.prototype = {
@@ -42877,14 +42916,14 @@
     call$1(e) {
       return type$.TrackedDatabase._as(e).id === this.databaseId;
     },
-    $signature: 654
+    $signature: 646
   };
   A.DriftServiceExtension__handle_closure0.prototype = {
     call$1($event) {
       var t1 = type$.nullable_Object;
       A.postEvent("drift:event", A.LinkedHashMap_LinkedHashMap$_literal(["subscription", this.id, "payload", B.C_DriftProtocol.encodePayload$1(new A.NotifyTablesUpdated(type$.Set_TableUpdate._as($event).toList$0(0)))], t1, t1));
     },
-    $signature: 138
+    $signature: 142
   };
   A.DriftServiceExtension__handle_closure1.prototype = {
     call$1(rows) {
@@ -42895,13 +42934,13 @@
         t1.push(t2.get$current().data);
       return new A.SelectResult(t1);
     },
-    $signature: 674
+    $signature: 658
   };
   A.DriftServiceExtension__handle_closure2.prototype = {
     call$1(_) {
       return 0;
     },
-    $signature: 675
+    $signature: 674
   };
   A.DriftServiceExtension__handle_closure3.prototype = {
     call$0() {
@@ -42991,20 +43030,20 @@
       t1 = type$.ServiceExtensionResponse;
       return A.FutureExtensions_onError(A.Future_Future(new A.DriftServiceExtension_registerIfNeeded__closure(this.extension, type$.Map_String_String._as(parameters)), type$.nullable_Object).then$1$1(new A.DriftServiceExtension_registerIfNeeded__closure0(), t1), new A.DriftServiceExtension_registerIfNeeded__closure1(), null, t1, type$.Object);
     },
-    $signature: 727
+    $signature: 675
   };
   A.DriftServiceExtension_registerIfNeeded__closure.prototype = {
     call$0() {
       return this.extension._service_extension$_handle$1(this.parameters);
     },
-    $signature: 728
+    $signature: 727
   };
   A.DriftServiceExtension_registerIfNeeded__closure0.prototype = {
     call$1(value) {
       B.C_JsonCodec.encode$1(A.LinkedHashMap_LinkedHashMap$_literal(["r", value], type$.String, type$.nullable_Object));
       return new A.ServiceExtensionResponse();
     },
-    $signature: 658
+    $signature: 728
   };
   A.DriftServiceExtension_registerIfNeeded__closure1.prototype = {
     call$2(error, stackTrace) {
@@ -43228,7 +43267,7 @@
       t1._log$2(t2, t3);
       return t1.get$impl().runSelect$2(t2, t3);
     },
-    $signature: 653
+    $signature: 654
   };
   A._BaseExecutor_runUpdate_closure.prototype = {
     call$0() {
@@ -43756,7 +43795,7 @@
       }
       return t1;
     },
-    $signature: 651
+    $signature: 653
   };
   A.QueryInterceptor.prototype = {};
   A._InterceptedExecutor.prototype = {
@@ -43937,14 +43976,14 @@
     call$1(e) {
       return type$.Set_TableUpdate._as(e).where$1(0, this.query.get$matches()).toSet$0(0);
     },
-    $signature: 644
+    $signature: 651
   };
   A.StreamQueryStore_updatesForSync_closure0.prototype = {
     call$1(e) {
       type$.Set_TableUpdate._as(e);
       return e.get$isNotEmpty(e);
     },
-    $signature: 642
+    $signature: 644
   };
   A.StreamQueryStore_markAsClosed_closure.prototype = {
     call$0() {
@@ -44229,7 +44268,7 @@
       if (t1._listeners.length - t1._pausedListeners > 0)
         t1.fetchAndEmitData$0();
     },
-    $signature: 138
+    $signature: 142
   };
   A.QueryStream__onCancelOrPause_closure.prototype = {
     call$0() {
@@ -44245,7 +44284,7 @@
   A.QueryStream_fetchAndEmitData_closure.prototype = {
     call$1(_) {
     },
-    $signature: 640
+    $signature: 642
   };
   A._QueryStreamListener.prototype = {
     add$1(_, row) {
@@ -44272,7 +44311,7 @@
     call$1(q) {
       return type$.TableUpdateQuery._as(q).matches$1(this.update);
     },
-    $signature: 625
+    $signature: 640
   };
   A.SpecificUpdateQuery.prototype = {
     matches$1(update) {
@@ -45194,7 +45233,7 @@
       });
       return A._asyncStartSync($async$call$1, $async$completer);
     },
-    $signature: 84
+    $signature: 85
   };
   A.InsertStatement_insertOnConflictUpdate_closure.prototype = {
     call$1(_) {
@@ -45381,7 +45420,7 @@
       type$.Variable_Object._as(v);
       return A.BaseSqlType_mapToSqlParameter(this.ctx, v._customType, v.value, v.$ti._precomputed1);
     },
-    $signature: 102
+    $signature: 106
   };
   A.CustomSelectStatement__executeRaw_closure.prototype = {
     call$1(e) {
@@ -45393,7 +45432,7 @@
     call$1(row) {
       return new A.QueryRow(type$.Map_of_String_and_nullable_Object._as(row), this.$this._db);
     },
-    $signature: 448
+    $signature: 449
   };
   A.QueryRow.prototype = {
     read$1$1(key, $T) {
@@ -45468,7 +45507,7 @@
     call$0() {
       return this.$this._getRaw$1(this.query);
     },
-    $signature: 445
+    $signature: 448
   };
   A.SimpleSelectStatement__getRaw_closure.prototype = {
     call$1(e) {
@@ -45931,7 +45970,7 @@
     call$1(c) {
       return this.row.$index(0, this.prefix + type$.GeneratedColumn_Object._as(c).$$name) != null;
     },
-    $signature: 427
+    $signature: 434
   };
   A.JoinedSelectStatement__mapResponse_closure.prototype = {
     call$1(row) {
@@ -46064,7 +46103,7 @@
       t2._contents = (t2._contents += t3 + columnName + t3) + " = ";
       variable.writeInto$1(t1);
     },
-    $signature: 417
+    $signature: 408
   };
   A.UpdateStatement__performQuery_closure.prototype = {
     call$1(e) {
@@ -46095,7 +46134,7 @@
       });
       return A._asyncStartSync($async$call$1, $async$completer);
     },
-    $signature: 84
+    $signature: 85
   };
   A._CustomSelectStatement_Object_Selectable.prototype = {};
   A._JoinedSelectStatement_Query_LimitContainerMixin.prototype = {};
@@ -46533,7 +46572,7 @@
     call$1(args) {
       return Date.now();
     },
-    $signature: 406
+    $signature: 405
   };
   A._unaryNumFunction_closure.prototype = {
     call$1(args) {
@@ -46543,7 +46582,7 @@
       else
         return null;
     },
-    $signature: 85
+    $signature: 86
   };
   A.MapAndAwait_mapAsyncAndAwait_closure.prototype = {
     call$1(e) {
@@ -47162,7 +47201,7 @@
       t1 = transfer == null ? B.List_empty14 : transfer;
       this.worker.postMessage(msg, t1);
     },
-    $signature: 86
+    $signature: 87
   };
   A.WasmInitializationMessage_sendToPort_closure.prototype = {
     call$2(msg, transfer) {
@@ -47171,7 +47210,7 @@
       t1 = transfer == null ? B.List_empty14 : transfer;
       this.port.postMessage(msg, t1);
     },
-    $signature: 86
+    $signature: 87
   };
   A.CompatibilityResult.prototype = {};
   A.SharedWorkerCompatibilityResult.prototype = {
@@ -48510,7 +48549,7 @@
     call$2(key, value) {
       return new A.MapEntry(A._asString(key), A._asStringQ(value), type$.MapEntry_of_String_and_nullable_String);
     },
-    $signature: 87
+    $signature: 88
   };
   A.File$fromJson_closure0.prototype = {
     call$1(value) {
@@ -48538,7 +48577,7 @@
     call$1(value) {
       return A.User$fromJson(type$.Map_String_dynamic._as(value));
     },
-    $signature: 81
+    $signature: 82
   };
   A.File$fromJson_closure3.prototype = {
     call$1(value) {
@@ -48562,7 +48601,7 @@
     call$2(key, value) {
       return new A.MapEntry(A._asString(key), A._asStringQ(value), type$.MapEntry_of_String_and_nullable_String);
     },
-    $signature: 87
+    $signature: 88
   };
   A.File$fromJson_closure7.prototype = {
     call$1(value) {
@@ -48686,7 +48725,7 @@
     call$1(value) {
       return A.User$fromJson(type$.Map_String_dynamic._as(value));
     },
-    $signature: 81
+    $signature: 82
   };
   A.LabelField_toJson_closure.prototype = {
     call$1(value) {
@@ -49021,7 +49060,7 @@
     call$1(_) {
       type$.List_int._as(_);
     },
-    $signature: 89
+    $signature: 90
   };
   A.RetryClient_send_closure0.prototype = {
     call$1(_) {
@@ -49092,7 +49131,7 @@
     call$2(key1, key2) {
       return A._asString(key1).toLowerCase() === A._asString(key2).toLowerCase();
     },
-    $signature: 90
+    $signature: 91
   };
   A.BaseRequest_closure0.prototype = {
     call$1(key) {
@@ -49357,7 +49396,7 @@
     call$1(bytes) {
       return this.completer.complete$1(new Uint8Array(A._ensureNativeList(type$.List_int._as(bytes))));
     },
-    $signature: 89
+    $signature: 90
   };
   A.ClientException.prototype = {
     toString$0(_) {
@@ -49725,7 +49764,7 @@
       t2 === $ && A.throwLateFieldNI("_remotesSubject");
       t2.add$1(0, t1.wrapRemotes$1(remotes));
     },
-    $signature: 91
+    $signature: 92
   };
   A.PerflogBackend_wrapRemotes_closure.prototype = {
     call$1(r) {
@@ -49879,13 +49918,13 @@
     call$0() {
       return this.$this._perflog_backend$_inner.download$2$ifNoneMatch(this.documentIri, this.ifNoneMatch);
     },
-    $signature: 92
+    $signature: 93
   };
   A.PerflogRemoteSyncStorage_downloadDataset_closure.prototype = {
     call$0() {
       return this.$this._perflog_backend$_inner.downloadDataset$2$ifNoneMatch(this.documentIri, this.ifNoneMatch);
     },
-    $signature: 93
+    $signature: 94
   };
   A.PerflogRemoteSyncStorage_finalizeSync_closure.prototype = {
     call$0() {
@@ -56599,7 +56638,7 @@
       type$.List_RemoteStorage._as(_);
       this.$this._onRemotesChanged$0();
     },
-    $signature: 91
+    $signature: 92
   };
   A.ConfigService__onRemotesChanged_closure.prototype = {
     call$1(backend) {
@@ -57498,7 +57537,7 @@
     call$0() {
       return this.$this._remote_storage$_inner.download$2$ifNoneMatch(this.documentIri, this.ifNoneMatch);
     },
-    $signature: 92
+    $signature: 93
   };
   A.AuthAwareSyncStorage_uploadDataset_closure.prototype = {
     call$0() {
@@ -57511,7 +57550,7 @@
     call$0() {
       return this.$this._remote_storage$_inner.downloadDataset$2$ifNoneMatch(this.documentIri, this.ifNoneMatch);
     },
-    $signature: 93
+    $signature: 94
   };
   A.IriTranslatingRemoteSyncStorage.prototype = {
     download$2$ifNoneMatch(documentIri, ifNoneMatch) {
@@ -61853,6 +61892,21 @@
     },
     $signature: 363
   };
+  A.DriftWebOptionsMessage.prototype = {
+    toJson$0() {
+      var t4, t5,
+        t1 = type$.String,
+        t2 = type$.dynamic,
+        t3 = A.LinkedHashMap_LinkedHashMap$_empty(t1, t2);
+      t3.$indexSet(0, "type", "DriftWebOptionsMessage");
+      t4 = this.options;
+      t5 = t4 != null;
+      t3.$indexSet(0, "hasOptions", t5);
+      if (t5)
+        t3.addAll$1(0, A.LinkedHashMap_LinkedHashMap$_literal(["sqlite3Wasm", t4.sqlite3Wasm.toString$0(0), "driftWorker", t4.driftWorker.toString$0(0)], t1, t2));
+      return t3;
+    }
+  };
   A.SyncIris.prototype = {};
   A.SyncDocuments.prototype = {};
   A.SyncPropertyChanges.prototype = {};
@@ -65909,7 +65963,7 @@
     create$2(context, config) {
       var $async$goto = 0,
         $async$completer = A._makeAsyncAwaitCompleter(type$.Storage),
-        $async$returnValue, $async$self = this, t1;
+        $async$returnValue, t1, t2;
       var $async$create$2 = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
         if ($async$errorCode === 1)
           return A._asyncRethrow($async$result, $async$completer);
@@ -65918,13 +65972,18 @@
             case 0:
               // Function start
               $async$goto = 3;
-              return A._asyncAwait(A.Future_Future$value(new A.LocordaDriftNativeOptions(), type$.LocordaDriftNativeOptions), $async$create$2);
+              return A._asyncAwait(A.WorkerDriftConfigReceiver$(context.createChannel$1("locorda_drift/locorda_drift:default/drift_config")).getConfig$1$timeout(B.Duration_2000000), $async$create$2);
             case 3:
               // returning from await.
               t1 = $async$result;
               $async$goto = 4;
-              return A._asyncAwait(A.DriftStorage_create(t1, $async$self._web), $async$create$2);
+              return A._asyncAwait(A.Future_Future$value(new A.LocordaDriftNativeOptions(), type$.LocordaDriftNativeOptions), $async$create$2);
             case 4:
+              // returning from await.
+              t2 = $async$result;
+              $async$goto = 5;
+              return A._asyncAwait(A.DriftStorage_create(t2, t1), $async$create$2);
+            case 5:
               // returning from await.
               $async$returnValue = $async$result;
               // goto return
@@ -65937,6 +65996,96 @@
       });
       return A._asyncStartSync($async$create$2, $async$completer);
     }
+  };
+  A.WorkerDriftConfigReceiver.prototype = {
+    WorkerDriftConfigReceiver$1(_channel) {
+      var _this = this,
+        t1 = _this._worker_drift_config_receiver$_channel.get$messages(),
+        t2 = t1.$ti,
+        t3 = t2._eval$1("_WhereStream<Stream.T>");
+      t3 = new A.CastStream(new A._WhereStream(t2._eval$1("bool(Stream.T)")._as(new A.WorkerDriftConfigReceiver_closure()), t1, t3), t3._eval$1("CastStream<Stream.T,Map<String,@>>")).listen$1(_this.get$_worker_drift_config_receiver$_handleMessage());
+      _this.__WorkerDriftConfigReceiver__subscription_F !== $ && A.throwLateFieldAI("_subscription");
+      _this.__WorkerDriftConfigReceiver__subscription_F = t3;
+    },
+    _worker_drift_config_receiver$_handleMessage$1(message) {
+      var configMsg, t1;
+      type$.Map_String_dynamic._as(message);
+      if (A._asStringQ(message.$index(0, "type")) === "DriftWebOptionsMessage") {
+        configMsg = A.DriftWebOptionsMessage_fromJson(message);
+        $.$get$_log33().log$4(B.Level_FINE_500, "Received Drift web options from main thread", null, null);
+        t1 = this._worker_drift_config_receiver$_configCompleter;
+        if ((t1.future._state & 30) === 0)
+          t1.complete$1(configMsg.options);
+      }
+    },
+    getConfig$1$timeout(timeout) {
+      return this.getConfig$body$WorkerDriftConfigReceiver(timeout);
+    },
+    getConfig$body$WorkerDriftConfigReceiver(timeout) {
+      var $async$goto = 0,
+        $async$completer = A._makeAsyncAwaitCompleter(type$.nullable_LocordaDriftWebOptions),
+        $async$returnValue, $async$handler = 2, $async$errorStack = [], $async$self = this, t1, exception, $async$exception;
+      var $async$getConfig$1$timeout = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
+        if ($async$errorCode === 1) {
+          $async$errorStack.push($async$result);
+          $async$goto = $async$handler;
+        }
+        for (;;)
+          switch ($async$goto) {
+            case 0:
+              // Function start
+              $async$handler = 4;
+              $async$goto = 7;
+              return A._asyncAwait($async$self._worker_drift_config_receiver$_configCompleter.future.timeout$1(timeout), $async$getConfig$1$timeout);
+            case 7:
+              // returning from await.
+              t1 = $async$result;
+              $async$returnValue = t1;
+              // goto return
+              $async$goto = 1;
+              break;
+              $async$handler = 2;
+              // goto after finally
+              $async$goto = 6;
+              break;
+            case 4:
+              // catch
+              $async$handler = 3;
+              $async$exception = $async$errorStack.pop();
+              if (A.unwrapException($async$exception) instanceof A.TimeoutException) {
+                $.$get$_log33().log$4(B.Level_WARNING_900, "Timed out waiting for Drift web options from main thread.", null, null);
+                $async$returnValue = null;
+                // goto return
+                $async$goto = 1;
+                break;
+              } else
+                throw $async$exception;
+              // goto after finally
+              $async$goto = 6;
+              break;
+            case 3:
+              // uncaught
+              // goto rethrow
+              $async$goto = 2;
+              break;
+            case 6:
+              // after finally
+            case 1:
+              // return
+              return A._asyncReturn($async$returnValue, $async$completer);
+            case 2:
+              // rethrow
+              return A._asyncRethrow($async$errorStack.at(-1), $async$completer);
+          }
+      });
+      return A._asyncStartSync($async$getConfig$1$timeout, $async$completer);
+    }
+  };
+  A.WorkerDriftConfigReceiver_closure.prototype = {
+    call$1(msg) {
+      return type$.Map_String_dynamic._is(msg);
+    },
+    $signature: 7
   };
   A.GDrivePathIndex.prototype = {
     registerFolderId$2(folderId, pathValue) {
@@ -66027,28 +66176,28 @@
       var _this = this;
       return new A.FilesResource(_this.$this._gdrive_api$_inner._driveApi._requester).create$3$$fields$uploadMedia(_this.folderMetadata, _this.$$fields, _this.uploadMedia);
     },
-    $signature: 110
+    $signature: 109
   };
   A.PerflogDriveApi_get_closure.prototype = {
     call$0() {
       var _this = this;
       return new A.FilesResource(_this.$this._gdrive_api$_inner._driveApi._requester).$get$3$$fields$downloadOptions(_this.fileId, _this.$$fields, _this.downloadOptions);
     },
-    $signature: 402
+    $signature: 403
   };
   A.PerflogDriveApi_list_closure.prototype = {
     call$0() {
       var _this = this;
       return _this.$this._gdrive_api$_inner.list$5$$fields$pageSize$pageToken$q$spaces(_this.$$fields, _this.pageSize, _this.pageToken, _this.q, _this.spaces);
     },
-    $signature: 403
+    $signature: 404
   };
   A.PerflogDriveApi_update_closure.prototype = {
     call$0() {
       var _this = this;
       return new A.FilesResource(_this.$this._gdrive_api$_inner._driveApi._requester).update$4$$fields$uploadMedia(_this.file, _this.fileId, _this.$$fields, _this.uploadMedia);
     },
-    $signature: 110
+    $signature: 109
   };
   A.GDriveClient.prototype = {
     getOrCreateFolder$3$folderName$parentId$spaces(folderName, parentId, spaces) {
@@ -67117,14 +67266,14 @@
       var t1 = this.$this;
       return t1._gdrive_backend$_rdfCore.decode$2$contentType($content, t1._gdrive_backend$_contentType);
     },
-    $signature: 109
+    $signature: 107
   };
   A.BaseGDriveSyncStorage_downloadDataset_closure.prototype = {
     call$1($content) {
       var t1 = this.$this;
       return t1._gdrive_backend$_rdfCore.decodeDataset$2$contentType($content, t1._gdrive_backend$_datasetContentType);
     },
-    $signature: 405
+    $signature: 406
   };
   A.BaseGDriveSyncStorage_upload_closure.prototype = {
     call$1($content) {
@@ -67138,7 +67287,7 @@
       var t1 = this.$this;
       return t1._gdrive_backend$_rdfCore.encodeDataset$2$contentType(type$.RdfDataset._as($content), t1._gdrive_backend$_datasetContentType);
     },
-    $signature: 106
+    $signature: 105
   };
   A.MirroredGDriveSyncStorage.prototype = {
     downloadDocument$1$3$convert$ifNoneMatch(documentIri, convert, ifNoneMatch, $T) {
@@ -67277,13 +67426,13 @@
       var t1 = this.$this;
       return A.GDriveTypeIndexManager$(t1._appFolderProvider, backend, t1._gdrive_backend$_config, t1._gdrive_backend$_iriTermFactory, t1._gdrive_backend$_rdfCore).loadOrCreateTypeIndex$1(this.engineConfig);
     },
-    $signature: 408
+    $signature: 409
   };
   A.GDriveRemoteStorage_createSyncStorage_closure.prototype = {
     call$0() {
       return this.$this._appFolderProvider.get$appFolderId();
     },
-    $signature: 409
+    $signature: 410
   };
   A.GDriveBackend.prototype = {
     get$name() {
@@ -67385,7 +67534,7 @@
     call$1(e) {
       return type$._GDriveMirrorIndexEntry._as(e).dirty;
     },
-    $signature: 410
+    $signature: 411
   };
   A.GDriveLocalMirror_finalize_closure0.prototype = {
     call$1(entry) {
@@ -67532,7 +67681,7 @@
       });
       return A._asyncStartSync($async$call$1, $async$completer);
     },
-    $signature: 411
+    $signature: 412
   };
   A.GDriveLocalMirror__runConcurrent_schedule.prototype = {
     call$0() {
@@ -67582,7 +67731,7 @@
     call$1(e) {
       return type$._GDriveMirrorIndexEntry._as(e).toJson$0();
     },
-    $signature: 412
+    $signature: 413
   };
   A.TypeIndexManagerBackend.prototype = {};
   A.GDriveTypeIndexManagerBackend.prototype = {
@@ -68038,7 +68187,7 @@
       var t1 = this.$this;
       return t1._gdrive_type_index_manager$_rdfCore.decode$2$contentType(c, t1._gdrive_type_index_manager$_contentType);
     },
-    $signature: 109
+    $signature: 107
   };
   A.GDriveTypeIndexManager__collectAllTypes_closure.prototype = {
     call$1(r) {
@@ -68056,7 +68205,7 @@
     call$1(mapping) {
       return type$.TypeMapping._as(mapping).folderName;
     },
-    $signature: 413
+    $signature: 414
   };
   A.GDriveTypeIndexManager__addMissingTypes_closure1.prototype = {
     call$1($content) {
@@ -68219,19 +68368,19 @@
     call$2(key, value) {
       return new A.MapEntry(type$.IriTerm._as(key).value, A._asString(value), type$.MapEntry_String_String);
     },
-    $signature: 414
+    $signature: 415
   };
   A.GDriveConfigMessage_fromJson_closure.prototype = {
     call$1(e) {
       return type$.GDriveFolderMode._as(e)._name === this.folderModeName;
     },
-    $signature: 415
+    $signature: 416
   };
   A.GDriveConfigMessage_fromJson_closure0.prototype = {
     call$2(key, value) {
       return new A.MapEntry(new A.IriTerm(A._asString(key)), A._asString(value), type$.MapEntry_IriTerm_String);
     },
-    $signature: 416
+    $signature: 417
   };
   A.GDriveWorkerHandler.prototype = {
     createBackend$2(context, syncEngineConfig) {
@@ -69543,7 +69692,7 @@
       A._asString(value);
       return this.customPrefixes.get$values().contains$1(0, value);
     },
-    $signature: 90
+    $signature: 91
   };
   A.IriCompaction_compactAllIris_closure0.prototype = {
     call$1(triple) {
@@ -70324,7 +70473,7 @@
       t1 = this._box_0;
       return this.$this._createNodeObject$5$compactedIris(entry.key, entry.value, t1.context, this.blankNodeLabels, t1.compactedIris);
     },
-    $signature: 101
+    $signature: 102
   };
   A.JsonLdEncoder__serializeDatasetWithNamedGraphs_closure.prototype = {
     call$1(entry) {
@@ -70332,7 +70481,7 @@
       type$.MapEntry_of_RdfSubject_and_List_Triple._as(entry);
       return _this.$this._createNodeObject$5$compactedIris(entry.key, entry.value, _this.context, _this.blankNodeLabels, _this.compactedIris);
     },
-    $signature: 101
+    $signature: 102
   };
   A.JsonLdEncoder__groupTriplesBySubject_closure.prototype = {
     call$0() {
@@ -74867,7 +75016,7 @@
     call$2$documentUrl(data, documentUrl) {
       return this.call$3$documentUrl$mimeType(data, documentUrl, null);
     },
-    $signature: 100
+    $signature: 101
   };
   A.SolidRemoteStorage_isAvailable_closure.prototype = {
     call$1(_) {
@@ -75018,7 +75167,7 @@
     call$2$documentUrl(data, documentUrl) {
       return this.call$3$documentUrl$mimeType(data, documentUrl, null);
     },
-    $signature: 100
+    $signature: 101
   };
   A.SolidSyncStorage_downloadDataset_closure.prototype = {
     call$3$documentUrl$mimeType(data, documentUrl, mimeType) {
@@ -75044,7 +75193,7 @@
       var t1 = this.$this;
       return t1._solid_backend$_rdfCore.encodeDataset$2$contentType(type$.RdfDataset._as(dataset), t1._solid_backend$_datasetContentType);
     },
-    $signature: 106
+    $signature: 105
   };
   A.SolidConfig.prototype = {
     toJson$0() {
@@ -75285,7 +75434,7 @@
       t1 = type$.String;
       return A.LinkedHashMap_LinkedHashMap$_literal(["id", item._0, "graph", item._1], t1, t1);
     },
-    $signature: 99
+    $signature: 100
   };
   A.HydrationBatchMessage_toJson_closure0.prototype = {
     call$1(item) {
@@ -75294,21 +75443,21 @@
       t1 = type$.String;
       return A.LinkedHashMap_LinkedHashMap$_literal(["id", item._0, "graph", item._1], t1, t1);
     },
-    $signature: 99
+    $signature: 100
   };
   A.HydrationBatchMessage_HydrationBatchMessage$fromJson_closure.prototype = {
     call$1(item) {
       var t1 = J.getInterceptor$asx(item);
       return new A._Record_2(A._asString(t1.$index(item, "id")), A._asString(t1.$index(item, "graph")));
     },
-    $signature: 98
+    $signature: 99
   };
   A.HydrationBatchMessage_HydrationBatchMessage$fromJson_closure0.prototype = {
     call$1(item) {
       var t1 = J.getInterceptor$asx(item);
       return new A._Record_2(A._asString(t1.$index(item, "id")), A._asString(t1.$index(item, "graph")));
     },
-    $signature: 98
+    $signature: 99
   };
   A.SyncTriggerRequest.prototype = {
     toJson$0() {
@@ -75319,13 +75468,13 @@
     call$1(t) {
       return type$.SyncTrigger._as(t)._name === this.json.$index(0, "trigger");
     },
-    $signature: 72
+    $signature: 73
   };
   A.SyncTriggerRequest_SyncTriggerRequest$fromJson_closure0.prototype = {
     call$0() {
       return B.SyncTrigger_0;
     },
-    $signature: 73
+    $signature: 74
   };
   A.SyncTriggerResponse.prototype = {
     toJson$0() {
@@ -75388,13 +75537,13 @@
     call$1(t) {
       return type$.SyncTrigger._as(t)._name === this.json.$index(0, "lastTrigger");
     },
-    $signature: 72
+    $signature: 73
   };
   A.GetSyncStateResponse_GetSyncStateResponse$fromJson_closure0.prototype = {
     call$0() {
       return B.SyncTrigger_0;
     },
-    $signature: 73
+    $signature: 74
   };
   A.SyncStateUpdateMessage.prototype = {
     toJson$0() {
@@ -75418,13 +75567,13 @@
     call$1(t) {
       return type$.SyncTrigger._as(t)._name === this.json.$index(0, "lastTrigger");
     },
-    $signature: 72
+    $signature: 73
   };
   A.SyncStateUpdateMessage_SyncStateUpdateMessage$fromJson_closure0.prototype = {
     call$0() {
       return B.SyncTrigger_0;
     },
-    $signature: 73
+    $signature: 74
   };
   A.WorkerParams.prototype = {};
   A.RemoteMismatchException.prototype = {
@@ -86460,7 +86609,7 @@
       t1 === $ && A.throwLateFieldNI("_delegate");
       return t1.nextBytes$1(this.count);
     },
-    $signature: 95
+    $signature: 114
   };
   A.BlockCtrRandom.prototype = {
     seed$1(params) {
@@ -89573,7 +89722,7 @@
     call$0() {
       return this.call$1(null);
     },
-    $signature: 142
+    $signature: 141
   };
   A._forwardMulti__closure.prototype = {
     call$0() {
@@ -89631,7 +89780,7 @@
     call$0() {
       return this.call$1(null);
     },
-    $signature: 142
+    $signature: 141
   };
   A._forward__listenToUpstream_closure.prototype = {
     call$0() {
@@ -90243,7 +90392,7 @@
       var t1 = type$._Highlight._as(highlight).span;
       return t1.get$start().get$line() !== t1.get$end().get$line();
     },
-    $signature: 74
+    $signature: 75
   };
   A.Highlighter$__closure0.prototype = {
     call$1(line) {
@@ -90312,14 +90461,14 @@
     call$1(highlight) {
       return type$._Highlight._as(highlight).span.get$end().get$line() < this.line.number;
     },
-    $signature: 74
+    $signature: 75
   };
   A.Highlighter_highlight_closure.prototype = {
     call$1(highlight) {
       type$._Highlight._as(highlight);
       return true;
     },
-    $signature: 74
+    $signature: 75
   };
   A.Highlighter__writeFileStart_closure.prototype = {
     call$0() {
@@ -92202,7 +92351,7 @@
         B.NativeUint8List_methods.setAll$2(block, 0, J.asUint8List$2$x(B.NativeUint8List_methods.get$buffer(t1), t1.byteOffset + t3, Math.min(4096, t2 - t3)));
       return block;
     },
-    $signature: 95
+    $signature: 114
   };
   A._OffsetAndBuffer.prototype = {};
   A.IndexedDbFileSystem.prototype = {
@@ -92852,7 +93001,7 @@
     },
     "call*": "call$5",
     $requiredArgCount: 5,
-    $signature: 152
+    $signature: 138
   };
   A._InjectedValues__closure13.prototype = {
     call$0() {
@@ -92893,7 +93042,7 @@
     },
     "call*": "call$3",
     $requiredArgCount: 3,
-    $signature: 75
+    $signature: 76
   };
   A._InjectedValues__closure12.prototype = {
     call$0() {
@@ -92972,7 +93121,7 @@
     },
     "call*": "call$3",
     $requiredArgCount: 3,
-    $signature: 75
+    $signature: 76
   };
   A._InjectedValues__closure9.prototype = {
     call$0() {
@@ -93211,7 +93360,7 @@
     },
     "call*": "call$3",
     $requiredArgCount: 3,
-    $signature: 76
+    $signature: 77
   };
   A._InjectedValues_closure18.prototype = {
     call$3(ctx, args, value) {
@@ -93228,7 +93377,7 @@
     },
     "call*": "call$3",
     $requiredArgCount: 3,
-    $signature: 76
+    $signature: 77
   };
   A._InjectedValues_closure19.prototype = {
     call$3(ctx, args, value) {
@@ -93245,7 +93394,7 @@
     },
     "call*": "call$3",
     $requiredArgCount: 3,
-    $signature: 76
+    $signature: 77
   };
   A._InjectedValues_closure20.prototype = {
     call$1(ctx) {
@@ -93292,7 +93441,7 @@
     },
     "call*": "call$5",
     $requiredArgCount: 5,
-    $signature: 152
+    $signature: 138
   };
   A._InjectedValues_closure24.prototype = {
     call$5(id, kind, _, table, rowId) {
@@ -93371,7 +93520,7 @@
     },
     "call*": "call$3",
     $requiredArgCount: 3,
-    $signature: 75
+    $signature: 76
   };
   A.DartCallbacks.prototype = {
     register$1(set) {
@@ -93442,7 +93591,7 @@
       type$.Frame._as(frame);
       return B.JSString_methods.padRight$1(frame.get$location(), this.longest) + "  " + A.S(frame.get$member()) + "\n";
     },
-    $signature: 108
+    $signature: 95
   };
   A.Frame.prototype = {
     get$library() {
@@ -93826,7 +93975,7 @@
         return frame.toString$0(0) + "\n";
       return B.JSString_methods.padRight$1(frame.get$location(), this.longest) + "  " + A.S(frame.get$member()) + "\n";
     },
-    $signature: 108
+    $signature: 95
   };
   A.UnparsedFrame.prototype = {
     toString$0(_) {
@@ -94385,20 +94534,20 @@
       _static = hunkHelpers.installStaticTearOff,
       _instance_2_u = hunkHelpers._instance_2u,
       _instance_0_i = hunkHelpers._instance_0i;
-    _static_2(J, "_interceptors_JSArray__compareAny$closure", "JSArray__compareAny", 114);
+    _static_2(J, "_interceptors_JSArray__compareAny$closure", "JSArray__compareAny", 152);
     var _;
     _instance_1_i(_ = J.JSArray.prototype, "get$remove", "remove$1", 7);
     _instance_1_i(_, "get$contains", "contains$1", 7);
     _instance_0_u(_ = A.CastStreamSubscription.prototype, "get$cancel", "cancel$0", 19);
     _instance_1_u(_, "get$__internal$_onData", "__internal$_onData$1", 3);
-    _instance(_, "get$pause", 0, 0, null, ["call$1", "call$0"], ["pause$1", "pause$0"], 79, 0, 0);
+    _instance(_, "get$pause", 0, 0, null, ["call$1", "call$0"], ["pause$1", "pause$0"], 80, 0, 0);
     _instance_0_u(_, "get$resume", "resume$0", 0);
     _instance_1_i(A._CastIterableBase.prototype, "get$contains", "contains$1", 7);
     _static_0(A, "_js_helper_Primitives_dateNow$closure", "Primitives_dateNow", 15);
     _static_1(A, "_js_helper___stringIdentity$closure", "_stringIdentity", 6);
-    _static_1(A, "async__AsyncRun__scheduleImmediateJsOverride$closure", "_AsyncRun__scheduleImmediateJsOverride", 78);
-    _static_1(A, "async__AsyncRun__scheduleImmediateWithSetImmediate$closure", "_AsyncRun__scheduleImmediateWithSetImmediate", 78);
-    _static_1(A, "async__AsyncRun__scheduleImmediateWithTimer$closure", "_AsyncRun__scheduleImmediateWithTimer", 78);
+    _static_1(A, "async__AsyncRun__scheduleImmediateJsOverride$closure", "_AsyncRun__scheduleImmediateJsOverride", 79);
+    _static_1(A, "async__AsyncRun__scheduleImmediateWithSetImmediate$closure", "_AsyncRun__scheduleImmediateWithSetImmediate", 79);
+    _static_1(A, "async__AsyncRun__scheduleImmediateWithTimer$closure", "_AsyncRun__scheduleImmediateWithTimer", 79);
     _static_0(A, "async___startMicrotaskLoop$closure", "_startMicrotaskLoop", 0);
     _static_1(A, "async___nullDataHandler$closure", "_nullDataHandler", 40);
     _static_2(A, "async___nullErrorHandler$closure", "_nullErrorHandler", 9);
@@ -94431,7 +94580,7 @@
     _static(A, "async___rootCreateTimer$closure", 5, null, ["call$5"], ["_rootCreateTimer"], 668, 0);
     _static(A, "async___rootCreatePeriodicTimer$closure", 5, null, ["call$5"], ["_rootCreatePeriodicTimer"], 669, 0);
     _static(A, "async___rootPrint$closure", 4, null, ["call$4"], ["_rootPrint"], 670, 0);
-    _static_1(A, "async___printToZone$closure", "_printToZone", 141);
+    _static_1(A, "async___printToZone$closure", "_printToZone", 98);
     _static(A, "async___rootFork$closure", 5, null, ["call$5"], ["_rootFork"], 671, 0);
     _instance_0_u(_ = A._BroadcastSubscription.prototype, "get$_onPause", "_onPause$0", 0);
     _instance_0_u(_, "get$_onResume", "_onResume$0", 0);
@@ -94483,14 +94632,14 @@
     _instance_0_u(_, "get$_handleDone", "_handleDone$0", 0);
     _static_2(A, "collection___defaultEquals$closure", "_defaultEquals", 66);
     _static_1(A, "collection___defaultHashCode$closure", "_defaultHashCode", 22);
-    _static_2(A, "collection_ListBase__compareAny$closure", "ListBase__compareAny", 114);
+    _static_2(A, "collection_ListBase__compareAny$closure", "ListBase__compareAny", 152);
     _instance_1_i(A._LinkedHashSet.prototype, "get$remove", "remove$1", 7);
     _instance_1_i(A.ListBase.prototype, "get$contains", "contains$1", 7);
-    _static_1(A, "convert___defaultToEncodable$closure", "_defaultToEncodable", 77);
+    _static_1(A, "convert___defaultToEncodable$closure", "_defaultToEncodable", 78);
     _instance_0_u(A._JsonDecoderSink.prototype, "get$close", "close$0", 0);
     _instance_1_i(_ = A._ByteCallbackSink.prototype, "get$add", "add$1", 3);
     _instance_0_u(_, "get$close", "close$0", 0);
-    _instance(A._JsonUtf8EncoderSink.prototype, "get$_addChunk", 0, 3, null, ["call$3"], ["_addChunk$3"], 434, 0, 0);
+    _instance(A._JsonUtf8EncoderSink.prototype, "get$_addChunk", 0, 3, null, ["call$3"], ["_addChunk$3"], 445, 0, 0);
     _static_1(A, "core__identityHashCode$closure", "identityHashCode", 22);
     _static(A, "core_int_parse$closure", 1, function() {
       return {onError: null, radix: null};
@@ -94516,7 +94665,7 @@
     _static_1(A, "math__acos$closure", "acos", 14);
     _static_1(A, "math__asin$closure", "asin", 14);
     _static_1(A, "math__atan$closure", "atan", 14);
-    _instance(_ = A.DelegatingStreamSubscription.prototype, "get$pause", 0, 0, null, ["call$1", "call$0"], ["pause$1", "pause$0"], 79, 0, 0);
+    _instance(_ = A.DelegatingStreamSubscription.prototype, "get$pause", 0, 0, null, ["call$1", "call$0"], ["pause$1", "pause$0"], 80, 0, 0);
     _instance_0_u(_, "get$resume", "resume$0", 0);
     _instance_0_u(_, "get$cancel", "cancel$0", 19);
     _instance_0_u(_ = A.StreamSplitter.prototype, "get$_stream_splitter$_onListen", "_stream_splitter$_onListen$0", 0);
@@ -94532,15 +94681,15 @@
     _instance_1_u(A.DriftCommunication.prototype, "get$_communication$_handleMessage", "_communication$_handleMessage$1", 3);
     _instance_1_u(A.DriftProtocol.prototype, "get$_decodeDbValue", "_decodeDbValue$1", 41);
     _instance_1_u(A.WebProtocol.prototype, "get$_web_protocol$_decodeDbValue", "_web_protocol$_decodeDbValue$1", 41);
-    _static_1(A, "delegates___defaultSavepoint$closure", "_defaultSavepoint", 80);
-    _static_1(A, "delegates___defaultRelease$closure", "_defaultRelease", 80);
-    _static_1(A, "delegates___defaultRollbackToSavepoint$closure", "_defaultRollbackToSavepoint", 80);
-    _instance_1_u(A.AnyUpdateQuery.prototype, "get$matches", "matches$1", 83);
-    _instance_1_u(A.MultipleUpdateQuery.prototype, "get$matches", "matches$1", 83);
+    _static_1(A, "delegates___defaultSavepoint$closure", "_defaultSavepoint", 81);
+    _static_1(A, "delegates___defaultRelease$closure", "_defaultRelease", 81);
+    _static_1(A, "delegates___defaultRollbackToSavepoint$closure", "_defaultRollbackToSavepoint", 81);
+    _instance_1_u(A.AnyUpdateQuery.prototype, "get$matches", "matches$1", 84);
+    _instance_1_u(A.MultipleUpdateQuery.prototype, "get$matches", "matches$1", 84);
     _instance_1_u(A.GenerationContext.prototype, "get$identifier", "identifier$1", 6);
     _instance_1_u(A.CustomSelectStatement.prototype, "get$_mapDbResponse", "_mapDbResponse$1", 461);
     _instance_1_u(A.SimpleSelectStatement.prototype, "get$_mapResponse", "_mapResponse$1", "List<2>/(List<Map<String,Object?>>)");
-    _static_1(A, "native_functions___pow$closure", "_pow", 85);
+    _static_1(A, "native_functions___pow$closure", "_pow", 86);
     _static_1(A, "native_functions___regexpImpl$closure", "_regexpImpl", 676);
     _static_1(A, "native_functions___containsImpl$closure", "_containsImpl", 677);
     _instance_1_u(A.BroadcastStreamQueryStore.prototype, "get$_broadcast_stream_queries$_handleMessage", "_broadcast_stream_queries$_handleMessage$1", 10);
@@ -94592,17 +94741,18 @@
     _instance(A.$RemoteSyncStateTable.prototype, "get$map", 1, 1, function() {
       return {tablePrefix: null};
     }, ["call$2$tablePrefix", "call$1"], ["map$2$tablePrefix", "map$1"], 400, 0, 0);
+    _instance_1_u(A.WorkerDriftConfigReceiver.prototype, "get$_worker_drift_config_receiver$_handleMessage", "_worker_drift_config_receiver$_handleMessage$1", 70);
     _instance_0_u(A.GDriveRemoteStorage.prototype, "get$isAvailable", "isAvailable$0", 46);
     _instance_0_u(_ = A.GDriveBackend.prototype, "get$_authStateChanged", "_authStateChanged$0", 0);
     _instance_0_u(_, "get$dispose", "dispose$0", 1);
-    _instance_1_u(A.WorkerGDriveConfigReceiver.prototype, "get$_handleMessage", "_handleMessage$1", 105);
+    _instance_1_u(A.WorkerGDriveConfigReceiver.prototype, "get$_handleMessage", "_handleMessage$1", 70);
     _static_1(A, "rdf_term_IriTerm___new_tearOff$closure", "IriTerm___new_tearOff", 47);
     _static_1(A, "rdf_term_IriTerm___validated_tearOff$closure", "IriTerm___validated_tearOff", 47);
-    _instance_1_u(A.WorkerSolidConfigReceiver.prototype, "get$_worker_solid_config_receiver$_handleMessage", "_worker_solid_config_receiver$_handleMessage$1", 105);
+    _instance_1_u(A.WorkerSolidConfigReceiver.prototype, "get$_worker_solid_config_receiver$_handleMessage", "_worker_solid_config_receiver$_handleMessage$1", 70);
     _instance_0_u(_ = A.SolidBackend.prototype, "get$_solid_backend$_authStateChanged", "_solid_backend$_authStateChanged$0", 0);
     _instance_0_u(_, "get$dispose", "dispose$0", 1);
     _instance_0_u(A.SolidRemoteStorage.prototype, "get$isAvailable", "isAvailable$0", 46);
-    _static_1(A, "js_interop_utils___deepConvertJsObject$closure", "_deepConvertJsObject", 77);
+    _static_1(A, "js_interop_utils___deepConvertJsObject$closure", "_deepConvertJsObject", 78);
     _instance_1_u(_ = A.WorkerHandlerChannel.prototype, "get$_onMessage", "_onMessage$1", 3);
     _instance_0_u(_, "get$_onFirstListen", "_onFirstListen$0", 0);
     _static_0(A, "logging_setup__setupWorkerLogging$closure", "setupWorkerLogging", 0);
@@ -94680,10 +94830,10 @@
     _static_1(A, "frame_Frame___parseV8_tearOff$closure", "Frame___parseV8_tearOff", 50);
     _static_1(A, "frame_Frame___parseFirefox_tearOff$closure", "Frame___parseFirefox_tearOff", 50);
     _static_1(A, "frame_Frame___parseFriendly_tearOff$closure", "Frame___parseFriendly_tearOff", 50);
-    _static_1(A, "trace_Trace___parseVM_tearOff$closure", "Trace___parseVM_tearOff", 94);
-    _static_1(A, "trace_Trace___parseFriendly_tearOff$closure", "Trace___parseFriendly_tearOff", 94);
+    _static_1(A, "trace_Trace___parseVM_tearOff$closure", "Trace___parseVM_tearOff", 108);
+    _static_1(A, "trace_Trace___parseFriendly_tearOff$closure", "Trace___parseFriendly_tearOff", 108);
     _instance_0_u(_ = A._EventStreamSubscription.prototype, "get$cancel", "cancel$0", 1);
-    _instance(_, "get$pause", 0, 0, null, ["call$1", "call$0"], ["pause$1", "pause$0"], 79, 0, 0);
+    _instance(_, "get$pause", 0, 0, null, ["call$1", "call$0"], ["pause$1", "pause$0"], 80, 0, 0);
     _instance_0_u(_, "get$resume", "resume$0", 0);
     _static_1(A, "turtle_tokenizer__toTriGParsingFlag$closure", "toTriGParsingFlag", 729);
     _static(A, "utils__compareComparable$closure", 2, null, ["call$1$2", "call$2"], ["compareComparable", function(a, b) {
@@ -94699,7 +94849,7 @@
       _inheritMany = hunkHelpers.inheritMany,
       _inherit = hunkHelpers.inherit;
     _inheritMany(null, [A.Object, A.AbortableStreamedRequest]);
-    _inheritMany(A.Object, [A.JS_CONST, J.Interceptor, A.SafeToStringHook, J.ArrayIterator, A.Stream, A.CastStreamSubscription, A._CopyingBytesBuilder, A._BytesBuilder, A.Iterable, A.CastIterator, A.Closure, A.MapBase, A.Error, A.ListBase, A.SentinelValue, A.ListIterator, A.MappedIterator, A.WhereIterator, A.ExpandIterator, A.TakeIterator, A.SkipIterator, A.SkipWhileIterator, A.EmptyIterator, A.WhereTypeIterator, A.NonNullsIterator, A.IndexedIterator, A.FixedLengthListMixin, A.UnmodifiableListMixin, A.Symbol, A._Record, A.MapView, A.ConstantMap, A._KeysOrValuesOrElementsIterator, A.SetBase, A.TypeErrorDecoder, A.NullThrownFromJavaScriptException, A.ExceptionAndStackTrace, A._StackTrace, A.LinkedHashMapCell, A.LinkedHashMapKeyIterator, A.LinkedHashMapValueIterator, A.LinkedHashMapEntryIterator, A.JSSyntaxRegExp, A._MatchImplementation, A._AllMatchesIterator, A.StringMatch, A._StringAllMatchesIterator, A._Cell, A._InitializedCell, A._UnmodifiableNativeByteBufferView, A.Rti, A._FunctionParameters, A._Type, A._TimerImpl, A._AsyncAwaitCompleter, A._AsyncStarStreamController, A._IterationMarker, A._SyncStarIterator, A.AsyncError, A._BufferingStreamSubscription, A._BroadcastStreamController, A.TimeoutException, A._Completer, A._FutureListener, A._Future, A._AsyncCallbackEntry, A.StreamTransformerBase, A._StreamController, A._SyncStreamControllerDispatch, A._AsyncStreamControllerDispatch, A._StreamSinkWrapper, A._AddStreamState, A._DelayedEvent, A._DelayedDone, A._PendingEvents, A._DoneStreamSubscription, A._StreamIterator, A._EventSinkWrapper, A._ZoneFunction, A._ZoneSpecification, A._ZoneDelegate, A._Zone, A._HashMapKeyIterator, A._HashSetIterator, A._LinkedHashSetCell, A._LinkedHashSetIterator, A._LinkedListIterator, A.LinkedListEntry, A._MapBaseValueIterator, A._UnmodifiableMapMixin, A._ListQueueIterator, A._UnmodifiableSetMixin, A.StringConversionSink, A.Codec, A.Converter, A.ByteConversionSink, A._Base64Encoder, A._Base64Decoder, A.ChunkedConversionSink, A._ConverterStreamEventSink, A._JsonStringifier, A._JsonPrettyPrintMixin, A._ClosableStringSink, A._StringConversionSinkAsStringSinkAdapter, A._Utf8Encoder, A._Utf8Decoder, A._BigIntImpl, A._BigIntClassic, A._FinalizationRegistryWrapper, A.DateTime, A.Duration, A._Enum, A.OutOfMemoryError, A.StackOverflowError, A._Exception, A.FormatException, A.IntegerDivisionByZeroException, A.MapEntry, A.Null, A._StringStackTrace, A.Stopwatch, A.StringBuffer, A._Uri, A.UriData, A._SimpleUri, A.Expando, A.ServiceExtensionResponse, A.OSError, A._BufferAndStart, A.FileSystemEntity, A.FileMode, A.FileSystemException, A._RandomAccessFile, A.NullRejectionException, A._JSRandom, A._JSSecureRandom, A.Endian, A.ApiRequester, A.MultipartMediaUploader, A.BaseRequest, A.Media, A.UploadOptions, A.DownloadOptions, A.ByteRange, A.ApiRequestError, A.ApiRequestErrorDetail, A.DelegatingStreamSubscription, A.FutureGroup, A.ErrorResult, A.ValueResult, A.StreamQueue, A._NextRequest, A._CancelRequest, A.StreamSplitter, A.CanonicalizedMap, A.DefaultEquality, A.ListEquality, A._UnorderedEquality, A._MapEntry, A.MapEquality, A._QueueList_Object_ListMixin, A.NonGrowableListMixin, A.UnmodifiableMapMixin, A.Digest, A.DigestSink, A.HashSink, A.Expression, A.HasResultSet, A.DriftClient, A.QueryExecutor, A.StreamQueryStore, A.DriftCommunication, A._PendingRequest, A.ConnectionClosedException, A.DriftRemoteException, A.DriftProtocol, A.Message, A.PrimitiveResponsePayload, A.ExecuteQuery, A.RequestCancellation, A.ExecuteBatchedStatement, A.RunNestedExecutorControl, A.EnsureOpen, A.ServerInfo, A.RunBeforeOpen, A.NotifyTablesUpdated, A.SelectResult, A.WebProtocol, A.DriftDatabaseOptions, A.Batch, A.DatabaseConnection, A.DatabaseConnectionUser, A.DriftRuntimeOptions, A.StreamQueryUpdateRules, A.TableUpdate, A.TableUpdateQuery, A.CancellationToken, A.CancellationException, A.DataClass, A.UpdateCompanion, A.Value, A.ValueSerializer, A.VerificationMeta, A.VerificationResult, A.VerificationContext, A.TrackedDatabase, A.DriftServiceExtension, A.InvalidDataException, A.DriftWrappedException, A.CouldNotRollBackException, A.BatchedStatements, A.ArgumentsForBatchedStatement, A.QueryDelegate, A.TransactionDelegate, A.DbVersionDelegate, A.QueryResult, A.QueryInterceptor, A.QueryStreamFetcher, A.StreamKey, A.QueryStream, A._QueryStreamListener, A.Component, A.GenerationContext, A.MigrationStrategy, A.Migrator, A.OpeningDetails, A.TableInfo, A.InsertStatement, A.UpsertClause, A.Selectable, A.SingleTableQueryMixin, A.LimitContainerMixin, A._CustomSelectStatement_Object_Selectable, A.QueryRow, A.TypedResult, A._ResultStructure, A.SqlTypes, A.DriftAny, A.PreparedStatementsCache, A.Lock, A.WasmDatabaseOpener, A._DriftWorker, A._ProbeResult, A.WasmInitializationMessage, A.DriftServerController, A.WasmDatabaseResult, A.DriveApi, A.FilesResource, A.ContentRestriction, A.DownloadRestriction, A.DownloadRestrictionsMetadata, A.FileCapabilities, A.FileContentHintsThumbnail, A.FileContentHints, A.FileImageMediaMetadataLocation, A.FileImageMediaMetadata, A.FileLabelInfo, A.FileLinkShareMetadata, A.FileShortcutDetails, A.FileVideoMediaMetadata, A.File, A.FileList, A.Label, A.LabelField, A.PermissionPermissionDetails, A.PermissionTeamDrivePermissionDetails, A.Permission, A.User, A.BaseClient, A.ClientException, A.BaseResponse, A.MediaType, A.LoggingPerflog, A.PerflogBackend, A.PerflogRemoteStorage, A.PerflogRemoteSyncStorage, A.ResourceConfigBase, A.ConfigBase, A.ConfigBaseValidator, A.IndexItemConfigBase, A.CrdtIndexConfigBase, A.DocumentIriTemplate, A.SyncEngineConfigValidator, A.ValidationResult, A.ValidationIssue, A.SyncConfigValidationException, A.MetadataStatement, A.MetadataStatementKey, A.MergeResults, A.GRegister, A.LwwRegister, A.Immutable, A.OrSet, A.CrdtMergeContext, A.RemoteCrdtMergeContext, A.CrdtTypeRegistry, A.CrdtDocumentManager, A.HlcService, A.GroupIndexGraphSubscriptionException, A.GroupIndexGraphSubscriptionManager, A.GroupKeyGenerator, A._PropertyExtractor, A.ItemFetchPolicy, A.RegexTransform, A.GroupingProperty, A._ParsedIndexCacheEntry, A._IndexMetadata, A.IndexDiscovery, A.IndexManager, A.ParsedFullIndex, A.ParsedGroupIndexTemplate, A.IndexParser, A.IndexPropertyResolver, A.IndexRdfGenerator, A.RdfGroupExtractor, A.MissingIndexDocument, A.MissingGroupIndex, A.ShardDeterminationResult, A.ShardDeterminer, A.ShardManager, A.ShardingConfig, A.InstallationService, A.LocalDocumentMerger, A.CrdtMetadataResult, A.FrameworkIriGenerator, A._GraphWithLabels, A.IdentifiedBlankNodeParent, A.IdentifiedBlankNode, A.IdentifiedBlankNodes, A.UnidentifiedBlankNodeException, A.UnidentifiedBlankNodeWithContextException, A.IdentifiedBlankNodeBuilder, A.IdentifiedRdfSubject, A.NoOpIriTranslator, A.BaseIriTranslator, A.ResourceLocator, A.PredicateRule, A.DocumentMapping, A.PredicateMapping, A.ClassMapping, A.PredicateMergeRule, A.ClassMergeRules, A.MergeContract, A.DocumentMappingDependencyExtractor, A.MergeContractLoader, A.MetadataGenerator, A.IdTerm, A.HttpFetcher, A.StandardRdfGraphFetcher, A.BootstrapRdfGraphFetcher, A.RecursiveRdfLoader, A.UnsupportedIriException, A.ResourceIdentifier, A.LocalResourceLocator, A.ConfigService, A.StandardSyncEngine, A.ConcurrentUpdateException, A.RemoteId, A.RemoteDownloadResult, A.RemoteUploadResult, A.GraphSyncStorage, A.AuthException, A.AuthRetryConfig, A.AuthAwareRemoteStorage, A.AuthAwareSyncStorage, A.IndexEntryWithIri, A.IndexEntriesPage, A.StoredDocument, A.SaveDocumentResult, A.DocumentsResult, A.DocumentMetadata, A.PropertyChange, A.OrganizedStatements, A.MergeObject, A.MergeSubject, A.OrganizedBlankNodeMappings, A.RdfObjectKey, A.OrganizedGraph, A.MergeResult, A.RemoteDocumentMerger, A.IndexSyncSpec, A.ShardSyncSpec, A._DocumentQueueEntry, A.RemoteSyncOrchestrator, A._DocumentSyncHelper, A.FilePerResourceShardSyncAdapter, A.FilePerShardShardSyncAdapter, A._ShardSyncOrchestrator, A.ShardDocumentGenerator, A.StandardSyncManager, A.SyncFunction, A.AutoSyncConfig, A.SyncState, A.EngineParams, A.LRUCache, A.RdfExpectations, A.LocordaDriftWebOptions, A.LocordaDriftNativeOptions, A.DriftStorage, A.IriBatchLoader, A.DriftIndexEntry, A.SubscribedGroupIndexData, A.IndexEntriesPage0, A.DocumentWithIri, A._$SyncDocumentDaoMixin, A._$SyncPropertyChangeDaoMixin, A._$IndexDaoMixin, A._$RemoteSyncStateDaoMixin, A.StorageWorkerHandler, A.GDrivePathIndex, A.DriveApiImpl, A.PerflogDriveApi, A.GDriveClient, A.GDriveClientException, A.GDriveRemoteStorage, A.GDriveBackend, A.TypeIndexManagerBackend, A.GDriveTypeIndexManager, A.AppFolderProvider, A._TypeIndexFile, A.TypeMapping, A.TypeIndexMappings, A.GDriveAuthMessage, A.GDriveLocalMirrorConfig, A.GDriveConfig, A.GDriveConfigMessage, A.GDriveWorkerHandler, A._WorkerAuthNotifier, A.WorkerGDriveAuthProvider, A.WorkerGDriveConfigReceiver, A.RdfCore, A.Quad, A.RdfDataset, A.RdfNamedGraph, A.RdfException, A.SourceLocation, A.RdfGraph, A.RdfTerm, A.Triple, A.IriCompactionSettings, A.CompactIri, A.IriCompactionResult, A.IriCompaction, A.RdfGraphDecoderOptions, A.JsonLdParser, A.RdfGraphEncoderOptions, A._BlankNodeLabelFactoryImpl, A._NoOpBlankNodeCounter, A.CodecNotSupportedException, A.BaseRdfCodecRegistry, A.RdfCodecRegistry, A.IriRelativizationOptions, A.TriGParser, A.Token, A.TriGTokenizer, A.RdfNamespaceMappings, A.SolidWorkerHandler, A.WorkerSolidConfigReceiver, A.UpdateAuthMessage0, A._WorkerAuthNotifier0, A.SolidAuthReceiver, A.SolidBackend, A.SolidClientException, A.NotFoundException, A.SolidClient, A.SolidRemoteStorage, A.SolidConfig, A.SolidProfileParser, A.WorkerMessage, A.WorkerParams, A.RemoteMismatchException, A.WebWorkerSender, A.WorkerChannelMessage, A.WorkerHandlerChannel, A.WorkerChannel, A.WorkerHandlerContextImpl, A.WorkerContext, A.Level, A.LogRecord, A.Logger, A.Context, A._PathDirection, A._PathRelation, A.Style, A.ParsedPath, A.PathException, A.BaseBlockCipher, A.AsymmetricKeyParameter, A.CipherParameters, A.ParametersWithIV, A.RegistryFactoryException, A.ASN1Object, A.ASN1Parser, A.UnsupportedASN1TagException, A.RSAAsymmetricKey, A.RSASignature, A.BaseAsymmetricBlockCipher, A.DesBase, A.BaseAEADBlockCipher, A.BaseDigest, A.ECSignature, A.ECDomainParametersImpl, A.ECFieldElementBase, A.ECPointBase, A.ECCurveBase, A._WNafPreCompInfo, A.BaseKeyDerivator, A.PKCS12ParametersGenerator, A.PKCS5S1ParameterGenerator, A.ECKeyGenerator, A.RSAKeyGenerator, A.BaseMac, A.PaddedBlockCipherImpl, A.BasePadding, A.AutoSeedBlockCtrRandom, A.SecureRandomBase, A.FortunaRandom, A.ECDSASigner, A._RFC6979KCalculator, A._RandomKCalculator, A.PSSSigner, A.RSASigner, A.BaseAEADCipher, A.BaseStreamCipher, A.Platform, A.PlatformException, A._JsBuiltInEntropySource, A._JsNodeEntropySource, A.FactoryConfig, A._RegistryImpl, A.Register64, A.Register64List, A._Wrapper, A.ForwardingSink, A._Empty, A.ErrorAndStackTrace, A._MultiControllerSink, A._EnhancedEventSink, A.JWTAlgorithm, A.JWT, A.JWTKey, A.DpopCredentials, A.SourceFile, A.SourceLocationMixin, A.SourceSpanMixin, A.Highlighter, A._Highlight, A._Line, A.SourceLocation0, A.SourceSpanException, A.SqliteException, A.AllowedArgumentCount, A.RawSqliteBindings, A.SqliteResult, A.RawSqliteDatabase, A.RawStatementCompiler, A.RawSqliteStatement, A.RawSqliteContext, A.RawSqliteValue, A.FinalizablePart, A.DatabaseImplementation, A.Sqlite3Implementation, A.CommonPreparedStatement, A.VirtualFileSystem, A.BaseVfsFile, A.Cursor, A._Row_Object_UnmodifiableMapMixin, A._ResultIterator, A.IndexedParameters, A.VfsException, A.Sqlite3Filename, A._CursorReader, A.RequestResponseSynchronizer, A.MessageSerializer, A.Message0, A.AsynchronousIndexedDbFileSystem, A._FileWriteRequest, A._OffsetAndBuffer, A._IndexedDbFile, A.WasmBindings, A._InjectedValues, A.DartCallbacks, A.RegisteredFunctionSet, A.Chain, A.Frame, A.LazyTrace, A.Trace, A.UnparsedFrame, A.StreamChannelMixin, A._GuaranteeSink, A.StreamChannelController, A.StringScanner, A.RNG, A.Uuid, A.EventStreamProvider, A._EventStreamSubscription]);
+    _inheritMany(A.Object, [A.JS_CONST, J.Interceptor, A.SafeToStringHook, J.ArrayIterator, A.Stream, A.CastStreamSubscription, A._CopyingBytesBuilder, A._BytesBuilder, A.Iterable, A.CastIterator, A.Closure, A.MapBase, A.Error, A.ListBase, A.SentinelValue, A.ListIterator, A.MappedIterator, A.WhereIterator, A.ExpandIterator, A.TakeIterator, A.SkipIterator, A.SkipWhileIterator, A.EmptyIterator, A.WhereTypeIterator, A.NonNullsIterator, A.IndexedIterator, A.FixedLengthListMixin, A.UnmodifiableListMixin, A.Symbol, A._Record, A.MapView, A.ConstantMap, A._KeysOrValuesOrElementsIterator, A.SetBase, A.TypeErrorDecoder, A.NullThrownFromJavaScriptException, A.ExceptionAndStackTrace, A._StackTrace, A.LinkedHashMapCell, A.LinkedHashMapKeyIterator, A.LinkedHashMapValueIterator, A.LinkedHashMapEntryIterator, A.JSSyntaxRegExp, A._MatchImplementation, A._AllMatchesIterator, A.StringMatch, A._StringAllMatchesIterator, A._Cell, A._InitializedCell, A._UnmodifiableNativeByteBufferView, A.Rti, A._FunctionParameters, A._Type, A._TimerImpl, A._AsyncAwaitCompleter, A._AsyncStarStreamController, A._IterationMarker, A._SyncStarIterator, A.AsyncError, A._BufferingStreamSubscription, A._BroadcastStreamController, A.TimeoutException, A._Completer, A._FutureListener, A._Future, A._AsyncCallbackEntry, A.StreamTransformerBase, A._StreamController, A._SyncStreamControllerDispatch, A._AsyncStreamControllerDispatch, A._StreamSinkWrapper, A._AddStreamState, A._DelayedEvent, A._DelayedDone, A._PendingEvents, A._DoneStreamSubscription, A._StreamIterator, A._EventSinkWrapper, A._ZoneFunction, A._ZoneSpecification, A._ZoneDelegate, A._Zone, A._HashMapKeyIterator, A._HashSetIterator, A._LinkedHashSetCell, A._LinkedHashSetIterator, A._LinkedListIterator, A.LinkedListEntry, A._MapBaseValueIterator, A._UnmodifiableMapMixin, A._ListQueueIterator, A._UnmodifiableSetMixin, A.StringConversionSink, A.Codec, A.Converter, A.ByteConversionSink, A._Base64Encoder, A._Base64Decoder, A.ChunkedConversionSink, A._ConverterStreamEventSink, A._JsonStringifier, A._JsonPrettyPrintMixin, A._ClosableStringSink, A._StringConversionSinkAsStringSinkAdapter, A._Utf8Encoder, A._Utf8Decoder, A._BigIntImpl, A._BigIntClassic, A._FinalizationRegistryWrapper, A.DateTime, A.Duration, A._Enum, A.OutOfMemoryError, A.StackOverflowError, A._Exception, A.FormatException, A.IntegerDivisionByZeroException, A.MapEntry, A.Null, A._StringStackTrace, A.Stopwatch, A.StringBuffer, A._Uri, A.UriData, A._SimpleUri, A.Expando, A.ServiceExtensionResponse, A.OSError, A._BufferAndStart, A.FileSystemEntity, A.FileMode, A.FileSystemException, A._RandomAccessFile, A.NullRejectionException, A._JSRandom, A._JSSecureRandom, A.Endian, A.ApiRequester, A.MultipartMediaUploader, A.BaseRequest, A.Media, A.UploadOptions, A.DownloadOptions, A.ByteRange, A.ApiRequestError, A.ApiRequestErrorDetail, A.DelegatingStreamSubscription, A.FutureGroup, A.ErrorResult, A.ValueResult, A.StreamQueue, A._NextRequest, A._CancelRequest, A.StreamSplitter, A.CanonicalizedMap, A.DefaultEquality, A.ListEquality, A._UnorderedEquality, A._MapEntry, A.MapEquality, A._QueueList_Object_ListMixin, A.NonGrowableListMixin, A.UnmodifiableMapMixin, A.Digest, A.DigestSink, A.HashSink, A.Expression, A.HasResultSet, A.DriftClient, A.QueryExecutor, A.StreamQueryStore, A.DriftCommunication, A._PendingRequest, A.ConnectionClosedException, A.DriftRemoteException, A.DriftProtocol, A.Message, A.PrimitiveResponsePayload, A.ExecuteQuery, A.RequestCancellation, A.ExecuteBatchedStatement, A.RunNestedExecutorControl, A.EnsureOpen, A.ServerInfo, A.RunBeforeOpen, A.NotifyTablesUpdated, A.SelectResult, A.WebProtocol, A.DriftDatabaseOptions, A.Batch, A.DatabaseConnection, A.DatabaseConnectionUser, A.DriftRuntimeOptions, A.StreamQueryUpdateRules, A.TableUpdate, A.TableUpdateQuery, A.CancellationToken, A.CancellationException, A.DataClass, A.UpdateCompanion, A.Value, A.ValueSerializer, A.VerificationMeta, A.VerificationResult, A.VerificationContext, A.TrackedDatabase, A.DriftServiceExtension, A.InvalidDataException, A.DriftWrappedException, A.CouldNotRollBackException, A.BatchedStatements, A.ArgumentsForBatchedStatement, A.QueryDelegate, A.TransactionDelegate, A.DbVersionDelegate, A.QueryResult, A.QueryInterceptor, A.QueryStreamFetcher, A.StreamKey, A.QueryStream, A._QueryStreamListener, A.Component, A.GenerationContext, A.MigrationStrategy, A.Migrator, A.OpeningDetails, A.TableInfo, A.InsertStatement, A.UpsertClause, A.Selectable, A.SingleTableQueryMixin, A.LimitContainerMixin, A._CustomSelectStatement_Object_Selectable, A.QueryRow, A.TypedResult, A._ResultStructure, A.SqlTypes, A.DriftAny, A.PreparedStatementsCache, A.Lock, A.WasmDatabaseOpener, A._DriftWorker, A._ProbeResult, A.WasmInitializationMessage, A.DriftServerController, A.WasmDatabaseResult, A.DriveApi, A.FilesResource, A.ContentRestriction, A.DownloadRestriction, A.DownloadRestrictionsMetadata, A.FileCapabilities, A.FileContentHintsThumbnail, A.FileContentHints, A.FileImageMediaMetadataLocation, A.FileImageMediaMetadata, A.FileLabelInfo, A.FileLinkShareMetadata, A.FileShortcutDetails, A.FileVideoMediaMetadata, A.File, A.FileList, A.Label, A.LabelField, A.PermissionPermissionDetails, A.PermissionTeamDrivePermissionDetails, A.Permission, A.User, A.BaseClient, A.ClientException, A.BaseResponse, A.MediaType, A.LoggingPerflog, A.PerflogBackend, A.PerflogRemoteStorage, A.PerflogRemoteSyncStorage, A.ResourceConfigBase, A.ConfigBase, A.ConfigBaseValidator, A.IndexItemConfigBase, A.CrdtIndexConfigBase, A.DocumentIriTemplate, A.SyncEngineConfigValidator, A.ValidationResult, A.ValidationIssue, A.SyncConfigValidationException, A.MetadataStatement, A.MetadataStatementKey, A.MergeResults, A.GRegister, A.LwwRegister, A.Immutable, A.OrSet, A.CrdtMergeContext, A.RemoteCrdtMergeContext, A.CrdtTypeRegistry, A.CrdtDocumentManager, A.HlcService, A.GroupIndexGraphSubscriptionException, A.GroupIndexGraphSubscriptionManager, A.GroupKeyGenerator, A._PropertyExtractor, A.ItemFetchPolicy, A.RegexTransform, A.GroupingProperty, A._ParsedIndexCacheEntry, A._IndexMetadata, A.IndexDiscovery, A.IndexManager, A.ParsedFullIndex, A.ParsedGroupIndexTemplate, A.IndexParser, A.IndexPropertyResolver, A.IndexRdfGenerator, A.RdfGroupExtractor, A.MissingIndexDocument, A.MissingGroupIndex, A.ShardDeterminationResult, A.ShardDeterminer, A.ShardManager, A.ShardingConfig, A.InstallationService, A.LocalDocumentMerger, A.CrdtMetadataResult, A.FrameworkIriGenerator, A._GraphWithLabels, A.IdentifiedBlankNodeParent, A.IdentifiedBlankNode, A.IdentifiedBlankNodes, A.UnidentifiedBlankNodeException, A.UnidentifiedBlankNodeWithContextException, A.IdentifiedBlankNodeBuilder, A.IdentifiedRdfSubject, A.NoOpIriTranslator, A.BaseIriTranslator, A.ResourceLocator, A.PredicateRule, A.DocumentMapping, A.PredicateMapping, A.ClassMapping, A.PredicateMergeRule, A.ClassMergeRules, A.MergeContract, A.DocumentMappingDependencyExtractor, A.MergeContractLoader, A.MetadataGenerator, A.IdTerm, A.HttpFetcher, A.StandardRdfGraphFetcher, A.BootstrapRdfGraphFetcher, A.RecursiveRdfLoader, A.UnsupportedIriException, A.ResourceIdentifier, A.LocalResourceLocator, A.ConfigService, A.StandardSyncEngine, A.ConcurrentUpdateException, A.RemoteId, A.RemoteDownloadResult, A.RemoteUploadResult, A.GraphSyncStorage, A.AuthException, A.AuthRetryConfig, A.AuthAwareRemoteStorage, A.AuthAwareSyncStorage, A.IndexEntryWithIri, A.IndexEntriesPage, A.StoredDocument, A.SaveDocumentResult, A.DocumentsResult, A.DocumentMetadata, A.PropertyChange, A.OrganizedStatements, A.MergeObject, A.MergeSubject, A.OrganizedBlankNodeMappings, A.RdfObjectKey, A.OrganizedGraph, A.MergeResult, A.RemoteDocumentMerger, A.IndexSyncSpec, A.ShardSyncSpec, A._DocumentQueueEntry, A.RemoteSyncOrchestrator, A._DocumentSyncHelper, A.FilePerResourceShardSyncAdapter, A.FilePerShardShardSyncAdapter, A._ShardSyncOrchestrator, A.ShardDocumentGenerator, A.StandardSyncManager, A.SyncFunction, A.AutoSyncConfig, A.SyncState, A.EngineParams, A.LRUCache, A.RdfExpectations, A.LocordaDriftWebOptions, A.LocordaDriftNativeOptions, A.DriftStorage, A.DriftWebOptionsMessage, A.IriBatchLoader, A.DriftIndexEntry, A.SubscribedGroupIndexData, A.IndexEntriesPage0, A.DocumentWithIri, A._$SyncDocumentDaoMixin, A._$SyncPropertyChangeDaoMixin, A._$IndexDaoMixin, A._$RemoteSyncStateDaoMixin, A.StorageWorkerHandler, A.WorkerDriftConfigReceiver, A.GDrivePathIndex, A.DriveApiImpl, A.PerflogDriveApi, A.GDriveClient, A.GDriveClientException, A.GDriveRemoteStorage, A.GDriveBackend, A.TypeIndexManagerBackend, A.GDriveTypeIndexManager, A.AppFolderProvider, A._TypeIndexFile, A.TypeMapping, A.TypeIndexMappings, A.GDriveAuthMessage, A.GDriveLocalMirrorConfig, A.GDriveConfig, A.GDriveConfigMessage, A.GDriveWorkerHandler, A._WorkerAuthNotifier, A.WorkerGDriveAuthProvider, A.WorkerGDriveConfigReceiver, A.RdfCore, A.Quad, A.RdfDataset, A.RdfNamedGraph, A.RdfException, A.SourceLocation, A.RdfGraph, A.RdfTerm, A.Triple, A.IriCompactionSettings, A.CompactIri, A.IriCompactionResult, A.IriCompaction, A.RdfGraphDecoderOptions, A.JsonLdParser, A.RdfGraphEncoderOptions, A._BlankNodeLabelFactoryImpl, A._NoOpBlankNodeCounter, A.CodecNotSupportedException, A.BaseRdfCodecRegistry, A.RdfCodecRegistry, A.IriRelativizationOptions, A.TriGParser, A.Token, A.TriGTokenizer, A.RdfNamespaceMappings, A.SolidWorkerHandler, A.WorkerSolidConfigReceiver, A.UpdateAuthMessage0, A._WorkerAuthNotifier0, A.SolidAuthReceiver, A.SolidBackend, A.SolidClientException, A.NotFoundException, A.SolidClient, A.SolidRemoteStorage, A.SolidConfig, A.SolidProfileParser, A.WorkerMessage, A.WorkerParams, A.RemoteMismatchException, A.WebWorkerSender, A.WorkerChannelMessage, A.WorkerHandlerChannel, A.WorkerChannel, A.WorkerHandlerContextImpl, A.WorkerContext, A.Level, A.LogRecord, A.Logger, A.Context, A._PathDirection, A._PathRelation, A.Style, A.ParsedPath, A.PathException, A.BaseBlockCipher, A.AsymmetricKeyParameter, A.CipherParameters, A.ParametersWithIV, A.RegistryFactoryException, A.ASN1Object, A.ASN1Parser, A.UnsupportedASN1TagException, A.RSAAsymmetricKey, A.RSASignature, A.BaseAsymmetricBlockCipher, A.DesBase, A.BaseAEADBlockCipher, A.BaseDigest, A.ECSignature, A.ECDomainParametersImpl, A.ECFieldElementBase, A.ECPointBase, A.ECCurveBase, A._WNafPreCompInfo, A.BaseKeyDerivator, A.PKCS12ParametersGenerator, A.PKCS5S1ParameterGenerator, A.ECKeyGenerator, A.RSAKeyGenerator, A.BaseMac, A.PaddedBlockCipherImpl, A.BasePadding, A.AutoSeedBlockCtrRandom, A.SecureRandomBase, A.FortunaRandom, A.ECDSASigner, A._RFC6979KCalculator, A._RandomKCalculator, A.PSSSigner, A.RSASigner, A.BaseAEADCipher, A.BaseStreamCipher, A.Platform, A.PlatformException, A._JsBuiltInEntropySource, A._JsNodeEntropySource, A.FactoryConfig, A._RegistryImpl, A.Register64, A.Register64List, A._Wrapper, A.ForwardingSink, A._Empty, A.ErrorAndStackTrace, A._MultiControllerSink, A._EnhancedEventSink, A.JWTAlgorithm, A.JWT, A.JWTKey, A.DpopCredentials, A.SourceFile, A.SourceLocationMixin, A.SourceSpanMixin, A.Highlighter, A._Highlight, A._Line, A.SourceLocation0, A.SourceSpanException, A.SqliteException, A.AllowedArgumentCount, A.RawSqliteBindings, A.SqliteResult, A.RawSqliteDatabase, A.RawStatementCompiler, A.RawSqliteStatement, A.RawSqliteContext, A.RawSqliteValue, A.FinalizablePart, A.DatabaseImplementation, A.Sqlite3Implementation, A.CommonPreparedStatement, A.VirtualFileSystem, A.BaseVfsFile, A.Cursor, A._Row_Object_UnmodifiableMapMixin, A._ResultIterator, A.IndexedParameters, A.VfsException, A.Sqlite3Filename, A._CursorReader, A.RequestResponseSynchronizer, A.MessageSerializer, A.Message0, A.AsynchronousIndexedDbFileSystem, A._FileWriteRequest, A._OffsetAndBuffer, A._IndexedDbFile, A.WasmBindings, A._InjectedValues, A.DartCallbacks, A.RegisteredFunctionSet, A.Chain, A.Frame, A.LazyTrace, A.Trace, A.UnparsedFrame, A.StreamChannelMixin, A._GuaranteeSink, A.StreamChannelController, A.StringScanner, A.RNG, A.Uuid, A.EventStreamProvider, A._EventStreamSubscription]);
     _inheritMany(J.Interceptor, [J.JSBool, J.JSNull, J.JavaScriptObject, J.JavaScriptBigInt, J.JavaScriptSymbol, J.JSNumber, J.JSString]);
     _inheritMany(J.JavaScriptObject, [J.LegacyJavaScriptObject, J.JSArray, A.NativeByteBuffer, A.NativeTypedData]);
     _inheritMany(J.LegacyJavaScriptObject, [J.PlainJavaScriptObject, J.UnknownJavaScriptObject, J.JavaScriptFunction]);
@@ -94711,11 +94861,11 @@
     _inheritMany(A._CastIterableBase, [A.CastIterable, A.__CastListBase__CastIterableBase_ListMixin]);
     _inherit(A._EfficientLengthCastIterable, A.CastIterable);
     _inherit(A._CastListBase, A.__CastListBase__CastIterableBase_ListMixin);
-    _inheritMany(A.Closure, [A.Closure2Args, A.Closure0Args, A.CastMap_update_closure0, A.CastMap_entries_closure, A.Instantiation, A.TearOffClosure, A.JsLinkedHashMap_containsValue_closure, A.initHooks_closure, A.initHooks_closure1, A._AsyncRun__initializeScheduleImmediate_internalCallback, A._AsyncRun__initializeScheduleImmediate_closure, A._awaitOnObject_closure, A._asyncStarHelper_closure0, A._SyncBroadcastStreamController__sendData_closure, A._SyncBroadcastStreamController__sendError_closure, A._SyncBroadcastStreamController__sendDone_closure, A.Future_wait_closure, A._Future__propagateToListeners_handleWhenCompleteCallback_closure, A._Future_timeout_closure0, A.Stream_pipe_closure, A.Stream_join_closure0, A.Stream_length_closure, A.Stream_first_closure0, A._CustomZone_bindUnaryCallback_closure, A._CustomZone_bindUnaryCallbackGuarded_closure, A._RootZone_bindUnaryCallback_closure, A._RootZone_bindUnaryCallbackGuarded_closure, A._HashMap_values_closure, A._CustomHashMap_closure, A._LinkedCustomHashMap_closure, A.MapBase_entries_closure, A._JsonMap_values_closure, A.Converter_bind_closure, A._BigIntImpl_hashCode_finish, A._BigIntImpl_toDouble_readBits, A.DateTime_parse_parseIntOrZero, A.DateTime_parse_parseMilliAndMicroseconds, A._Uri__makePath_closure, A._Directory_exists_closure, A._Directory_create_closure, A._Directory_create__closure, A._Directory_create_closure0, A._File_exists_closure, A._File_open_closure, A._File_length_closure, A._File_readAsBytes_readUnsized, A._File_readAsBytes_readUnsized_read_closure, A._File_readAsBytes_readSized_read_closure, A._File_readAsBytes_closure, A._File_readAsBytes__closure, A._File_writeAsBytes_closure, A._File_writeAsBytes__closure, A._File_writeAsBytes___closure, A._RandomAccessFile_close_closure, A._RandomAccessFile_read_closure, A._RandomAccessFile_readInto_closure, A._RandomAccessFile_writeFrom_closure, A._RandomAccessFile_length_closure, A._RandomAccessFile_flush_closure, A.jsify__convert, A.promiseToFuture_closure, A.promiseToFuture_closure0, A.dartify_convert, A.validateResponse_closure, A.FutureGroup_add_closure, A.SingleSubscriptionTransformer_bind_closure0, A.StreamQueue__ensureListening_closure, A.StreamSplitter__onPause_closure, A.CanonicalizedMap_entries_closure, A.CanonicalizedMap_keys_closure, A.CanonicalizedMap_update_closure, A.CanonicalizedMap_values_closure, A._MD5Sink_updateHash_round, A.DriftClient__handleRequest_closure, A._RemoteQueryExecutor_ensureOpen_closure, A._RemoteStreamQueryStore_handleTableUpdates_closure, A._RemoteStreamQueryStore_handleTableUpdates_closure0, A.DriftCommunication_setRequestHandler_closure, A.DriftProtocol_decodePayload_readInt, A.DriftProtocol_decodePayload_readNullableInt, A.WebProtocol__serializeRequest_closure, A.WebProtocol__deserializeRequest_readBatched_closure, A.WebProtocol__deserializeRequest_readBatched_closure0, A.WebProtocol__deserializeRequest_closure, A.WebProtocol__serializeSelectResult_closure, A.WebProtocol__deserializeResponse_closure, A.DatabaseConnectionUser_tableUpdates_closure, A.DatabaseConnectionUser_doWhenOpened_closure, A.DatabaseConnectionUser_customUpdate_closure, A.DatabaseConnectionUser_customInsert_closure, A.DatabaseConnectionUser__customWrite_closure, A.DatabaseConnectionUser__customWrite_closure0, A.DatabaseConnectionUser_customStatement_closure, A.DatabaseConnectionUser_transaction_closure, A.DatabaseConnectionUser_exclusively_closure, A.DatabaseConnectionUser_batch_closure, A.DriftRuntimeOptions_debugPrint_closure, A.DriftRuntimeOptions_debugPrint__closure, A.DriftServiceExtension__handle_closure, A.DriftServiceExtension__handle_closure0, A.DriftServiceExtension__handle_closure1, A.DriftServiceExtension__handle_closure2, A.DriftServiceExtension_registerIfNeeded__closure0, A.QueryResult_asMap_closure, A.StreamQueryStore_updatesForSync_closure, A.StreamQueryStore_updatesForSync_closure0, A.QueryStream__stream_closure, A.QueryStream__onListenOrResume_closure, A.QueryStream_fetchAndEmitData_closure, A.MultipleUpdateQuery_matches_closure, A.GeneratedColumn_constraintIsAlways_closure, A.InsertStatement_insert_closure, A.InsertStatement_insertOnConflictUpdate_closure, A.Query__writeInto_writeWithSpace, A.CustomSelectStatement__mapArgs_closure, A.CustomSelectStatement__executeRaw_closure, A.CustomSelectStatement__mapDbResponse_closure, A.SimpleSelectStatement__getRaw_closure, A.SimpleSelectStatement_orderBy_closure, A.JoinedSelectStatement__getRaw_closure, A.JoinedSelectStatement__mapWithStructure_closure, A.JoinedSelectStatement__mapResponse_closure, A.UpdateStatement__performQuery_closure, A.EnableNativeFunctions_useNativeFunctions_closure, A._unaryNumFunction_closure, A.MapAndAwait_mapAsyncAndAwait_closure, A.AsyncMapPerSubscription_asyncMapPerSubscription_closure, A.AsyncMapPerSubscription_asyncMapPerSubscription_closure_onData, A.Lock_synchronized_closure, A.WebPortToChannel_channel_closure, A.WebPortToChannel_channel_closure0, A._readMessages_closure, A._readMessages__closure, A._extension_0_get_nextNoError_closure, A.SharedWorkerCompatibilityResult_SharedWorkerCompatibilityResult$fromJsPayload_asBoolean, A.WasmDatabase_open_closure, A.WasmDatabase_open_closure0, A.FileLabelInfo$fromJson_closure, A.File$fromJson_closure0, A.File$fromJson_closure2, A.File$fromJson_closure3, A.File$fromJson_closure4, A.File$fromJson_closure5, A.File$fromJson_closure7, A.FileList$fromJson_closure, A.LabelField$fromJson_closure, A.LabelField$fromJson_closure0, A.LabelField$fromJson_closure1, A.LabelField$fromJson_closure2, A.LabelField$fromJson_closure3, A.LabelField_toJson_closure, A.Permission$fromJson_closure, A.Permission$fromJson_closure0, A.RetryClient_send_closure, A.RetryClient_send_closure0, A.BaseRequest_closure0, A.BrowserClient_send_closure0, A._bodyToStream_closure, A.ByteStream_toBytes_closure, A.MediaType_toString__closure, A.expectQuotedString_closure, A.PerflogBackend_closure, A.PerflogBackend_wrapRemotes_closure, A.ConfigBaseValidator__validateIndexConfigurations_closure, A.IndexItemData_IndexItemData$fromJson_closure, A.IndexItemData_toJson_closure, A.GroupIndexData_GroupIndexData$fromJson_closure, A.GroupIndexData_toJson_closure, A.DocumentIriTemplate_DocumentIriTemplate$fromJson_closure, A.ResourceConfigData_getIndexByName_closure, A.ResourceConfigData_toJson_closure, A.SyncEngineConfig_allIndicesInOrder_closure, A.SyncEngineConfig_allIndicesInOrder__closure, A.SyncEngineConfig_SyncEngineConfig$fromJson_closure, A.SyncEngineConfig_toJson_closure, A.SyncEngineConfig_getResourceConfig_closure, A.SyncEngineConfigValidator__baseValidator_closure, A.MergeResults_join__closure, A._RdfObjectComparison__max_closure, A._RdfObjectComparison__max_closure1, A._RdfObjectComparison__max_closure3, A.LwwRegister_remoteMerge_closure, A.addInlineTriples_closure, A.addInlineTriples_closure0, A.Immutable_remoteMerge_closure, A.OrSet_remoteMerge_closure, A.OrSet_localValueChange_closure, A.OrSet_localValueChange_closure0, A.OrSet_localValueChange_closure1, A.OrSet_localValueChange__closure, A.OrSet_localValueChange___closure, A._findStatementTriplesToRemove_closure, A._findStatementTriplesToRemove_closure0, A._findStatementTriplesToRemove_closure1, A._findStatementTriplesToRemove_closure2, A._handleIdenticalClocksTriples_closure, A._handleIdenticalClocksTriples_closure0, A._handleIdenticalClocksTriples_closure1, A._handleIdenticalClocksTriples_closure2, A._handleIdenticalClocksTriples_closure3, A._handleIdenticalClocksTriples_closure4, A._handleIdenticalClocksTriples_closure5, A._handleIdenticalClocksTriples_closure6, A._handleBothEmptyClocksTriples_closure, A._handleBothEmptyClocksTriples_closure0, A.objectsIfSubjectNonNull_closure, A._constructCrdtDocument_closure, A._constructCrdtDocument_closure0, A.HlcService__extractCrdtClock_closure, A.HlcService__extractCrdtClock_closure0, A.HlcService__getOurTime_closure, A.HlcService__getOurTime_closure0, A.HlcService__incrementClock_closure0, A.GroupKeyGenerator__extractAllValuesForProperty_closure, A.GroupKeyGenerator__generateCartesianProduct_closure, A.ItemFetchPolicy_fromMap_closure, A.PrefetchFiltered_toMap_closure, A.GroupingProperty_GroupingProperty$fromJson_closure, A.GroupingProperty_toJson_closure, A.IndexDiscovery__initializeWatches_closure, A.IndexDiscovery__initializeWatches_closure1, A.IndexDiscovery__updateIndexMetadataCache_closure0, A.IndexDiscovery__removeIndexFromCache_closure, A.IndexDiscovery__isConfiguredResourceType_closure, A.IndexDiscovery_discoverGroupIndexTemplate_closure, A.IndexManager__generateGroupIndex_closure, A.IndexManager__updateShardIndexEntries_closure, A.IndexManager__updateShardIndexEntries__closure, A.IndexManager__extractHeaderProperties_closure, A.IndexParser__parseGroupingProperties_closure, A.IndexParser__parseGroupingProperty_closure, A.IndexRdfGenerator_generateGroupIndexTemplate_closure, A.IndexRdfGenerator_generateGroupIndexTemplateIri_closure0, A.IndexRdfGenerator_generateGroupIndexTemplateIri__closure, A.IndexRdfGenerator__generateIndexedProperties_closure, A.RdfGroupExtractor_closure, A.RdfGroupExtractor__applyReplacement_closure, A.ShardDeterminer_calculateShards_closure, A.LocalDocumentMerger_replaceInDocument_closure, A.LocalDocumentMerger_replaceInDocument_closure0, A.LocalDocumentMerger__getIdentifiedSubjects_closure, A.LocalDocumentMerger__generateCrdtMetadataForChanges_closure, A.LocalDocumentMerger__valueEquals_closure, A.collectClassMappings_closure, A.collectClassMappings_closure0, A.mergeClassMappingGroups_closure, A.mergeClassMappingGroups_closure1, A.mergeClassMappingGroups__closure, A.collectPredicateMappings_closure, A.collectPredicateMappings_closure0, A.mergePredicateMappingGroups_closure, A.FrameworkIriGenerator_generateSimpleCanonicalIri_closure, A._buildIdentificationGraphWithLabels_processNode, A.IdentifiedBlankNode_hashCode_closure, A.IdentifiedBlankNode_operator$eq_closure, A.UnidentifiedBlankNodeWithContextException_toString_closure, A.UnidentifiedBlankNodeWithContextException_toString_closure0, A.IdentifiedBlankNodeBuilder_computeCanonicalBlankNodes_closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure1, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes__closure0, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure3, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure4, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes__closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes___closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes___closure0, A._sortByDependencies_closure, A._addIdentifiedBlankNodes_closure, A._addIdentifiedBlankNodes_closure0, A._addIdentifiedBlankNodes_closure1, A._addIdentifiedBlankNodes__closure, A.IdentifiedBlankNodeSubject_operator$eq_closure, A.BaseIriTranslator_translateGraphToInternal_closure, A.BaseIriTranslator_translateGraphToExternal_closure, A.ClassMergeRules__computeIdentifyingPredicates_closure, A.ClassMergeRules__computeIdentifyingPredicates_closure0, A.ClassMergeRules__computeNonIdentifyingPredicates_closure, A.ClassMergeRules__computeNonIdentifyingPredicates_closure0, A.MergeContract_getEffectivePredicateRule_closure, A.MergeContract__computeIdentifyingPredicates_closure, A.MergeContract__computeIdentifyingPredicates_closure0, A.MergeContract_getIdentifyingPredicates_closure, A.CachingMergeContractLoader__cacheKey_closure, A.CachingMergeContractLoader__loadAndCache_closure, A.CachingMergeContractLoader__maybeRefresh_closure, A.CachingMergeContractLoader__maybeRefresh_closure0, A.MergeContractLoader_getMergedGovernanceIris_closure, A.StandardMergeContractLoader_load_closure, A.StandardMergeContractLoader_load_closure0, A.StandardMergeContractLoader_load_closure1, A.StandardMergeContractLoader_load_closure2, A.StandardMergeContractLoader__parseDocumentMapping_closure, A.StandardMergeContractLoader__parseDocumentMapping_closure0, A.StandardMergeContractLoader__parseDocumentMapping_closure1, A.StandardMergeContractLoader__parseDocumentMapping_closure2, A.StandardMergeContractLoader__parseDocumentMapping_closure3, A.StandardMergeContractLoader__parseDocumentMapping_closure4, A.StandardMergeContractLoader__parseDocumentMapping_closure5, A.StandardMergeContractLoader__parseDocumentMapping_closure6, A.StandardMergeContractLoader__parseDocumentMapping_closure7, A.StandardMergeContractLoader__parseClassMappings_closure, A.StandardMergeContractLoader__parseClassMappings_closure0, A.StandardMergeContractLoader__parseClassMappings_closure1, A.StandardMergeContractLoader__parseClassMappings_closure2, A.StandardMergeContractLoader__parseClassMappings_closure3, A.StandardMergeContractLoader__parsePredicateMapping_closure, A.StandardMergeContractLoader__parsePredicateMapping_closure0, A.StandardMergeContractLoader__parsePredicateMapping_closure1, A.StandardMergeContractLoader__parsePredicateMapping_closure2, A.MetadataGenerator__createPropertyValueMetadata_closure, A.MetadataGenerator__createPropertyValueMetadata__closure, A.MetadataGenerator__createPropertyValueMetadata___closure, A.BootstrapRdfGraphFetcher__buildBootstrapMap_closure, A.RecursiveRdfLoader__loadRecursivelySingle_closure, A.RecursiveRdfLoader__loadRecursivelyMulti_closure, A.RdfGraphExtensions_getMultiValueObjectList_closure, A.RdfGraphExtensions_getMultiValueObjects_closure, A.RdfGraphExtensions_traverseListObjects_closure0, A.RdfGraphIterableExtensions_mergeGraphs_closure, A.ConfigService__setupRemoteListeners_closure, A.ConfigService__onRemotesChanged_closure, A.ConfigService__onRemotesChanged__closure, A.ConfigService__adjustConfigForDatasets_closure, A.ConfigService__adjustConfigForDatasets__closure, A.StandardSyncEngine_create_closure0, A.StandardSyncEngine_create_closure, A.StandardSyncEngine_create_closure1, A.StandardSyncEngine_hydrateStream_closure, A.StandardSyncEngine__doHydrateIndexEntryStream_closure, A.StandardSyncEngine__doHydrateIndexEntryStream_closure0, A.StandardSyncEngine__hydrateRootResourceStream_closure, A.OrganizedStatements$__closure, A.OrganizedStatements$___closure, A.OrganizedStatements_OrganizedStatements$fromGraph_closure1, A.OrganizedStatements_getAllStatementsForSubject_closure, A.OrganizedStatements_getAllStatementsForSubject_closure0, A.OrganizedStatements_getStatement_closure, A.OrganizedStatements_getStatement__closure, A.OrganizedStatements_getStatement_closure0, A.MergeObject_createMergeObjects_closure, A.MergeObject_createMergeObjects_closure0, A.MergeObject_createMergeObjects_closure1, A.MergeSubject_createMergeSubjects_closure, A.OrganizedBlankNodeMappings_blankNodeIdentifiers_closure, A.IdentifiedBlankNodeKey_operator$eq_closure, A.OrganizedGraph_maxPhysicalTime_closure, A.OrganizedGraph_allSubjectKeys_closure, A.RemoteDocumentMerger__mergeSubjectsAndProperties_closure, A.RemoteDocumentMerger__buildResultDocument_closure, A.RemoteDocumentMerger__buildResultDocument_closure0, A.RemoteDocumentMerger__buildResultDocument__closure3, A.RemoteDocumentMerger__buildResultDocument_closure1, A.RemoteDocumentMerger__buildResultDocument__closure0, A.RemoteDocumentMerger__buildResultDocument__closure1, A.RemoteDocumentMerger__buildResultDocument__closure2, A.RemoteDocumentMerger__buildResultDocument_closure2, A.RemoteDocumentMerger__buildResultDocument__closure, A.RemoteDocumentMerger__convertToTriples_closure, A.RemoteDocumentMerger__convertToTriples__closure, A.RemoteDocumentMerger__convertToTriples__closure0, A.PartialIndexSync_toString_closure, A.PartialIndexSync_toString__closure, A.RemoteSyncOrchestrator_sync_closure, A.RemoteSyncOrchestrator__syncIndexDocuments_closure, A.RemoteSyncOrchestrator__syncIndexDocuments_closure0, A.RemoteSyncOrchestrator__syncIndexDocuments_closure1, A.RemoteSyncOrchestrator__syncIndexDocuments_closure2, A.RemoteSyncOrchestrator__syncIndexDocuments_closure3, A.RemoteSyncOrchestrator__buildShardSyncSpecs_closure, A.RemoteSyncOrchestrator__buildShardSyncSpecs_closure0, A.RemoteSyncOrchestrator__findForeignIndices_closure, A.RemoteSyncOrchestrator__findForeignIndices_closure0, A.RemoteSyncOrchestrator__syncResourceType_closure, A.RemoteSyncOrchestrator__syncIndex_closure, A._executeInChunks_closure, A._DocumentSyncHelper_syncDocument__closure, A._DocumentSyncHelper_syncDocument__closure0, A._DocumentSyncHelper_syncDocument__closure2, A._DocumentSyncHelper_syncDocument__closure1, A.FilePerShardShardSyncAdapter_finalizeDocumentToUpload_closure, A.FilePerShardShardSyncAdapter_finalizeDocumentToUpload_closure0, A.FilePerShardShardSyncAdapter_finalizeDocumentToUpload_closure1, A._ShardSyncOrchestrator_syncShard_closure, A._ShardSyncOrchestrator_syncShard_closure0, A._ShardSyncOrchestrator_syncShard_closure2, A._ShardSyncOrchestrator__buildDocumentQueue_closure0, A._ShardSyncOrchestrator__buildDocumentQueue_closure1, A._ShardSyncOrchestrator__createSyncDocumentQueueTasks_closure, A._ShardSyncOrchestrator__createSyncDocumentQueueTasks_closure0, A._ShardSyncOrchestrator__createSyncDocumentQueueTasks_closure1, A._ShardSyncOrchestrator__getFinalEntrySet_closure, A._ShardSyncOrchestrator__matchesFilter_closure, A._ShardSyncOrchestrator__matchesFilter_closure0, A.ShardDocumentGenerator__syncShardAttempt_closure0, A.ShardDocumentGenerator__syncShardAttempt_closure, A.StandardSyncManager__setupAutoSync_closure, A.StandardSyncManager_enableAutoSync_closure, A.SyncFunction__validateDatasetCompatibilityForBackend_closure, A.SyncFunction__validateDatasetCompatibilityForBackend__closure, A.SyncFunction__validateDatasetCompatibilityForBackend_closure0, A.buildEffectiveConfig_closure, A.DriftStorage_watchDocumentsModifiedSince_closure, A.DriftStorage_getSettings_closure, A.DriftStorage_getIndexEntries_closure, A.DriftStorage_getIndexEntries_closure0, A.DriftStorage_watchIndexEntries_closure, A.DriftStorage_watchIndexEntries_closure0, A.DriftStorage_watchIndexEntries__closure, A.DriftStorage_getSubscribedGroupIndices_closure, A.DriftStorage_watchSubscribedGroupIndexIris_closure, A.DriftStorage_ensureIndexSetVersion_closure, A.DriftStorage_getIndexIrisForVersion_closure, A.DriftStorage_getActiveIndexEntriesForShard_closure, A.DriftStorage_getShardsToUpdate_closure, A.DriftStorage_getForeignIndexShardsToSync_closure, A.DriftStorage__convertToStoredDocuments_closure, A.IriBatchLoader_getIrisBatch_closure, A.IriBatchLoader_getOrCreateIriIdsBatch_closure, A.IriBatchLoader__getExistingIriIds_closure, A.SyncDocumentDao_saveDocument_closure, A.SyncDocumentDao_saveDocument_closure0, A.SyncDocumentDao_saveDocument_closure1, A.SyncDocumentDao_getDocument_closure, A.SyncDocumentDao_getDocument_closure0, A.SyncDocumentDao_getDocumentsModifiedSince_closure, A.SyncDocumentDao_getDocumentsModifiedSince_closure0, A.SyncDocumentDao_watchDocumentsModifiedSince_closure, A.SyncDocumentDao_watchDocumentsModifiedSince_closure0, A.SyncDocumentDao__convertDocumentsWithIris_closure0, A.SyncDocumentDao__convertDocumentsWithIris_closure, A.SyncPropertyChangeDao_recordPropertyChangesBatch_closure0, A.SyncPropertyChangeDao_recordPropertyChangesBatch_closure, A.SyncPropertyChangeDao_recordPropertyChangesBatch_closure1, A.IndexDao_getIndexEntries_closure, A.IndexDao_getIndexEntries_closure0, A.IndexDao_getIndexEntries_closure1, A.IndexDao_getIndexEntries_closure3, A.IndexDao_getIndexEntries_closure2, A.IndexDao_watchIndexEntries_closure, A.IndexDao_watchIndexEntries_closure0, A.IndexDao_watchIndexEntries_closure2, A.IndexDao_watchIndexEntries__closure, A.IndexDao_watchIndexEntries__closure0, A.IndexDao_watchIndexEntries__closure3, A.IndexDao_watchIndexEntries__closure2, A.IndexDao_watchSubscribedGroupIndexIds_closure, A.IndexDao_watchSubscribedGroupIndexIds_closure0, A.IndexDao_watchSubscribedGroupIndexIds__closure, A.IndexDao_getSubscribedGroupIndices_closure, A.IndexDao_ensureIndexIdSetVersion_closure, A.IndexDao_getIndexIriIdsForVersion_closure, A.IndexDao_getActiveIndexEntriesForShard_closure, A.IndexDao_getShardsToUpdate_closure, A.RemoteSyncStateDao_getOrCreateRemoteId_closure, A.RemoteSyncStateDao_getRemoteLastSyncTimestamp_closure, A.RemoteSyncStateDao_updateRemoteLastSyncTimestamp_closure, A.RemoteSyncStateDao_getETag_closure, A.SyncDatabase_migration_closure, A.SyncDatabase_migration_closure0, A.BaseGDriveSyncStorage_download_closure, A.BaseGDriveSyncStorage_downloadDataset_closure, A.BaseGDriveSyncStorage_upload_closure, A.BaseGDriveSyncStorage_uploadDataset_closure, A.GDriveRemoteStorage_createSyncStorage_closure0, A.GDriveLocalMirror_finalize_closure, A.GDriveLocalMirror_finalize_closure0, A._GDriveMirrorIndex_toJson_closure, A.GDriveTypeIndexManager_loadOrCreateTypeIndex_closure, A.GDriveTypeIndexManager__loadOrCreateTypeIndexFile_closure, A.GDriveTypeIndexManager__loadTypeIndexFile_closure, A.GDriveTypeIndexManager__collectAllTypes_closure, A.GDriveTypeIndexManager__addMissingTypes_closure, A.GDriveTypeIndexManager__addMissingTypes_closure0, A.GDriveTypeIndexManager__addMissingTypes_closure1, A.GDriveTypeIndexManager__addMissingTypes_closure2, A.GDriveTypeIndexManager__fillInDefaults_closure, A.RdfGraphExtensions_getMultiValueObjects_closure0, A.GDriveConfigMessage_fromJson_closure, A.WorkerGDriveAuthProvider_closure, A.WorkerGDriveConfigReceiver_closure, A.RdfDataset_namedGraphs_closure, A.RdfDataset__buildDefaultGraph_closure, A.RdfDataset__buildDefaultGraph_closure0, A.RdfDataset__buildNamedGraphs_closure, A.RdfDataset_operator$eq_closure, A.RdfDataset_hashCode_closure, A.RdfGraph_withoutTriples_closure, A.RdfGraph_subjects_closure, A.RdfGraph_predicates_closure, A.RdfGraph_predicates_closure0, A.RdfGraph_findTriples_closure, A.RdfGraph_findTriples_closure0, A.RdfGraph_findTriples_closure1, A.RdfGraph_findTriples_closure2, A.RdfGraph_findTriples_closure3, A.RdfGraph_hasTriples_closure, A.RdfGraph_hasTriples__closure, A.RdfGraph_hasTriples__closure0, A.RdfGraph_hasTriples__closure1, A.RdfGraph_hasTriples__closure2, A.RdfGraph_hasTriples__closure3, A.RdfGraph_hasTriples_closure0, A.RdfGraph_matching_closure, A.IriCompactionResult_compactIri_closure, A.IriCompactionResult_compactIri_closure0, A.IriCompactionResult_compactIri_closure1, A.IriCompaction_compactAllIris_closure0, A.JsonLdParser__processNode_closure, A.JsonLdParser__addTripleForValue_closure, A.JsonLdEncoder_closure, A.JsonLdEncoder_convert_closure, A.JsonLdEncoder__serializeDatasetWithNamedGraphs_closure, A.JsonLdEncoder__createNodeObject_closure0, A.JsonLdEncoder__createNodeObject_closure1, A.NQuadsCodec_canParse_closure, A.NQuadsEncoder_encode_closure, A.NQuadsEncoder_encode_closure0, A.NQuadsEncoder_encode__closure, A.NTriplesCodec_canParse_closure, A.TriGEncoder_closure, A.TriGEncoder_convert_closure, A.TriGEncoder__extractCollection_closure, A.TriGEncoder__extractCollection_closure0, A.TriGEncoder__extractCollection_closure1, A.TriGEncoder__extractCollection_closure2, A.TriGEncoder__extractCollection_closure4, A.TriGEncoder__markCollectionNodesAsProcessed_closure, A.TriGEncoder__writeCollection_closure, A.TriGEncoder__writeTriples_closure0, A.TriGEncoder__isPartOfRdfCollection_closure, A.TriGEncoder__isPartOfRdfCollection_closure0, A.RdfNamespaceMappings__extractDomainPrefix_closure, A.RdfNamespaceMappings__extractDomainPrefix_closure0, A.RdfNamespaceMappings__extractPathPrefix_closure, A.RdfNamespaceMappings__extractPathPrefix_closure0, A.RdfNamespaceMappings__extractPathPrefix_closure1, A.RdfNamespaceMappings__sanitizeComponentForPrefix_closure, A.RdfNamespaceMappings__sanitizeComponentForPrefix_closure0, A.WorkerSolidConfigReceiver_closure, A.SolidAuthReceiver_closure, A._createRetryClient_closure, A._createRetryClient_closure1, A.SolidRemoteStorage__resolvePodUrl_closure, A.SolidRemoteStorage_isAvailable_closure, A.SolidRemoteStorage_isAvailable_closure0, A.SolidSyncStorage_download_closure, A.SolidSyncStorage_downloadDataset_closure, A.SolidSyncStorage_upload_closure, A.SolidSyncStorage_uploadDataset_closure, A.HydrationBatchMessage_toJson_closure, A.HydrationBatchMessage_toJson_closure0, A.HydrationBatchMessage_HydrationBatchMessage$fromJson_closure, A.HydrationBatchMessage_HydrationBatchMessage$fromJson_closure0, A.SyncTriggerRequest_SyncTriggerRequest$fromJson_closure, A.GetSyncStateResponse_GetSyncStateResponse$fromJson_closure, A.SyncStateUpdateMessage_SyncStateUpdateMessage$fromJson_closure, A.startWebWorkerLoop_closure0, A.startWebWorkerLoop_closure, A.startWebWorkerLoop__closure0, A._handleWorkerMessage_closure, A.WorkerHandlerChannel$__closure, A.WorkerHandlerChannel$__closure0, A.WorkerContext_setSyncSystem_closure, A.WorkerContext__handleHydrateStream_closure, A.WorkerContext__handleHydrateStream__closure, A.WorkerContext__handleHydrateStream__closure0, A.toEngineParams_closure, A.toEngineParams_closure0, A.toEngineParams_closure1, A.toEngineParams_closure2, A.toEngineParams_closure3, A.Context_joinAll_closure, A.Context_split_closure, A._validateArgList_closure, A.WindowsStyle_absolutePathToUri_closure, A._createLogHandler_closure, A._indentStackTrace_closure, A._wNafMultiplier_closure, A.HKDFKeyDerivator__getBlockLengthFromDigest_closure, A._escapeRegExp_closure, A._escapeRegExp_closure0, A._forwardMulti_closure, A._forwardMulti_closure_listenToUpstream, A._forward_closure_listenToUpstream, A.Highlighter$__closure, A.Highlighter$___closure, A.Highlighter$__closure0, A.Highlighter__collateLines_closure, A.Highlighter__collateLines_closure1, A.Highlighter__collateLines__closure, A.Highlighter_highlight_closure, A.SqliteException_toString_closure, A.disposeFinalizer_closure, A._CursorReader_moveNext_closure, A._CursorReader_moveNext_closure0, A.CompleteIdbRequest_complete_closure, A.CompleteIdbRequest_complete_closure0, A.CompleteOpenIdbRequest_completeOrBlocked_closure, A.CompleteOpenIdbRequest_completeOrBlocked_closure0, A.CompleteOpenIdbRequest_completeOrBlocked_closure1, A.AsynchronousIndexedDbFileSystem_open_closure, A.AsynchronousIndexedDbFileSystem__readFile_closure, A.AsynchronousIndexedDbFileSystem__write_closure, A.SimpleOpfsFileSystem_inDirectory_open, A._InjectedValues_closure, A._InjectedValues_closure0, A._InjectedValues_closure1, A._InjectedValues_closure2, A._InjectedValues_closure3, A._InjectedValues_closure4, A._InjectedValues_closure7, A._InjectedValues_closure8, A._InjectedValues_closure9, A._InjectedValues_closure10, A._InjectedValues_closure17, A._InjectedValues_closure18, A._InjectedValues_closure19, A._InjectedValues_closure20, A._InjectedValues_closure21, A._InjectedValues_closure22, A._InjectedValues_closure23, A._InjectedValues_closure24, A._InjectedValues_closure25, A._InjectedValues_closure26, A._InjectedValues_closure29, A.Chain_Chain$parse_closure, A.Chain_toTrace_closure, A.Chain_toString_closure0, A.Chain_toString__closure0, A.Chain_toString_closure, A.Chain_toString__closure, A.Trace__parseVM_closure, A.Trace$parseV8_closure, A.Trace$parseJSCore_closure, A.Trace$parseFirefox_closure, A.Trace$parseFriendly_closure, A.Trace_toString_closure0, A.Trace_toString_closure, A._EventStreamSubscription_closure, A._EventStreamSubscription_onData_closure]);
-    _inheritMany(A.Closure2Args, [A._CastListBase_sort_closure, A.CastMap_forEach_closure, A.ConstantMap_map_closure, A.JsLinkedHashMap_addAll_closure, A.initHooks_closure0, A._awaitOnObject_closure0, A._wrapJsFunctionForAsync_closure, A.Future_wait_handleError, A.FutureExtensions_onError_onError, A._Future__propagateToListeners_handleWhenCompleteCallback_closure0, A._Future_timeout_closure1, A._AddStreamState_makeErrorHandler_closure, A._CustomZone_bindBinaryCallback_closure, A._RootZone_bindBinaryCallback_closure, A.HashMap_HashMap$from_closure, A.LinkedHashMap_LinkedHashMap$from_closure, A.MapBase_mapToString_closure, A._JsonStringifier_writeMap_closure, A._JsonPrettyPrintMixin_writeMap_closure, A._BigIntImpl_hashCode_combine, A.Uri_parseIPv6Address_error, A._File_readAsBytes_readSized, A.ApiRequester__request_addQueryParameter, A.ApiRequester__request_closure, A.FutureGroup_add_closure0, A.StreamQueue__ensureListening_closure1, A._CancelOnErrorSubscriptionWrapper_onError_closure, A.CanonicalizedMap_addAll_closure, A.CanonicalizedMap_forEach_closure, A.CanonicalizedMap_map_closure, A._BaseExecutor__runRequest__closure, A.VerificationContext_throwIfInvalid_closure, A.DriftServiceExtension_registerIfNeeded_closure, A.DriftServiceExtension_registerIfNeeded__closure1, A.InsertStatement__writeOnConflict_writeOnConflictConstraint, A.DoUpdate_closure, A.UpdateStatement_writeStartPart_closure, A.WasmInitializationMessage_sendToWorker_closure, A.WasmInitializationMessage_sendToPort_closure, A.File$fromJson_closure, A.File$fromJson_closure1, A.File$fromJson_closure6, A.Label$fromJson_closure, A.BaseRequest_closure, A.MediaType_toString_closure, A.ResourceConfigData_indicesInOrder_closure, A.SyncEngineConfig_resourcesInSyncOrder_closure, A.MetadataStatement_merge_closure1, A.MergeResults_join_closure, A.subjectAndInlineTriples_closure, A._RdfObjectComparison__max_closure0, A._RdfObjectComparison__max_closure2, A._RdfObjectComparison__max_closure4, A._constructCrdtDocument_closure1, A.HlcService__incrementClock_closure, A.GroupKeyGenerator__organizeExtractorsByLevel_closure0, A.IndexDiscovery__initializeWatches_closure0, A.IndexDiscovery__initializeWatches_closure2, A.IndexDiscovery__removeIndexFromCache_closure0, A.IndexDiscovery__loadAndParseFullIndex_closure, A.IndexDiscovery__loadAndParseTemplate_closure, A.IndexParser__parseGroupingProperties_closure0, A.IndexRdfGenerator_generateGroupIndexTemplateIri_closure, A.mergeClassMappingGroups_closure0, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure0, A.MergeContract__classMappingsByPredicate_closure, A.MergeContractLoader_getMergedGovernanceIris_closure0, A.RdfGraphExtensions_traverseListObjects_closure, A.splitDocument_closure, A.StandardSyncEngine__hydrateRootResourceStream_convertResult, A.StandardSyncEngine__hydrateRootResourceStream_convertResult_closure, A.OrganizedStatements_OrganizedStatements$fromGraph__closure, A.OrganizedBlankNodeMappings__buildBlankNodeToCanonicalMap_closure, A.OrganizedGraph_maxPhysicalTime_closure0, A.RemoteDocumentMerger_merge_closure, A.RemoteDocumentMerger__mergeSubjectProperties_closure, A.RemoteSyncOrchestrator__findForeignIndices_closure1, A._ShardSyncOrchestrator_syncShard_closure1, A._ShardSyncOrchestrator__buildDocumentQueue_closure, A.buildShardAppData_closure, A.IndexDao_watchIndexEntries__closure1, A.GDriveTypeIndexManager__sortTypesForProcessing_closure, A.GDriveTypeIndexManager__sortTypesForProcessing_closure0, A.GDriveConfigMessage_toJson_closure, A.GDriveConfigMessage_fromJson_closure0, A.RdfDataset__buildNamedGraphs_closure1, A.RdfGraph__effectiveIndex_closure, A.IriCompaction_compactAllIris_closure, A.TriGEncoder__writePrefixes_closure, A.TriGEncoder__writeTriples_closure1, A.TriGEncoder__writeSubjectGroup_closure0, A._createRetryClient_closure0, A._deepConvertJsObject_closure, A.startWebWorkerLoop__closure2, A.WorkerContext__handleHydrateStream_closure1, A.OAEPEncoding_factoryConfig_closure, A.PKCS1Encoding_factoryConfig_closure, A.CBCBlockCipher_factoryConfig_closure, A.CCMBlockCipher_factoryConfig_closure, A.CFBBlockCipher_factoryConfig_closure, A.CTRBlockCipher_factoryConfig_closure, A.ECBBlockCipher_factoryConfig_closure, A.GCMBlockCipher_factoryConfig_closure, A.GCTRBlockCipher_factoryConfig_closure, A.IGEBlockCipher_factoryConfig_closure, A.OFBBlockCipher_factoryConfig_closure, A.SICBlockCipher_factoryConfig_closure, A.CSHAKEDigest_factoryConfig_closure, A.KeccakDigest_factoryConfig_closure, A.SHA3Digest_factoryConfig_closure, A.SHA512tDigest_factoryConfig_closure, A.SHAKEDigest_factoryConfig_closure, A.ConcatKDFDerivator_factoryConfig_closure, A.HKDFKeyDerivator_factoryConfig_closure, A.PBKDF2KeyDerivator_factoryConfig_closure, A.PKCS12ParametersGenerator_factoryConfig_closure, A.PKCS5S1ParameterGenerator_factoryConfig_closure, A.CBCBlockCipherMac_factoryConfig_closure, A.CMac_factoryConfig_closure, A.HMac_factoryConfig_closure, A.Poly1305_factoryConfig_closure, A.PaddedBlockCipherImpl_factoryConfig_closure, A.AutoSeedBlockCtrRandom_factoryConfig_closure, A.BlockCtrRandom_factoryConfig_closure, A.ECDSASigner_factoryConfig_closure, A.PSSSigner_factoryConfig_closure, A.RSASigner_factoryConfig_closure, A.ChaCha20Engine_factoryConfig_closure, A.ChaCha7539Engine_factoryConfig_closure, A.CTRStreamCipher_factoryConfig_closure, A.EAX_factoryConfig_closure, A.SICStreamCipher_factoryConfig_closure, A._SwitchMapStreamSink_onData_closure, A.Highlighter__collateLines_closure0, A.DatabaseImplementation_createFunction_closure, A.WasmInstance_load_closure, A.WasmInstance_load__closure, A.AsynchronousIndexedDbFileSystem__write_writeBlock, A._InjectedValues_closure5, A._InjectedValues_closure6, A._InjectedValues_closure11, A._InjectedValues_closure12, A._InjectedValues_closure13, A._InjectedValues_closure14, A._InjectedValues_closure15, A._InjectedValues_closure16, A._InjectedValues_closure27, A._InjectedValues_closure28, A.Frame_Frame$parseV8_closure_parseJsLocation]);
+    _inheritMany(A.Closure, [A.Closure2Args, A.Closure0Args, A.CastMap_update_closure0, A.CastMap_entries_closure, A.Instantiation, A.TearOffClosure, A.JsLinkedHashMap_containsValue_closure, A.initHooks_closure, A.initHooks_closure1, A._AsyncRun__initializeScheduleImmediate_internalCallback, A._AsyncRun__initializeScheduleImmediate_closure, A._awaitOnObject_closure, A._asyncStarHelper_closure0, A._SyncBroadcastStreamController__sendData_closure, A._SyncBroadcastStreamController__sendError_closure, A._SyncBroadcastStreamController__sendDone_closure, A.Future_wait_closure, A._Future__propagateToListeners_handleWhenCompleteCallback_closure, A._Future_timeout_closure1, A.Stream_pipe_closure, A.Stream_join_closure0, A.Stream_length_closure, A.Stream_first_closure0, A._CustomZone_bindUnaryCallback_closure, A._CustomZone_bindUnaryCallbackGuarded_closure, A._RootZone_bindUnaryCallback_closure, A._RootZone_bindUnaryCallbackGuarded_closure, A._HashMap_values_closure, A._CustomHashMap_closure, A._LinkedCustomHashMap_closure, A.MapBase_entries_closure, A._JsonMap_values_closure, A.Converter_bind_closure, A._BigIntImpl_hashCode_finish, A._BigIntImpl_toDouble_readBits, A.DateTime_parse_parseIntOrZero, A.DateTime_parse_parseMilliAndMicroseconds, A._Uri__makePath_closure, A._Directory_exists_closure, A._Directory_create_closure, A._Directory_create__closure, A._Directory_create_closure0, A._File_exists_closure, A._File_open_closure, A._File_length_closure, A._File_readAsBytes_readUnsized, A._File_readAsBytes_readUnsized_read_closure, A._File_readAsBytes_readSized_read_closure, A._File_readAsBytes_closure, A._File_readAsBytes__closure, A._File_writeAsBytes_closure, A._File_writeAsBytes__closure, A._File_writeAsBytes___closure, A._RandomAccessFile_close_closure, A._RandomAccessFile_read_closure, A._RandomAccessFile_readInto_closure, A._RandomAccessFile_writeFrom_closure, A._RandomAccessFile_length_closure, A._RandomAccessFile_flush_closure, A.jsify__convert, A.promiseToFuture_closure, A.promiseToFuture_closure0, A.dartify_convert, A.validateResponse_closure, A.FutureGroup_add_closure, A.SingleSubscriptionTransformer_bind_closure0, A.StreamQueue__ensureListening_closure, A.StreamSplitter__onPause_closure, A.CanonicalizedMap_entries_closure, A.CanonicalizedMap_keys_closure, A.CanonicalizedMap_update_closure, A.CanonicalizedMap_values_closure, A._MD5Sink_updateHash_round, A.DriftClient__handleRequest_closure, A._RemoteQueryExecutor_ensureOpen_closure, A._RemoteStreamQueryStore_handleTableUpdates_closure, A._RemoteStreamQueryStore_handleTableUpdates_closure0, A.DriftCommunication_setRequestHandler_closure, A.DriftProtocol_decodePayload_readInt, A.DriftProtocol_decodePayload_readNullableInt, A.WebProtocol__serializeRequest_closure, A.WebProtocol__deserializeRequest_readBatched_closure, A.WebProtocol__deserializeRequest_readBatched_closure0, A.WebProtocol__deserializeRequest_closure, A.WebProtocol__serializeSelectResult_closure, A.WebProtocol__deserializeResponse_closure, A.DatabaseConnectionUser_tableUpdates_closure, A.DatabaseConnectionUser_doWhenOpened_closure, A.DatabaseConnectionUser_customUpdate_closure, A.DatabaseConnectionUser_customInsert_closure, A.DatabaseConnectionUser__customWrite_closure, A.DatabaseConnectionUser__customWrite_closure0, A.DatabaseConnectionUser_customStatement_closure, A.DatabaseConnectionUser_transaction_closure, A.DatabaseConnectionUser_exclusively_closure, A.DatabaseConnectionUser_batch_closure, A.DriftRuntimeOptions_debugPrint_closure, A.DriftRuntimeOptions_debugPrint__closure, A.DriftServiceExtension__handle_closure, A.DriftServiceExtension__handle_closure0, A.DriftServiceExtension__handle_closure1, A.DriftServiceExtension__handle_closure2, A.DriftServiceExtension_registerIfNeeded__closure0, A.QueryResult_asMap_closure, A.StreamQueryStore_updatesForSync_closure, A.StreamQueryStore_updatesForSync_closure0, A.QueryStream__stream_closure, A.QueryStream__onListenOrResume_closure, A.QueryStream_fetchAndEmitData_closure, A.MultipleUpdateQuery_matches_closure, A.GeneratedColumn_constraintIsAlways_closure, A.InsertStatement_insert_closure, A.InsertStatement_insertOnConflictUpdate_closure, A.Query__writeInto_writeWithSpace, A.CustomSelectStatement__mapArgs_closure, A.CustomSelectStatement__executeRaw_closure, A.CustomSelectStatement__mapDbResponse_closure, A.SimpleSelectStatement__getRaw_closure, A.SimpleSelectStatement_orderBy_closure, A.JoinedSelectStatement__getRaw_closure, A.JoinedSelectStatement__mapWithStructure_closure, A.JoinedSelectStatement__mapResponse_closure, A.UpdateStatement__performQuery_closure, A.EnableNativeFunctions_useNativeFunctions_closure, A._unaryNumFunction_closure, A.MapAndAwait_mapAsyncAndAwait_closure, A.AsyncMapPerSubscription_asyncMapPerSubscription_closure, A.AsyncMapPerSubscription_asyncMapPerSubscription_closure_onData, A.Lock_synchronized_closure, A.WebPortToChannel_channel_closure, A.WebPortToChannel_channel_closure0, A._readMessages_closure, A._readMessages__closure, A._extension_0_get_nextNoError_closure, A.SharedWorkerCompatibilityResult_SharedWorkerCompatibilityResult$fromJsPayload_asBoolean, A.WasmDatabase_open_closure, A.WasmDatabase_open_closure0, A.FileLabelInfo$fromJson_closure, A.File$fromJson_closure0, A.File$fromJson_closure2, A.File$fromJson_closure3, A.File$fromJson_closure4, A.File$fromJson_closure5, A.File$fromJson_closure7, A.FileList$fromJson_closure, A.LabelField$fromJson_closure, A.LabelField$fromJson_closure0, A.LabelField$fromJson_closure1, A.LabelField$fromJson_closure2, A.LabelField$fromJson_closure3, A.LabelField_toJson_closure, A.Permission$fromJson_closure, A.Permission$fromJson_closure0, A.RetryClient_send_closure, A.RetryClient_send_closure0, A.BaseRequest_closure0, A.BrowserClient_send_closure0, A._bodyToStream_closure, A.ByteStream_toBytes_closure, A.MediaType_toString__closure, A.expectQuotedString_closure, A.PerflogBackend_closure, A.PerflogBackend_wrapRemotes_closure, A.ConfigBaseValidator__validateIndexConfigurations_closure, A.IndexItemData_IndexItemData$fromJson_closure, A.IndexItemData_toJson_closure, A.GroupIndexData_GroupIndexData$fromJson_closure, A.GroupIndexData_toJson_closure, A.DocumentIriTemplate_DocumentIriTemplate$fromJson_closure, A.ResourceConfigData_getIndexByName_closure, A.ResourceConfigData_toJson_closure, A.SyncEngineConfig_allIndicesInOrder_closure, A.SyncEngineConfig_allIndicesInOrder__closure, A.SyncEngineConfig_SyncEngineConfig$fromJson_closure, A.SyncEngineConfig_toJson_closure, A.SyncEngineConfig_getResourceConfig_closure, A.SyncEngineConfigValidator__baseValidator_closure, A.MergeResults_join__closure, A._RdfObjectComparison__max_closure, A._RdfObjectComparison__max_closure1, A._RdfObjectComparison__max_closure3, A.LwwRegister_remoteMerge_closure, A.addInlineTriples_closure, A.addInlineTriples_closure0, A.Immutable_remoteMerge_closure, A.OrSet_remoteMerge_closure, A.OrSet_localValueChange_closure, A.OrSet_localValueChange_closure0, A.OrSet_localValueChange_closure1, A.OrSet_localValueChange__closure, A.OrSet_localValueChange___closure, A._findStatementTriplesToRemove_closure, A._findStatementTriplesToRemove_closure0, A._findStatementTriplesToRemove_closure1, A._findStatementTriplesToRemove_closure2, A._handleIdenticalClocksTriples_closure, A._handleIdenticalClocksTriples_closure0, A._handleIdenticalClocksTriples_closure1, A._handleIdenticalClocksTriples_closure2, A._handleIdenticalClocksTriples_closure3, A._handleIdenticalClocksTriples_closure4, A._handleIdenticalClocksTriples_closure5, A._handleIdenticalClocksTriples_closure6, A._handleBothEmptyClocksTriples_closure, A._handleBothEmptyClocksTriples_closure0, A.objectsIfSubjectNonNull_closure, A._constructCrdtDocument_closure, A._constructCrdtDocument_closure0, A.HlcService__extractCrdtClock_closure, A.HlcService__extractCrdtClock_closure0, A.HlcService__getOurTime_closure, A.HlcService__getOurTime_closure0, A.HlcService__incrementClock_closure0, A.GroupKeyGenerator__extractAllValuesForProperty_closure, A.GroupKeyGenerator__generateCartesianProduct_closure, A.ItemFetchPolicy_fromMap_closure, A.PrefetchFiltered_toMap_closure, A.GroupingProperty_GroupingProperty$fromJson_closure, A.GroupingProperty_toJson_closure, A.IndexDiscovery__initializeWatches_closure, A.IndexDiscovery__initializeWatches_closure1, A.IndexDiscovery__updateIndexMetadataCache_closure0, A.IndexDiscovery__removeIndexFromCache_closure, A.IndexDiscovery__isConfiguredResourceType_closure, A.IndexDiscovery_discoverGroupIndexTemplate_closure, A.IndexManager__generateGroupIndex_closure, A.IndexManager__updateShardIndexEntries_closure, A.IndexManager__updateShardIndexEntries__closure, A.IndexManager__extractHeaderProperties_closure, A.IndexParser__parseGroupingProperties_closure, A.IndexParser__parseGroupingProperty_closure, A.IndexRdfGenerator_generateGroupIndexTemplate_closure, A.IndexRdfGenerator_generateGroupIndexTemplateIri_closure0, A.IndexRdfGenerator_generateGroupIndexTemplateIri__closure, A.IndexRdfGenerator__generateIndexedProperties_closure, A.RdfGroupExtractor_closure, A.RdfGroupExtractor__applyReplacement_closure, A.ShardDeterminer_calculateShards_closure, A.LocalDocumentMerger_replaceInDocument_closure, A.LocalDocumentMerger_replaceInDocument_closure0, A.LocalDocumentMerger__getIdentifiedSubjects_closure, A.LocalDocumentMerger__generateCrdtMetadataForChanges_closure, A.LocalDocumentMerger__valueEquals_closure, A.collectClassMappings_closure, A.collectClassMappings_closure0, A.mergeClassMappingGroups_closure, A.mergeClassMappingGroups_closure1, A.mergeClassMappingGroups__closure, A.collectPredicateMappings_closure, A.collectPredicateMappings_closure0, A.mergePredicateMappingGroups_closure, A.FrameworkIriGenerator_generateSimpleCanonicalIri_closure, A._buildIdentificationGraphWithLabels_processNode, A.IdentifiedBlankNode_hashCode_closure, A.IdentifiedBlankNode_operator$eq_closure, A.UnidentifiedBlankNodeWithContextException_toString_closure, A.UnidentifiedBlankNodeWithContextException_toString_closure0, A.IdentifiedBlankNodeBuilder_computeCanonicalBlankNodes_closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure1, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes__closure0, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure3, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure4, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes__closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes___closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes___closure0, A._sortByDependencies_closure, A._addIdentifiedBlankNodes_closure, A._addIdentifiedBlankNodes_closure0, A._addIdentifiedBlankNodes_closure1, A._addIdentifiedBlankNodes__closure, A.IdentifiedBlankNodeSubject_operator$eq_closure, A.BaseIriTranslator_translateGraphToInternal_closure, A.BaseIriTranslator_translateGraphToExternal_closure, A.ClassMergeRules__computeIdentifyingPredicates_closure, A.ClassMergeRules__computeIdentifyingPredicates_closure0, A.ClassMergeRules__computeNonIdentifyingPredicates_closure, A.ClassMergeRules__computeNonIdentifyingPredicates_closure0, A.MergeContract_getEffectivePredicateRule_closure, A.MergeContract__computeIdentifyingPredicates_closure, A.MergeContract__computeIdentifyingPredicates_closure0, A.MergeContract_getIdentifyingPredicates_closure, A.CachingMergeContractLoader__cacheKey_closure, A.CachingMergeContractLoader__loadAndCache_closure, A.CachingMergeContractLoader__maybeRefresh_closure, A.CachingMergeContractLoader__maybeRefresh_closure0, A.MergeContractLoader_getMergedGovernanceIris_closure, A.StandardMergeContractLoader_load_closure, A.StandardMergeContractLoader_load_closure0, A.StandardMergeContractLoader_load_closure1, A.StandardMergeContractLoader_load_closure2, A.StandardMergeContractLoader__parseDocumentMapping_closure, A.StandardMergeContractLoader__parseDocumentMapping_closure0, A.StandardMergeContractLoader__parseDocumentMapping_closure1, A.StandardMergeContractLoader__parseDocumentMapping_closure2, A.StandardMergeContractLoader__parseDocumentMapping_closure3, A.StandardMergeContractLoader__parseDocumentMapping_closure4, A.StandardMergeContractLoader__parseDocumentMapping_closure5, A.StandardMergeContractLoader__parseDocumentMapping_closure6, A.StandardMergeContractLoader__parseDocumentMapping_closure7, A.StandardMergeContractLoader__parseClassMappings_closure, A.StandardMergeContractLoader__parseClassMappings_closure0, A.StandardMergeContractLoader__parseClassMappings_closure1, A.StandardMergeContractLoader__parseClassMappings_closure2, A.StandardMergeContractLoader__parseClassMappings_closure3, A.StandardMergeContractLoader__parsePredicateMapping_closure, A.StandardMergeContractLoader__parsePredicateMapping_closure0, A.StandardMergeContractLoader__parsePredicateMapping_closure1, A.StandardMergeContractLoader__parsePredicateMapping_closure2, A.MetadataGenerator__createPropertyValueMetadata_closure, A.MetadataGenerator__createPropertyValueMetadata__closure, A.MetadataGenerator__createPropertyValueMetadata___closure, A.BootstrapRdfGraphFetcher__buildBootstrapMap_closure, A.RecursiveRdfLoader__loadRecursivelySingle_closure, A.RecursiveRdfLoader__loadRecursivelyMulti_closure, A.RdfGraphExtensions_getMultiValueObjectList_closure, A.RdfGraphExtensions_getMultiValueObjects_closure, A.RdfGraphExtensions_traverseListObjects_closure0, A.RdfGraphIterableExtensions_mergeGraphs_closure, A.ConfigService__setupRemoteListeners_closure, A.ConfigService__onRemotesChanged_closure, A.ConfigService__onRemotesChanged__closure, A.ConfigService__adjustConfigForDatasets_closure, A.ConfigService__adjustConfigForDatasets__closure, A.StandardSyncEngine_create_closure0, A.StandardSyncEngine_create_closure, A.StandardSyncEngine_create_closure1, A.StandardSyncEngine_hydrateStream_closure, A.StandardSyncEngine__doHydrateIndexEntryStream_closure, A.StandardSyncEngine__doHydrateIndexEntryStream_closure0, A.StandardSyncEngine__hydrateRootResourceStream_closure, A.OrganizedStatements$__closure, A.OrganizedStatements$___closure, A.OrganizedStatements_OrganizedStatements$fromGraph_closure1, A.OrganizedStatements_getAllStatementsForSubject_closure, A.OrganizedStatements_getAllStatementsForSubject_closure0, A.OrganizedStatements_getStatement_closure, A.OrganizedStatements_getStatement__closure, A.OrganizedStatements_getStatement_closure0, A.MergeObject_createMergeObjects_closure, A.MergeObject_createMergeObjects_closure0, A.MergeObject_createMergeObjects_closure1, A.MergeSubject_createMergeSubjects_closure, A.OrganizedBlankNodeMappings_blankNodeIdentifiers_closure, A.IdentifiedBlankNodeKey_operator$eq_closure, A.OrganizedGraph_maxPhysicalTime_closure, A.OrganizedGraph_allSubjectKeys_closure, A.RemoteDocumentMerger__mergeSubjectsAndProperties_closure, A.RemoteDocumentMerger__buildResultDocument_closure, A.RemoteDocumentMerger__buildResultDocument_closure0, A.RemoteDocumentMerger__buildResultDocument__closure3, A.RemoteDocumentMerger__buildResultDocument_closure1, A.RemoteDocumentMerger__buildResultDocument__closure0, A.RemoteDocumentMerger__buildResultDocument__closure1, A.RemoteDocumentMerger__buildResultDocument__closure2, A.RemoteDocumentMerger__buildResultDocument_closure2, A.RemoteDocumentMerger__buildResultDocument__closure, A.RemoteDocumentMerger__convertToTriples_closure, A.RemoteDocumentMerger__convertToTriples__closure, A.RemoteDocumentMerger__convertToTriples__closure0, A.PartialIndexSync_toString_closure, A.PartialIndexSync_toString__closure, A.RemoteSyncOrchestrator_sync_closure, A.RemoteSyncOrchestrator__syncIndexDocuments_closure, A.RemoteSyncOrchestrator__syncIndexDocuments_closure0, A.RemoteSyncOrchestrator__syncIndexDocuments_closure1, A.RemoteSyncOrchestrator__syncIndexDocuments_closure2, A.RemoteSyncOrchestrator__syncIndexDocuments_closure3, A.RemoteSyncOrchestrator__buildShardSyncSpecs_closure, A.RemoteSyncOrchestrator__buildShardSyncSpecs_closure0, A.RemoteSyncOrchestrator__findForeignIndices_closure, A.RemoteSyncOrchestrator__findForeignIndices_closure0, A.RemoteSyncOrchestrator__syncResourceType_closure, A.RemoteSyncOrchestrator__syncIndex_closure, A._executeInChunks_closure, A._DocumentSyncHelper_syncDocument__closure, A._DocumentSyncHelper_syncDocument__closure0, A._DocumentSyncHelper_syncDocument__closure2, A._DocumentSyncHelper_syncDocument__closure1, A.FilePerShardShardSyncAdapter_finalizeDocumentToUpload_closure, A.FilePerShardShardSyncAdapter_finalizeDocumentToUpload_closure0, A.FilePerShardShardSyncAdapter_finalizeDocumentToUpload_closure1, A._ShardSyncOrchestrator_syncShard_closure, A._ShardSyncOrchestrator_syncShard_closure0, A._ShardSyncOrchestrator_syncShard_closure2, A._ShardSyncOrchestrator__buildDocumentQueue_closure0, A._ShardSyncOrchestrator__buildDocumentQueue_closure1, A._ShardSyncOrchestrator__createSyncDocumentQueueTasks_closure, A._ShardSyncOrchestrator__createSyncDocumentQueueTasks_closure0, A._ShardSyncOrchestrator__createSyncDocumentQueueTasks_closure1, A._ShardSyncOrchestrator__getFinalEntrySet_closure, A._ShardSyncOrchestrator__matchesFilter_closure, A._ShardSyncOrchestrator__matchesFilter_closure0, A.ShardDocumentGenerator__syncShardAttempt_closure0, A.ShardDocumentGenerator__syncShardAttempt_closure, A.StandardSyncManager__setupAutoSync_closure, A.StandardSyncManager_enableAutoSync_closure, A.SyncFunction__validateDatasetCompatibilityForBackend_closure, A.SyncFunction__validateDatasetCompatibilityForBackend__closure, A.SyncFunction__validateDatasetCompatibilityForBackend_closure0, A.buildEffectiveConfig_closure, A.DriftStorage_watchDocumentsModifiedSince_closure, A.DriftStorage_getSettings_closure, A.DriftStorage_getIndexEntries_closure, A.DriftStorage_getIndexEntries_closure0, A.DriftStorage_watchIndexEntries_closure, A.DriftStorage_watchIndexEntries_closure0, A.DriftStorage_watchIndexEntries__closure, A.DriftStorage_getSubscribedGroupIndices_closure, A.DriftStorage_watchSubscribedGroupIndexIris_closure, A.DriftStorage_ensureIndexSetVersion_closure, A.DriftStorage_getIndexIrisForVersion_closure, A.DriftStorage_getActiveIndexEntriesForShard_closure, A.DriftStorage_getShardsToUpdate_closure, A.DriftStorage_getForeignIndexShardsToSync_closure, A.DriftStorage__convertToStoredDocuments_closure, A.IriBatchLoader_getIrisBatch_closure, A.IriBatchLoader_getOrCreateIriIdsBatch_closure, A.IriBatchLoader__getExistingIriIds_closure, A.SyncDocumentDao_saveDocument_closure, A.SyncDocumentDao_saveDocument_closure0, A.SyncDocumentDao_saveDocument_closure1, A.SyncDocumentDao_getDocument_closure, A.SyncDocumentDao_getDocument_closure0, A.SyncDocumentDao_getDocumentsModifiedSince_closure, A.SyncDocumentDao_getDocumentsModifiedSince_closure0, A.SyncDocumentDao_watchDocumentsModifiedSince_closure, A.SyncDocumentDao_watchDocumentsModifiedSince_closure0, A.SyncDocumentDao__convertDocumentsWithIris_closure0, A.SyncDocumentDao__convertDocumentsWithIris_closure, A.SyncPropertyChangeDao_recordPropertyChangesBatch_closure0, A.SyncPropertyChangeDao_recordPropertyChangesBatch_closure, A.SyncPropertyChangeDao_recordPropertyChangesBatch_closure1, A.IndexDao_getIndexEntries_closure, A.IndexDao_getIndexEntries_closure0, A.IndexDao_getIndexEntries_closure1, A.IndexDao_getIndexEntries_closure3, A.IndexDao_getIndexEntries_closure2, A.IndexDao_watchIndexEntries_closure, A.IndexDao_watchIndexEntries_closure0, A.IndexDao_watchIndexEntries_closure2, A.IndexDao_watchIndexEntries__closure, A.IndexDao_watchIndexEntries__closure0, A.IndexDao_watchIndexEntries__closure3, A.IndexDao_watchIndexEntries__closure2, A.IndexDao_watchSubscribedGroupIndexIds_closure, A.IndexDao_watchSubscribedGroupIndexIds_closure0, A.IndexDao_watchSubscribedGroupIndexIds__closure, A.IndexDao_getSubscribedGroupIndices_closure, A.IndexDao_ensureIndexIdSetVersion_closure, A.IndexDao_getIndexIriIdsForVersion_closure, A.IndexDao_getActiveIndexEntriesForShard_closure, A.IndexDao_getShardsToUpdate_closure, A.RemoteSyncStateDao_getOrCreateRemoteId_closure, A.RemoteSyncStateDao_getRemoteLastSyncTimestamp_closure, A.RemoteSyncStateDao_updateRemoteLastSyncTimestamp_closure, A.RemoteSyncStateDao_getETag_closure, A.SyncDatabase_migration_closure, A.SyncDatabase_migration_closure0, A.WorkerDriftConfigReceiver_closure, A.BaseGDriveSyncStorage_download_closure, A.BaseGDriveSyncStorage_downloadDataset_closure, A.BaseGDriveSyncStorage_upload_closure, A.BaseGDriveSyncStorage_uploadDataset_closure, A.GDriveRemoteStorage_createSyncStorage_closure0, A.GDriveLocalMirror_finalize_closure, A.GDriveLocalMirror_finalize_closure0, A._GDriveMirrorIndex_toJson_closure, A.GDriveTypeIndexManager_loadOrCreateTypeIndex_closure, A.GDriveTypeIndexManager__loadOrCreateTypeIndexFile_closure, A.GDriveTypeIndexManager__loadTypeIndexFile_closure, A.GDriveTypeIndexManager__collectAllTypes_closure, A.GDriveTypeIndexManager__addMissingTypes_closure, A.GDriveTypeIndexManager__addMissingTypes_closure0, A.GDriveTypeIndexManager__addMissingTypes_closure1, A.GDriveTypeIndexManager__addMissingTypes_closure2, A.GDriveTypeIndexManager__fillInDefaults_closure, A.RdfGraphExtensions_getMultiValueObjects_closure0, A.GDriveConfigMessage_fromJson_closure, A.WorkerGDriveAuthProvider_closure, A.WorkerGDriveConfigReceiver_closure, A.RdfDataset_namedGraphs_closure, A.RdfDataset__buildDefaultGraph_closure, A.RdfDataset__buildDefaultGraph_closure0, A.RdfDataset__buildNamedGraphs_closure, A.RdfDataset_operator$eq_closure, A.RdfDataset_hashCode_closure, A.RdfGraph_withoutTriples_closure, A.RdfGraph_subjects_closure, A.RdfGraph_predicates_closure, A.RdfGraph_predicates_closure0, A.RdfGraph_findTriples_closure, A.RdfGraph_findTriples_closure0, A.RdfGraph_findTriples_closure1, A.RdfGraph_findTriples_closure2, A.RdfGraph_findTriples_closure3, A.RdfGraph_hasTriples_closure, A.RdfGraph_hasTriples__closure, A.RdfGraph_hasTriples__closure0, A.RdfGraph_hasTriples__closure1, A.RdfGraph_hasTriples__closure2, A.RdfGraph_hasTriples__closure3, A.RdfGraph_hasTriples_closure0, A.RdfGraph_matching_closure, A.IriCompactionResult_compactIri_closure, A.IriCompactionResult_compactIri_closure0, A.IriCompactionResult_compactIri_closure1, A.IriCompaction_compactAllIris_closure0, A.JsonLdParser__processNode_closure, A.JsonLdParser__addTripleForValue_closure, A.JsonLdEncoder_closure, A.JsonLdEncoder_convert_closure, A.JsonLdEncoder__serializeDatasetWithNamedGraphs_closure, A.JsonLdEncoder__createNodeObject_closure0, A.JsonLdEncoder__createNodeObject_closure1, A.NQuadsCodec_canParse_closure, A.NQuadsEncoder_encode_closure, A.NQuadsEncoder_encode_closure0, A.NQuadsEncoder_encode__closure, A.NTriplesCodec_canParse_closure, A.TriGEncoder_closure, A.TriGEncoder_convert_closure, A.TriGEncoder__extractCollection_closure, A.TriGEncoder__extractCollection_closure0, A.TriGEncoder__extractCollection_closure1, A.TriGEncoder__extractCollection_closure2, A.TriGEncoder__extractCollection_closure4, A.TriGEncoder__markCollectionNodesAsProcessed_closure, A.TriGEncoder__writeCollection_closure, A.TriGEncoder__writeTriples_closure0, A.TriGEncoder__isPartOfRdfCollection_closure, A.TriGEncoder__isPartOfRdfCollection_closure0, A.RdfNamespaceMappings__extractDomainPrefix_closure, A.RdfNamespaceMappings__extractDomainPrefix_closure0, A.RdfNamespaceMappings__extractPathPrefix_closure, A.RdfNamespaceMappings__extractPathPrefix_closure0, A.RdfNamespaceMappings__extractPathPrefix_closure1, A.RdfNamespaceMappings__sanitizeComponentForPrefix_closure, A.RdfNamespaceMappings__sanitizeComponentForPrefix_closure0, A.WorkerSolidConfigReceiver_closure, A.SolidAuthReceiver_closure, A._createRetryClient_closure, A._createRetryClient_closure1, A.SolidRemoteStorage__resolvePodUrl_closure, A.SolidRemoteStorage_isAvailable_closure, A.SolidRemoteStorage_isAvailable_closure0, A.SolidSyncStorage_download_closure, A.SolidSyncStorage_downloadDataset_closure, A.SolidSyncStorage_upload_closure, A.SolidSyncStorage_uploadDataset_closure, A.HydrationBatchMessage_toJson_closure, A.HydrationBatchMessage_toJson_closure0, A.HydrationBatchMessage_HydrationBatchMessage$fromJson_closure, A.HydrationBatchMessage_HydrationBatchMessage$fromJson_closure0, A.SyncTriggerRequest_SyncTriggerRequest$fromJson_closure, A.GetSyncStateResponse_GetSyncStateResponse$fromJson_closure, A.SyncStateUpdateMessage_SyncStateUpdateMessage$fromJson_closure, A.startWebWorkerLoop_closure0, A.startWebWorkerLoop_closure, A.startWebWorkerLoop__closure0, A._handleWorkerMessage_closure, A.WorkerHandlerChannel$__closure, A.WorkerHandlerChannel$__closure0, A.WorkerContext_setSyncSystem_closure, A.WorkerContext__handleHydrateStream_closure, A.WorkerContext__handleHydrateStream__closure, A.WorkerContext__handleHydrateStream__closure0, A.toEngineParams_closure, A.toEngineParams_closure0, A.toEngineParams_closure1, A.toEngineParams_closure2, A.toEngineParams_closure3, A.Context_joinAll_closure, A.Context_split_closure, A._validateArgList_closure, A.WindowsStyle_absolutePathToUri_closure, A._createLogHandler_closure, A._indentStackTrace_closure, A._wNafMultiplier_closure, A.HKDFKeyDerivator__getBlockLengthFromDigest_closure, A._escapeRegExp_closure, A._escapeRegExp_closure0, A._forwardMulti_closure, A._forwardMulti_closure_listenToUpstream, A._forward_closure_listenToUpstream, A.Highlighter$__closure, A.Highlighter$___closure, A.Highlighter$__closure0, A.Highlighter__collateLines_closure, A.Highlighter__collateLines_closure1, A.Highlighter__collateLines__closure, A.Highlighter_highlight_closure, A.SqliteException_toString_closure, A.disposeFinalizer_closure, A._CursorReader_moveNext_closure, A._CursorReader_moveNext_closure0, A.CompleteIdbRequest_complete_closure, A.CompleteIdbRequest_complete_closure0, A.CompleteOpenIdbRequest_completeOrBlocked_closure, A.CompleteOpenIdbRequest_completeOrBlocked_closure0, A.CompleteOpenIdbRequest_completeOrBlocked_closure1, A.AsynchronousIndexedDbFileSystem_open_closure, A.AsynchronousIndexedDbFileSystem__readFile_closure, A.AsynchronousIndexedDbFileSystem__write_closure, A.SimpleOpfsFileSystem_inDirectory_open, A._InjectedValues_closure, A._InjectedValues_closure0, A._InjectedValues_closure1, A._InjectedValues_closure2, A._InjectedValues_closure3, A._InjectedValues_closure4, A._InjectedValues_closure7, A._InjectedValues_closure8, A._InjectedValues_closure9, A._InjectedValues_closure10, A._InjectedValues_closure17, A._InjectedValues_closure18, A._InjectedValues_closure19, A._InjectedValues_closure20, A._InjectedValues_closure21, A._InjectedValues_closure22, A._InjectedValues_closure23, A._InjectedValues_closure24, A._InjectedValues_closure25, A._InjectedValues_closure26, A._InjectedValues_closure29, A.Chain_Chain$parse_closure, A.Chain_toTrace_closure, A.Chain_toString_closure0, A.Chain_toString__closure0, A.Chain_toString_closure, A.Chain_toString__closure, A.Trace__parseVM_closure, A.Trace$parseV8_closure, A.Trace$parseJSCore_closure, A.Trace$parseFirefox_closure, A.Trace$parseFriendly_closure, A.Trace_toString_closure0, A.Trace_toString_closure, A._EventStreamSubscription_closure, A._EventStreamSubscription_onData_closure]);
+    _inheritMany(A.Closure2Args, [A._CastListBase_sort_closure, A.CastMap_forEach_closure, A.ConstantMap_map_closure, A.JsLinkedHashMap_addAll_closure, A.initHooks_closure0, A._awaitOnObject_closure0, A._wrapJsFunctionForAsync_closure, A.Future_wait_handleError, A.FutureExtensions_onError_onError, A._Future__propagateToListeners_handleWhenCompleteCallback_closure0, A._Future_timeout_closure2, A._AddStreamState_makeErrorHandler_closure, A._CustomZone_bindBinaryCallback_closure, A._RootZone_bindBinaryCallback_closure, A.HashMap_HashMap$from_closure, A.LinkedHashMap_LinkedHashMap$from_closure, A.MapBase_mapToString_closure, A._JsonStringifier_writeMap_closure, A._JsonPrettyPrintMixin_writeMap_closure, A._BigIntImpl_hashCode_combine, A.Uri_parseIPv6Address_error, A._File_readAsBytes_readSized, A.ApiRequester__request_addQueryParameter, A.ApiRequester__request_closure, A.FutureGroup_add_closure0, A.StreamQueue__ensureListening_closure1, A._CancelOnErrorSubscriptionWrapper_onError_closure, A.CanonicalizedMap_addAll_closure, A.CanonicalizedMap_forEach_closure, A.CanonicalizedMap_map_closure, A._BaseExecutor__runRequest__closure, A.VerificationContext_throwIfInvalid_closure, A.DriftServiceExtension_registerIfNeeded_closure, A.DriftServiceExtension_registerIfNeeded__closure1, A.InsertStatement__writeOnConflict_writeOnConflictConstraint, A.DoUpdate_closure, A.UpdateStatement_writeStartPart_closure, A.WasmInitializationMessage_sendToWorker_closure, A.WasmInitializationMessage_sendToPort_closure, A.File$fromJson_closure, A.File$fromJson_closure1, A.File$fromJson_closure6, A.Label$fromJson_closure, A.BaseRequest_closure, A.MediaType_toString_closure, A.ResourceConfigData_indicesInOrder_closure, A.SyncEngineConfig_resourcesInSyncOrder_closure, A.MetadataStatement_merge_closure1, A.MergeResults_join_closure, A.subjectAndInlineTriples_closure, A._RdfObjectComparison__max_closure0, A._RdfObjectComparison__max_closure2, A._RdfObjectComparison__max_closure4, A._constructCrdtDocument_closure1, A.HlcService__incrementClock_closure, A.GroupKeyGenerator__organizeExtractorsByLevel_closure0, A.IndexDiscovery__initializeWatches_closure0, A.IndexDiscovery__initializeWatches_closure2, A.IndexDiscovery__removeIndexFromCache_closure0, A.IndexDiscovery__loadAndParseFullIndex_closure, A.IndexDiscovery__loadAndParseTemplate_closure, A.IndexParser__parseGroupingProperties_closure0, A.IndexRdfGenerator_generateGroupIndexTemplateIri_closure, A.mergeClassMappingGroups_closure0, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure0, A.MergeContract__classMappingsByPredicate_closure, A.MergeContractLoader_getMergedGovernanceIris_closure0, A.RdfGraphExtensions_traverseListObjects_closure, A.splitDocument_closure, A.StandardSyncEngine__hydrateRootResourceStream_convertResult, A.StandardSyncEngine__hydrateRootResourceStream_convertResult_closure, A.OrganizedStatements_OrganizedStatements$fromGraph__closure, A.OrganizedBlankNodeMappings__buildBlankNodeToCanonicalMap_closure, A.OrganizedGraph_maxPhysicalTime_closure0, A.RemoteDocumentMerger_merge_closure, A.RemoteDocumentMerger__mergeSubjectProperties_closure, A.RemoteSyncOrchestrator__findForeignIndices_closure1, A._ShardSyncOrchestrator_syncShard_closure1, A._ShardSyncOrchestrator__buildDocumentQueue_closure, A.buildShardAppData_closure, A.IndexDao_watchIndexEntries__closure1, A.GDriveTypeIndexManager__sortTypesForProcessing_closure, A.GDriveTypeIndexManager__sortTypesForProcessing_closure0, A.GDriveConfigMessage_toJson_closure, A.GDriveConfigMessage_fromJson_closure0, A.RdfDataset__buildNamedGraphs_closure1, A.RdfGraph__effectiveIndex_closure, A.IriCompaction_compactAllIris_closure, A.TriGEncoder__writePrefixes_closure, A.TriGEncoder__writeTriples_closure1, A.TriGEncoder__writeSubjectGroup_closure0, A._createRetryClient_closure0, A._deepConvertJsObject_closure, A.startWebWorkerLoop__closure2, A.WorkerContext__handleHydrateStream_closure1, A.OAEPEncoding_factoryConfig_closure, A.PKCS1Encoding_factoryConfig_closure, A.CBCBlockCipher_factoryConfig_closure, A.CCMBlockCipher_factoryConfig_closure, A.CFBBlockCipher_factoryConfig_closure, A.CTRBlockCipher_factoryConfig_closure, A.ECBBlockCipher_factoryConfig_closure, A.GCMBlockCipher_factoryConfig_closure, A.GCTRBlockCipher_factoryConfig_closure, A.IGEBlockCipher_factoryConfig_closure, A.OFBBlockCipher_factoryConfig_closure, A.SICBlockCipher_factoryConfig_closure, A.CSHAKEDigest_factoryConfig_closure, A.KeccakDigest_factoryConfig_closure, A.SHA3Digest_factoryConfig_closure, A.SHA512tDigest_factoryConfig_closure, A.SHAKEDigest_factoryConfig_closure, A.ConcatKDFDerivator_factoryConfig_closure, A.HKDFKeyDerivator_factoryConfig_closure, A.PBKDF2KeyDerivator_factoryConfig_closure, A.PKCS12ParametersGenerator_factoryConfig_closure, A.PKCS5S1ParameterGenerator_factoryConfig_closure, A.CBCBlockCipherMac_factoryConfig_closure, A.CMac_factoryConfig_closure, A.HMac_factoryConfig_closure, A.Poly1305_factoryConfig_closure, A.PaddedBlockCipherImpl_factoryConfig_closure, A.AutoSeedBlockCtrRandom_factoryConfig_closure, A.BlockCtrRandom_factoryConfig_closure, A.ECDSASigner_factoryConfig_closure, A.PSSSigner_factoryConfig_closure, A.RSASigner_factoryConfig_closure, A.ChaCha20Engine_factoryConfig_closure, A.ChaCha7539Engine_factoryConfig_closure, A.CTRStreamCipher_factoryConfig_closure, A.EAX_factoryConfig_closure, A.SICStreamCipher_factoryConfig_closure, A._SwitchMapStreamSink_onData_closure, A.Highlighter__collateLines_closure0, A.DatabaseImplementation_createFunction_closure, A.WasmInstance_load_closure, A.WasmInstance_load__closure, A.AsynchronousIndexedDbFileSystem__write_writeBlock, A._InjectedValues_closure5, A._InjectedValues_closure6, A._InjectedValues_closure11, A._InjectedValues_closure12, A._InjectedValues_closure13, A._InjectedValues_closure14, A._InjectedValues_closure15, A._InjectedValues_closure16, A._InjectedValues_closure27, A._InjectedValues_closure28, A.Frame_Frame$parseV8_closure_parseJsLocation]);
     _inherit(A.CastList, A._CastListBase);
     _inheritMany(A.MapBase, [A.CastMap, A.JsLinkedHashMap, A._HashMap, A.UnmodifiableMapBase, A._JsonMap]);
-    _inheritMany(A.Closure0Args, [A.CastMap_putIfAbsent_closure, A.CastMap_update_closure, A.nullFuture_closure, A.Primitives_initTicker_closure, A._AsyncRun__scheduleImmediateJsOverride_internalCallback, A._AsyncRun__scheduleImmediateWithSetImmediate_internalCallback, A._TimerImpl_internalCallback, A._TimerImpl$periodic_closure, A._asyncStarHelper_closure, A._AsyncStarStreamController__resumeBody, A._AsyncStarStreamController__resumeBody_closure, A._AsyncStarStreamController_closure0, A._AsyncStarStreamController_closure1, A._AsyncStarStreamController_closure, A._AsyncStarStreamController__closure, A.Future_Future_closure, A.Future_Future$microtask_closure, A.Future_Future$delayed_closure, A._Future__addListener_closure, A._Future__prependListeners_closure, A._Future__chainCoreFuture_closure, A._Future__asyncCompleteWithValue_closure, A._Future__asyncCompleteErrorObject_closure, A._Future__propagateToListeners_handleWhenCompleteCallback, A._Future__propagateToListeners_handleValueCallback, A._Future__propagateToListeners_handleError, A._Future_timeout_closure, A.Stream_join_closure, A.Stream_length_closure0, A.Stream_first_closure, A._StreamController__subscribe_closure, A._StreamController__recordCancel_complete, A._AddStreamState_cancel_closure, A._BufferingStreamSubscription__sendError_sendError, A._BufferingStreamSubscription__sendDone_sendDone, A._PendingEvents_schedule_closure, A._MultiStream_listen_closure, A._cancelAndError_closure, A._cancelAndValue_closure, A._CustomZone_bindCallback_closure, A._CustomZone_bindCallbackGuarded_closure, A._rootHandleError_closure, A._RootZone_bindCallback_closure, A._RootZone_bindCallbackGuarded_closure, A._Utf8Decoder__decoder_closure, A._Utf8Decoder__decoderNonfatal_closure, A._BigIntImpl_toDouble_roundUp, A._File_readAsBytes_readUnsized_read, A._File_readAsBytes_readSized_read, A.ApiRequester__request_simpleUpload, A.ApiRequester__request_simpleRequest, A.MultipartMediaUploader_upload_closure, A.SingleSubscriptionTransformer_bind_closure, A.StreamQueue__ensureListening_closure0, A.StreamSplitter_split_closure, A._CancelOnErrorSubscriptionWrapper_onError__closure, A.CanonicalizedMap_putIfAbsent_closure, A.CanonicalizedMap_update_closure0, A._BaseExecutor__runRequest_closure, A._RemoteStreamQueryStore_handleTableUpdates_closure1, A.DriftCommunication_closure, A.WebProtocol_deserialize_decodeRequest, A.WebProtocol_deserialize_decodeSuccess, A.WebProtocol__deserializeRequest_readBatched, A.Batch__addSqlAndArguments_closure, A.DatabaseConnectionUser_transaction__closure, A.DatabaseConnectionUser_exclusively__closure, A.GeneratedDatabase_beforeOpen_closure, A.runCancellable_closure, A.DriftServiceExtension__handle_closure3, A.DriftServiceExtension__handle_closure4, A.DriftServiceExtension_registerIfNeeded__closure, A._BaseExecutor__synchronized_closure, A._BaseExecutor_runSelect_closure, A._BaseExecutor_runUpdate_closure, A._BaseExecutor_runInsert_closure, A._BaseExecutor_runCustom_closure, A._BaseExecutor_runBatched_closure, A._StatementBasedTransactionExecutor_ensureOpen_closure, A._StatementBasedTransactionExecutor_ensureOpen_closure0, A.DelegatedDatabase_ensureOpen_closure, A.DelegatedDatabase_close_closure, A._ExclusiveExecutor_ensureOpen_closure, A.StreamQueryStore_markAsClosed_closure, A.QueryStream__stream__closure, A.QueryStream__stream__closure0, A.QueryStream__stream__closure1, A.QueryStream__onCancelOrPause_closure, A.SimpleSelectStatement_watch_closure, A.JoinedSelectStatement_addColumns_closure, A._LazyExpressionMap_operator$index_closure, A.DriftSqlType__dartToDrift_closure, A.MapAndAwait_mapAsyncAndAwait__closure, A.AsyncMapPerSubscription_asyncMapPerSubscription__onData_closure, A.Lock_synchronized_callBlockAndComplete, A.Lock_synchronized_callBlockAndComplete_closure, A.WebPortToChannel_channel_closure1, A._readMessages_closure_stop, A._readMessages__closure0, A.BrowserClient_send_closure, A._readStreamBody_closure, A._readStreamBody_closure0, A.MediaType_MediaType$parse_closure, A.PerflogBackend_dispose_closure, A.PerflogRemoteStorage_createSyncStorage_closure, A.PerflogRemoteStorage_isAvailable_closure, A.PerflogRemoteSyncStorage_download_closure, A.PerflogRemoteSyncStorage_downloadDataset_closure, A.PerflogRemoteSyncStorage_finalizeSync_closure, A.PerflogRemoteSyncStorage_upload_closure, A.PerflogRemoteSyncStorage_uploadDataset_closure, A.ResourceConfigData_getIndexByName_closure0, A.SyncEngineConfig_getResourceConfig_closure0, A.MetadataStatement_merge_closure, A.MetadataStatement_merge_closure0, A.MergeResults_join__closure0, A.computeMergeInstructions_closure, A.GroupKeyGenerator__organizeExtractorsByLevel_closure, A.IndexDiscovery__updateIndexMetadataCache_closure, A.IndexManager__saveWithRetry_closure, A.InstallationService_create_closure, A.mergeClassMappingGroups__closure0, A.mergePredicateRuleGroups_closure, A._buildIdentificationGraphWithLabels_processNode_closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes__closure1, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure2, A.MergeContract__classMappingsByPredicate__closure, A.CachingMergeContractLoader__loadCold_closure, A.CachingMergeContractLoader__maybeRefresh_closure1, A.splitDocument__closure, A.ConfigService__adjustConfigForDatasets___closure, A.StandardSyncEngine_create__closure, A.StandardSyncEngine_save_closure, A.StandardSyncEngine__loadExistingEntriesAsStream_loadEntries, A.AuthAwareRemoteStorage_createSyncStorage_closure, A.AuthAwareSyncStorage_upload_closure, A.AuthAwareSyncStorage_download_closure, A.AuthAwareSyncStorage_uploadDataset_closure, A.AuthAwareSyncStorage_downloadDataset_closure, A.OrganizedStatements_OrganizedStatements$fromGraph_closure, A.OrganizedStatements_OrganizedStatements$fromGraph_closure0, A.OrganizedStatements_OrganizedStatements$fromGraph___closure, A.OrganizedStatements_getStatement_closure1, A.OrganizedBlankNodeMappings__buildBlankNodeToCanonicalMap__closure, A.RemoteSyncOrchestrator__syncResourceType__closure, A.RemoteSyncOrchestrator__syncIndex__closure, A.RemoteSyncOrchestrator__syncShard_closure, A._DocumentSyncHelper_syncDocument_closure, A._ShardSyncOrchestrator__createSyncDocumentQueueTasks__closure, A.ShardDocumentGenerator_syncShard_closure, A.ShardDocumentGenerator_generateShardNodes_closure, A.StandardSyncManager__initialize_closure, A.DriftStorage_saveDocument_closure, A.IndexDao_watchIndexEntries_closure1, A.IndexDao__groupResults_closure, A.IndexDao__groupResults_closure0, A.PerflogDriveApi_create_closure, A.PerflogDriveApi_get_closure, A.PerflogDriveApi_list_closure, A.PerflogDriveApi_update_closure, A.GDriveRemoteStorage_createSyncStorage_closure, A.GDriveBackend__authStateChanged_closure, A.GDriveLocalMirror__runConcurrent_schedule, A.GDriveLocalMirror__runConcurrent_schedule_closure, A.WorkerGDriveAuthProvider_refreshToken_closure, A.RdfDataset__buildNamedGraphs_closure0, A.JsonLdParser__getOrCreateBlankNode_closure, A.JsonLdEncoder__groupTriplesBySubject_closure, A.JsonLdEncoder__createNodeObject_closure, A.JsonLdEncoder__renderIri_closure, A.NQuadsDecoder__parseSubject_closure, A.NQuadsDecoder__parseObject_closure, A.NQuadsDecoder__parseGraphName_closure, A.NQuadsEncoder__writeTerm_closure, A.TriGEncoder__extractCollection_closure3, A.TriGEncoder__extractCollection_closure5, A.TriGEncoder__writeTriples_closure, A.TriGEncoder__writeSubjectGroup_closure, A.TriGEncoder__writeInlineBlankNode_closure, A.SolidAuthReceiver__requestTokenRefresh_closure, A.SolidBackend__authStateChanged_closure, A.SyncTriggerRequest_SyncTriggerRequest$fromJson_closure0, A.GetSyncStateResponse_GetSyncStateResponse$fromJson_closure0, A.SyncStateUpdateMessage_SyncStateUpdateMessage$fromJson_closure0, A.startWebWorkerLoop_resetInitializing, A.startWebWorkerLoop_markAsInitializing, A.startWebWorkerLoop__closure, A.startWebWorkerLoop__closure1, A.WorkerChannel__getOrCreateChannel_closure, A.WorkerContext__handleHydrateStream_closure0, A.Logger_Logger_closure, A.OAEPEncoding_factoryConfig__closure, A.OAEPEncoding_OAEPEncoding$withSHA1_closure, A.PKCS1Encoding_factoryConfig__closure, A.RSAEngine_factoryConfig_closure, A.AESEngine_factoryConfig_closure, A.DESedeEngine_factoryConfig_closure, A.CBCBlockCipher_factoryConfig__closure, A.CCMBlockCipher_factoryConfig__closure, A.CFBBlockCipher_factoryConfig__closure, A.CTRBlockCipher_factoryConfig__closure, A.ECBBlockCipher_factoryConfig__closure, A.GCMBlockCipher_factoryConfig__closure, A.GCTRBlockCipher_factoryConfig__closure, A.IGEBlockCipher_factoryConfig__closure, A.OFBBlockCipher_factoryConfig__closure, A.SICBlockCipher_factoryConfig__closure, A.RC2Engine_factoryConfig_closure, A.Blake2bDigest_factoryConfig_closure, A.CSHAKEDigest_factoryConfig__closure, A.KeccakDigest_factoryConfig__closure, A.MD2Digest_factoryConfig_closure, A.MD4Digest_factoryConfig_closure, A.MD5Digest_factoryConfig_closure, A.RIPEMD128Digest_factoryConfig_closure, A.RIPEMD160Digest_factoryConfig_closure, A.RIPEMD256Digest_factoryConfig_closure, A.RIPEMD320Digest_factoryConfig_closure, A.SHA1Digest_factoryConfig_closure, A.SHA224Digest_factoryConfig_closure, A.SHA256Digest_factoryConfig_closure, A.SHA3Digest_factoryConfig__closure, A.SHA384Digest_factoryConfig_closure, A.SHA512Digest_factoryConfig_closure, A.SHA512tDigest_factoryConfig__closure, A.SHAKEDigest_factoryConfig__closure, A.SM3Digest_factoryConfig_closure, A.TigerDigest_factoryConfig_closure, A.WhirlpoolDigest_factoryConfig_closure, A.ECCurve_brainpoolp160r1_factoryConfig_closure, A.ECCurve_brainpoolp160t1_factoryConfig_closure, A.ECCurve_brainpoolp192r1_factoryConfig_closure, A.ECCurve_brainpoolp192t1_factoryConfig_closure, A.ECCurve_brainpoolp224r1_factoryConfig_closure, A.ECCurve_brainpoolp224t1_factoryConfig_closure, A.ECCurve_brainpoolp256r1_factoryConfig_closure, A.ECCurve_brainpoolp256t1_factoryConfig_closure, A.ECCurve_brainpoolp320r1_factoryConfig_closure, A.ECCurve_brainpoolp320t1_factoryConfig_closure, A.ECCurve_brainpoolp384r1_factoryConfig_closure, A.ECCurve_brainpoolp384t1_factoryConfig_closure, A.ECCurve_brainpoolp512r1_factoryConfig_closure, A.ECCurve_brainpoolp512t1_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_a_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_b_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_c_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_xcha_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_xchb_factoryConfig_closure, A.ECCurve_prime192v1_factoryConfig_closure, A.ECCurve_prime192v2_factoryConfig_closure, A.ECCurve_prime192v3_factoryConfig_closure, A.ECCurve_prime239v1_factoryConfig_closure, A.ECCurve_prime239v2_factoryConfig_closure, A.ECCurve_prime239v3_factoryConfig_closure, A.ECCurve_prime256v1_factoryConfig_closure, A.ECCurve_secp112r1_factoryConfig_closure, A.ECCurve_secp112r2_factoryConfig_closure, A.ECCurve_secp128r1_factoryConfig_closure, A.ECCurve_secp128r2_factoryConfig_closure, A.ECCurve_secp160k1_factoryConfig_closure, A.ECCurve_secp160r1_factoryConfig_closure, A.ECCurve_secp160r2_factoryConfig_closure, A.ECCurve_secp192k1_factoryConfig_closure, A.ECCurve_secp192r1_factoryConfig_closure, A.ECCurve_secp224k1_factoryConfig_closure, A.ECCurve_secp224r1_factoryConfig_closure, A.ECCurve_secp256k1_factoryConfig_closure, A.ECCurve_secp256r1_factoryConfig_closure, A.ECCurve_secp384r1_factoryConfig_closure, A.ECCurve_secp521r1_factoryConfig_closure, A.Argon2BytesGenerator_factoryConfig_closure, A.ConcatKDFDerivator_factoryConfig__closure, A.ECDHKeyDerivator_factoryConfig_closure, A.HKDFKeyDerivator_factoryConfig__closure, A.PBKDF2KeyDerivator_factoryConfig__closure, A.PKCS12ParametersGenerator_factoryConfig__closure, A.PKCS5S1ParameterGenerator_factoryConfig__closure, A.Scrypt_factoryConfig_closure, A.ECKeyGenerator_factoryConfig_closure, A.RSAKeyGenerator_factoryConfig_closure, A.CBCBlockCipherMac_factoryConfig__closure, A.CMac_factoryConfig__closure, A.HMac_factoryConfig__closure, A.Poly1305_factoryConfig__closure, A.PaddedBlockCipherImpl_factoryConfig__closure, A.ISO7816d4Padding_factoryConfig_closure, A.PKCS7Padding_factoryConfig_closure, A.AutoSeedBlockCtrRandom_factoryConfig__closure, A.AutoSeedBlockCtrRandom_nextUint8_closure, A.AutoSeedBlockCtrRandom_nextBigInteger_closure, A.AutoSeedBlockCtrRandom_nextBytes_closure, A.BlockCtrRandom_factoryConfig__closure, A.FortunaRandom_factoryConfig_closure, A.ECDSASigner_factoryConfig__closure, A.PSSSigner_factoryConfig__closure, A.RSASigner_factoryConfig__closure, A._RegistryImpl__addStaticFactoryConfig_closure, A._RegistryImpl__addDynamicFactoryConfig_closure, A.ChaCha20Engine_factoryConfig__closure, A.ChaCha20Poly1305_factoryConfig_closure, A.ChaCha7539Engine_factoryConfig__closure, A.CTRStreamCipher_factoryConfig__closure, A.EAX_factoryConfig__closure, A.RC4Engine_factoryConfig_closure, A.Salsa20Engine_factoryConfig_closure, A.SICStreamCipher_factoryConfig__closure, A.BehaviorSubject__deferStream_closure, A.StartWithStreamTransformer_bind_closure, A.StartWithErrorStreamTransformer_bind_closure, A._SwitchMapStreamSink_onData_closure0, A._SwitchMapStreamSink_listenToInner_closure, A.SwitchMapStreamTransformer_bind_closure, A._forwardMulti__closure, A._forward_closure, A._forward_closure0, A._forward__listenToUpstream_closure, A._forward__listenToUpstream_closure0, A._forward_closure1, A.Highlighter_closure, A.Highlighter__writeFileStart_closure, A.Highlighter__writeMultilineHighlights_closure, A.Highlighter__writeMultilineHighlights_closure0, A.Highlighter__writeMultilineHighlights_closure1, A.Highlighter__writeMultilineHighlights_closure2, A.Highlighter__writeMultilineHighlights__closure, A.Highlighter__writeMultilineHighlights__closure0, A.Highlighter__writeHighlightedText_closure, A.Highlighter__writeIndicator_closure, A.Highlighter__writeIndicator_closure0, A.Highlighter__writeIndicator_closure1, A.Highlighter__writeSidebar_closure, A._Highlight_closure, A.DatabaseImplementation__prepareInternal_freeIntermediateResults, A.AsynchronousIndexedDbFileSystem_readFully_closure, A._FileWriteRequest__updateBlock_closure, A.IndexedDbFileSystem__startWorkingIfNeeded_closure, A._IndexedDbFile_xTruncate_closure, A._InjectedValues__closure13, A._InjectedValues__closure12, A._InjectedValues__closure11, A._InjectedValues__closure10, A._InjectedValues__closure9, A._InjectedValues__closure8, A._InjectedValues__closure7, A._InjectedValues__closure6, A._InjectedValues__closure5, A._InjectedValues__closure4, A._InjectedValues__closure3, A._InjectedValues__closure2, A._InjectedValues__closure1, A._InjectedValues__closure0, A._InjectedValues__closure, A.Frame_Frame$parseVM_closure, A.Frame_Frame$parseV8_closure, A.Frame_Frame$_parseFirefoxEval_closure, A.Frame_Frame$parseFirefox_closure, A.Frame_Frame$parseFriendly_closure, A.Trace_Trace$from_closure, A.GuaranteeChannel_closure, A.GuaranteeChannel__closure]);
+    _inheritMany(A.Closure0Args, [A.CastMap_putIfAbsent_closure, A.CastMap_update_closure, A.nullFuture_closure, A.Primitives_initTicker_closure, A._AsyncRun__scheduleImmediateJsOverride_internalCallback, A._AsyncRun__scheduleImmediateWithSetImmediate_internalCallback, A._TimerImpl_internalCallback, A._TimerImpl$periodic_closure, A._asyncStarHelper_closure, A._AsyncStarStreamController__resumeBody, A._AsyncStarStreamController__resumeBody_closure, A._AsyncStarStreamController_closure0, A._AsyncStarStreamController_closure1, A._AsyncStarStreamController_closure, A._AsyncStarStreamController__closure, A.Future_Future_closure, A.Future_Future$microtask_closure, A.Future_Future$delayed_closure, A._Future__addListener_closure, A._Future__prependListeners_closure, A._Future__chainCoreFuture_closure, A._Future__asyncCompleteWithValue_closure, A._Future__asyncCompleteErrorObject_closure, A._Future__propagateToListeners_handleWhenCompleteCallback, A._Future__propagateToListeners_handleValueCallback, A._Future__propagateToListeners_handleError, A._Future_timeout_closure, A._Future_timeout_closure0, A.Stream_join_closure, A.Stream_length_closure0, A.Stream_first_closure, A._StreamController__subscribe_closure, A._StreamController__recordCancel_complete, A._AddStreamState_cancel_closure, A._BufferingStreamSubscription__sendError_sendError, A._BufferingStreamSubscription__sendDone_sendDone, A._PendingEvents_schedule_closure, A._MultiStream_listen_closure, A._cancelAndError_closure, A._cancelAndValue_closure, A._CustomZone_bindCallback_closure, A._CustomZone_bindCallbackGuarded_closure, A._rootHandleError_closure, A._RootZone_bindCallback_closure, A._RootZone_bindCallbackGuarded_closure, A._Utf8Decoder__decoder_closure, A._Utf8Decoder__decoderNonfatal_closure, A._BigIntImpl_toDouble_roundUp, A._File_readAsBytes_readUnsized_read, A._File_readAsBytes_readSized_read, A.ApiRequester__request_simpleUpload, A.ApiRequester__request_simpleRequest, A.MultipartMediaUploader_upload_closure, A.SingleSubscriptionTransformer_bind_closure, A.StreamQueue__ensureListening_closure0, A.StreamSplitter_split_closure, A._CancelOnErrorSubscriptionWrapper_onError__closure, A.CanonicalizedMap_putIfAbsent_closure, A.CanonicalizedMap_update_closure0, A._BaseExecutor__runRequest_closure, A._RemoteStreamQueryStore_handleTableUpdates_closure1, A.DriftCommunication_closure, A.WebProtocol_deserialize_decodeRequest, A.WebProtocol_deserialize_decodeSuccess, A.WebProtocol__deserializeRequest_readBatched, A.Batch__addSqlAndArguments_closure, A.DatabaseConnectionUser_transaction__closure, A.DatabaseConnectionUser_exclusively__closure, A.GeneratedDatabase_beforeOpen_closure, A.runCancellable_closure, A.DriftServiceExtension__handle_closure3, A.DriftServiceExtension__handle_closure4, A.DriftServiceExtension_registerIfNeeded__closure, A._BaseExecutor__synchronized_closure, A._BaseExecutor_runSelect_closure, A._BaseExecutor_runUpdate_closure, A._BaseExecutor_runInsert_closure, A._BaseExecutor_runCustom_closure, A._BaseExecutor_runBatched_closure, A._StatementBasedTransactionExecutor_ensureOpen_closure, A._StatementBasedTransactionExecutor_ensureOpen_closure0, A.DelegatedDatabase_ensureOpen_closure, A.DelegatedDatabase_close_closure, A._ExclusiveExecutor_ensureOpen_closure, A.StreamQueryStore_markAsClosed_closure, A.QueryStream__stream__closure, A.QueryStream__stream__closure0, A.QueryStream__stream__closure1, A.QueryStream__onCancelOrPause_closure, A.SimpleSelectStatement_watch_closure, A.JoinedSelectStatement_addColumns_closure, A._LazyExpressionMap_operator$index_closure, A.DriftSqlType__dartToDrift_closure, A.MapAndAwait_mapAsyncAndAwait__closure, A.AsyncMapPerSubscription_asyncMapPerSubscription__onData_closure, A.Lock_synchronized_callBlockAndComplete, A.Lock_synchronized_callBlockAndComplete_closure, A.WebPortToChannel_channel_closure1, A._readMessages_closure_stop, A._readMessages__closure0, A.BrowserClient_send_closure, A._readStreamBody_closure, A._readStreamBody_closure0, A.MediaType_MediaType$parse_closure, A.PerflogBackend_dispose_closure, A.PerflogRemoteStorage_createSyncStorage_closure, A.PerflogRemoteStorage_isAvailable_closure, A.PerflogRemoteSyncStorage_download_closure, A.PerflogRemoteSyncStorage_downloadDataset_closure, A.PerflogRemoteSyncStorage_finalizeSync_closure, A.PerflogRemoteSyncStorage_upload_closure, A.PerflogRemoteSyncStorage_uploadDataset_closure, A.ResourceConfigData_getIndexByName_closure0, A.SyncEngineConfig_getResourceConfig_closure0, A.MetadataStatement_merge_closure, A.MetadataStatement_merge_closure0, A.MergeResults_join__closure0, A.computeMergeInstructions_closure, A.GroupKeyGenerator__organizeExtractorsByLevel_closure, A.IndexDiscovery__updateIndexMetadataCache_closure, A.IndexManager__saveWithRetry_closure, A.InstallationService_create_closure, A.mergeClassMappingGroups__closure0, A.mergePredicateRuleGroups_closure, A._buildIdentificationGraphWithLabels_processNode_closure, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes__closure1, A.IdentifiedBlankNodeBuilder_computeIdentifiedBlankNodes_closure2, A.MergeContract__classMappingsByPredicate__closure, A.CachingMergeContractLoader__loadCold_closure, A.CachingMergeContractLoader__maybeRefresh_closure1, A.splitDocument__closure, A.ConfigService__adjustConfigForDatasets___closure, A.StandardSyncEngine_create__closure, A.StandardSyncEngine_save_closure, A.StandardSyncEngine__loadExistingEntriesAsStream_loadEntries, A.AuthAwareRemoteStorage_createSyncStorage_closure, A.AuthAwareSyncStorage_upload_closure, A.AuthAwareSyncStorage_download_closure, A.AuthAwareSyncStorage_uploadDataset_closure, A.AuthAwareSyncStorage_downloadDataset_closure, A.OrganizedStatements_OrganizedStatements$fromGraph_closure, A.OrganizedStatements_OrganizedStatements$fromGraph_closure0, A.OrganizedStatements_OrganizedStatements$fromGraph___closure, A.OrganizedStatements_getStatement_closure1, A.OrganizedBlankNodeMappings__buildBlankNodeToCanonicalMap__closure, A.RemoteSyncOrchestrator__syncResourceType__closure, A.RemoteSyncOrchestrator__syncIndex__closure, A.RemoteSyncOrchestrator__syncShard_closure, A._DocumentSyncHelper_syncDocument_closure, A._ShardSyncOrchestrator__createSyncDocumentQueueTasks__closure, A.ShardDocumentGenerator_syncShard_closure, A.ShardDocumentGenerator_generateShardNodes_closure, A.StandardSyncManager__initialize_closure, A.DriftStorage_saveDocument_closure, A.IndexDao_watchIndexEntries_closure1, A.IndexDao__groupResults_closure, A.IndexDao__groupResults_closure0, A.PerflogDriveApi_create_closure, A.PerflogDriveApi_get_closure, A.PerflogDriveApi_list_closure, A.PerflogDriveApi_update_closure, A.GDriveRemoteStorage_createSyncStorage_closure, A.GDriveBackend__authStateChanged_closure, A.GDriveLocalMirror__runConcurrent_schedule, A.GDriveLocalMirror__runConcurrent_schedule_closure, A.WorkerGDriveAuthProvider_refreshToken_closure, A.RdfDataset__buildNamedGraphs_closure0, A.JsonLdParser__getOrCreateBlankNode_closure, A.JsonLdEncoder__groupTriplesBySubject_closure, A.JsonLdEncoder__createNodeObject_closure, A.JsonLdEncoder__renderIri_closure, A.NQuadsDecoder__parseSubject_closure, A.NQuadsDecoder__parseObject_closure, A.NQuadsDecoder__parseGraphName_closure, A.NQuadsEncoder__writeTerm_closure, A.TriGEncoder__extractCollection_closure3, A.TriGEncoder__extractCollection_closure5, A.TriGEncoder__writeTriples_closure, A.TriGEncoder__writeSubjectGroup_closure, A.TriGEncoder__writeInlineBlankNode_closure, A.SolidAuthReceiver__requestTokenRefresh_closure, A.SolidBackend__authStateChanged_closure, A.SyncTriggerRequest_SyncTriggerRequest$fromJson_closure0, A.GetSyncStateResponse_GetSyncStateResponse$fromJson_closure0, A.SyncStateUpdateMessage_SyncStateUpdateMessage$fromJson_closure0, A.startWebWorkerLoop_resetInitializing, A.startWebWorkerLoop_markAsInitializing, A.startWebWorkerLoop__closure, A.startWebWorkerLoop__closure1, A.WorkerChannel__getOrCreateChannel_closure, A.WorkerContext__handleHydrateStream_closure0, A.Logger_Logger_closure, A.OAEPEncoding_factoryConfig__closure, A.OAEPEncoding_OAEPEncoding$withSHA1_closure, A.PKCS1Encoding_factoryConfig__closure, A.RSAEngine_factoryConfig_closure, A.AESEngine_factoryConfig_closure, A.DESedeEngine_factoryConfig_closure, A.CBCBlockCipher_factoryConfig__closure, A.CCMBlockCipher_factoryConfig__closure, A.CFBBlockCipher_factoryConfig__closure, A.CTRBlockCipher_factoryConfig__closure, A.ECBBlockCipher_factoryConfig__closure, A.GCMBlockCipher_factoryConfig__closure, A.GCTRBlockCipher_factoryConfig__closure, A.IGEBlockCipher_factoryConfig__closure, A.OFBBlockCipher_factoryConfig__closure, A.SICBlockCipher_factoryConfig__closure, A.RC2Engine_factoryConfig_closure, A.Blake2bDigest_factoryConfig_closure, A.CSHAKEDigest_factoryConfig__closure, A.KeccakDigest_factoryConfig__closure, A.MD2Digest_factoryConfig_closure, A.MD4Digest_factoryConfig_closure, A.MD5Digest_factoryConfig_closure, A.RIPEMD128Digest_factoryConfig_closure, A.RIPEMD160Digest_factoryConfig_closure, A.RIPEMD256Digest_factoryConfig_closure, A.RIPEMD320Digest_factoryConfig_closure, A.SHA1Digest_factoryConfig_closure, A.SHA224Digest_factoryConfig_closure, A.SHA256Digest_factoryConfig_closure, A.SHA3Digest_factoryConfig__closure, A.SHA384Digest_factoryConfig_closure, A.SHA512Digest_factoryConfig_closure, A.SHA512tDigest_factoryConfig__closure, A.SHAKEDigest_factoryConfig__closure, A.SM3Digest_factoryConfig_closure, A.TigerDigest_factoryConfig_closure, A.WhirlpoolDigest_factoryConfig_closure, A.ECCurve_brainpoolp160r1_factoryConfig_closure, A.ECCurve_brainpoolp160t1_factoryConfig_closure, A.ECCurve_brainpoolp192r1_factoryConfig_closure, A.ECCurve_brainpoolp192t1_factoryConfig_closure, A.ECCurve_brainpoolp224r1_factoryConfig_closure, A.ECCurve_brainpoolp224t1_factoryConfig_closure, A.ECCurve_brainpoolp256r1_factoryConfig_closure, A.ECCurve_brainpoolp256t1_factoryConfig_closure, A.ECCurve_brainpoolp320r1_factoryConfig_closure, A.ECCurve_brainpoolp320t1_factoryConfig_closure, A.ECCurve_brainpoolp384r1_factoryConfig_closure, A.ECCurve_brainpoolp384t1_factoryConfig_closure, A.ECCurve_brainpoolp512r1_factoryConfig_closure, A.ECCurve_brainpoolp512t1_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_a_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_b_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_c_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_xcha_factoryConfig_closure, A.ECCurve_gostr3410_2001_cryptopro_xchb_factoryConfig_closure, A.ECCurve_prime192v1_factoryConfig_closure, A.ECCurve_prime192v2_factoryConfig_closure, A.ECCurve_prime192v3_factoryConfig_closure, A.ECCurve_prime239v1_factoryConfig_closure, A.ECCurve_prime239v2_factoryConfig_closure, A.ECCurve_prime239v3_factoryConfig_closure, A.ECCurve_prime256v1_factoryConfig_closure, A.ECCurve_secp112r1_factoryConfig_closure, A.ECCurve_secp112r2_factoryConfig_closure, A.ECCurve_secp128r1_factoryConfig_closure, A.ECCurve_secp128r2_factoryConfig_closure, A.ECCurve_secp160k1_factoryConfig_closure, A.ECCurve_secp160r1_factoryConfig_closure, A.ECCurve_secp160r2_factoryConfig_closure, A.ECCurve_secp192k1_factoryConfig_closure, A.ECCurve_secp192r1_factoryConfig_closure, A.ECCurve_secp224k1_factoryConfig_closure, A.ECCurve_secp224r1_factoryConfig_closure, A.ECCurve_secp256k1_factoryConfig_closure, A.ECCurve_secp256r1_factoryConfig_closure, A.ECCurve_secp384r1_factoryConfig_closure, A.ECCurve_secp521r1_factoryConfig_closure, A.Argon2BytesGenerator_factoryConfig_closure, A.ConcatKDFDerivator_factoryConfig__closure, A.ECDHKeyDerivator_factoryConfig_closure, A.HKDFKeyDerivator_factoryConfig__closure, A.PBKDF2KeyDerivator_factoryConfig__closure, A.PKCS12ParametersGenerator_factoryConfig__closure, A.PKCS5S1ParameterGenerator_factoryConfig__closure, A.Scrypt_factoryConfig_closure, A.ECKeyGenerator_factoryConfig_closure, A.RSAKeyGenerator_factoryConfig_closure, A.CBCBlockCipherMac_factoryConfig__closure, A.CMac_factoryConfig__closure, A.HMac_factoryConfig__closure, A.Poly1305_factoryConfig__closure, A.PaddedBlockCipherImpl_factoryConfig__closure, A.ISO7816d4Padding_factoryConfig_closure, A.PKCS7Padding_factoryConfig_closure, A.AutoSeedBlockCtrRandom_factoryConfig__closure, A.AutoSeedBlockCtrRandom_nextUint8_closure, A.AutoSeedBlockCtrRandom_nextBigInteger_closure, A.AutoSeedBlockCtrRandom_nextBytes_closure, A.BlockCtrRandom_factoryConfig__closure, A.FortunaRandom_factoryConfig_closure, A.ECDSASigner_factoryConfig__closure, A.PSSSigner_factoryConfig__closure, A.RSASigner_factoryConfig__closure, A._RegistryImpl__addStaticFactoryConfig_closure, A._RegistryImpl__addDynamicFactoryConfig_closure, A.ChaCha20Engine_factoryConfig__closure, A.ChaCha20Poly1305_factoryConfig_closure, A.ChaCha7539Engine_factoryConfig__closure, A.CTRStreamCipher_factoryConfig__closure, A.EAX_factoryConfig__closure, A.RC4Engine_factoryConfig_closure, A.Salsa20Engine_factoryConfig_closure, A.SICStreamCipher_factoryConfig__closure, A.BehaviorSubject__deferStream_closure, A.StartWithStreamTransformer_bind_closure, A.StartWithErrorStreamTransformer_bind_closure, A._SwitchMapStreamSink_onData_closure0, A._SwitchMapStreamSink_listenToInner_closure, A.SwitchMapStreamTransformer_bind_closure, A._forwardMulti__closure, A._forward_closure, A._forward_closure0, A._forward__listenToUpstream_closure, A._forward__listenToUpstream_closure0, A._forward_closure1, A.Highlighter_closure, A.Highlighter__writeFileStart_closure, A.Highlighter__writeMultilineHighlights_closure, A.Highlighter__writeMultilineHighlights_closure0, A.Highlighter__writeMultilineHighlights_closure1, A.Highlighter__writeMultilineHighlights_closure2, A.Highlighter__writeMultilineHighlights__closure, A.Highlighter__writeMultilineHighlights__closure0, A.Highlighter__writeHighlightedText_closure, A.Highlighter__writeIndicator_closure, A.Highlighter__writeIndicator_closure0, A.Highlighter__writeIndicator_closure1, A.Highlighter__writeSidebar_closure, A._Highlight_closure, A.DatabaseImplementation__prepareInternal_freeIntermediateResults, A.AsynchronousIndexedDbFileSystem_readFully_closure, A._FileWriteRequest__updateBlock_closure, A.IndexedDbFileSystem__startWorkingIfNeeded_closure, A._IndexedDbFile_xTruncate_closure, A._InjectedValues__closure13, A._InjectedValues__closure12, A._InjectedValues__closure11, A._InjectedValues__closure10, A._InjectedValues__closure9, A._InjectedValues__closure8, A._InjectedValues__closure7, A._InjectedValues__closure6, A._InjectedValues__closure5, A._InjectedValues__closure4, A._InjectedValues__closure3, A._InjectedValues__closure2, A._InjectedValues__closure1, A._InjectedValues__closure0, A._InjectedValues__closure, A.Frame_Frame$parseVM_closure, A.Frame_Frame$parseV8_closure, A.Frame_Frame$_parseFirefoxEval_closure, A.Frame_Frame$parseFirefox_closure, A.Frame_Frame$parseFriendly_closure, A.Trace_Trace$from_closure, A.GuaranteeChannel_closure, A.GuaranteeChannel__closure]);
     _inheritMany(A.Error, [A.LateError, A.TypeError, A.JsNoSuchMethodError, A.UnknownJsTypeError, A.RuntimeError, A._Error, A.JsonUnsupportedObjectError, A.AssertionError, A.ArgumentError, A.UnsupportedError, A.UnimplementedError, A.StateError, A.ConcurrentModificationError, A.ValueStreamError, A.JWTError]);
     _inheritMany(A.ListBase, [A.UnmodifiableListBase, A.ValueList, A.WasmValueList, A.TypedDataBuffer]);
     _inherit(A.CodeUnits, A.UnmodifiableListBase);
@@ -95034,7 +95184,7 @@
     typeUniverse: {eC: new Map(), tR: {}, eT: {}, tPV: {}, sEA: []},
     mangledGlobalNames: {int: "int", double: "double", num: "num", String: "String", bool: "bool", Null: "Null", List: "List", Object: "Object", Map: "Map", JSObject: "JSObject"},
     mangledNames: {},
-    types: ["~()", "Future<~>()", "bool(Triple)", "~(Object?)", "bool(String)", "Null()", "String(String)", "bool(Object?)", "int(int,int)", "~(Object,StackTrace)", "~(JSObject)", "String(IriTerm)", "RdfObject(Triple)", "bool(IriTerm)", "double(num)", "int()", "Null(Object,StackTrace)", "Expression<bool>($SyncDocumentsTable)", "String(@)", "Future<@>()", "Null(@)", "~(Object[StackTrace?])", "int(Object?)", "Null(int)", "Future<Null>()", "0&()", "TraversalDecision(Triple,int)", "bool(RdfObject)", "Triple(RdfObject)", "int(int)", "bool(ValidationResult)", "RdfSubject(Triple)", "Frame()", "RdfGraph(RdfGraph)", "BlankNodeTerm()", "Null(JSObject)", "String(RdfGraph)", "List<Triple>(List<Triple>)", "String(Match)", "Future<RemoteUploadResult>()", "~(@)", "Object?(Object?)", "bool(ResourceConfigData)", "List<RdfObject>()", "int(IriTerm,IriTerm)", "String()", "Future<bool>()", "IriTerm(String)", "Null(@,@)", "IriTerm(IriTerm)", "Frame(String)", "Future<int>()", "String(Triple)", "List<Triple>()", "Future<+appData,crdtDocument,currentCursor,documentIri,missingGroupIndices,physicalTime,previousCursor,resourceIri,updatedAt(RdfGraph,RdfGraph,String,IriTerm,List<MissingGroupIndex>,int,String?,RdfSubject,int)?>()", "bool(_IndexMetadata)", "List<Triple>(RdfGraph)", "bool(PredicateMergeRule)", "RdfPredicate(PredicateMergeRule)", "List<Triple>(RdfSubject)", "Triple(Triple)", "Iterable<Triple>(RdfSubject)", "IriTerm(ResourceConfigData)", "Set<RdfObject>()", "IndexEntryWithIri(DriftIndexEntry)", "Future<List<Map<String,Object?>>>(QueryExecutor)", "bool(Object?,Object?)", "Expression<bool>($IndexEntriesTable)", "int(IndexEntry)", "Expression<bool>($RemoteSettingsTable)", "_RandomAccessFile(Object?)", "~(Object?,Object?)", "bool(SyncTrigger)", "SyncTrigger()", "bool(_Highlight)", "int(int,int,int)", "Null(int,int,int)", "@(@)", "~(~())", "~([Future<@>?])", "String(int)", "User(@)", "@()", "bool(TableUpdate)", "Future<int>(QueryExecutor)", "num?(List<Object?>)", "~(JSObject?,List<JSObject>?)", "MapEntry<String,String?>(String,@)", "int(String?)", "~(List<int>)", "bool(String,String)", "~(List<RemoteStorage>)", "Future<RemoteDownloadResult<RdfGraph>>()", "Future<RemoteDownloadResult<RdfDataset>>()", "Trace(String)", "Uint8List()", "SHA1Digest()", "+(String,String)(+(IriTerm,RdfGraph))", "+(String,String)(@)", "Map<String,String>(+(String,String))", "RdfGraph(String{documentUrl:String?,mimeType:String?})", "Map<String,@>(MapEntry<RdfSubject,List<Triple>>)", "@(Variable<Object>)", "List<Triple>?(RdfPredicate)", "bool(Quad)", "~(Map<String,@>)", "String(RdfDataset)", "Future<int>(QueryExecutor,String,List<@>)", "String(Frame)", "RdfGraph(String)", "Future<File>()", "Expression<bool>($IndexIriIdSetVersionsTable)", "DriftIndexEntry(IndexEntry)", "OrderingTerm($IndexEntriesTable)", "int(@,@)", "OrderingTerm($SyncDocumentsTable)", "Expression<bool>($SyncIrisTable)", "~(Timer)", "int?(int)", "int(Frame)", "bool(IndexEntryWithIri)", "IriTerm(_DocumentQueueEntry)", "int(int,int,int,JavaScriptBigInt)", "RdfGraph(Object?)", "Future<RemoteUploadResult>(IriTerm,Object?{ifMatch:String?})", "Future<RemoteDownloadResult<RdfGraph>>(IriTerm{ifNoneMatch:String?})", "List<Triple>(+(RdfSubject,RdfGraph))", "RdfObjectKey(RdfObject)", "ValidationResult(+(PredicateRule?,ValidationResult))", "PredicateRule?(+(PredicateRule?,ValidationResult))", "+(PredicateRule?,ValidationResult)(RdfSubject)", "int(int,int,int,int)", "@(String)", "bool(RdfSubject)", "ValidationResult(+(DocumentMapping,ValidationResult))", "DocumentMapping(+(DocumentMapping,ValidationResult))", "~(@,@)", "Future<StreamedResponse>()", "~(Set<TableUpdate>)", "List<DocumentMapping>(DocumentMapping)", "bool(@)", "~(String)", "~([~])", "~(String,String)", "int(GroupingProperty,GroupingProperty)", "~(List<IndexEntryWithIri>)", "RdfPredicate(Triple)", "RdfGraph(RdfSubject)", "~([Future<~>?])", "Object(RdfObject)", "Iterable<Triple>(BlankNodeTerm)", "Future<Uint8List>(RandomAccessFile)", "int(int,int,int,int,int)", "Map<String,@>(CrdtIndexData)", "int(ResourceConfigData,ResourceConfigData)", "Iterable<+(CrdtIndexData,IriTerm)>(ResourceConfigData)", "+(CrdtIndexData,IriTerm)(CrdtIndexData)", "ResourceConfigData(@)", "Map<String,@>(ResourceConfigData)", "_Directory(Object?)", "String(ResourceConfigBase)", "@(@,String)", "MapEntry<RdfPredicate,Iterable<RdfObject>>(RdfPredicate,Set<RdfObject>)", "MergeResults(MergeResults,MergeResults)", "MetadataStatement(MetadataStatement)", "MetadataStatement()", "Future<@>(@)", "+(RdfObject,num)(RdfObject)", "+(RdfObject,num)(+(RdfObject,num),+(RdfObject,num))", "+(RdfObject,DateTime)(RdfObject)", "+(RdfObject,DateTime)(+(RdfObject,DateTime),+(RdfObject,DateTime))", "+(RdfObject,String)(RdfObject)", "+(RdfObject,String)(+(RdfObject,String),+(RdfObject,String))", "bool(CrdtIndexData)", "int(CrdtIndexData,CrdtIndexData)", "Null(Uint8List)", "String(RegExpMatch)", "Iterable<+(RdfSubject,RdfGraph)>(RdfObject)", "Future<Uint8List>(RandomAccessFile,int)", "Triple(Object)", "Map<String,@>(GroupingProperty)", "Future<Uint8List>(int)", "Future<File0>(RandomAccessFile)", "GroupingProperty(@)", "File0/(RandomAccessFile)", "MergeInstruction()", "_File(RandomAccessFile)", "Future<Directory>(Directory)", "+(RdfSubject,RdfGraph)(RdfSubject)", "bool(+(RdfSubject,RdfGraph))", "RdfGraph(+(RdfSubject,RdfGraph))", "+ours,theirs(List<+(RdfSubject,RdfGraph)>,List<+(RdfSubject,RdfGraph)>)(+ours,theirs(List<+(RdfSubject,RdfGraph)>,List<+(RdfSubject,RdfGraph)>),+(RdfSubject,RdfGraph))", "~(List<String>)", "List<_PropertyExtractor>()", "int(_PropertyExtractor,_PropertyExtractor)", "RdfObject(@)", "Map<String,@>(RdfObject)", "RegexTransform(@)", "Map<String,@>(RegexTransform)", "Future<FullIndexData?>(IriTerm,ShardDeterminationMode)", "Future<GroupIndexData?>(IriTerm,ShardDeterminationMode)", "IriTerm(@)", "Null(Object?)", "Set<_IndexMetadata>()", "Uint8List(Object?)", "bool(IriTerm,Set<_IndexMetadata>)", "FullIndexData?(RdfGraph,IriTerm)", "GroupIndexData?(RdfGraph,IriTerm)", "~(@,StackTrace)", "Triple(IriTerm)", "Iterable<Triple>(MapEntry<IriTerm,List<RdfObject>>)", "GroupingProperty?(RdfSubject)", "int(GroupingProperty)", "RegexTransform(RdfSubject)", "RdfObject(RegexTransform)", "String(GroupingProperty)", "String(RegexTransform)", "+(BlankNodeTerm,RdfGraph)(IriTerm)", "RegExp(RegexTransform)", "Directory/(bool)", "IdentifiedRdfSubject?(RdfSubject)", "Future<PerflogRemoteSyncStorage>()", "PerflogRemoteStorage(RemoteStorage)", "Map<IriTerm,ClassMapping>(DocumentMapping)", "Iterable<ClassMapping>(Map<IriTerm,ClassMapping>)", "Map<IriTerm,List<ClassMapping>>(Map<IriTerm,List<ClassMapping>>,ClassMapping)", "List<ClassMapping>()", "ClassMapping(MapEntry<IriTerm,List<ClassMapping>>)", "Map<RdfPredicate,PredicateRule>(ClassMapping)", "List<PredicateMapping>(DocumentMapping)", "Map<RdfPredicate,PredicateRule>(PredicateMapping)", "PredicateRule()", "Iterable<Triple>(IdentifiedBlankNode)", "~(String,List<String>)", "int(MapEntry<RdfPredicate,List<RdfObject>>)", "bool(MapEntry<RdfPredicate,List<RdfObject>>)", "Null(~())", "IriTerm(IdentifiedBlankNode)", "Map<BlankNodeTerm,List<Triple>>(Map<BlankNodeTerm,List<Triple>>,Triple)", "ApiRequestErrorDetail(@)", "Iterable<BlankNodeTerm>(List<IdentifiedBlankNode>)", "Set<BlankNodeTerm>(IdentifiedBlankNode)", "List<BlankNodeTerm>()", "List<String>(IdentifiedBlankNode)", "MediaType()", "BlankNodeTerm(IdentifiedBlankNode)", "bool(BlankNodeTerm)", "List<IdentifiedBlankNode>(Triple)", "IdentifiedBlankNode(IdentifiedBlankNode)", "Null(@,StackTrace)", "~(int)", "ResponsePayload?/(Request0)", "Null(~)", "Map<RdfPredicate,List<ClassMergeRules>>(Map<RdfPredicate,List<ClassMergeRules>>,MapEntry<IriTerm,ClassMergeRules>)", "List<ClassMergeRules>()", "String(ClassMergeRules)", "bool(RdfPredicate)", "Future<MergeContract>()", "Future<MergeContract>(@)", "Null(MergeContract)", "List<IriTerm>(RdfGraph)", "+(List<IriTerm>,Set<IriTerm>)(+(List<IriTerm>,Set<IriTerm>),List<IriTerm>)", "+(DocumentMapping,ValidationResult)(IriTerm)", "~(MultiStreamController<List<int>>)", "Null(String,String[Object?])", "Null(Object?,StackTrace)", "+(PredicateMapping?,ValidationResult)(RdfSubject)", "PredicateMapping?(+(PredicateMapping?,ValidationResult))", "ValidationResult(+(PredicateMapping?,ValidationResult))", "int(String)", "+(DocumentMapping,ValidationResult)(RdfSubject)", "PermissionTeamDrivePermissionDetails(@)", "PermissionPermissionDetails(@)", "String(DateTime)", "bool(MapEntry<RdfSubject,ValidationResult>)", "Iterable<+(IriTerm,RdfGraph)>(IriTerm)", "+(IriTerm,RdfGraph)(RdfObject?)", "MapEntry<IriTerm,RdfGraph>(String)", "Future<~>(IriTerm)", "IriTerm?()", "bool(Backend)", "bool(RemoteStorage)", "ResourceConfigData(ResourceConfigData)", "CrdtIndexData(CrdtIndexData)", "FullIndexData()", "RemoteSyncOrchestrator(RemoteSyncStorage,RemoteId{useShardDatasets!bool})", "Future<~>(DateTime)", "Future<~>()(Backend)", "Stream<+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)>(Set<IriTerm>)", "bool(List<IndexEntryWithIri>)", "+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(List<IndexEntryWithIri>)", "+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(List<StoredDocument>,String?)", "+(List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(+(List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>),StoredDocument)", "+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(DocumentsResult)", "Future<RemoteSyncStorage>()", "Iterable<MapEntry<MetadataStatementKey,MetadataStatement>>(MetadataStatement)", "MapEntry<MetadataStatementKey,MetadataStatement>(MetadataStatementKey)", "Set<+(RdfSubject,RdfGraph)>()", "Set<MetadataStatementKey>()", "MetadataStatement(MapEntry<MetadataStatementKey,Set<+(RdfSubject,RdfGraph)>>)", "Map<RdfPredicate,Set<RdfObject>>(Map<RdfPredicate,Set<RdfObject>>,+(RdfSubject,RdfGraph))", "bool(MapEntry<MetadataStatementKey,MetadataStatement>)", "MetadataStatement(MapEntry<MetadataStatementKey,MetadataStatement>)", "Iterable<MetadataStatement?>(RdfSubject)", "MetadataStatement?(RdfObject)", "bool(MetadataStatement?)", "DateTime(@)", "MergeObject(RdfObjectKey)", "MergeSubject(RdfObjectKey)", "Iterable<IriTerm>(Iterable<IriTerm>)", "Map<BlankNodeTerm,Set<IriTerm>>(Map<BlankNodeTerm,Set<IriTerm>>,Triple)", "Set<IriTerm>()", "int(+(int,int))", "RdfObjectKey(RdfSubject)", "bool(PrimitiveResponsePayload)", "MergeResults(MergeSubject)", "Iterable<Triple>(MapEntry<BlankNodeTerm,List<IriTerm>>)", "List<Triple>(IriTerm)", "Iterable<+(RdfSubject,RdfGraph)>(MetadataStatement)", "bool(Object)", "Iterable<Triple>(Iterable<+(RdfSubject,RdfGraph)>)", "MapEntry<String,LabelField>(String,@)", "Iterable<Triple>(MapEntry<RdfPredicate,Iterable<RdfObject>>)", "Iterable<RdfObject>(RdfObject)", "String(MapEntry<IriTerm,Map<IriTerm,String>>)", "String(MapEntry<IriTerm,String>)", "Future<~>(Request0)", "FullIndexSync(FullIndexData)", "FullIndexSync(+(IriTerm,IriTerm,ItemFetchPolicy))", "IriTerm(+(IriTerm,IriTerm,ItemFetchPolicy))", "IriTerm(IndexSyncSpec)", "FullShardSync(IriTerm)", "PartialShardSync(MapEntry<IriTerm,Map<IriTerm,String>>)", "PartialIndexSync(MapEntry<IriTerm,Map<IriTerm,Map<IriTerm,String>>>)", "int(PartialIndexSync)", "Future<~>()(IndexSyncSpec)", "Future<~>()(ShardSyncSpec)", "File(@)", "Future<RemoteUploadResult>(IriTerm,RdfGraph{ifMatch:String?})", "Permission(@)", "0&(String,int?)", "Future<RemoteDownloadResult<RdfDataset>>(IriTerm{ifNoneMatch:String?})", "IriTerm?(IriTerm)", "MapEntry<String,String>(String,@)", "ContentRestriction(@)", "MapEntry<IriTerm,String>(IriTerm,+(String,Set<RdfObject>?))", "_DocumentQueueEntry(MapEntry<IriTerm,String>)", "_DocumentQueueEntry(IriTerm)", "+documentIri,lastSyncTimestamp,shouldSync,syncTime(IriTerm,int,bool,DateTime)(_DocumentQueueEntry)", "bool(+documentIri,lastSyncTimestamp,shouldSync,syncTime(IriTerm,int,bool,DateTime))", "Future<~>()(+documentIri,lastSyncTimestamp,shouldSync,syncTime(IriTerm,int,bool,DateTime))", "Label(@)", "bool(WasmStorageImplementation)", "bool(FullIndexData)", "String(ResourceConfigData)", "Future<SaveDocumentResult>()", "DocumentsResult(List<DocumentWithIri>)", "Expression<bool>($SyncSettingsTable)", "Request0()", "List<IndexEntryWithIri>(List<DriftIndexEntry>)", "+(IriTerm,IriTerm,ItemFetchPolicy)(SubscribedGroupIndexData)", "SuccessResponse()", "+indexIri,maxPhysicalClock,resourceTypeIri,shardIri(IriTerm,int,IriTerm,IriTerm)(+indexIri,maxPhysicalClock,resourceTypeIri,shardIri(String,int,String,String))", "StoredDocument(DocumentWithIri)", "int(WasmStorageImplementation)", "ExecuteBatchedStatement()", "bool(IdentifiedBlankNode)", "bool(int)", "int(SyncDocument)", "DocumentWithIri(SyncDocument)", "List<String>(PropertyChange)", "SyncPropertyChangesCompanion(PropertyChange)", "Null(Batch)", "List<Object?>(JSArray<Object?>)", "WasmInitializationMessage(WasmInitializationMessage)", "TableUpdate(Object?)", "~(MultiStreamController<WasmInitializationMessage>)", "Future<~>(List<IndexEntry>)", "bool(IndexEntry)", "Expression<bool>($GroupIndexSubscriptionsTable)", "Set<int>(List<GroupIndexSubscription>)", "int(GroupIndexSubscription)", "SubscribedGroupIndexData(TypedResult)", "~(Object?,List<JSObject>?)", "DriftIndexEntry(TypedResult)", "+indexIri,maxPhysicalClock,resourceTypeIri,shardIri(String,int,String,String)(QueryRow)", "Map<String,Map<String,String>>()", "Map<String,String>()", "~(MultiStreamController<Set<TableUpdate>>)", "Expression<bool>($RemoteSyncStateTable)", "Future<~>(Migrator)", "Future<~>(Migrator,int,int)", "SyncIri(Map<String,@>{tablePrefix:String?})", "SyncDocument(Map<String,@>{tablePrefix:String?})", "SyncPropertyChange(Map<String,@>{tablePrefix:String?})", "SyncSetting(Map<String,@>{tablePrefix:String?})", "IndexEntry(Map<String,@>{tablePrefix:String?})", "GroupIndexSubscription(Map<String,@>{tablePrefix:String?})", "IndexIriIdSetVersion(Map<String,@>{tablePrefix:String?})", "RemoteSetting(Map<String,@>{tablePrefix:String?})", "RemoteSyncStateData(Map<String,@>{tablePrefix:String?})", "_Future<@>?()", "Future<Object>()", "Future<FileList>()", "~(int,@)", "RdfDataset(String)", "int(List<Object?>)", "Map<Type,DriftSqlType<Object>>()", "Future<TypeIndexMappings>(TypeIndexManagerBackend)", "Future<String>()", "bool(_GDriveMirrorIndexEntry)", "Future<~>(_GDriveMirrorIndexEntry)", "Map<String,@>(_GDriveMirrorIndexEntry)", "String(TypeMapping)", "MapEntry<String,String>(IriTerm,String)", "bool(GDriveFolderMode)", "MapEntry<IriTerm,String>(String,@)", "~(String,Expression<Object>)", "RdfNamedGraph(MapEntry<RdfGraphName,RdfGraph>)", "Object?()", "Triple(Quad)", "MapEntry<RdfGraphName,RdfGraph>(RdfGraphName,List<Triple>)", "bool(MapEntry<RdfGraphName,RdfGraph>)", "int(MapEntry<RdfGraphName,RdfGraph>)", "Map<RdfSubject,Map<RdfPredicate,List<Triple>>>(Map<RdfSubject,Map<RdfPredicate,List<Triple>>>,Triple)", "Iterable<RdfPredicate>(Map<RdfPredicate,List<Triple>>)", "Future<TypedResult>(Map<String,Object?>)", "bool(GeneratedColumn<Object>)", "bool(List<Triple>?)", "List<Triple>(List<Triple>?)", "bool(MapEntry<+(IriTerm,IriRole),CompactIri>)", "IriRole(MapEntry<+(IriTerm,IriRole),CompactIri>)", "String(IriRole)", "List<+(IriTerm,IriRole)>(Triple)", "~(Uint8List,int,int)", "String(RdfObject)", "@(RdfObject)", "Iterable<String>(RdfNamedGraph)", "RdfGraph(RdfNamedGraph)", "int(MapEntry<String,String>,MapEntry<String,String>)", "int(RdfSubject,RdfSubject)", "int(RdfPredicate,RdfPredicate)", "bool(BaseResponse)", "bool(Object,StackTrace)", "Duration(int)", "Future<List<Map<String,Object?>>>()", "RdfDataset(String{documentUrl:String?,mimeType:String?})", "MapEntry<String,@>(@,@)", "QueryRow(Map<String,Object?>)", "_ConverterStreamEventSink<@,@>(EventSink<@>)", "Future<~>(QueryExecutor)", "Future<~>(@)", "~(WorkerChannelMessage)", "WorkerContext?()", "~(WorkerContext)", "bool()", "bool(WorkerChannelMessage)", "Object?(WorkerChannelMessage)", "WorkerHandlerChannel()", "~(SyncState)", "~(+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>))", "List<QueryRow>(List<Map<String,Object?>>)", "bool(StorageWorkerHandler)", "String(StorageWorkerHandler)", "bool(RemoteWorkerHandler)", "String(RemoteWorkerHandler)", "Future<Backend>(RemoteWorkerHandler)", "Logger()", "String(String?)", "~(LogRecord)", "OAEPEncoding()(String,Match)", "OAEPEncoding()", "~(Component?)", "PKCS1Encoding()(String,Match)", "PKCS1Encoding()", "RSAEngine()", "AESEngine()", "DESedeEngine()", "CBCBlockCipher()(String,Match)", "CBCBlockCipher()", "CCMBlockCipher()(String,Match)", "CCMBlockCipher()", "CFBBlockCipher()(String,Match)", "CFBBlockCipher()", "CTRBlockCipher()(String,Match)", "CTRBlockCipher()", "ECBBlockCipher()(String,Match)", "ECBBlockCipher()", "Future<WorkerParams>()", "GCMBlockCipher()", "GCTRBlockCipher()(String,Match)", "GCTRBlockCipher()", "IGEBlockCipher()(String,Match)", "IGEBlockCipher()", "OFBBlockCipher()(String,Match)", "OFBBlockCipher()", "SICBlockCipher()(String,Match)", "SICBlockCipher()", "RC2Engine()", "Blake2bDigest()", "CSHAKEDigest()(String,Match)", "CSHAKEDigest()", "KeccakDigest()(String,Match)", "KeccakDigest()", "MD2Digest()", "MD4Digest()", "MD5Digest()", "RIPEMD128Digest()", "RIPEMD160Digest()", "RIPEMD256Digest()", "RIPEMD320Digest()", "SHA224Digest()", "SHA256Digest()", "SHA3Digest()(String,Match)", "SHA3Digest()", "SHA384Digest()", "SHA512Digest()", "SHA512tDigest()(String,Match)", "SHA512tDigest()", "SHAKEDigest()(String,Match)", "SHAKEDigest()", "SM3Digest()", "TigerDigest()", "WhirlpoolDigest()", "ECCurve_brainpoolp160r1()", "ECCurve_brainpoolp160t1()", "ECCurve_brainpoolp192r1()", "ECCurve_brainpoolp192t1()", "ECCurve_brainpoolp224r1()", "ECCurve_brainpoolp224t1()", "ECCurve_brainpoolp256r1()", "ECCurve_brainpoolp256t1()", "ECCurve_brainpoolp320r1()", "ECCurve_brainpoolp320t1()", "ECCurve_brainpoolp384r1()", "ECCurve_brainpoolp384t1()", "ECCurve_brainpoolp512r1()", "ECCurve_brainpoolp512t1()", "ECCurve_gostr3410_2001_cryptopro_a()", "ECCurve_gostr3410_2001_cryptopro_b()", "ECCurve_gostr3410_2001_cryptopro_c()", "ECCurve_gostr3410_2001_cryptopro_xcha()", "ECCurve_gostr3410_2001_cryptopro_xchb()", "ECCurve_prime192v1()", "ECCurve_prime192v2()", "ECCurve_prime192v3()", "ECCurve_prime239v1()", "ECCurve_prime239v2()", "ECCurve_prime239v3()", "ECCurve_prime256v1()", "ECCurve_secp112r1()", "ECCurve_secp112r2()", "ECCurve_secp128r1()", "ECCurve_secp128r2()", "ECCurve_secp160k1()", "ECCurve_secp160r1()", "ECCurve_secp160r2()", "ECCurve_secp192k1()", "ECCurve_secp192r1()", "ECCurve_secp224k1()", "ECCurve_secp224r1()", "ECCurve_secp256k1()", "ECCurve_secp256r1()", "ECCurve_secp384r1()", "ECCurve_secp521r1()", "ECPoint(ECPoint?)", "Argon2BytesGenerator()", "ConcatKDFDerivator()(String,Match)", "ConcatKDFDerivator()", "ECDHKeyDerivator()", "HKDFKeyDerivator()(String,Match)", "HKDFKeyDerivator()", "bool(MapEntry<String,int>)", "PBKDF2KeyDerivator()(String,Match)", "PBKDF2KeyDerivator()", "PKCS12ParametersGenerator()(String,Match)", "PKCS12ParametersGenerator()", "PKCS5S1ParameterGenerator()(String,Match)", "PKCS5S1ParameterGenerator()", "Scrypt()", "ECKeyGenerator()", "RSAKeyGenerator()", "CBCBlockCipherMac()(String,Match)", "CBCBlockCipherMac()", "CMac()(String,Match)", "CMac()", "HMac()(String,Match)", "HMac()", "Poly1305()(String,Match)", "Poly1305()", "PaddedBlockCipherImpl()(String,Match)", "PaddedBlockCipherImpl()", "ISO7816d4Padding()", "PKCS7Padding()", "AutoSeedBlockCtrRandom()(String,Match)", "AutoSeedBlockCtrRandom()", "BigInt()", "~(List<Column<Object>>?,Expression<bool>?)", "BlockCtrRandom()(String,Match)", "BlockCtrRandom()", "FortunaRandom()", "ECDSASigner()(String,Match)", "ECDSASigner()", "PSSSigner()(String,Match)", "PSSSigner()", "RSASigner()(String,Match)", "RSASigner()", "Map<String,@()>()", "Set<DynamicFactoryConfig>()", "ChaCha20Engine()(String,Match)", "ChaCha20Engine()", "ChaCha20Poly1305()", "ChaCha7539Engine()(String,Match)", "ChaCha7539Engine()", "CTRStreamCipher()(String,Match)", "CTRStreamCipher()", "EAX()(String,Match)", "EAX()", "RC4Engine()", "Salsa20Engine()", "SICStreamCipher()(String,Match)", "SICStreamCipher()", "~(GenerationContext)", "String?()", "int(_Line)", "bool(TableUpdateQuery)", "Object(_Line)", "Object(_Highlight)", "int(_Highlight,_Highlight)", "List<_Line>(MapEntry<Object,List<_Highlight>>)", "SourceSpanWithContext()", "String(Object?)", "~(RawSqliteContext,List<RawSqliteValue>)", "~(FinalizablePart)", "~(String,Map<String,Object?>)", "~(String,Object?)", "JSObject(JSObject?)", "Future<~>(int,Uint8List)", "Future<~>(int)", "Future<JSObject>(String)", "Null(QueryExecutor)", "String?(RegExpMatch)", "bool(Set<TableUpdate>)", "Null(int,int)", "Set<TableUpdate>(Set<TableUpdate>)", "int(int,JavaScriptBigInt)", "~(VerificationMeta,VerificationResult)", "Null(int,int,int,int,JavaScriptBigInt)", "Null(JavaScriptBigInt,int)", "List<Frame>(Trace)", "int(Trace)", "Map<String,@>(List<Object?>)", "String(Trace)", "Future<QueryResult>()", "bool(TrackedDatabase)", "Frame(String,String)", "Trace()", "ServiceExtensionResponse(Object?,StackTrace)", "ServiceExtensionResponse(Object?)", "~(Zone?,ZoneDelegate?,Zone,Object,StackTrace)", "0^(Zone?,ZoneDelegate?,Zone,0^())<Object?>", "0^(Zone?,ZoneDelegate?,Zone,0^(1^),1^)<Object?,Object?>", "0^(Zone?,ZoneDelegate?,Zone,0^(1^,2^),1^,2^)<Object?,Object?,Object?>", "0^()(Zone,ZoneDelegate,Zone,0^())<Object?>", "0^(1^)(Zone,ZoneDelegate,Zone,0^(1^))<Object?,Object?>", "0^(1^,2^)(Zone,ZoneDelegate,Zone,0^(1^,2^))<Object?,Object?,Object?>", "AsyncError?(Zone,ZoneDelegate,Zone,Object,StackTrace?)", "~(Zone?,ZoneDelegate?,Zone,~())", "Timer(Zone,ZoneDelegate,Zone,Duration,~())", "Timer(Zone,ZoneDelegate,Zone,Duration,~(Timer))", "~(Zone,ZoneDelegate,Zone,String)", "Zone(Zone?,ZoneDelegate?,Zone,ZoneSpecification?,Map<Object?,Object?>?)", "int(String{onError:int(String)?,radix:int?})", "0^(0^,0^)<num>", "SelectResult(List<QueryRow>)", "int(~)", "bool?(List<Object?>)", "bool?(List<@>)", "WasmInitializationMessage(JSObject)", "_RdfObjectComparison(RdfObject)", "List<RdfObject>(@)", "DateTime()", "ECCurve_brainpoolp160r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp160t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp192r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp192t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp224r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp224t1(String,ECCurve0,ECPoint0,BigInt,BigInt?,List<int>?)", "ECCurve_brainpoolp256r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp256t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp320r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp320t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp384r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp384t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp512r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp512t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_a(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_b(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_c(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_xcha(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_xchb(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_prime192v1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime192v2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime192v3(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime239v1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime239v2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime239v3(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime256v1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp112r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp112r2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp128r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp128r2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp160k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp160r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp160r2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp192k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp192r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp224k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp224r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp256k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp256r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp384r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp521r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECPointBase?(ECPointBase,BigInt?,PreCompInfo?)", "EmptyMessage(MessageSerializer)", "Flags(MessageSerializer)", "NameAndInt32Flags(MessageSerializer)", "Future<ServiceExtensionResponse>(String,Map<String,String>)", "Future<Object?>()", "TriGParsingFlag(TurtleParsingFlag)", "int(0^,0^)<Comparable<0^>>", "ValidationResult(RegexTransform)", "GCMBlockCipher()(String,Match)"],
+    types: ["~()", "Future<~>()", "bool(Triple)", "~(Object?)", "bool(String)", "Null()", "String(String)", "bool(Object?)", "int(int,int)", "~(Object,StackTrace)", "~(JSObject)", "String(IriTerm)", "RdfObject(Triple)", "bool(IriTerm)", "double(num)", "int()", "Null(Object,StackTrace)", "Expression<bool>($SyncDocumentsTable)", "String(@)", "Future<@>()", "Null(@)", "~(Object[StackTrace?])", "int(Object?)", "Null(int)", "Future<Null>()", "0&()", "TraversalDecision(Triple,int)", "bool(RdfObject)", "Triple(RdfObject)", "int(int)", "bool(ValidationResult)", "RdfSubject(Triple)", "Frame()", "RdfGraph(RdfGraph)", "BlankNodeTerm()", "Null(JSObject)", "String(RdfGraph)", "List<Triple>(List<Triple>)", "String(Match)", "Future<RemoteUploadResult>()", "~(@)", "Object?(Object?)", "bool(ResourceConfigData)", "List<RdfObject>()", "int(IriTerm,IriTerm)", "String()", "Future<bool>()", "IriTerm(String)", "Null(@,@)", "IriTerm(IriTerm)", "Frame(String)", "Future<int>()", "String(Triple)", "List<Triple>()", "Future<+appData,crdtDocument,currentCursor,documentIri,missingGroupIndices,physicalTime,previousCursor,resourceIri,updatedAt(RdfGraph,RdfGraph,String,IriTerm,List<MissingGroupIndex>,int,String?,RdfSubject,int)?>()", "bool(_IndexMetadata)", "List<Triple>(RdfGraph)", "bool(PredicateMergeRule)", "RdfPredicate(PredicateMergeRule)", "List<Triple>(RdfSubject)", "Triple(Triple)", "Iterable<Triple>(RdfSubject)", "IriTerm(ResourceConfigData)", "Set<RdfObject>()", "IndexEntryWithIri(DriftIndexEntry)", "Future<List<Map<String,Object?>>>(QueryExecutor)", "bool(Object?,Object?)", "Expression<bool>($IndexEntriesTable)", "int(IndexEntry)", "Expression<bool>($RemoteSettingsTable)", "~(Map<String,@>)", "_RandomAccessFile(Object?)", "~(Object?,Object?)", "bool(SyncTrigger)", "SyncTrigger()", "bool(_Highlight)", "int(int,int,int)", "Null(int,int,int)", "@(@)", "~(~())", "~([Future<@>?])", "String(int)", "User(@)", "@()", "bool(TableUpdate)", "Future<int>(QueryExecutor)", "num?(List<Object?>)", "~(JSObject?,List<JSObject>?)", "MapEntry<String,String?>(String,@)", "int(String?)", "~(List<int>)", "bool(String,String)", "~(List<RemoteStorage>)", "Future<RemoteDownloadResult<RdfGraph>>()", "Future<RemoteDownloadResult<RdfDataset>>()", "String(Frame)", "SHA1Digest()", "+(String,String)(+(IriTerm,RdfGraph))", "~(String)", "+(String,String)(@)", "Map<String,String>(+(String,String))", "RdfGraph(String{documentUrl:String?,mimeType:String?})", "Map<String,@>(MapEntry<RdfSubject,List<Triple>>)", "List<Triple>?(RdfPredicate)", "bool(Quad)", "String(RdfDataset)", "@(Variable<Object>)", "RdfGraph(String)", "Trace(String)", "Future<File>()", "Future<int>(QueryExecutor,String,List<@>)", "Expression<bool>($IndexIriIdSetVersionsTable)", "DriftIndexEntry(IndexEntry)", "OrderingTerm($IndexEntriesTable)", "Uint8List()", "OrderingTerm($SyncDocumentsTable)", "Expression<bool>($SyncIrisTable)", "~(Timer)", "int?(int)", "int(Frame)", "bool(IndexEntryWithIri)", "IriTerm(_DocumentQueueEntry)", "int(int,int,int,JavaScriptBigInt)", "RdfGraph(Object?)", "Future<RemoteUploadResult>(IriTerm,Object?{ifMatch:String?})", "Future<RemoteDownloadResult<RdfGraph>>(IriTerm{ifNoneMatch:String?})", "List<Triple>(+(RdfSubject,RdfGraph))", "RdfObjectKey(RdfObject)", "ValidationResult(+(PredicateRule?,ValidationResult))", "PredicateRule?(+(PredicateRule?,ValidationResult))", "+(PredicateRule?,ValidationResult)(RdfSubject)", "int(int,int,int,int)", "@(String)", "bool(RdfSubject)", "ValidationResult(+(DocumentMapping,ValidationResult))", "DocumentMapping(+(DocumentMapping,ValidationResult))", "~(@,@)", "Future<StreamedResponse>()", "int(int,int,int,int,int)", "List<DocumentMapping>(DocumentMapping)", "bool(@)", "~([~])", "~(Set<TableUpdate>)", "~(String,String)", "int(GroupingProperty,GroupingProperty)", "~(List<IndexEntryWithIri>)", "RdfPredicate(Triple)", "RdfGraph(RdfSubject)", "~([Future<~>?])", "Object(RdfObject)", "Iterable<Triple>(BlankNodeTerm)", "Future<Uint8List>(RandomAccessFile)", "int(@,@)", "Map<String,@>(CrdtIndexData)", "int(ResourceConfigData,ResourceConfigData)", "Iterable<+(CrdtIndexData,IriTerm)>(ResourceConfigData)", "+(CrdtIndexData,IriTerm)(CrdtIndexData)", "ResourceConfigData(@)", "Map<String,@>(ResourceConfigData)", "_Directory(Object?)", "String(ResourceConfigBase)", "@(@,String)", "MapEntry<RdfPredicate,Iterable<RdfObject>>(RdfPredicate,Set<RdfObject>)", "MergeResults(MergeResults,MergeResults)", "MetadataStatement(MetadataStatement)", "MetadataStatement()", "Future<@>(@)", "+(RdfObject,num)(RdfObject)", "+(RdfObject,num)(+(RdfObject,num),+(RdfObject,num))", "+(RdfObject,DateTime)(RdfObject)", "+(RdfObject,DateTime)(+(RdfObject,DateTime),+(RdfObject,DateTime))", "+(RdfObject,String)(RdfObject)", "+(RdfObject,String)(+(RdfObject,String),+(RdfObject,String))", "bool(CrdtIndexData)", "int(CrdtIndexData,CrdtIndexData)", "Null(Uint8List)", "String(RegExpMatch)", "Iterable<+(RdfSubject,RdfGraph)>(RdfObject)", "Future<Uint8List>(RandomAccessFile,int)", "Triple(Object)", "Map<String,@>(GroupingProperty)", "Future<Uint8List>(int)", "Future<File0>(RandomAccessFile)", "GroupingProperty(@)", "File0/(RandomAccessFile)", "MergeInstruction()", "_File(RandomAccessFile)", "Future<Directory>(Directory)", "+(RdfSubject,RdfGraph)(RdfSubject)", "bool(+(RdfSubject,RdfGraph))", "RdfGraph(+(RdfSubject,RdfGraph))", "+ours,theirs(List<+(RdfSubject,RdfGraph)>,List<+(RdfSubject,RdfGraph)>)(+ours,theirs(List<+(RdfSubject,RdfGraph)>,List<+(RdfSubject,RdfGraph)>),+(RdfSubject,RdfGraph))", "~(List<String>)", "List<_PropertyExtractor>()", "int(_PropertyExtractor,_PropertyExtractor)", "RdfObject(@)", "Map<String,@>(RdfObject)", "RegexTransform(@)", "Map<String,@>(RegexTransform)", "Future<FullIndexData?>(IriTerm,ShardDeterminationMode)", "Future<GroupIndexData?>(IriTerm,ShardDeterminationMode)", "IriTerm(@)", "Null(Object?)", "Set<_IndexMetadata>()", "Uint8List(Object?)", "bool(IriTerm,Set<_IndexMetadata>)", "FullIndexData?(RdfGraph,IriTerm)", "GroupIndexData?(RdfGraph,IriTerm)", "~(@,StackTrace)", "Triple(IriTerm)", "Iterable<Triple>(MapEntry<IriTerm,List<RdfObject>>)", "GroupingProperty?(RdfSubject)", "int(GroupingProperty)", "RegexTransform(RdfSubject)", "RdfObject(RegexTransform)", "String(GroupingProperty)", "String(RegexTransform)", "+(BlankNodeTerm,RdfGraph)(IriTerm)", "RegExp(RegexTransform)", "Directory/(bool)", "IdentifiedRdfSubject?(RdfSubject)", "Future<PerflogRemoteSyncStorage>()", "PerflogRemoteStorage(RemoteStorage)", "Map<IriTerm,ClassMapping>(DocumentMapping)", "Iterable<ClassMapping>(Map<IriTerm,ClassMapping>)", "Map<IriTerm,List<ClassMapping>>(Map<IriTerm,List<ClassMapping>>,ClassMapping)", "List<ClassMapping>()", "ClassMapping(MapEntry<IriTerm,List<ClassMapping>>)", "Map<RdfPredicate,PredicateRule>(ClassMapping)", "List<PredicateMapping>(DocumentMapping)", "Map<RdfPredicate,PredicateRule>(PredicateMapping)", "PredicateRule()", "Iterable<Triple>(IdentifiedBlankNode)", "~(String,List<String>)", "int(MapEntry<RdfPredicate,List<RdfObject>>)", "bool(MapEntry<RdfPredicate,List<RdfObject>>)", "Null(~())", "IriTerm(IdentifiedBlankNode)", "Map<BlankNodeTerm,List<Triple>>(Map<BlankNodeTerm,List<Triple>>,Triple)", "ApiRequestErrorDetail(@)", "Iterable<BlankNodeTerm>(List<IdentifiedBlankNode>)", "Set<BlankNodeTerm>(IdentifiedBlankNode)", "List<BlankNodeTerm>()", "List<String>(IdentifiedBlankNode)", "MediaType()", "BlankNodeTerm(IdentifiedBlankNode)", "bool(BlankNodeTerm)", "List<IdentifiedBlankNode>(Triple)", "IdentifiedBlankNode(IdentifiedBlankNode)", "Null(@,StackTrace)", "~(int)", "ResponsePayload?/(Request0)", "Null(~)", "Map<RdfPredicate,List<ClassMergeRules>>(Map<RdfPredicate,List<ClassMergeRules>>,MapEntry<IriTerm,ClassMergeRules>)", "List<ClassMergeRules>()", "String(ClassMergeRules)", "bool(RdfPredicate)", "Future<MergeContract>()", "Future<MergeContract>(@)", "Null(MergeContract)", "List<IriTerm>(RdfGraph)", "+(List<IriTerm>,Set<IriTerm>)(+(List<IriTerm>,Set<IriTerm>),List<IriTerm>)", "+(DocumentMapping,ValidationResult)(IriTerm)", "~(MultiStreamController<List<int>>)", "Null(String,String[Object?])", "Null(Object?,StackTrace)", "+(PredicateMapping?,ValidationResult)(RdfSubject)", "PredicateMapping?(+(PredicateMapping?,ValidationResult))", "ValidationResult(+(PredicateMapping?,ValidationResult))", "int(String)", "+(DocumentMapping,ValidationResult)(RdfSubject)", "PermissionTeamDrivePermissionDetails(@)", "PermissionPermissionDetails(@)", "String(DateTime)", "bool(MapEntry<RdfSubject,ValidationResult>)", "Iterable<+(IriTerm,RdfGraph)>(IriTerm)", "+(IriTerm,RdfGraph)(RdfObject?)", "MapEntry<IriTerm,RdfGraph>(String)", "Future<~>(IriTerm)", "IriTerm?()", "bool(Backend)", "bool(RemoteStorage)", "ResourceConfigData(ResourceConfigData)", "CrdtIndexData(CrdtIndexData)", "FullIndexData()", "RemoteSyncOrchestrator(RemoteSyncStorage,RemoteId{useShardDatasets!bool})", "Future<~>(DateTime)", "Future<~>()(Backend)", "Stream<+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)>(Set<IriTerm>)", "bool(List<IndexEntryWithIri>)", "+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(List<IndexEntryWithIri>)", "+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(List<StoredDocument>,String?)", "+(List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(+(List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>),StoredDocument)", "+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>)(DocumentsResult)", "Future<RemoteSyncStorage>()", "Iterable<MapEntry<MetadataStatementKey,MetadataStatement>>(MetadataStatement)", "MapEntry<MetadataStatementKey,MetadataStatement>(MetadataStatementKey)", "Set<+(RdfSubject,RdfGraph)>()", "Set<MetadataStatementKey>()", "MetadataStatement(MapEntry<MetadataStatementKey,Set<+(RdfSubject,RdfGraph)>>)", "Map<RdfPredicate,Set<RdfObject>>(Map<RdfPredicate,Set<RdfObject>>,+(RdfSubject,RdfGraph))", "bool(MapEntry<MetadataStatementKey,MetadataStatement>)", "MetadataStatement(MapEntry<MetadataStatementKey,MetadataStatement>)", "Iterable<MetadataStatement?>(RdfSubject)", "MetadataStatement?(RdfObject)", "bool(MetadataStatement?)", "DateTime(@)", "MergeObject(RdfObjectKey)", "MergeSubject(RdfObjectKey)", "Iterable<IriTerm>(Iterable<IriTerm>)", "Map<BlankNodeTerm,Set<IriTerm>>(Map<BlankNodeTerm,Set<IriTerm>>,Triple)", "Set<IriTerm>()", "int(+(int,int))", "RdfObjectKey(RdfSubject)", "bool(PrimitiveResponsePayload)", "MergeResults(MergeSubject)", "Iterable<Triple>(MapEntry<BlankNodeTerm,List<IriTerm>>)", "List<Triple>(IriTerm)", "Iterable<+(RdfSubject,RdfGraph)>(MetadataStatement)", "bool(Object)", "Iterable<Triple>(Iterable<+(RdfSubject,RdfGraph)>)", "MapEntry<String,LabelField>(String,@)", "Iterable<Triple>(MapEntry<RdfPredicate,Iterable<RdfObject>>)", "Iterable<RdfObject>(RdfObject)", "String(MapEntry<IriTerm,Map<IriTerm,String>>)", "String(MapEntry<IriTerm,String>)", "Future<~>(Request0)", "FullIndexSync(FullIndexData)", "FullIndexSync(+(IriTerm,IriTerm,ItemFetchPolicy))", "IriTerm(+(IriTerm,IriTerm,ItemFetchPolicy))", "IriTerm(IndexSyncSpec)", "FullShardSync(IriTerm)", "PartialShardSync(MapEntry<IriTerm,Map<IriTerm,String>>)", "PartialIndexSync(MapEntry<IriTerm,Map<IriTerm,Map<IriTerm,String>>>)", "int(PartialIndexSync)", "Future<~>()(IndexSyncSpec)", "Future<~>()(ShardSyncSpec)", "File(@)", "Future<RemoteUploadResult>(IriTerm,RdfGraph{ifMatch:String?})", "Permission(@)", "0&(String,int?)", "Future<RemoteDownloadResult<RdfDataset>>(IriTerm{ifNoneMatch:String?})", "IriTerm?(IriTerm)", "MapEntry<String,String>(String,@)", "ContentRestriction(@)", "MapEntry<IriTerm,String>(IriTerm,+(String,Set<RdfObject>?))", "_DocumentQueueEntry(MapEntry<IriTerm,String>)", "_DocumentQueueEntry(IriTerm)", "+documentIri,lastSyncTimestamp,shouldSync,syncTime(IriTerm,int,bool,DateTime)(_DocumentQueueEntry)", "bool(+documentIri,lastSyncTimestamp,shouldSync,syncTime(IriTerm,int,bool,DateTime))", "Future<~>()(+documentIri,lastSyncTimestamp,shouldSync,syncTime(IriTerm,int,bool,DateTime))", "Label(@)", "bool(WasmStorageImplementation)", "bool(FullIndexData)", "String(ResourceConfigData)", "Future<SaveDocumentResult>()", "DocumentsResult(List<DocumentWithIri>)", "Expression<bool>($SyncSettingsTable)", "Request0()", "List<IndexEntryWithIri>(List<DriftIndexEntry>)", "+(IriTerm,IriTerm,ItemFetchPolicy)(SubscribedGroupIndexData)", "SuccessResponse()", "+indexIri,maxPhysicalClock,resourceTypeIri,shardIri(IriTerm,int,IriTerm,IriTerm)(+indexIri,maxPhysicalClock,resourceTypeIri,shardIri(String,int,String,String))", "StoredDocument(DocumentWithIri)", "int(WasmStorageImplementation)", "ExecuteBatchedStatement()", "bool(IdentifiedBlankNode)", "bool(int)", "int(SyncDocument)", "DocumentWithIri(SyncDocument)", "List<String>(PropertyChange)", "SyncPropertyChangesCompanion(PropertyChange)", "Null(Batch)", "List<Object?>(JSArray<Object?>)", "WasmInitializationMessage(WasmInitializationMessage)", "TableUpdate(Object?)", "~(MultiStreamController<WasmInitializationMessage>)", "Future<~>(List<IndexEntry>)", "bool(IndexEntry)", "Expression<bool>($GroupIndexSubscriptionsTable)", "Set<int>(List<GroupIndexSubscription>)", "int(GroupIndexSubscription)", "SubscribedGroupIndexData(TypedResult)", "~(Object?,List<JSObject>?)", "DriftIndexEntry(TypedResult)", "+indexIri,maxPhysicalClock,resourceTypeIri,shardIri(String,int,String,String)(QueryRow)", "Map<String,Map<String,String>>()", "Map<String,String>()", "~(MultiStreamController<Set<TableUpdate>>)", "Expression<bool>($RemoteSyncStateTable)", "Future<~>(Migrator)", "Future<~>(Migrator,int,int)", "SyncIri(Map<String,@>{tablePrefix:String?})", "SyncDocument(Map<String,@>{tablePrefix:String?})", "SyncPropertyChange(Map<String,@>{tablePrefix:String?})", "SyncSetting(Map<String,@>{tablePrefix:String?})", "IndexEntry(Map<String,@>{tablePrefix:String?})", "GroupIndexSubscription(Map<String,@>{tablePrefix:String?})", "IndexIriIdSetVersion(Map<String,@>{tablePrefix:String?})", "RemoteSetting(Map<String,@>{tablePrefix:String?})", "RemoteSyncStateData(Map<String,@>{tablePrefix:String?})", "_Future<@>?()", "~(int,@)", "Future<Object>()", "Future<FileList>()", "int(List<Object?>)", "RdfDataset(String)", "Map<Type,DriftSqlType<Object>>()", "~(String,Expression<Object>)", "Future<TypeIndexMappings>(TypeIndexManagerBackend)", "Future<String>()", "bool(_GDriveMirrorIndexEntry)", "Future<~>(_GDriveMirrorIndexEntry)", "Map<String,@>(_GDriveMirrorIndexEntry)", "String(TypeMapping)", "MapEntry<String,String>(IriTerm,String)", "bool(GDriveFolderMode)", "MapEntry<IriTerm,String>(String,@)", "RdfNamedGraph(MapEntry<RdfGraphName,RdfGraph>)", "Object?()", "Triple(Quad)", "MapEntry<RdfGraphName,RdfGraph>(RdfGraphName,List<Triple>)", "bool(MapEntry<RdfGraphName,RdfGraph>)", "int(MapEntry<RdfGraphName,RdfGraph>)", "Map<RdfSubject,Map<RdfPredicate,List<Triple>>>(Map<RdfSubject,Map<RdfPredicate,List<Triple>>>,Triple)", "Iterable<RdfPredicate>(Map<RdfPredicate,List<Triple>>)", "Future<TypedResult>(Map<String,Object?>)", "Future<~>(QueryExecutor)", "bool(List<Triple>?)", "List<Triple>(List<Triple>?)", "bool(MapEntry<+(IriTerm,IriRole),CompactIri>)", "IriRole(MapEntry<+(IriTerm,IriRole),CompactIri>)", "String(IriRole)", "List<+(IriTerm,IriRole)>(Triple)", "bool(GeneratedColumn<Object>)", "String(RdfObject)", "@(RdfObject)", "Iterable<String>(RdfNamedGraph)", "RdfGraph(RdfNamedGraph)", "int(MapEntry<String,String>,MapEntry<String,String>)", "int(RdfSubject,RdfSubject)", "int(RdfPredicate,RdfPredicate)", "bool(BaseResponse)", "bool(Object,StackTrace)", "Duration(int)", "~(Uint8List,int,int)", "RdfDataset(String{documentUrl:String?,mimeType:String?})", "MapEntry<String,@>(@,@)", "Future<List<Map<String,Object?>>>()", "QueryRow(Map<String,Object?>)", "Future<~>(@)", "_ConverterStreamEventSink<@,@>(EventSink<@>)", "~(WorkerChannelMessage)", "WorkerContext?()", "~(WorkerContext)", "bool()", "bool(WorkerChannelMessage)", "Object?(WorkerChannelMessage)", "WorkerHandlerChannel()", "~(SyncState)", "~(+cursor,deletions,updates(String?,List<+(IriTerm,RdfGraph)>,List<+(IriTerm,RdfGraph)>))", "List<QueryRow>(List<Map<String,Object?>>)", "bool(StorageWorkerHandler)", "String(StorageWorkerHandler)", "bool(RemoteWorkerHandler)", "String(RemoteWorkerHandler)", "Future<Backend>(RemoteWorkerHandler)", "Logger()", "String(String?)", "~(LogRecord)", "OAEPEncoding()(String,Match)", "OAEPEncoding()", "~(Component?)", "PKCS1Encoding()(String,Match)", "PKCS1Encoding()", "RSAEngine()", "AESEngine()", "DESedeEngine()", "CBCBlockCipher()(String,Match)", "CBCBlockCipher()", "CCMBlockCipher()(String,Match)", "CCMBlockCipher()", "CFBBlockCipher()(String,Match)", "CFBBlockCipher()", "CTRBlockCipher()(String,Match)", "CTRBlockCipher()", "ECBBlockCipher()(String,Match)", "ECBBlockCipher()", "Future<WorkerParams>()", "GCMBlockCipher()", "GCTRBlockCipher()(String,Match)", "GCTRBlockCipher()", "IGEBlockCipher()(String,Match)", "IGEBlockCipher()", "OFBBlockCipher()(String,Match)", "OFBBlockCipher()", "SICBlockCipher()(String,Match)", "SICBlockCipher()", "RC2Engine()", "Blake2bDigest()", "CSHAKEDigest()(String,Match)", "CSHAKEDigest()", "KeccakDigest()(String,Match)", "KeccakDigest()", "MD2Digest()", "MD4Digest()", "MD5Digest()", "RIPEMD128Digest()", "RIPEMD160Digest()", "RIPEMD256Digest()", "RIPEMD320Digest()", "SHA224Digest()", "SHA256Digest()", "SHA3Digest()(String,Match)", "SHA3Digest()", "SHA384Digest()", "SHA512Digest()", "SHA512tDigest()(String,Match)", "SHA512tDigest()", "SHAKEDigest()(String,Match)", "SHAKEDigest()", "SM3Digest()", "TigerDigest()", "WhirlpoolDigest()", "ECCurve_brainpoolp160r1()", "ECCurve_brainpoolp160t1()", "ECCurve_brainpoolp192r1()", "ECCurve_brainpoolp192t1()", "ECCurve_brainpoolp224r1()", "ECCurve_brainpoolp224t1()", "ECCurve_brainpoolp256r1()", "ECCurve_brainpoolp256t1()", "ECCurve_brainpoolp320r1()", "ECCurve_brainpoolp320t1()", "ECCurve_brainpoolp384r1()", "ECCurve_brainpoolp384t1()", "ECCurve_brainpoolp512r1()", "ECCurve_brainpoolp512t1()", "ECCurve_gostr3410_2001_cryptopro_a()", "ECCurve_gostr3410_2001_cryptopro_b()", "ECCurve_gostr3410_2001_cryptopro_c()", "ECCurve_gostr3410_2001_cryptopro_xcha()", "ECCurve_gostr3410_2001_cryptopro_xchb()", "ECCurve_prime192v1()", "ECCurve_prime192v2()", "ECCurve_prime192v3()", "ECCurve_prime239v1()", "ECCurve_prime239v2()", "ECCurve_prime239v3()", "ECCurve_prime256v1()", "ECCurve_secp112r1()", "ECCurve_secp112r2()", "ECCurve_secp128r1()", "ECCurve_secp128r2()", "ECCurve_secp160k1()", "ECCurve_secp160r1()", "ECCurve_secp160r2()", "ECCurve_secp192k1()", "ECCurve_secp192r1()", "ECCurve_secp224k1()", "ECCurve_secp224r1()", "ECCurve_secp256k1()", "ECCurve_secp256r1()", "ECCurve_secp384r1()", "ECCurve_secp521r1()", "ECPoint(ECPoint?)", "Argon2BytesGenerator()", "ConcatKDFDerivator()(String,Match)", "ConcatKDFDerivator()", "ECDHKeyDerivator()", "HKDFKeyDerivator()(String,Match)", "HKDFKeyDerivator()", "bool(MapEntry<String,int>)", "PBKDF2KeyDerivator()(String,Match)", "PBKDF2KeyDerivator()", "PKCS12ParametersGenerator()(String,Match)", "PKCS12ParametersGenerator()", "PKCS5S1ParameterGenerator()(String,Match)", "PKCS5S1ParameterGenerator()", "Scrypt()", "ECKeyGenerator()", "RSAKeyGenerator()", "CBCBlockCipherMac()(String,Match)", "CBCBlockCipherMac()", "CMac()(String,Match)", "CMac()", "HMac()(String,Match)", "HMac()", "Poly1305()(String,Match)", "Poly1305()", "PaddedBlockCipherImpl()(String,Match)", "PaddedBlockCipherImpl()", "ISO7816d4Padding()", "PKCS7Padding()", "AutoSeedBlockCtrRandom()(String,Match)", "AutoSeedBlockCtrRandom()", "BigInt()", "~(List<Column<Object>>?,Expression<bool>?)", "BlockCtrRandom()(String,Match)", "BlockCtrRandom()", "FortunaRandom()", "ECDSASigner()(String,Match)", "ECDSASigner()", "PSSSigner()(String,Match)", "PSSSigner()", "RSASigner()(String,Match)", "RSASigner()", "Map<String,@()>()", "Set<DynamicFactoryConfig>()", "ChaCha20Engine()(String,Match)", "ChaCha20Engine()", "ChaCha20Poly1305()", "ChaCha7539Engine()(String,Match)", "ChaCha7539Engine()", "CTRStreamCipher()(String,Match)", "CTRStreamCipher()", "EAX()(String,Match)", "EAX()", "RC4Engine()", "Salsa20Engine()", "SICStreamCipher()(String,Match)", "SICStreamCipher()", "~(GenerationContext)", "String?()", "int(_Line)", "String?(RegExpMatch)", "Object(_Line)", "Object(_Highlight)", "int(_Highlight,_Highlight)", "List<_Line>(MapEntry<Object,List<_Highlight>>)", "SourceSpanWithContext()", "String(Object?)", "~(RawSqliteContext,List<RawSqliteValue>)", "~(FinalizablePart)", "~(String,Map<String,Object?>)", "~(String,Object?)", "JSObject(JSObject?)", "Future<~>(int,Uint8List)", "Future<~>(int)", "Future<JSObject>(String)", "bool(TableUpdateQuery)", "~(VerificationMeta,VerificationResult)", "Null(QueryExecutor)", "Null(int,int)", "bool(Set<TableUpdate>)", "int(int,JavaScriptBigInt)", "bool(TrackedDatabase)", "Null(int,int,int,int,JavaScriptBigInt)", "Null(JavaScriptBigInt,int)", "List<Frame>(Trace)", "int(Trace)", "Set<TableUpdate>(Set<TableUpdate>)", "String(Trace)", "Map<String,@>(List<Object?>)", "Future<QueryResult>()", "Frame(String,String)", "Trace()", "ServiceExtensionResponse(Object?,StackTrace)", "SelectResult(List<QueryRow>)", "~(Zone?,ZoneDelegate?,Zone,Object,StackTrace)", "0^(Zone?,ZoneDelegate?,Zone,0^())<Object?>", "0^(Zone?,ZoneDelegate?,Zone,0^(1^),1^)<Object?,Object?>", "0^(Zone?,ZoneDelegate?,Zone,0^(1^,2^),1^,2^)<Object?,Object?,Object?>", "0^()(Zone,ZoneDelegate,Zone,0^())<Object?>", "0^(1^)(Zone,ZoneDelegate,Zone,0^(1^))<Object?,Object?>", "0^(1^,2^)(Zone,ZoneDelegate,Zone,0^(1^,2^))<Object?,Object?,Object?>", "AsyncError?(Zone,ZoneDelegate,Zone,Object,StackTrace?)", "~(Zone?,ZoneDelegate?,Zone,~())", "Timer(Zone,ZoneDelegate,Zone,Duration,~())", "Timer(Zone,ZoneDelegate,Zone,Duration,~(Timer))", "~(Zone,ZoneDelegate,Zone,String)", "Zone(Zone?,ZoneDelegate?,Zone,ZoneSpecification?,Map<Object?,Object?>?)", "int(String{onError:int(String)?,radix:int?})", "0^(0^,0^)<num>", "int(~)", "Future<ServiceExtensionResponse>(String,Map<String,String>)", "bool?(List<Object?>)", "bool?(List<@>)", "WasmInitializationMessage(JSObject)", "_RdfObjectComparison(RdfObject)", "List<RdfObject>(@)", "DateTime()", "ECCurve_brainpoolp160r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp160t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp192r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp192t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp224r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp224t1(String,ECCurve0,ECPoint0,BigInt,BigInt?,List<int>?)", "ECCurve_brainpoolp256r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp256t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp320r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp320t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp384r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp384t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp512r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_brainpoolp512t1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_a(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_b(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_c(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_xcha(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_gostr3410_2001_cryptopro_xchb(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_prime192v1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime192v2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime192v3(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime239v1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime239v2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime239v3(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_prime256v1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp112r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp112r2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp128r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp128r2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp160k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp160r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp160r2(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp192k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp192r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp224k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp224r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp256k1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>?)", "ECCurve_secp256r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp384r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECCurve_secp521r1(String,ECCurve0,ECPoint0,BigInt,BigInt,List<int>)", "ECPointBase?(ECPointBase,BigInt?,PreCompInfo?)", "EmptyMessage(MessageSerializer)", "Flags(MessageSerializer)", "NameAndInt32Flags(MessageSerializer)", "Future<Object?>()", "ServiceExtensionResponse(Object?)", "TriGParsingFlag(TurtleParsingFlag)", "int(0^,0^)<Comparable<0^>>", "ValidationResult(RegexTransform)", "GCMBlockCipher()(String,Match)"],
     interceptorsByTag: null,
     leafTags: null,
     arrayRti: Symbol("$ti"),
@@ -95860,6 +96010,7 @@
       _AsyncCompleter_Uint8List: findType("_AsyncCompleter<Uint8List>"),
       _AsyncCompleter_bool: findType("_AsyncCompleter<bool>"),
       _AsyncCompleter_int: findType("_AsyncCompleter<int>"),
+      _AsyncCompleter_nullable_LocordaDriftWebOptions: findType("_AsyncCompleter<LocordaDriftWebOptions?>"),
       _AsyncCompleter_void: findType("_AsyncCompleter<~>"),
       _BigIntImpl: findType("_BigIntImpl"),
       _ConverterStreamEventSink_dynamic_dynamic: findType("_ConverterStreamEventSink<@,@>"),
@@ -95881,6 +96032,7 @@
       _Future_bool: findType("_Future<bool>"),
       _Future_dynamic: findType("_Future<@>"),
       _Future_int: findType("_Future<int>"),
+      _Future_nullable_LocordaDriftWebOptions: findType("_Future<LocordaDriftWebOptions?>"),
       _Future_nullable_Object: findType("_Future<Object?>"),
       _Future_void: findType("_Future<~>"),
       _GDriveMirrorIndexEntry: findType("_GDriveMirrorIndexEntry"),
@@ -95950,6 +96102,7 @@
       nullable_List_Triple: findType("List<Triple>?"),
       nullable_List_dynamic: findType("List<@>?"),
       nullable_List_int: findType("List<int>?"),
+      nullable_LocordaDriftWebOptions: findType("LocordaDriftWebOptions?"),
       nullable_Map_BlankNodeTerm_String: findType("Map<BlankNodeTerm,String>?"),
       nullable_Map_IriTerm_String: findType("Map<IriTerm,String>?"),
       nullable_Map_String_Object: findType("Map<String,Object>?"),
@@ -96253,6 +96406,7 @@
     B.Duration_0 = new A.Duration(0);
     B.Duration_10000000 = new A.Duration(10000000);
     B.Duration_1800000000 = new A.Duration(1800000000);
+    B.Duration_2000000 = new A.Duration(2000000);
     B.ExpectationSeverity_1 = new A.ExpectationSeverity(1, "major");
     B.ExpectationSeverity_2 = new A.ExpectationSeverity(2, "critical");
     B.FileMode_0 = new A.FileMode(0);
@@ -97223,14 +97377,15 @@
     _lazyFinal($, "indexIndexItemConfig", "$get$indexIndexItemConfig", () => A.IndexItemData$(A.LinkedHashSet_LinkedHashSet$_literal([B.IriTerm_lKz], type$.IriTerm)));
     _lazyFinal($, "_log17", "$get$_log14", () => A.Logger_Logger("RetryUtil"));
     _lazyFinal($, "IriTermExtensions__debugStringCache0", "$get$IriTermExtensions__debugStringCache0", () => A.LRUCache$(100, type$.IriTerm, type$.String));
+    _lazyFinal($, "_log18", "$get$_log33", () => A.Logger_Logger("WorkerDriftConfigReceiver"));
     _lazyFinal($, "_clientLog", "$get$_clientLog", () => A.Logger_Logger("GDriveClient"));
-    _lazyFinal($, "_log18", "$get$_log27", () => A.Logger_Logger("GDriveBackend"));
+    _lazyFinal($, "_log19", "$get$_log27", () => A.Logger_Logger("GDriveBackend"));
     _lazyFinal($, "_mirrorLog", "$get$_mirrorLog", () => A.Logger_Logger("GDriveLocalMirror"));
-    _lazyFinal($, "_log19", "$get$_log28", () => A.Logger_Logger("GDriveTypeIndexManager"));
+    _lazyFinal($, "_log20", "$get$_log28", () => A.Logger_Logger("GDriveTypeIndexManager"));
     _lazyFinal($, "GDriveTypeIndexManager__indexTypes", "$get$GDriveTypeIndexManager__indexTypes", () => A.LinkedHashSet_LinkedHashSet$_literal([B.IriTerm_EF8, B.IriTerm_oTK, B.IriTerm_Dot, B.IriTerm_IIm], type$.IriTerm));
-    _lazyFinal($, "_log20", "$get$_log26", () => A.Logger_Logger("WorkerGDriveAuthProvider"));
-    _lazyFinal($, "_log21", "$get$_log29", () => A.Logger_Logger("WorkerGDriveConfigReceiver"));
-    _lazyFinal($, "_log22", "$get$_log3", () => A.Logger_Logger("locorda_rdf_core.iri_compaction"));
+    _lazyFinal($, "_log21", "$get$_log26", () => A.Logger_Logger("WorkerGDriveAuthProvider"));
+    _lazyFinal($, "_log22", "$get$_log29", () => A.Logger_Logger("WorkerGDriveConfigReceiver"));
+    _lazyFinal($, "_log23", "$get$_log3", () => A.Logger_Logger("locorda_rdf_core.iri_compaction"));
     _lazyFinal($, "allowedCompactionTypesAll", "$get$allowedCompactionTypesAll", () => {
       var t2, _i,
         t1 = A.LinkedHashMap_LinkedHashMap$_empty(type$.IriRole, type$.Set_IriCompactionType);
@@ -97238,12 +97393,12 @@
         t1.$indexSet(0, B.List_Uwk[_i], A.LinkedHashSet_LinkedHashSet$of(B.List_JhD, t2));
       return t1;
     });
-    _lazyFinal($, "_log23", "$get$_log8", () => A.Logger_Logger("rdf.jsonld"));
-    _lazyFinal($, "_log24", "$get$_log2", () => A.Logger_Logger("rdf.jsonld"));
+    _lazyFinal($, "_log24", "$get$_log8", () => A.Logger_Logger("rdf.jsonld"));
+    _lazyFinal($, "_log25", "$get$_log2", () => A.Logger_Logger("rdf.jsonld"));
     _lazyFinal($, "trig", "$get$trig", () => A.TriGCodec$(B.TriGDecoderOptions_Set_empty, B.TriGEncoderOptions_JrD, A.rdf_term_IriTerm___validated_tearOff$closure(), null));
-    _lazyFinal($, "_log25", "$get$_log6", () => A.Logger_Logger("rdf.trig"));
-    _lazyFinal($, "_log26", "$get$_log4", () => A.Logger_Logger("rdf.trig"));
-    _lazyFinal($, "_log27", "$get$_log7", () => A.Logger_Logger("rdf.trig"));
+    _lazyFinal($, "_log26", "$get$_log6", () => A.Logger_Logger("rdf.trig"));
+    _lazyFinal($, "_log27", "$get$_log4", () => A.Logger_Logger("rdf.trig"));
+    _lazyFinal($, "_log28", "$get$_log7", () => A.Logger_Logger("rdf.trig"));
     _lazyFinal($, "TriGTokenizer__isDigitRegExp", "$get$TriGTokenizer__isDigitRegExp", () => A.RegExp_RegExp("[0-9]", true, false, false, false));
     _lazyFinal($, "TriGTokenizer__isNameStartCharRegExp", "$get$TriGTokenizer__isNameStartCharRegExp", () => A.RegExp_RegExp("[a-zA-Z_:]", true, false, false, false));
     _lazyFinal($, "TriGTokenizer__isNameCharRegExp", "$get$TriGTokenizer__isNameCharRegExp", () => A.RegExp_RegExp("[a-zA-Z0-9_\\-]", true, false, false, false));
@@ -97260,11 +97415,11 @@
     _lazyFinal($, "_pnLocalSingleCharRegex", "$get$_pnLocalSingleCharRegex", () => A.RegExp_RegExp("^[a-zA-Z0-9_:]$", true, false, false, false));
     _lazyFinal($, "_pnLocalEndCharRegex", "$get$_pnLocalEndCharRegex", () => A.RegExp_RegExp("[a-zA-Z0-9_:-]$", true, false, false, false));
     _lazyFinal($, "_pnLocalFullRegex", "$get$_pnLocalFullRegex", () => A.RegExp_RegExp("^[a-zA-Z0-9_:][a-zA-Z0-9_\\-.:]*[a-zA-Z0-9_:-]$", true, false, false, false));
-    _lazyFinal($, "_log28", "$get$_log32", () => A.Logger_Logger("WorkerSolidConfigReceiver"));
-    _lazyFinal($, "_log29", "$get$_log30", () => A.Logger_Logger("SolidRemoteStorage"));
-    _lazyFinal($, "_log30", "$get$_log31", () => A.Logger_Logger("solid.profile"));
-    _lazyFinal($, "_log31", "$get$_log", () => A.Logger_Logger("WebWorkerEntryPoint"));
-    _lazyFinal($, "_log32", "$get$_log0", () => A.Logger_Logger("WorkerEntryPoint"));
+    _lazyFinal($, "_log29", "$get$_log32", () => A.Logger_Logger("WorkerSolidConfigReceiver"));
+    _lazyFinal($, "_log30", "$get$_log30", () => A.Logger_Logger("SolidRemoteStorage"));
+    _lazyFinal($, "_log31", "$get$_log31", () => A.Logger_Logger("solid.profile"));
+    _lazyFinal($, "_log32", "$get$_log", () => A.Logger_Logger("WebWorkerEntryPoint"));
+    _lazyFinal($, "_log33", "$get$_log0", () => A.Logger_Logger("WorkerEntryPoint"));
     _lazyFinal($, "Logger_root", "$get$Logger_root", () => A.Logger_Logger(""));
     _lazyFinal($, "windows", "$get$windows", () => A.Context_Context(null, $.$get$Style_windows()));
     _lazyFinal($, "url", "$get$url", () => A.Context_Context(null, $.$get$Style_url()));

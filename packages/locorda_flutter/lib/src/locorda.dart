@@ -190,7 +190,8 @@ class Locorda {
   /// - [storage]: Main thread handler for storage backend (typically Drift)
   /// - [config]: Resource configuration with types, CRDT mappings, and indices
   /// - [mapperInitializer]: Function to configure RDF mapping
-  /// - [jsScript]: Web worker JS filename (default: 'worker.dart.js')
+  /// - [jsScript]: Web worker JS filename (default: 'worker.dart.js' for manual worker,
+  ///   use 'worker_generated.dart.js' for generated worker)
   /// - [plugins]: Additional worker plugins for custom functionality
   /// - [debugName]: Optional name for debugging worker communication
   ///

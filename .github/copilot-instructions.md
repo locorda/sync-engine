@@ -9,6 +9,7 @@
 ## Agent Documentation & Lifecycle Rules
 
 ### 1. Storage & Organization
+If you need it, you can generate Markdown documentation for your plans, summaries, or test reports. Follow these rules (they do not apply if I ask you explicitly to generate a markdown file for a specific purpose):
 - **Primary Folder:** All agent-generated documentation must live in `.agents/`.
 - **Daily Folders:** Use sub-folders formatted as `YYYY-MM-DD` (e.g., `.agents/2026-02-11/`).
 - **Archive Sub-folders:** When a task or phase is completed, or if a plan is superseded by manual human code changes, move the relevant files into `.agents/YYYY-MM-DD/archive/`.

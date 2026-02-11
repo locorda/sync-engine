@@ -2,7 +2,13 @@ import 'dart:async';
 
 import 'package:build/build.dart';
 
-/// Generates worker.g.dart by discovering and aggregating manifest files.
+/// Generates worker_generated.g.dart by discovering and aggregating manifest files.
+///
+/// **Why worker_generated.g.dart and not worker.g.dart?**
+/// The name avoids collision with source_gen:combining_builder, which automatically
+/// processes worker.dart → worker.g.dart for other code generators (like json_serializable).
+/// Using worker_generated.g.dart allows both manual worker.dart and generated
+/// worker_generated.g.dart to coexist without build conflicts.
 ///
 /// This builder:
 /// - Triggers on `pubspec.yaml` (like mapping_bootstrap)
@@ -36,7 +42,7 @@ class WorkerGeneratorBuilder implements Builder {
 
   @override
   Map<String, List<String>> get buildExtensions => {
-        'pubspec.yaml': ['lib/worker.g.dart'],
+        'pubspec.yaml': ['lib/worker_generated.g.dart'],
       };
 
   @override
@@ -48,17 +54,28 @@ class WorkerGeneratorBuilder implements Builder {
       return;
     }
 
-    log.info('Generating worker.g.dart for package: ${inputId.package}');
+    // Skip generation if manual worker.dart exists
+    final manualWorker = AssetId(inputId.package, 'lib/worker.dart');
+    if (await buildStep.canRead(manualWorker)) {
+      log.info(
+          'Skipping worker_generated.g.dart generation because manual worker.dart exists');
+      return;
+    }
+
+    log.info(
+        'Generating worker_generated.g.dart for package: ${inputId.package}');
 
     // Read configuration options
-    final excludePackages = (options.config['exclude_packages'] as List<dynamic>?)
-            ?.cast<String>()
-            .toSet() ??
-        <String>{};
-    final manifestFiles = (options.config['manifest_files'] as List<dynamic>?)
-            ?.cast<String>() ??
-        ['lib/locorda_worker.manifest.dart'];
-    final onWorkerSpawnImport = options.config['on_worker_spawn_import'] as String?;
+    final excludePackages =
+        (options.config['exclude_packages'] as List<dynamic>?)
+                ?.cast<String>()
+                .toSet() ??
+            <String>{};
+    final manifestFiles =
+        (options.config['manifest_files'] as List<dynamic>?)?.cast<String>() ??
+            ['lib/locorda_worker.manifest.dart'];
+    final onWorkerSpawnImport =
+        options.config['on_worker_spawn_import'] as String?;
     final onWorkerSpawnFunction =
         options.config['on_worker_spawn_function'] as String?;
 
@@ -74,7 +91,7 @@ class WorkerGeneratorBuilder implements Builder {
       AssetId(inputId.package, 'lib/src/generated/mapping_bootstrap.g.dart'),
     );
 
-    // Generate the worker.g.dart file
+    // Generate the worker_generated.g.dart file
     final generatedCode = _generateWorkerCode(
       manifests,
       hasMappingBootstrap,
@@ -83,10 +100,11 @@ class WorkerGeneratorBuilder implements Builder {
     );
 
     // Write the generated file
-    final outputId = AssetId(inputId.package, 'lib/worker.g.dart');
+    final outputId = AssetId(inputId.package, 'lib/worker_generated.g.dart');
     await buildStep.writeAsString(outputId, generatedCode);
 
-    log.info('Generated worker.g.dart with ${manifests.length} manifest(s)');
+    log.info(
+        'Generated worker_generated.g.dart with ${manifests.length} manifest(s)');
   }
 
   /// Discovers manifest files across all packages.
@@ -136,6 +154,8 @@ class WorkerGeneratorBuilder implements Builder {
 
     // Header
     buffer.writeln('// GENERATED CODE - DO NOT MODIFY BY HAND');
+    buffer.writeln(
+        '// ignore_for_file: depend_on_referenced_packages, unused_import');
     buffer.writeln();
 
     // Generate imports for manifests
@@ -159,7 +179,8 @@ class WorkerGeneratorBuilder implements Builder {
 
     // Conditionally import onWorkerSpawn callback
     if (onWorkerSpawnImport != null && onWorkerSpawnFunction != null) {
-      buffer.writeln("import '$onWorkerSpawnImport' show $onWorkerSpawnFunction;");
+      buffer.writeln(
+          "import '$onWorkerSpawnImport' show $onWorkerSpawnFunction;");
     }
 
     buffer.writeln();
@@ -180,7 +201,8 @@ class WorkerGeneratorBuilder implements Builder {
     buffer.writeln();
 
     // Generate generatedWorkerSetup() function
-    buffer.writeln('/// Generated worker setup that registers all discovered adapters.');
+    buffer.writeln(
+        '/// Generated worker setup that registers all discovered adapters.');
     buffer.writeln('///');
     buffer.writeln(
         '/// Active handlers are selected at runtime based on IDs received from main.');
@@ -189,7 +211,8 @@ class WorkerGeneratorBuilder implements Builder {
         '/// This function is public so main-side code can import and pass it to');
     buffer.writeln(
         '/// Locorda.create(workerSetup: generatedWorkerSetup) for isolate spawning.');
-    buffer.writeln('Future<WorkerParams> generatedWorkerSetup() async => WorkerParams(');
+    buffer.writeln(
+        'Future<WorkerParams> generatedWorkerSetup() async => WorkerParams(');
 
     // Generate storages list
     buffer.writeln('  storages: [');

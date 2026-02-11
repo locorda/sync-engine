@@ -180,6 +180,7 @@
 ## Later
 - [ ] Implement namespace in Resource Identity => maybe later
 - [ ] Final check if the spec in ARCHITECTURE.md is fully implemented
+- [ ] do not check generated *.js files in for example apps, rather make sure we run the build_runner before deployment
 
 ## Future Feature Ideas
 

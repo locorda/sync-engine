@@ -1,11 +1,13 @@
 builders:
-  # Generates lib/worker.g.dart from discovered manifest files
+  # Generates lib/worker_generated.g.dart from discovered manifest files
+  # Note: Named worker_generated.g.dart (not worker.g.dart) to avoid collision
+  # with source_gen:combining_builder when manual worker.dart exists
   worker_generator:
     import: "package:locorda_builder/builder.dart"
     builder_factories: ["workerGeneratorBuilder"]
     build_extensions:
       pubspec.yaml:
-        - lib/worker.g.dart
+        - lib/worker_generated.g.dart
     auto_apply: dependents
     build_to: source
     required_inputs:
@@ -24,7 +26,10 @@ builders:
         # Optional: Function name for onWorkerSpawn callback
         on_worker_spawn_function: null
 
-  # Compiles lib/worker.dart or lib/worker.g.dart to web/worker.dart.js
+  # Compiles worker files to JavaScript with distinct outputs:
+  # - lib/worker.dart → web/worker.dart.js (manual)
+  # - lib/worker_generated.g.dart → web/worker_generated.dart.js (generated)
+  # Different output names prevent build collisions
   web_worker:
     import: "package:locorda_builder/builder.dart"
     builder_factories: ["webWorkerBuilder"]
@@ -32,9 +37,9 @@ builders:
       lib/worker.dart:
         - web/worker.dart.js
         - web/worker.dart.js.map
-      lib/worker.g.dart:
-        - web/worker.dart.js
-        - web/worker.dart.js.map
+      lib/worker_generated.g.dart:
+        - web/worker_generated.dart.js
+        - web/worker_generated.dart.js.map
     auto_apply: dependents
     required_inputs:
       - ".g.dart"
@@ -42,4 +47,4 @@ builders:
     defaults:
       generate_for:
         - lib/worker.dart
-        - lib/worker.g.dart
+        - lib/worker_generated.g.dart
