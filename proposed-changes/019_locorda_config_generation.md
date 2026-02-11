@@ -102,13 +102,16 @@ class LcrdFullIndex {
 
 ```dart
 class LcrdRootResource extends RdfGlobalResource {
-  /// IRI/namespace for the CRDT mapping document.
-  /// - Serves as namespace/IRI for the generated or manual CRDT mapping RDF document
-  /// - Determines output filename (last path segment of URI)
-  /// 
-  /// Generation is controlled by generateCrdtMapping flag (default: true).
+  /// Full absolute IRI identifying the CRDT mapping document.
   ///
-  /// Example: 'https://app.example.com/mappings/note-v1.ttl'
+  /// This is a static, app-owned IRI — fully known at compile time,
+  /// not dependent on any user or Pod URL. Use Dart const string
+  /// interpolation with a shared base constant to avoid repetition.
+  ///
+  /// Generation is controlled by [generateCrdtMapping] flag (default: true).
+  ///
+  /// Example: `'$appBaseUrl/mappings/note-v1.ttl'`
+  /// where `const appBaseUrl = 'https://myapp.example.com';`
   final String crdtMapping;
   
   /// Whether to generate the CRDT mapping file from property annotations.
@@ -395,12 +398,12 @@ class CategoryIndexEntry {
 ```dart
 // Generated: locorda_config.g.dart
 
-LocordaConfig generateLocordaConfig(String appBaseUrl) {
+LocordaConfig generateLocordaConfig() {
   return LocordaConfig(
     resources: [
       ResourceConfig(
         type: Note,
-        crdtMapping: Uri.parse('$appBaseUrl/mappings/note-v1.ttl'),
+        crdtMapping: Uri.parse('https://app.example.com/mappings/note-v1.ttl'),
         indices: [
           GroupIndex(
             NoteGroupKey,
@@ -420,7 +423,7 @@ LocordaConfig generateLocordaConfig(String appBaseUrl) {
       ),
       ResourceConfig(
         type: Category,
-        crdtMapping: Uri.parse('$appBaseUrl/mappings/category-v1.ttl'),
+        crdtMapping: Uri.parse('https://app.example.com/mappings/category-v1.ttl'),
         indices: [
           FullIndex(
             localName: 'default',
