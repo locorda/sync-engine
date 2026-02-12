@@ -1,11 +1,14 @@
-import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/element/element.dart';
 
+import 'code_generation/analyzer_utils.dart';
+import 'code_generation/code.dart';
 import 'parameter_info.dart';
 
-List<ParameterInfo> parseParameterList(FormalParameterList parameters) {
+List<ParameterInfo> parseParameterElements(
+    Iterable<FormalParameterElement> parameters) {
   final result = <ParameterInfo>[];
 
-  for (final param in parameters.parameters) {
+  for (final param in parameters) {
     final normalized = _normalizeParameter(param);
     if (normalized == null) {
       continue;
@@ -16,55 +19,26 @@ List<ParameterInfo> parseParameterList(FormalParameterList parameters) {
   return result;
 }
 
-ParameterInfo? _normalizeParameter(FormalParameter param) {
-  if (param is DefaultFormalParameter) {
-    final normalParam = param.parameter;
-    final base = _normalizeParameter(normalParam);
-    if (base == null) {
-      return null;
-    }
-    return ParameterInfo(
-      name: base.name,
-      type: base.type,
-      isRequired: param.isRequired,
-      isNamed: param.isNamed,
-      defaultValue: param.defaultValue?.toSource(),
-      documentation: base.documentation,
-    );
+ParameterInfo? _normalizeParameter(FormalParameterElement param) {
+  final name = param.displayName;
+  if (name.isEmpty) {
+    return null;
   }
 
-  if (param is SimpleFormalParameter) {
-    final name = param.name?.lexeme;
-    if (name == null) {
-      return null;
-    }
-    return ParameterInfo(
-      name: name,
-      type: param.type?.toSource() ?? 'dynamic',
-      isRequired: param.isRequired,
-      isNamed: param.isNamed,
-      defaultValue: null,
-    );
-  }
+  final isNamed = param.isNamed;
+  final isRequired =
+      param.isRequiredNamed || (!isNamed && param.isRequiredPositional);
 
-  if (param is FunctionTypedFormalParameter) {
-    return ParameterInfo(
-      name: param.name.lexeme,
-      type: _functionTypeToSource(param),
-      isRequired: param.isRequired,
-      isNamed: param.isNamed,
-      defaultValue: null,
-    );
-  }
+  final defaultValue = param.defaultValueCode == null
+      ? null
+      : Code.value(param.defaultValueCode!);
 
-  return null;
-}
-
-String _functionTypeToSource(FunctionTypedFormalParameter param) {
-  final returnType = param.returnType?.toSource() ?? 'dynamic';
-  final paramList = param.parameters.toSource();
-  final source = param.toSource().trim();
-  final isNullable = source.endsWith('?');
-  final suffix = isNullable ? '?' : '';
-  return '$returnType Function$paramList$suffix';
+  return ParameterInfo(
+    name: name,
+    type: typeToCode(param.type),
+    isRequired: isRequired,
+    isNamed: isNamed,
+    defaultValue: defaultValue,
+    documentation: param.documentationComment,
+  );
 }

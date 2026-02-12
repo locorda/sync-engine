@@ -6,6 +6,7 @@ import 'package:locorda_rdf_mapper_annotations/annotations.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:locorda_annotations/locorda_annotations.dart';
 import '../vocabulary/personal_notes_vocab.dart';
+import '../consts.dart' show appBaseUrl;
 import 'category_display_settings.dart';
 
 /// A category for organizing personal notes.
@@ -17,7 +18,10 @@ import 'category_display_settings.dart';
 /// - LWW-Register for name and description (last writer wins)
 /// - Immutable for creation date
 ///
-@LcrdRootResource(PersonalNotesVocab.NotesCategory)
+@LcrdRootResource(
+  PersonalNotesVocab.NotesCategory,
+  '$appBaseUrl/mappings/category-v1.ttl',
+)
 class Category {
   /// Unique identifier for this category
   @RdfIriPart()

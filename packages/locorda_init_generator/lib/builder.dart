@@ -5,3 +5,4 @@
 library;
 
 export 'src/init_locorda_builder.dart';
+export 'src/config/config_builder.dart';

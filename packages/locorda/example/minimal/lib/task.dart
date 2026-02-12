@@ -5,11 +5,13 @@ import 'package:locorda_annotations/locorda_annotations.dart';
 import 'package:locorda_rdf_mapper_annotations/annotations.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
+import 'package:minimal_task_sync/consts.dart' show appBaseUrl;
 
 // #docregion task-model
 /// A simple task with CRDT sync.
 @LcrdRootResource(
-  IriTerm('https://locorda.dev/example/minimal/Task'),
+  IriTerm('$appBaseUrl/vocabulary/task#Task'),
+  '$appBaseUrl/mappings/task-v1.ttl',
 )
 class Task {
   /// Unique ID for this task
@@ -22,7 +24,7 @@ class Task {
   final String title;
 
   /// Completion status - LWW (schema.org has no boolean completion property)
-  @RdfProperty(IriTerm('https://locorda.dev/example/minimal#completed'))
+  @RdfProperty(IriTerm('$appBaseUrl/vocabulary/task#completed'))
   @CrdtLwwRegister()
   final bool completed;
 
@@ -45,4 +47,5 @@ class Task {
         createdAt: createdAt,
       );
 }
+
 // #enddocregion task-model

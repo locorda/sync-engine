@@ -15,9 +15,7 @@ import 'package:locorda_annotations/locorda_annotations.dart';
 /// - Immutable for url (identifying property, cannot change)
 /// - LWW-Register for title and description (last writer wins)
 ///
-@RdfLocalResource(
-  PersonalNotesVocab.Weblink,
-)
+@RdfLocalResource(PersonalNotesVocab.Weblink)
 class Weblink {
   /// The URL - this is the identifying property for this blank node
   @RdfProperty(Schema.url)
@@ -35,17 +33,9 @@ class Weblink {
   @CrdtLwwRegister()
   final String? description;
 
-  Weblink({
-    required this.url,
-    this.title,
-    this.description,
-  });
+  Weblink({required this.url, this.title, this.description});
 
-  Weblink copyWith({
-    String? url,
-    String? title,
-    String? description,
-  }) {
+  Weblink copyWith({String? url, String? title, String? description}) {
     return Weblink(
       url: url ?? this.url,
       title: title ?? this.title,

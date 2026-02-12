@@ -13,14 +13,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:locorda/locorda.dart';
 import 'package:locorda_dir/locorda_dir.dart';
-import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:personal_notes_app/init_locorda.g.dart';
 import 'package:personal_notes_app/locorda_worker.manifest.dart';
-import 'package:personal_notes_app/models/category.dart';
-import 'package:personal_notes_app/models/note.dart';
-import 'package:personal_notes_app/models/note_group_key.dart';
-import 'package:personal_notes_app/models/note_index_entry.dart';
-import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
 
 import 'screens/notes_list_screen.dart';
 import 'services/categories_service.dart';
@@ -28,8 +22,7 @@ import 'services/notes_service.dart';
 import 'storage/database.dart' show AppDatabase;
 import 'storage/repositories.dart' show CategoryRepository, NoteRepository;
 import 'utils/logging_setup.dart';
-
-const appBaseUrl = 'https://locorda.dev/example/personal_notes_app';
+import 'consts.dart' show appBaseUrl;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -83,41 +76,6 @@ Future<Locorda> initializeLocorda() async {
         sqlite3Wasm: Uri.parse('sqlite3.wasm'),
         driftWorker: Uri.parse('drift_worker.js'),
       ),
-    ),
-
-    /* resource-focused configuration */
-    config: LocordaConfig(
-      resources: [
-        // Configure Note resource with grouping index by category
-        ResourceConfig(
-          type: Note,
-          crdtMapping: Uri.parse('$appBaseUrl/mappings/note-v1.ttl'),
-          indices: [
-            GroupIndex(NoteGroupKey,
-                item: IndexItem(NoteIndexEntry, {
-                  SchemaNoteDigitalDocument.name,
-                  SchemaNoteDigitalDocument.dateCreated,
-                  SchemaNoteDigitalDocument.dateModified,
-                  SchemaNoteDigitalDocument.keywords,
-                  PersonalNotesVocab.belongsToCategory
-                }),
-                groupingProperties: [
-                  GroupingProperty(SchemaNoteDigitalDocument.dateCreated,
-                      transforms: [
-                        RegexTransform(r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*',
-                            r'${1}-${2}')
-                      ])
-                ]),
-          ],
-        ),
-
-        // Configure Category resource with full index
-        ResourceConfig(
-          type: Category,
-          crdtMapping: Uri.parse('$appBaseUrl/mappings/category-v1.ttl'),
-          indices: [FullIndex(itemFetchPolicy: ItemFetchPolicy.prefetch)],
-        ),
-      ],
     ),
   );
 }

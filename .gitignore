@@ -20,3 +20,6 @@ coverage/
 # Misc
 *.log
 .flutter-plugins-dependencies
+dart-sdk/
+flutter/
+*.tar.xz

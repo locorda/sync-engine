@@ -7,6 +7,7 @@ library;
 
 import 'package:locorda_annotations/locorda_annotations.dart';
 import 'package:personal_notes_app/models/note.dart';
+import 'package:personal_notes_app/models/note_group_key.dart';
 import 'package:locorda_rdf_mapper_annotations/annotations.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
 
@@ -17,7 +18,7 @@ import 'package:locorda_rdf_terms_schema/schema.dart';
 /// on-demand sync scenarios.
 ///
 /// No CRDT annotations needed for index entries, would be ignored anyways.
-@LcrdIndexItem(IndexItemIriStrategy(Note))
+@LcrdIndexItem.groupIndex(NoteGroupKey, IndexItemIriStrategy(Note))
 class NoteIndexEntry {
   /// Unique identifier for the note
   @RdfIriPart()

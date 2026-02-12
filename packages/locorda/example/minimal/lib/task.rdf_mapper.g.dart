@@ -29,7 +29,7 @@ class TaskMapper implements GlobalResourceMapper<task.Task> {
 
   @override
   IriTerm? get typeIri =>
-      const IriTerm('https://locorda.dev/example/minimal/Task');
+      const IriTerm('https://locorda.dev/example/minimal/vocabulary/task#Task');
 
   @override
   task.Task fromRdfResource(IriTerm subject, DeserializationContext context) {
@@ -39,7 +39,9 @@ class TaskMapper implements GlobalResourceMapper<task.Task> {
 
     final String title = reader.require(SchemaThing.name);
     final bool completed = reader.require(
-      const IriTerm('https://locorda.dev/example/minimal#completed'),
+      const IriTerm(
+        'https://locorda.dev/example/minimal/vocabulary/task#completed',
+      ),
     );
     final DateTime createdAt = reader.require(SchemaCreativeWork.dateCreated);
 
@@ -63,7 +65,9 @@ class TaskMapper implements GlobalResourceMapper<task.Task> {
         .resourceBuilder(subject)
         .addValue(SchemaThing.name, resource.title)
         .addValue(
-          const IriTerm('https://locorda.dev/example/minimal#completed'),
+          const IriTerm(
+            'https://locorda.dev/example/minimal/vocabulary/task#completed',
+          ),
           resource.completed,
         )
         .addValue(SchemaCreativeWork.dateCreated, resource.createdAt)

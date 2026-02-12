@@ -13,6 +13,9 @@ export 'src/resource.dart'
         LcrdSubResource,
         LcrdGroupKey,
         LcrdIndexItem,
+        LcrdFullIndex,
+        LcrdGroupingProperty,
+        LcrdRegexTransform,
         RootIriStrategy,
         SubIriStrategy,
         IndexItemIriStrategy;
