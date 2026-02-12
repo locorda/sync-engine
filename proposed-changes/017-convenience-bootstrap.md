@@ -14,7 +14,7 @@
 
 ## **Implementation Order Summary**
 - **A**: Bootstrap support in the merge contract loader — `locorda_dev` triggers the mapping bootstrap builder (from `locorda_mapping_bootstrap_generator`) and the web worker builder (from `locorda_builder`) via `applies_builders`, and also triggers the RDF mapper builders. Users need only `locorda_dev` + `build_runner` as dev_dependencies.
-- **B**: Implement the CRDT mapping generator, triggered by `@CrdtRootResource`, emitting deployable TTL files that can be used in conjunction with A.
+- **B**: Implement the CRDT mapping generator — **See [020-crdt-mapping-generation.md](020-crdt-mapping-generation.md) for detailed specification**
 - **C**: Build `initLocorda()` in `locorda_dev` in stages:
   - **C1**: Pass-through wrapper that forwards `Locorda.create` parameters.
   - **C2**: Make `mapperInitializer` optional when `initRdfMapper` is generated.
@@ -177,76 +177,24 @@ Core mappings are automatically included by `BootstrapRdfGraphFetcher` — the u
 
 ---
 
-## **Phase B — CRDT Mapping Generator (Triggered by @CrdtRootResource)**
+## **Phase B — CRDT Mapping Generator**
 
-### Goals
-- Generate deployable CRDT mapping TTL files from annotations.
-- Leverage Phase A bootstrap loader for local development.
-- Require **opt-in** via `@CrdtRootResource`.
+**See [020-crdt-mapping-generation.md](020-crdt-mapping-generation.md) for complete specification.**
 
-### B.1 New annotations (locorda_annotations)
-- `@CrdtRootResource(...)`
-  - `iri` (required) - the RDF class IRI this mapping applies to
-  - `label`, `comment` (optional) - for TTL documentation
-  - `imports` (optional, default `core-v1`) - which base mappings to import
-  - `version` (optional, default `v1`) - mapping version
-- Optional: `@CrdtExternalMapping(...)`
-  - Opt-out marker for manual mapping (optional URI for documentation).
+### Summary
+- Triggered by `@LcrdRootResource` annotation with `generateCrdtMapping` flag
+- Generates deployable CRDT mapping TTL files using graph-based generation (`RdfGraph` + `turtle.encode()`)
+- Automatic field traversal to discover sub-resources and local resources
+- Defaults to `CrdtLwwRegister` for properties without CRDT annotation
+- Outputs to `assets/contracts/mappings/` for Phase A bootstrap integration
+- Graph-based generation ensures correctness and maintainability
 
-### B.2 Mapping rules
-- `@CrdtLwwRegister` → `algo:LWW_Register`
-- `@CrdtOrSet` → `algo:OR_Set`
-- `@CrdtImmutable` → `algo:Immutable`
-- `@McIdentifying` → `mc:isIdentifying true`
-- If a property has **no CRDT annotation**, default to **LWW** (emit build warning).
-
-### B.3 Analyzer graph extraction
-#### Scan all Dart files in `lib/`
-- Collect class metadata:
-  - Root = `@CrdtRootResource`
-  - Sub = `@LcrdSubResource`
-  - Local = `@RdfLocalResource`
-- Collect properties:
-  - Must have `@RdfProperty` (for predicate IRI)
-  - Extract CRDT annotations
-
-#### Type traversal
-- Build reachable subgraph per Root:
-  - Direct type of a property
-  - Container types: `List<T>`, `Set<T>`, `Iterable<T>`
-  - Only traverse types annotated with `@LcrdSubResource` or `@RdfLocalResource`
-- No heuristics beyond annotations.
-
-### B.4 TTL generation
-#### Output path
-- `contracts/mappings/<root-name>-v1.ttl` (outside `lib/`, using `build_to: source`)
-
-#### Content structure (align with current handwritten mappings)
-- DocumentMapping header:
-  - label/comment from `@CrdtRootResource`
-  - `mc:imports ( mappings:core-v1 )` by default
-- `mc:classMapping` list:
-  - One ClassMapping per root + each reachable sub/local resource
-  - Each ClassMapping lists predicates with merge rules
-
-#### Example expected output
-- For `Note` root:
-  - `pnotes:PersonalNote` rules
-  - `pnotes:Weblink` rules (folded in)
-  - etc.
-
-### B.5 Build system integration
-#### Aggregating builder (not per-file)
-- Use a single builder that scans all `lib/**/*.dart`
-- Ensures rebuild when any subresource changes
-
-#### build.yaml
-- `build_to: source`
-- Output in `contracts/mappings/`
-- Builder config:
-  - `output_dir`
-  - `default_imports`
-  - `default_version`
+### Key Design Decisions (from 020)
+1. **Graph-based generation:** Use `RdfGraph` and `turtle.encode()`, not string concatenation
+2. **Field traversal:** Recursively discover `@LcrdSubResource` and `@RdfLocalResource` types
+3. **Smart defaults:** Apply `LWW_Register` when no CRDT annotation present
+4. **Enhanced annotation:** New `CrdtMappingConfig` class for imports, label, comment
+5. **Integration:** Seamlessly chains with mapping bootstrap, worker generator, and config builder
 
 ---
 

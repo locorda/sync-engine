@@ -2,11 +2,14 @@
 
 **Date:** 2026-02-11  
 **Status:** Draft Concept  
-**Author:** Klas Kalaß & AI Analysis (copilot/claude)
+**Author:** Klas Kalaß & AI Analysis (copilot/claude)  
+**Related:** [017-convenience-bootstrap.md](017-convenience-bootstrap.md), [020-crdt-mapping-generation.md](020-crdt-mapping-generation.md)
 
 ## Executive Summary
 
 This document defines how `LocordaConfig` is automatically generated from `@LcrdRootResource` and related annotations, eliminating the need for manual configuration in most cases.
+
+**Note:** CRDT mapping TTL files referenced in `crdtMapping` are automatically generated from annotations. See [020-crdt-mapping-generation.md](020-crdt-mapping-generation.md) for details on the CRDT mapping generation process.
 
 ## Current State Analysis
 
