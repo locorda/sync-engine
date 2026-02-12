@@ -18,7 +18,7 @@ class TaskRepository {
   /// Create and initialize repository with hydration.
   static Future<TaskRepository> create(ObjectSyncEngine syncEngine) async {
     final repo = TaskRepository._(syncEngine);
-    
+
     // Setup hydration: remote changes → local storage
     repo._hydrationSubscription = await syncEngine.hydrateWithCallbacks<Task>(
       getCurrentCursor: () async => null, // Simple: no cursor persistence
@@ -30,9 +30,10 @@ class TaskRepository {
         repo._tasks.remove(id);
         repo._notifyListeners();
       },
-      onCursorUpdate: (cursor) async {}, // Skip cursor persistence for minimal example
+      onCursorUpdate:
+          (cursor) async {}, // Skip cursor persistence for minimal example
     );
-    
+
     return repo;
   }
 
@@ -40,8 +41,9 @@ class TaskRepository {
   Stream<List<Task>> watchAll() => _controller.stream;
 
   /// Get all tasks (snapshot)
-  List<Task> getAll() => _tasks.values.toList()
-    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  List<Task> getAll() =>
+      _tasks.values.toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
   /// Save task (create or update) - triggers sync
   Future<void> save(Task task) async {
@@ -64,4 +66,5 @@ class TaskRepository {
     _controller.close();
   }
 }
+
 // #enddocregion repository

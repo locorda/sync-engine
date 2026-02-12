@@ -1,166 +1,130 @@
+import 'code_generation/code.dart';
+import 'code_generation/dart_formatter.dart';
 import 'parameter_info.dart';
+
+const _locordaFlutterImport = 'package:locorda_flutter/locorda_flutter.dart';
+const _workerGeneratedImport = 'worker_generated.g.dart';
+const _initRdfMapperImport = 'init_rdf_mapper.g.dart';
+const _locordaConfigImport = 'locorda_config.g.dart';
+
+Code locordaFlutter(String name) => imported(name, _locordaFlutterImport);
+
+Code imported(String name, String importUri) =>
+    Code.type(name, importUri: importUri);
 
 /// Generates the initLocorda.g.dart file.
 class CodeGenerator {
   final bool hasGeneratedWorker;
   final bool hasInitMapper;
+  final bool hasGeneratedConfig;
   final List<ParameterInfo> locordaParams;
   final List<ParameterInfo> mapperParams;
   final Set<String> detectedFrameworkParams;
-  final Set<String> additionalImports;
 
-  const CodeGenerator({
+  final CodeFormatter _formatter;
+
+  CodeGenerator({
     required this.hasGeneratedWorker,
     required this.hasInitMapper,
+    required this.hasGeneratedConfig,
     required this.locordaParams,
     required this.mapperParams,
     required this.detectedFrameworkParams,
-    required this.additionalImports,
-  });
+    CodeFormatter? formatter,
+  }) : _formatter = formatter ?? DartCodeFormatter();
 
   /// Generate the complete initLocorda.g.dart content.
-  String generate() {
-    final buffer = StringBuffer();
-    
-    // Header
-    buffer.writeln('// GENERATED CODE - DO NOT MODIFY BY HAND');
-    buffer.writeln('// ignore_for_file: unused_import, depend_on_referenced_packages');
-    buffer.writeln();
-    
-    // Imports
-    _writeImports(buffer);
-    buffer.writeln();
-    
-    // Documentation
-    _writeDocumentation(buffer);
-    
-    // Function signature
-    _writeFunctionSignature(buffer);
-    
-    // Function body
-    _writeFunctionBody(buffer);
-    
-    return buffer.toString();
-  }
+  String generate() => _formatter.formatCode(
+        CodeResolver.toDartFileContent(
+          '''
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: unused_import, depend_on_referenced_packages, unnecessary_import, implementation_imports
 
-  void _writeImports(StringBuffer buffer) {
-    buffer.writeln("import 'package:locorda_flutter/locorda_flutter.dart';");
-    
-    if (hasGeneratedWorker) {
-      buffer.writeln("import 'worker_generated.g.dart' show generatedWorkerSetup;");
-    }
-    
-    if (hasInitMapper) {
-      buffer.writeln("import 'init_rdf_mapper.g.dart' show initRdfMapper;");
-    }
+/// Convenience wrapper for Locorda.create with auto-detected settings.
+///
+/// Auto-configures:
+${[
+            if (hasGeneratedWorker) ...[
+              '/// - workerSetup: generatedWorkerSetup (from worker_generated.g.dart)',
+              "/// - jsScript: 'worker_generated.dart.js'"
+            ],
+            if (hasInitMapper)
+              '/// - mapperInitializer: Generated from initRdfMapper',
+            if (hasGeneratedConfig)
+              '/// - config: Generated from annotations via generateLocordaConfig()',
+          ].join('\n')}
 
-    final sortedImports = additionalImports.toList()..sort();
-    for (final importLine in sortedImports) {
-      final normalized = importLine.trim();
-      if (normalized.isEmpty) {
-        continue;
-      }
-      if (normalized == "import 'package:locorda_flutter/locorda_flutter.dart';") {
-        continue;
-      }
-      buffer.writeln(normalized.endsWith(';') ? normalized : '$normalized;');
-    }
-  }
+library;
+''',
+          {
+            _locordaFlutterImport: '',
+            if (hasGeneratedWorker) _workerGeneratedImport: 'wrk',
+            if (hasInitMapper) _initRdfMapperImport: 'mpr',
+            if (hasGeneratedConfig) _locordaConfigImport: 'cfg',
+          },
+          _newInitLocordaFunction(),
+        ),
+      );
 
-  void _writeDocumentation(StringBuffer buffer) {
-    buffer.writeln('/// Convenience wrapper for Locorda.create with auto-detected settings.');
-    buffer.writeln('///');
-    buffer.writeln('/// Auto-configures:');
-    
-    if (hasGeneratedWorker) {
-      buffer.writeln('/// - workerSetup: generatedWorkerSetup (from worker_generated.g.dart)');
-      buffer.writeln("/// - jsScript: 'worker_generated.dart.js'");
-    }
-    
-    if (hasInitMapper) {
-      buffer.writeln('/// - mapperInitializer: Generated from initRdfMapper');
-    }
-  }
-
-  void _writeFunctionSignature(StringBuffer buffer) {
-    buffer.writeln('Future<Locorda> initLocorda({');
-    
-    // Add custom mapper params first
-    for (final param in mapperParams) {
-      _writeParameter(buffer, param);
-    }
-    
-    // Add Locorda.create params (filtered)
-    final filteredParams = _filterLocordaParams();
-    for (final param in filteredParams) {
-      _writeParameter(buffer, param);
-    }
-    
-    buffer.writeln('}) async {');
-  }
-
-  void _writeParameter(StringBuffer buffer, ParameterInfo param) {
-    final parts = <String>[];
-    
-    if (param.isRequired) parts.add('required');
-    parts.add(param.type);
-    parts.add(param.name);
-    
-    final line = '  ${parts.join(' ')}';
-    if (param.defaultValue != null) {
-      buffer.writeln('$line = ${param.defaultValue},');
-    } else {
-      buffer.writeln('$line,');
-    }
-  }
+  Code _newInitLocordaFunction() =>
+      core('Future').withGenericParams([locordaFlutter('Locorda')]) +
+      Code.combine(
+        pre: 'initLocorda ({',
+        [...mapperParams, ..._filterLocordaParams()].map(_parameterInfoToCode),
+        separator: ',',
+        post: '}) async => ',
+      ) +
+      locordaFlutter('Locorda').call('create', {
+        if (hasGeneratedWorker) ...{
+          'workerSetup':
+              imported('generatedWorkerSetup', _workerGeneratedImport),
+          'jsScript': Code.value("'worker_generated.dart.js'"),
+        },
+        if (hasInitMapper)
+          'mapperInitializer': Code.literal('(context) => ') +
+              imported('initRdfMapper', _initRdfMapperImport).newInstance({
+                'rdfMapper': Code.value('context.baseRdfMapper'),
+                for (final frameworkParam in detectedFrameworkParams)
+                  frameworkParam:
+                      Code.value('context.${frameworkParam.substring(1)}'),
+                for (final param in mapperParams)
+                  param.name: Code.value(param.name),
+              }),
+        if (hasGeneratedConfig)
+          'config': imported('generateLocordaConfig', _locordaConfigImport)
+              .newInstance(),
+        for (final param in _filterLocordaParams())
+          param.name: Code.value(param.name),
+      }) +
+      ';';
 
   List<ParameterInfo> _filterLocordaParams() {
     return locordaParams.where((param) {
       // Remove auto-configured params
-      if (hasGeneratedWorker && (param.name == 'workerSetup' || param.name == 'jsScript')) {
+      if (hasGeneratedWorker &&
+          (param.name == 'workerSetup' || param.name == 'jsScript')) {
         return false;
       }
       if (hasInitMapper && param.name == 'mapperInitializer') {
+        return false;
+      }
+      if (hasGeneratedConfig && param.name == 'config') {
         return false;
       }
       return true;
     }).toList();
   }
 
-  void _writeFunctionBody(StringBuffer buffer) {
-    buffer.writeln('  return Locorda.create(');
-    
-    // Auto-configured params
-    if (hasGeneratedWorker) {
-      buffer.writeln('    workerSetup: generatedWorkerSetup,');
-      buffer.writeln("    jsScript: 'worker_generated.dart.js',");
-    }
-    
-    if (hasInitMapper) {
-      buffer.writeln('    mapperInitializer: (context) => initRdfMapper(');
-      buffer.writeln('      rdfMapper: context.baseRdfMapper,');
-      
-      // Framework params
-      for (final frameworkParam in detectedFrameworkParams) {
-        final contextParam = frameworkParam.substring(1); // Remove $
-        buffer.writeln('      $frameworkParam: context.$contextParam,');
-      }
-      
-      // Custom params
-      for (final param in mapperParams) {
-        buffer.writeln('      ${param.name}: ${param.name},');
-      }
-      
-      buffer.writeln('    ),');
-    }
-    
-    // Pass-through params
-    final filteredParams = _filterLocordaParams();
-    for (final param in filteredParams) {
-      buffer.writeln('    ${param.name}: ${param.name},');
-    }
-    
-    buffer.writeln('  );');
-    buffer.writeln('}');
-  }
+  Code _parameterInfoToCode(ParameterInfo param) => Code.combine(
+        [
+          if (param.isRequired) Code.literal('required '),
+          param.type,
+          Code.literal(' '),
+          Code.literal(param.name),
+          if (param.defaultValue != null) ...[
+            Code.literal(' = '),
+            param.defaultValue!
+          ],
+        ],
+      );
 }

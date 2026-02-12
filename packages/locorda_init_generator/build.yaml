@@ -10,6 +10,19 @@ builders:
     required_inputs:
       - lib/worker_generated.g.dart       # Optional: for worker detection
       - lib/init_rdf_mapper.g.dart        # Optional: for mapper detection
+      - lib/locorda_config.g.dart         # Optional: for config detection
+    defaults:
+      generate_for:
+        - pubspec.yaml
+
+  locorda_config_generator:
+    import: "package:locorda_init_generator/builder.dart"
+    builder_factories: ["configBuilder"]
+    build_extensions:
+      pubspec.yaml:
+        - lib/locorda_config.g.dart
+    auto_apply: dependents
+    build_to: source
     defaults:
       generate_for:
         - pubspec.yaml

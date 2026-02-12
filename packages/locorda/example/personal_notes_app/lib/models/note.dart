@@ -8,14 +8,17 @@ import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:locorda_annotations/locorda_annotations.dart';
 import '../vocabulary/personal_notes_vocab.dart';
 import '../utils/optional.dart';
+import '../consts.dart' show appBaseUrl;
 import 'category.dart';
 import 'weblink.dart';
 import 'comment.dart';
 
 class NoteCategoryProperty extends RdfProperty {
   const NoteCategoryProperty()
-      : super(PersonalNotesVocab.belongsToCategory,
-            iri: const LcrdRootResourceRef(Category));
+      : super(
+          PersonalNotesVocab.belongsToCategory,
+          iri: const LcrdRootResourceRef(Category),
+        );
 }
 
 /// A personal note with title, content, and tags.
@@ -28,10 +31,11 @@ class NoteCategoryProperty extends RdfProperty {
 /// - OR-Set for tags (additions and removals merge)
 ///
 @LcrdRootResource(
-    PersonalNotesVocab.PersonalNote,
-    // by default, the fragment is "it", but we set it explicitly here
-    // to "note" instead for demonstration purposes
-    RootIriStrategy(RootIriConfig('note')))
+  PersonalNotesVocab.PersonalNote,
+  '$appBaseUrl/mappings/note-v1.ttl',
+  iriStrategy: RootIriStrategy(RootIriConfig('note')),
+  fullIndex: LcrdFullIndex.disabled(),
+)
 class Note {
   /// Unique identifier for this note
   @RdfIriPart()

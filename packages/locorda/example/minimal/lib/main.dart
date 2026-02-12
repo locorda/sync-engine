@@ -14,35 +14,6 @@ void main() async {
   runApp(const MinimalTaskApp());
 }
 
-// #docregion locorda-setup
-/// Initialize Locorda with worker architecture.
-Future<Locorda> setupLocorda() async {
-  return initLocorda(
-    // Local Dir for testing/debugging (not for production!)
-    remotes: [
-      await DirMainIntegration.create(
-        displayName: 'Local Directory (Testing)',
-      ),
-    ],
-
-    // InMemoryStorage requires empty main handler
-    storage: InMemoryStorageMainHandler(),
-
-    // Configure Task resource with CRDT mapping
-    config: LocordaConfig(
-      resources: [
-        ResourceConfig(
-          type: Task,
-          crdtMapping: Uri.parse(
-              'https://locorda.dev/example/minimal/mappings/task-v1.ttl'),
-          indices: [FullIndex()], // Simple: fetch all tasks
-        ),
-      ],
-    ),
-  );
-}
-// #enddocregion locorda-setup
-
 class MinimalTaskApp extends StatefulWidget {
   const MinimalTaskApp({super.key});
 
@@ -63,7 +34,22 @@ class _MinimalTaskAppState extends State<MinimalTaskApp> {
 
   Future<void> _initialize() async {
     try {
-      final locorda = await setupLocorda();
+      // #docregion locorda-setup
+      /// Initialize Locorda with worker architecture.
+
+      final locorda = await initLocorda(
+        // Local Dir for testing/debugging (not for production!)
+        remotes: [
+          await DirMainIntegration.create(
+              displayName: 'Local Directory (Testing)'),
+        ],
+
+        // InMemoryStorage for simplicity - data won't persist across app restarts
+        storage: InMemoryStorageMainHandler(),
+      );
+
+      // #enddocregion locorda-setup
+
       final taskRepo = await TaskRepository.create(locorda.syncEngine);
 
       setState(() {
@@ -79,17 +65,13 @@ class _MinimalTaskAppState extends State<MinimalTaskApp> {
   Widget build(BuildContext context) {
     if (_errorMessage != null) {
       return MaterialApp(
-        home: Scaffold(
-          body: Center(child: Text(_errorMessage!)),
-        ),
+        home: Scaffold(body: Center(child: Text(_errorMessage!))),
       );
     }
 
     if (_taskRepo == null) {
       return const MaterialApp(
-        home: Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
+        home: Scaffold(body: Center(child: CircularProgressIndicator())),
       );
     }
 
@@ -166,10 +148,12 @@ class _TaskListScreenState extends State<TaskListScreen> {
             onPressed: () {
               final title = _controller.text.trim();
               if (title.isNotEmpty) {
-                widget.repository.save(Task(
-                  id: 'task_${DateTime.now().millisecondsSinceEpoch}',
-                  title: title,
-                ));
+                widget.repository.save(
+                  Task(
+                    id: 'task_${DateTime.now().millisecondsSinceEpoch}',
+                    title: title,
+                  ),
+                );
               }
               _controller.clear();
               Navigator.pop(context);
@@ -187,4 +171,5 @@ class _TaskListScreenState extends State<TaskListScreen> {
     super.dispose();
   }
 }
+
 // #enddocregion ui

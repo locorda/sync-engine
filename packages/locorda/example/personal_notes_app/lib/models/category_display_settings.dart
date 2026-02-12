@@ -25,15 +25,9 @@ class CategoryDisplaySettings {
   @CrdtLwwRegister()
   final String? icon;
 
-  CategoryDisplaySettings({
-    this.color,
-    this.icon,
-  });
+  CategoryDisplaySettings({this.color, this.icon});
 
-  CategoryDisplaySettings copyWith({
-    String? color,
-    String? icon,
-  }) {
+  CategoryDisplaySettings copyWith({String? color, String? icon}) {
     return CategoryDisplaySettings(
       color: color ?? this.color,
       icon: icon ?? this.icon,

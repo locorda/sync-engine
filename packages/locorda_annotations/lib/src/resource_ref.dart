@@ -7,5 +7,5 @@ const resourceRefFactoryKey = r'$resourceRefFactory';
 
 class LcrdRootResourceRef extends IriMapping {
   const LcrdRootResourceRef(Type cls)
-      : super.namedFactory(resourceRefFactoryKey, cls);
+    : super.namedFactory(resourceRefFactoryKey, cls);
 }

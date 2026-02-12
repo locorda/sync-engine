@@ -14,10 +14,7 @@ import 'package:locorda_annotations/locorda_annotations.dart';
 /// - Immutable for createdAt (creation timestamp)
 /// - LWW-Register for content (last writer wins)
 ///
-@LcrdSubResource(
-  Schema.Comment,
-  SubIriStrategy("comment-{id}"),
-)
+@LcrdSubResource(Schema.Comment, SubIriStrategy("comment-{id}"))
 class Comment {
   /// Unique identifier for this comment (IRI fragment)
   @RdfIriPart()
@@ -33,17 +30,10 @@ class Comment {
   @CrdtImmutable()
   final DateTime createdAt;
 
-  Comment({
-    required this.id,
-    required this.content,
-    DateTime? createdAt,
-  }) : createdAt = createdAt ?? DateTime.now();
+  Comment({required this.id, required this.content, DateTime? createdAt})
+    : createdAt = createdAt ?? DateTime.now();
 
-  Comment copyWith({
-    String? id,
-    String? content,
-    DateTime? createdAt,
-  }) {
+  Comment copyWith({String? id, String? content, DateTime? createdAt}) {
     return Comment(
       id: id ?? this.id,
       content: content ?? this.content,

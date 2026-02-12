@@ -1,8 +1,22 @@
 import 'package:locorda_rdf_mapper_annotations/annotations.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:locorda_annotations/locorda_annotations.dart';
+import 'note.dart';
 
-@LcrdGroupKey()
+@LcrdGroupKey(
+  Note,
+  groupingProperties: [
+    LcrdGroupingProperty(
+      SchemaNoteDigitalDocument.dateCreated,
+      transforms: [
+        LcrdRegexTransform(
+          r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*',
+          r'${1}-${2}',
+        ),
+      ],
+    ),
+  ],
+)
 class NoteGroupKey {
   @RdfProperty(SchemaNoteDigitalDocument.dateCreated)
   final DateTime createdMonth;
@@ -51,7 +65,7 @@ class NoteGroupKey {
       'September',
       'October',
       'November',
-      'December'
+      'December',
     ];
 
     if (month < 1 || month > 12) return formatted;

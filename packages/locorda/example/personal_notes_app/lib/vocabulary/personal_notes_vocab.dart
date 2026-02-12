@@ -6,6 +6,7 @@
 library;
 
 import 'package:locorda_rdf_core/core.dart';
+import '../consts.dart' show appBaseUrl;
 
 /// Constants for the Personal Notes vocabulary.
 ///
@@ -13,8 +14,7 @@ import 'package:locorda_rdf_core/core.dart';
 /// types for note organization that properly subclass Schema.org types.
 class PersonalNotesVocab {
   /// Base IRI for the Personal Notes vocabulary
-  static const baseIri =
-      'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#';
+  static const baseIri = '$appBaseUrl/vocabulary/personal-notes#';
 
   // Classes
 

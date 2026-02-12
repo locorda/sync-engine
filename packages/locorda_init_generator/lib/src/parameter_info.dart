@@ -1,10 +1,12 @@
+import 'package:locorda_init_generator/src/code_generation/code.dart';
+
 /// Information about a function parameter.
 class ParameterInfo {
   final String name;
-  final String type;
+  final Code type;
   final bool isRequired;
   final bool isNamed;
-  final String? defaultValue;
+  final Code? defaultValue;
   final String? documentation;
 
   const ParameterInfo({
@@ -29,11 +31,9 @@ class ParameterInfo {
 class MapperAnalysisResult {
   final List<ParameterInfo> customParams;
   final Set<String> frameworkParams;
-  final Set<String> imports;
 
   const MapperAnalysisResult({
     required this.customParams,
     required this.frameworkParams,
-    required this.imports,
   });
 }
