@@ -27,20 +27,35 @@ const List<String> bootstrapMappings = [
     expect(mappings.last, contains('mappings/b#'));
   });
 
-  test('deriveMappingFileName appends ttl and disambiguates collisions', () {
-    final used = <String, int>{};
+  test('deployMappings throws StateError on filename collision', () async {
+    final rdfCore = RdfCore.withStandardCodecs();
+    final outDir = await Directory.systemTemp.createTemp('collision-test');
+    addTearDown(() async {
+      if (await outDir.exists()) {
+        await outDir.delete(recursive: true);
+      }
+    });
 
-    final first = deriveMappingFileName(
-      IriTerm('https://example.com/mappings/note-v1#'),
-      used,
-    );
-    final second = deriveMappingFileName(
-      IriTerm('https://example.com/mappings/note-v1#other'),
-      used,
-    );
+    // Two different IRIs that would produce the same filename
+    const firstDoc = '''
+<https://example.com/mappings/note-v1#> a <https://w3id.org/solid-crdt-sync/vocab/merge-contract#DocumentMapping> .
+''';
+    const secondDoc = '''
+<https://example.com/mappings/note-v1#other> a <https://w3id.org/solid-crdt-sync/vocab/merge-contract#DocumentMapping> .
+''';
 
-    expect(first, 'note-v1.ttl');
-    expect(second, 'note-v1-2.ttl');
+    expect(
+      () => deployMappings(
+        rdfCore: rdfCore,
+        mappings: const [firstDoc, secondDoc],
+        outputDirectory: outDir,
+      ),
+      throwsA(isA<StateError>().having(
+        (e) => e.message,
+        'message',
+        contains('Filename collision detected'),
+      )),
+    );
   });
 
   test('deployMappings writes ttl files for default and named graphs',
