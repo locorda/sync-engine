@@ -16,7 +16,7 @@ LocordaConfig generateLocordaConfig() => LocordaConfig(
     ResourceConfig(
       type: task.Task,
       crdtMapping: Uri.parse(
-        'https://locorda.dev/example/minimal/mappings/task-v1.ttl',
+        'https://locorda.dev/example/minimal/mappings/task-v1#',
       ),
       indices: [FullIndex()],
     ),

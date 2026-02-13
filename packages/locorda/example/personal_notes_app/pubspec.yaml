@@ -32,11 +32,11 @@ dependencies:
   locorda_dir: any
 
   # RDF mapping
-  locorda_rdf_core: ^0.11.6
-  locorda_rdf_mapper: ^0.11.6
+  locorda_rdf_core: ^0.11.7
+  locorda_rdf_mapper: ^0.11.7
   locorda_rdf_terms_schema: ^0.11.4
-  locorda_rdf_terms_core: ^0.11.6
-  locorda_rdf_mapper_annotations: ^0.11.6
+  locorda_rdf_terms_core: ^0.11.7
+  locorda_rdf_mapper_annotations: ^0.11.7
   
   # UI
   flutter_chips_input: ^2.0.0

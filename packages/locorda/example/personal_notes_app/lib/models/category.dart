@@ -20,7 +20,12 @@ import 'category_display_settings.dart';
 ///
 @LcrdRootResource(
   PersonalNotesVocab.NotesCategory,
-  '$appBaseUrl/mappings/category-v1.ttl',
+  LcrdCrdt(
+    '$appBaseUrl/mappings/category-v1#',
+    label: 'Notes Category CRDT Document Mapping v1',
+    comment:
+        'Defines how note categories should merge when conflicts occur during sync.',
+  ),
 )
 class Category {
   /// Unique identifier for this category

@@ -2,6 +2,95 @@
 // ignore_for_file: prefer_single_quotes
 
 const List<String> bootstrapMappings = [
-  "@prefix : <https://locorda.dev/example/personal_notes_app/mappings/category-v1#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix mc: <https://w3id.org/solid-crdt-sync/vocab/merge-contract#> .\n@prefix algo: <https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#> .\n@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .\n@prefix schema: <https://schema.org/> .\n@prefix pnotes: <https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#> .\n\n# CRDT Document Mapping for Notes Categories\n# Defines merge strategies for NotesCategory properties\n# TODO: generate from Dart code annotations\n\n<> a mc:DocumentMapping ;\n    rdfs:label \"Notes Category CRDT Document Mapping v1\" ;\n    rdfs:comment \"Defines how note categories should merge when conflicts occur during sync.\" ;\n    mc:imports ( mappings:core-v1 ) ;\n    mc:predicateMapping ( <#settings-mappings> ) ;\n    mc:classMapping ( [\n        a mc:ClassMapping ;\n        mc:appliesToClass pnotes:NotesCategory ;\n        mc:rule\n            [ mc:predicate schema:name ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:description ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate pnotes:displaySettings ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate pnotes:archived ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:dateCreated ; algo:mergeWith algo:LWW_Register ]\n    ] ) .\n\n\n<#settings-mappings> a mc:PredicateMapping;\n  # we were a bit lazy and did not assign a RDF class IRI to CategoryDisplaySettings\n  # so we use a PredicateMapping with rules for all predicates used in that blank node\n   mc:rule\n     [ mc:predicate pnotes:categoryColor; algo:mergeWith algo:LWW_Register ], \n     [ mc:predicate pnotes:categoryIcon; algo:mergeWith algo:LWW_Register ] . \n",
-  "@prefix : <https://locorda.dev/example/personal_notes_app/mappings/note-v1#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix mc: <https://w3id.org/solid-crdt-sync/vocab/merge-contract#> .\n@prefix algo: <https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#> .\n@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .\n@prefix schema: <https://schema.org/> .\n@prefix pnotes: <https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#> .\n\n# CRDT Document Mapping for Personal Notes\n# Defines merge strategies for PersonalNote properties\n# TODO: generate from Dart code annotations\n\n<> a mc:DocumentMapping ;\n    rdfs:label \"Personal Note CRDT Document Mapping v1\" ;\n    rdfs:comment \"Defines how personal notes should merge when conflicts occur during sync.\" ;\n    mc:imports ( mappings:core-v1 ) ;\n    mc:classMapping ( [\n        a mc:ClassMapping ;\n        mc:appliesToClass pnotes:PersonalNote ;\n        mc:rule\n            [ mc:predicate schema:name ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:text ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:keywords ; algo:mergeWith algo:OR_Set ],\n            [ mc:predicate pnotes:belongsToCategory ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:dateCreated ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:dateModified ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:relatedLink ; algo:mergeWith algo:OR_Set ]\n    ] [\n       a mc:ClassMapping ;\n        mc:appliesToClass pnotes:Weblink ;\n        mc:rule\n            [ mc:predicate schema:url ; mc:isIdentifying true ; algo:mergeWith algo:Immutable ],\n            [ mc:predicate schema:name ; algo:mergeWith algo:LWW_Register ],\n            [ mc:predicate schema:description ; algo:mergeWith algo:LWW_Register ]\n    ] ) .",
+  r"""
+@prefix ca: <https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#> .
+@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix mc: <https://w3id.org/solid-crdt-sync/vocab/merge-contract#> .
+@prefix pn: <https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <https://schema.org/> .
+
+GRAPH <https://locorda.dev/example/personal_notes_app/mappings/category-v1#> {
+  <https://locorda.dev/example/personal_notes_app/mappings/category-v1#> a mc:DocumentMapping;
+      rdfs:comment "Defines how note categories should merge when conflicts occur during sync.";
+      rdfs:label "Notes Category CRDT Document Mapping v1";
+      mc:classMapping (
+          [
+              a mc:ClassMapping ;
+              mc:appliesToClass pn:NotesCategory ;
+              mc:rule (
+                      [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ]
+                      [ mc:predicate schema:description ; ca:mergeWith ca:LWW_Register ]
+                      [ mc:predicate pn:displaySettings ; ca:mergeWith ca:LWW_Register ]
+                      [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ]
+                      [ mc:predicate schema:dateModified ; ca:mergeWith ca:LWW_Register ]
+                      [ mc:predicate pn:archived ; ca:mergeWith ca:LWW_Register ]
+                  )
+          ]
+      );
+      mc:imports (mappings:core-v1);
+      mc:predicateMapping (
+          [
+              a mc:PredicateMapping ;
+              mc:rule (
+                      [ mc:predicate pn:categoryColor ; ca:mergeWith ca:LWW_Register ]
+                      [ mc:predicate pn:categoryIcon ; ca:mergeWith ca:LWW_Register ]
+                  )
+          ]
+      ) .
+}
+""",
+
+  r"""
+@prefix ca: <https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#> .
+@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix mc: <https://w3id.org/solid-crdt-sync/vocab/merge-contract#> .
+@prefix pn: <https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <https://schema.org/> .
+
+GRAPH <https://locorda.dev/example/personal_notes_app/mappings/note-v1#> {
+  <https://locorda.dev/example/personal_notes_app/mappings/note-v1#> a mc:DocumentMapping;
+      rdfs:comment "Defines how personal notes should merge when conflicts occur during sync.";
+      rdfs:label "Personal Note CRDT Document Mapping v1";
+      mc:classMapping (
+          [
+              a mc:ClassMapping ;
+              mc:appliesToClass schema:Comment ;
+              mc:rule (
+                      [ mc:predicate schema:text ; ca:mergeWith ca:LWW_Register ]
+                      [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ]
+                  )
+          ]
+          [
+              a mc:ClassMapping ;
+              mc:appliesToClass pn:PersonalNote ;
+              mc:rule (
+                      [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ]
+                      [ mc:predicate schema:text ; ca:mergeWith ca:LWW_Register ]
+                      [ mc:predicate schema:keywords ; ca:mergeWith ca:OR_Set ]
+                      [ mc:predicate pn:belongsToCategory ; ca:mergeWith ca:LWW_Register ]
+                      [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ]
+                      [ mc:predicate schema:dateModified ; ca:mergeWith ca:LWW_Register ]
+                      [ mc:predicate schema:relatedLink ; ca:mergeWith ca:OR_Set ]
+                      [ mc:predicate schema:comment ; ca:mergeWith ca:OR_Set ]
+                  )
+          ]
+          [
+              a mc:ClassMapping ;
+              mc:appliesToClass pn:Weblink ;
+              mc:rule (
+                      [ mc:predicate schema:url ; ca:mergeWith ca:Immutable ; mc:isIdentifying true ]
+                      [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ]
+                      [ mc:predicate schema:description ; ca:mergeWith ca:LWW_Register ]
+                  )
+          ]
+      );
+      mc:imports (mappings:core-v1);
+      mc:predicateMapping () .
+}
+""",
+
 ];

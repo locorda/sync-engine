@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:build/build.dart';
 import 'package:glob/glob.dart';
 
@@ -8,14 +6,13 @@ Builder mappingBootstrapBuilder(BuilderOptions options) =>
 
 class MappingBootstrapBuilder implements Builder {
   static const _outputPath = 'lib/src/generated/mapping_bootstrap.g.dart';
-  static const _defaultMappingRoots = [
-    'assets/contracts/mappings',
-  ];
+  static const _defaultMappingRoots = ['assets/contracts/mappings'];
 
-  final List<Glob> _mappingGlobs;
+  final List<Glob> _mappingRootGlobs;
 
   MappingBootstrapBuilder({List<String>? mappingRoots})
-      : _mappingGlobs = _buildGlobs(mappingRoots ?? _defaultMappingRoots);
+      : _mappingRootGlobs =
+            _buildAssetGlobs(mappingRoots ?? _defaultMappingRoots);
 
   @override
   Map<String, List<String>> get buildExtensions => const {
@@ -24,23 +21,38 @@ class MappingBootstrapBuilder implements Builder {
 
   @override
   Future<void> build(BuildStep buildStep) async {
-    final mappingAssets = <AssetId>{};
-    for (final glob in _mappingGlobs) {
-      await for (final asset in buildStep.findAssets(glob)) {
-        mappingAssets.add(asset);
-      }
-    }
-    final contents = <String>[];
-    final sortedAssets = mappingAssets.toList()
+    final generatedCacheAssets = <AssetId>{
+      ...await _findAssets(buildStep, Glob('lib/**.crdt.cache.trig')),
+      ...await _findAssets(buildStep, Glob('lib/**/*.crdt.cache.trig')),
+    };
+    final configuredAssets = await _findConfiguredAssets(buildStep);
+    final allAssets = <AssetId>{...generatedCacheAssets, ...configuredAssets}
+        .toList()
       ..sort((a, b) => a.path.compareTo(b.path));
-    for (final asset in sortedAssets) {
-      final content = await buildStep.readAsString(asset);
-      contents.add(content);
+
+    final contents = <String>[];
+    for (final asset in allAssets) {
+      contents.add(await buildStep.readAsString(asset));
     }
 
-    final output = _renderOutput(contents);
     final outputId = AssetId(buildStep.inputId.package, _outputPath);
-    await buildStep.writeAsString(outputId, output);
+    await buildStep.writeAsString(outputId, _renderOutput(contents));
+  }
+
+  Future<Set<AssetId>> _findConfiguredAssets(BuildStep buildStep) async {
+    final assets = <AssetId>{};
+    for (final glob in _mappingRootGlobs) {
+      assets.addAll(await _findAssets(buildStep, glob));
+    }
+    return assets;
+  }
+
+  Future<Set<AssetId>> _findAssets(BuildStep buildStep, Glob glob) async {
+    final assets = <AssetId>{};
+    await for (final asset in buildStep.findAssets(glob)) {
+      assets.add(asset);
+    }
+    return assets;
   }
 
   String _renderOutput(List<String> contents) {
@@ -51,31 +63,60 @@ class MappingBootstrapBuilder implements Builder {
     buffer.writeln('const List<String> bootstrapMappings = [');
 
     for (final content in contents) {
-      buffer.writeln('  ${jsonEncode(content)},');
+      buffer.writeln(_toRawMultilineLiteral(content));
     }
+
     buffer.writeln('];');
     return buffer.toString();
   }
 
-  static List<Glob> _buildGlobs(List<String> roots) {
-    return roots.map((root) {
+  String _toRawMultilineLiteral(String content) {
+    final normalized = content.replaceAll('\r\n', '\n').trim();
+    if (normalized.contains('"""')) {
+      final escaped = normalized
+          .replaceAll(r'\', r'\\')
+          .replaceAll("'", r"\'")
+          .replaceAll('\n', r'\n');
+      return "  '$escaped',";
+    }
+
+    final buffer = StringBuffer();
+    buffer.writeln('  r"""');
+    buffer.writeln(normalized);
+    buffer.writeln('""",');
+    return buffer.toString();
+  }
+
+  static List<Glob> _buildAssetGlobs(List<String> roots) {
+    final globs = <Glob>[];
+    for (final root in roots) {
       final normalized = root.replaceAll(RegExp(r'/+$'), '');
-      final pattern =
-          _looksLikePattern(normalized) ? normalized : '$normalized/**.ttl';
-      return Glob(pattern);
-    }).toList();
+      if (_looksLikePattern(normalized)) {
+        globs.add(Glob(normalized));
+        continue;
+      }
+      globs
+        ..add(Glob('$normalized/**.ttl'))
+        ..add(Glob('$normalized/**/*.ttl'))
+        ..add(Glob('$normalized/**.trig'))
+        ..add(Glob('$normalized/**/*.trig'))
+        ..add(Glob('$normalized/**.jsonld'))
+        ..add(Glob('$normalized/**/*.jsonld'));
+    }
+    return globs;
   }
 
   static bool _looksLikePattern(String value) {
-    return value.contains('*') || value.contains('?') || value.endsWith('.ttl');
+    return value.contains('*') || value.contains('?');
   }
 }
 
 List<String>? _parseMappingRoots(BuilderOptions options) {
   final roots = options.config['mapping_roots'];
-  if (roots is List) {
-    final parsed = roots.whereType<String>().toList();
-    return parsed.isEmpty ? null : parsed;
+  if (roots is! List) {
+    return null;
   }
-  return null;
+
+  final parsed = roots.whereType<String>().toList();
+  return parsed.isEmpty ? null : parsed;
 }

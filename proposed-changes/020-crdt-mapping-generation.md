@@ -153,57 +153,142 @@ class LcrdRootResource extends RdfGlobalResource {
 
 ### Output Location
 
-- **Directory:** `assets/contracts/mappings/`
-- **Filename:** Extracted from the last path segment of `crdt.mappingIri` URL
-- **Example:** `'https://myapp.example.com/mappings/note-v1.ttl'` → `assets/contracts/mappings/note-v1.ttl`
-- **Generation:** Only occurs when `crdt.generate == true`
+- **Directory:** Build cache (`.dart_tool/build/...`)
+- **Format:** TriG (`.crdt.cache.trig` extension)
+- **Filename:** Derived from source file path with `.crdt.cache.trig` suffix
+- **Example:** `lib/models/note.dart` → `.dart_tool/build/.../lib/models/note.crdt.cache.trig`
+- **Generation:** Only occurs when at least one `@LcrdRootResource` with `crdt.generate == true` exists in the file
+- **Future Extension:** `.vocab.cache.trig` reserved for vocabulary generation (Phase 2)
 
-### URL-to-Filename Mapping
+### Multiple Root Resources per File
+
+A single Dart file can contain multiple `@LcrdRootResource` classes. Each is converted to a **named graph** within a single TriG dataset:
 
 ```dart
-String extractFilename(LcrdCrdt crdt) {
-  final uri = Uri.parse(crdt.mappingIri);
-  return uri.pathSegments.last;  // 'note-v1.ttl'
+// lib/models/shared.dart
+@LcrdRootResource(
+  NotesVocab.Note,
+  LcrdCrdt('https://example.com/mappings/note-v1#'),
+)
+class Note { /* ... */ }
+
+@LcrdRootResource(
+  NotesVocab.Category,
+  LcrdCrdt('https://example.com/mappings/category-v1#'),
+)
+class Category { /* ... */ }
+```
+
+**Output (shared.crdt.cache.trig in cache):**
+```trig
+<https://example.com/mappings/note-v1#> {
+  <https://example.com/mappings/note-v1#> a mc:DocumentMapping ;
+    mc:classMapping ( [...] ) .
+}
+
+<https://example.com/mappings/category-v1#> {
+  <https://example.com/mappings/category-v1#> a mc:DocumentMapping ;
+    mc:classMapping ( [...] ) .
 }
 ```
 
-### Dual Purpose
+### Three-Phase Pipeline
 
-The same TTL file serves two purposes:
+**Phase 1: CRDT Mapping Builder** (per source file)
+- Scans Dart file for `@LcrdRootResource(crdt.generate == true)`
+- Generates RDF graph for each root resource (field traversal, CRDT rules)
+- Wraps each graph as named graph (key = `crdt.mappingIri`)
+- Combines to `RdfDataset` → `trig.encode()` → `.crdt.cache.trig` file
 
-1. **Bootstrap:** Embedded as Dart const via `locorda_mapping_bootstrap_generator`, available offline in the worker
-2. **Deployment:** Published to the mapping's canonical IRI on the web (user's deploy step)
+**Phase 2: Mapping Bootstrap Builder** (aggregation)
+- **Location:** `locorda_init_generator` package (same as CRDT Mapping Builder)
+- Finds all `.crdt.cache.trig` files in cache (via build step asset discovery)
+- Reads configurable RDF files from `assets/` (for manual/external mappings)
+- Collects each document as separate string in list
+- Serializes as `List<String>` in `lib/src/generated/mapping_bootstrap.g.dart`
+- Each string uses multi-line formatting for developer readability:
+
+```dart
+// Each list entry is a complete RDF document (Turtle, TriG, JSON-LD, etc.)
+// Multi-line raw strings (r""") avoid escaping issues with RDF content
+const List<String> bootstrapMappings = [
+  // Generated mapping from note.dart (TriG with named graphs)
+  r"""
+<https://example.com/mappings/note-v1#> {
+  <https://example.com/mappings/note-v1#> a mc:DocumentMapping ;
+    mc:classMapping ( [...] ) .
+}
+""",
+  
+  // Generated mapping from category.dart (TriG with named graphs)
+  r"""
+<https://example.com/mappings/category-v1#> {
+  <https://example.com/mappings/category-v1#> a mc:DocumentMapping ;
+    mc:classMapping ( [...] ) .
+}
+""",
+  
+  // Manual mapping from assets/ (Turtle format)
+  r"""
+@prefix mc: <...> .
+<> a mc:DocumentMapping ; [...] .
+""",
+];
+```
+
+**Phase 3: Deployment Tool** (user invokes separately)
+- Reads `lib/src/generated/mapping_bootstrap.g.dart`
+- Extracts `List<String>` using Dart AST parser (`analyzer` package)
+- For each string in list:
+  - Detects format (Turtle/TriG/JSON-LD) and decodes to RDF
+  - If TriG with named graphs: splits into separate documents
+  - Extracts Document IRI from content (`mc:DocumentMapping` subject)
+  - Derives filename from IRI (e.g., `note-v1.ttl`)
+  - Encodes as Turtle → writes to output directory
 
 ### Build Integration
 
 ```yaml
-# build.yaml (in locorda_dev)
+# build.yaml (in locorda_init_generator)
 builders:
   crdt_mapping_generator:
-    import: "package:locorda_dev/src/crdt_mapping_generator_builder.dart"
-    builder_factories: ["crdtMappingGeneratorBuilder"]
+    import: "package:locorda_init_generator/builder.dart"
+    builder_factories: ["crdtMappingBuilder"]
     build_extensions:
-      $lib$: []  # Outputs determined dynamically at build time
-    auto_apply: all_packages
+      lib/**/*.dart:
+        - lib/**/*.crdt.cache.trig  # Mirrors source structure in cache
+    auto_apply: dependents
+    build_to: cache  # Ephemeral, not committed
+    applies_builders: []
+  
+  mapping_bootstrap:
+    import: "package:locorda_init_generator/builder.dart"
+    builder_factories: ["mappingBootstrapBuilder"]
+    build_extensions:
+      $lib$:  # Synthetic input
+        - lib/src/generated/mapping_bootstrap.g.dart
+    auto_apply: dependents
     build_to: source
     applies_builders: []
 ```
 
 **Key points:**
-- Empty `build_extensions` because output files are determined dynamically by scanning annotations
-- `build_to: source` allows writing to `assets/contracts/mappings/` (outside `lib/`)
-- Builder scans all `.dart` files for `@LcrdRootResource` annotations
-- Only generates files where `crdt.generate == true`
+- `build_to: cache` - outputs are intermediate artifacts
+- Pattern mirrors source structure for traceability
+- Builder skips `.g.dart` files and non-library files
+- Only generates when `crdt.generate == true`
 
 ## Graph-Based Generation
 
-**Approach:** Build `List<Triple>` using generated vocabulary classes, convert to `RdfGraph`, encode with `turtle.encode()`.
+**Approach:** Build `List<Triple>` per root resource using generated vocabulary classes, wrap as named graphs in `RdfDataset`, encode with `trig.encode()`.
 
 **Key principles:**
 - Use generated vocabulary classes (`McDocumentMapping`, `AlgoVocab`) - never hardcode IRIs
 - Build RDF lists manually with `Rdf.first`/`Rdf.rest`/`Rdf.nil` pattern
-- `RdfGraph.fromTriples(triples)` → `turtle.encode(graph)` for output
-- Never use string concatenation for Turtle generation
+- Per root resource: `RdfGraph.fromTriples(triples)`
+- Aggregate graphs into `RdfDataset` with `crdt.mappingIri` as named graph IRI
+- Output: `trig.encode(dataset)` - always TriG format (even for single graph)
+- Never use string concatenation for RDF serialization
 
 ## Field Traversal
 
@@ -240,17 +325,65 @@ class Weblink {
 ## Integration with Ecosystem
 
 **Generation Pipeline:**
-1. **CRDT mapping generator** → `assets/contracts/mappings/*.ttl`
-2. **Bootstrap generator** → `lib/mapping_bootstrap.g.dart`
-3. **Worker generator** → imports bootstrap, includes in `WorkerSetup`
+1. **CRDT mapping generator** (`locorda_init_generator`) → `.crdt.cache.trig` files in build cache (per source file)
+2. **Bootstrap generator** (`locorda_init_generator`) → reads cache + manual assets, outputs `lib/src/generated/mapping_bootstrap.g.dart` with `List<String>`
+3. **Worker generator** → imports bootstrap, passes `List<String>` to `WorkerSetup`
 4. **Config generator** → reads `crdt.mappingIri` from annotations, creates `ResourceConfig`
 5. **initLocorda** → wires all generated artifacts together
+6. **Deployment tool** (user-invoked) → processes `List<String>`, splits into individual TTL files for server deployment
 
 **Key Integration Points:**
-- Generated TTL files automatically available offline via bootstrap
-- External mappings (`.external()`) must be provided manually
+- All mappings (generated + manual) unified in `List<String>` constant
+- Each list entry is a complete RDF document (supports Turtle, TriG, JSON-LD, etc.)
+- External mappings (`.external()`) must be provided as RDF files in assets/
+- Bootstrap builder configuration allows multiple asset paths via `mapping_roots` option
+- Worker receives complete list, framework parses each document at runtime
 - Config builder extracts mapping IRI from `@LcrdRootResource.crdt`
-- Worker automatically includes all bootstrapped mappings
+
+**Manual Mapping Integration:**
+Users can provide handwritten mappings alongside generated ones:
+
+```yaml
+# build.yaml (in app)
+targets:
+  $default:
+    builders:
+      locorda_init_generator:mapping_bootstrap:
+        options:
+          mapping_roots:
+            - assets/contracts/mappings    # Handwritten RDF files
+            - assets/external/third_party  # Third-party mappings
+```
+
+Bootstrap builder (in `locorda_init_generator`):
+1. Finds all `.crdt.cache.trig` files in cache
+2. Reads each file as string → adds to list
+3. Finds all RDF files (`.ttl`, `.trig`, `.jsonld`) in configured `mapping_roots`
+4. Reads each file as string → adds to list
+5. Outputs `const List<String> bootstrapMappings = [...];
+
+**Algorithm:**
+```dart
+Future<List<String>> collectMappings(BuildStep buildStep) async {
+  final mappings = <String>[];
+  
+  // 1. All generated .crdt.cache.trig from cache
+  await for (final asset in buildStep.findAssets(Glob('**/*.crdt.cache.trig'))) {
+    mappings.add(await buildStep.readAsString(asset));
+  }
+  
+  // 2. All configured assets (handwritten)
+  final assetRoots = builderOptions['mapping_roots'] as List? ?? 
+                    ['assets/contracts/mappings'];
+  for (final root in assetRoots) {
+    await for (final asset in buildStep.findAssets(Glob('$root/**/*.{ttl,trig,jsonld}'))) {
+      mappings.add(await buildStep.readAsString(asset));
+    }
+  }
+  
+  return mappings;
+}
+```
 
 ## Example Transformation
 
@@ -291,17 +424,29 @@ class Weblink {
 
 ### RDF Graph Construction
 
-**Pattern:** List mutation → `RdfGraph.fromTriples()` → `turtle.encode()`
+**Pattern:** Per root resource: List mutation → `RdfGraph.fromTriples()` → aggregate to `RdfDataset` → `trig.encode()`
 
 **RDF Lists:** Implementation builds lists using `Rdf.first`/`Rdf.rest`/`Rdf.nil` pattern as needed.
 
 ```dart
-final triples = <Triple>[];
-triples.add(Triple(mappingIri, rdf.type, McDocumentMapping.iri));
-// Build document metadata, imports list, class mappings with property rules
-// Use McRule.predicate, AlgoVocab.mergeWith, McRule.isIdentifying
-final graph = RdfGraph.fromTriples(triples);
-return turtle.encode(graph);
+// Per source file
+final dataset = RdfDataset();
+
+for (final rootResource in rootResourcesInFile) {
+  if (!rootResource.crdt.generate) continue;
+  
+  final triples = <Triple>[];
+  final mappingIri = IriTerm(rootResource.crdt.mappingIri);
+  
+  triples.add(Triple(mappingIri, rdf.type, McDocumentMapping.iri));
+  // Build document metadata, imports list, class mappings with property rules
+  // Use McRule.predicate, AlgoVocab.mergeWith, McRule.isIdentifying
+  
+  final graph = RdfGraph.fromTriples(triples);
+  dataset.addNamedGraph(mappingIri, graph);
+}
+
+return trig.encode(dataset);
 ```
 
 ### Type Discovery & Processing
@@ -327,15 +472,23 @@ return turtle.encode(graph);
 
 ### Output Management
 
-**Generated Files:** Write to `assets/contracts/mappings/`, named from mapping IRI's last path segment
+**Generated Files:** Write to build cache, mirroring source file structure (`lib/models/note.dart` → cache `.../lib/models/note.crdt.cache.trig`)
 
-**Collision Prevention:** Use distinct mapping IRIs per root class
+**Collision Prevention:** 
+- One `.crdt.cache.trig` file per source file (multiple root resources → multiple named graphs in dataset)
+- Distinct `crdt.mappingIri` required per root class (enforced at annotation validation)
+- Named graph IRIs must be unique across entire codebase
 
 ### Testing Strategy
 
 **Unit Tests:** Verify single class, default behaviors, type traversal  
-**Golden File Tests:** Compare generated TTL against expected output  
-**Integration Tests:** Validate Turtle encoding, merge contract loader compatibility
+**Golden File Tests:** Compare generated TriG against expected output  
+**Integration Tests:** 
+- Validate TriG encoding/decoding roundtrip
+- Test multiple root resources per file
+- Verify bootstrap aggregation (cache + manual assets)
+- Test deployment tool splitting logic
+- Validate merge contract loader compatibility with TriG input
 
 ## Open Questions & Key Decisions
 
@@ -349,7 +502,140 @@ return turtle.encode(graph);
 
 **Build Performance:** Incremental builder, only regenerate changed roots + dependents.
 
+## Deployment Tool
+
+Separate CLI tool for splitting consolidated TriG into individual TTL files for server deployment.
+
+### Usage
+
+```bash
+# From app root
+dart run locorda_dev:deploy_mappings output/deploy/
+```
+
+### Implementation
+
+**Location:** `packages/locorda_dev/bin/deploy_mappings.dart`
+
+**Algorithm:**
+1. Instantiate `RdfCore` in `main()` (configurable, e.g., custom prefixes)
+2. Read `lib/src/generated/mapping_bootstrap.g.dart` as string
+3. Parse with Dart AST parser: `parseString(content: fileContent).unit`
+4. Traverse AST to find `TopLevelVariableDeclaration` named `bootstrapMappings`
+5. Extract list literals from `ListLiteral` initializer
+6. Get raw string values from `SimpleStringLiteral.value`
+7. For each string:
+   - Use `RdfCore` to auto-detect format and decode to RDF
+   - If TriG with named graphs: extract each graph separately
+   - Extract Document IRI (`mc:DocumentMapping` subject)
+   - Derive filename from IRI (e.g., `note-v1.ttl` from `https://example.com/mappings/note-v1#`)
+   - Use `RdfCore` to encode as Turtle → write to `<output_dir>/<filename>`
+8. Print summary (file count, IRIs)
+
+**Implementation Example:**
+```dart
+import 'package:analyzer/dart/analysis/utilities.dart';
+import 'package:analyzer/dart/ast/ast.dart';
+import 'package:rdflib/rdflib.dart';
+
+void main(List<String> args) async {
+  if (args.isEmpty) {
+    print('Usage: dart run deploy_mappings.dart <output_dir>');
+    exit(1);
+  }
+  
+  final outputDir = args[0];
+  
+  // Single RdfCore instance for the entire tool (configurable)
+  final rdfCore = RdfCore();
+  // Optional: Register custom prefixes or configure codecs
+  // rdfCore.registerPrefix('myapp', 'https://myapp.example.com/');
+  
+  final bootstrapFile = File('lib/src/generated/mapping_bootstrap.g.dart');
+  final mappings = extractMappingsList(await bootstrapFile.readAsString());
+  
+  await deployMappings(rdfCore, mappings, outputDir);
+}
+
+List<String> extractMappingsList(String dartCode) {
+  final parseResult = parseString(content: dartCode);
+  final unit = parseResult.unit;
+  
+  for (final declaration in unit.declarations) {
+    if (declaration is TopLevelVariableDeclaration) {
+      for (final variable in declaration.variables.variables) {
+        if (variable.name.lexeme == 'bootstrapMappings') {
+          final initializer = variable.initializer;
+          if (initializer is ListLiteral) {
+            return initializer.elements
+                .whereType<SimpleStringLiteral>()
+                .map((lit) => lit.value)  // Unescaped string content
+                .toList();
+          }
+        }
+      }
+    }
+  }
+  throw Exception('bootstrapMappings not found');
+}
+
+Future<void> deployMappings(
+  RdfCore rdfCore,
+  List<String> mappings,
+  String outputDir,
+) async {
+  final output = Directory(outputDir);
+  await output.create(recursive: true);
+  
+  for (final mappingStr in mappings) {
+    // Use RdfCore for format detection and decoding
+    final dataset = rdfCore.decode(mappingStr);
+    
+    // Process each graph (handles both single-graph Turtle and multi-graph TriG)
+    for (final graphEntry in dataset.graphs.entries) {
+      final graph = graphEntry.value;
+      
+      // Extract Document IRI from mc:DocumentMapping subject
+      final docIri = _extractDocumentIri(graph);
+      if (docIri == null) continue;
+      
+      // Derive filename from IRI
+      final filename = _deriveFilename(docIri);
+      
+      // Use RdfCore to encode as Turtle
+      final turtle = rdfCore.turtle.encode(graph);
+      
+      // Write to output directory
+      final file = File('${output.path}/$filename');
+      await file.writeAsString(turtle);
+      
+      print('✓ $filename → $docIri');
+    }
+  }
+}
+```
+
+**Error Handling:**
+- Missing bootstrap file → clear error message
+- Parse failures → show context and line number
+- IRI extraction failures → log graph subject, continue
+- File write errors → report per-file, continue
+
+**Example Output:**
+```
+✓ note-v1.ttl → https://example.com/mappings/note-v1#
+✓ category-v1.ttl → https://example.com/mappings/category-v1#
+✓ core-v1.ttl → https://w3id.org/solid-crdt-sync/mappings/core-v1# (manual)
+
+Deployed 3 mappings to output/deploy/
+```
+
 ## Summary
 
-Automatic CRDT mapping generation from annotations via graph-based RDF construction. Smart field traversal discovers all relevant types. Sensible defaults (LWW when no annotation). Seamless integration with bootstrap, worker, and config generators. Deployment flexibility (offline bootstrap + online updates). Migration support (opt-in, manual mappings still work via `.external()`).
+Automatic CRDT mapping generation from annotations via graph-based RDF construction using **TriG format for cache files**. Smart field traversal discovers all relevant types. Sensible defaults (LWW when no annotation). **Three-phase architecture:**
+1. CRDT Mapping Builder (`locorda_init_generator`) generates per-file TriG datasets in cache (supports multiple root resources)
+2. Bootstrap Builder (`locorda_init_generator`) aggregates cache + manual assets into `List<String>` constant (supports any RDF format)
+3. Deployment tool processes list entries, splits into individual TTL files for server upload
+
+Seamless integration with worker and config generators. **Dual-source support:** generated mappings from cache + handwritten mappings from assets. Deployment flexibility (offline bootstrap + online updates). Migration support (opt-in, manual mappings via assets, external mappings via `.external()`).
 

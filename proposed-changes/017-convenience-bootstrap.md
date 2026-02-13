@@ -42,7 +42,7 @@ to trigger the existing builder packages in dependent apps.
 ```yaml
 dev_dependencies:
   build_runner: ^2.4.0
-  locorda_rdf_mapper_generator: ^0.11.6
+  locorda_rdf_mapper_generator: ^0.11.7
   locorda_builder: any
   locorda_mapping_bootstrap_generator: any
 ```

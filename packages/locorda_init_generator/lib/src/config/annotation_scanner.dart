@@ -80,19 +80,26 @@ class AnnotationScanner {
         classIri = dartObjectToCode(classIriField);
       }
 
-      // Extract crdtMapping (second argument) as Code
-      final crdtMappingField = getField(annotationValue, 'crdtMapping');
+      // Extract crdt config
+      final crdtField = getField(annotationValue, 'crdt');
+      if (crdtField == null || crdtField.isNull) {
+        _log.warning(
+            'Could not extract crdt config for ${element.displayName}');
+        continue;
+      }
+
+      // Extract crdt.mappingIri as Code
+      final crdtMappingField = getField(crdtField, 'mappingIri');
       if (crdtMappingField == null) {
         _log.warning(
-            'Could not extract crdtMapping for ${element.displayName}');
+            'Could not extract crdt.mappingIri for ${element.displayName}');
         continue;
       }
       final crdtMapping = dartObjectToCode(crdtMappingField);
 
-      // Extract generateCrdtMapping
+      // Extract crdt.generate
       final generateCrdtMapping =
-          getField(annotationValue, 'generateCrdtMapping')?.toBoolValue() ??
-              true;
+          getField(crdtField, 'generate')?.toBoolValue() ?? true;
 
       // Extract fullIndex
       final fullIndexField = getField(annotationValue, 'fullIndex');

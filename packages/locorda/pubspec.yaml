@@ -19,8 +19,8 @@ dependencies:
   locorda_worker: any
   
   # RDF mapping
-  locorda_rdf_core: ^0.11.6
-  locorda_rdf_mapper: ^0.11.6
+  locorda_rdf_core: ^0.11.7
+  locorda_rdf_mapper: ^0.11.7
 
   # Web Worker support (modern API)
   web: ^1.1.0

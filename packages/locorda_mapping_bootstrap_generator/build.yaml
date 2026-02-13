@@ -7,9 +7,11 @@ builders:
         - lib/src/generated/mapping_bootstrap.g.dart
     auto_apply: dependents
     build_to: source
+    required_inputs:
+      - lib/**.crdt.cache.trig
     defaults:
       generate_for:
         - pubspec.yaml
       options:
-          mapping_roots:
-            - assets/contracts/mappings
+        mapping_roots:
+          - assets/contracts/mappings

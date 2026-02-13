@@ -37,7 +37,7 @@ class TaskMapper implements GlobalResourceMapper<task.Task> {
 
     final (id,) = _iriMapper.fromRdfTerm(subject, context);
 
-    final String title = reader.require(SchemaThing.name);
+    final String title = reader.require(SchemaCreativeWork.name);
     final bool completed = reader.require(
       const IriTerm(
         'https://locorda.dev/example/minimal/vocabulary/task#completed',
@@ -63,7 +63,7 @@ class TaskMapper implements GlobalResourceMapper<task.Task> {
 
     return context
         .resourceBuilder(subject)
-        .addValue(SchemaThing.name, resource.title)
+        .addValue(SchemaCreativeWork.name, resource.title)
         .addValue(
           const IriTerm(
             'https://locorda.dev/example/minimal/vocabulary/task#completed',

@@ -9,6 +9,8 @@ export 'src/crdt_annotations.dart'
     show CrdtImmutable, CrdtLwwRegister, CrdtOrSet, McIdentifying;
 export 'src/resource.dart'
     show
+        LcrdCrdt,
+        LcrdMappings,
         LcrdRootResource,
         LcrdSubResource,
         LcrdGroupKey,

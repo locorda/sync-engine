@@ -642,58 +642,58 @@ packages:
     dependency: transitive
     description:
       name: locorda_rdf_canonicalization
-      sha256: e932436f76d08f11ceffa96c6c0dcde2d4261b2ea6681e6e97e356255f42245c
+      sha256: d4945645dfd6419a1d950ca82c5a60f5223a75025f204f55011f7c1fda1f3d25
       url: "https://pub.dev"
     source: hosted
-    version: "0.11.6"
+    version: "0.11.7"
   locorda_rdf_core:
     dependency: transitive
     description:
       name: locorda_rdf_core
-      sha256: "8f5dcdbe960458d7b43b09700b70c1b0a319fdf156562ac7bf7082983c5d39b7"
+      sha256: ab31bca6315e408c66fa044bce8c5a27f9d7d34be522ca4e6927b0322b3b2381
       url: "https://pub.dev"
     source: hosted
-    version: "0.11.6"
+    version: "0.11.7"
   locorda_rdf_mapper:
     dependency: transitive
     description:
       name: locorda_rdf_mapper
-      sha256: "18dde38f87fc9bc16716a392ca484d0f2020951e37763196d79f8cd17f4b5478"
+      sha256: "3ee23ae5db30f8c277537cdd5d3202fa0126fdc0d8240c45d534e2afd260c472"
       url: "https://pub.dev"
     source: hosted
-    version: "0.11.6"
+    version: "0.11.7"
   locorda_rdf_mapper_annotations:
     dependency: transitive
     description:
       name: locorda_rdf_mapper_annotations
-      sha256: "1ad5866111555e0598048f700b81e15e0ee8f73d191a7d33be46d753a2817021"
+      sha256: "37d71c64b10b5eabd8ef74d640f81cf64b6219a18da0e69ef0a9b427acbc54b1"
       url: "https://pub.dev"
     source: hosted
-    version: "0.11.6"
+    version: "0.11.7"
   locorda_rdf_mapper_generator:
     dependency: transitive
     description:
       name: locorda_rdf_mapper_generator
-      sha256: "3a0b2408aeb14be43f14c1039f1a326b0f26d78b68c7b16199f74f0fd2698632"
+      sha256: "5887d7460ba03822b5c64006f687675356b7048f87cdc0c299cdc1214f6308ef"
       url: "https://pub.dev"
     source: hosted
-    version: "0.11.6"
+    version: "0.11.7"
   locorda_rdf_terms_core:
     dependency: transitive
     description:
       name: locorda_rdf_terms_core
-      sha256: "131c6e16da4623ccebd848684f53189760772fa298f3b1f51fafbec4229ea84e"
+      sha256: "2a497c92b6c25f5dc93f931a37a43619cb172b2eda8321af3c253db4aaaea057"
       url: "https://pub.dev"
     source: hosted
-    version: "0.11.6"
+    version: "0.11.7"
   locorda_rdf_terms_generator:
     dependency: transitive
     description:
       name: locorda_rdf_terms_generator
-      sha256: "7a02270e19663a389ac0869e60f9a1501e3564a3e01d4940827ddd9e3fd1517d"
+      sha256: "2a1b372e63e0aec774166d483329c6ff84a09973db917ec055ab419370a6c7e2"
       url: "https://pub.dev"
     source: hosted
-    version: "0.11.6"
+    version: "0.11.7"
   locorda_rdf_terms_schema:
     dependency: transitive
     description:
@@ -706,10 +706,10 @@ packages:
     dependency: transitive
     description:
       name: locorda_rdf_xml
-      sha256: "0919774e978501b8ebb8c75d71851f3e0a41f9f7cb06c4a8b72ac4445572b791"
+      sha256: f7d20a9087738bc5e7b1e73ee1fef5aaf3b60d5db0646a9b116d37966ff2cf6e
       url: "https://pub.dev"
     source: hosted
-    version: "0.11.6"
+    version: "0.11.7"
   logging:
     dependency: transitive
     description:

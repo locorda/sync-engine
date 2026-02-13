@@ -15,8 +15,11 @@ dependencies:
   dart_style: ">=2.3.7 <4.0.0"
   glob: ^2.1.2
   logging: ^1.2.0
+  locorda_core: any
+  locorda_rdf_core: any
   path: ^1.9.1
   source_gen: ^4.2.0
+  locorda_rdf_terms_core: ^0.11.7
   
 
 dev_dependencies:

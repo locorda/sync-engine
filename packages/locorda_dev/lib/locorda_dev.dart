@@ -13,10 +13,11 @@
 ///
 /// - **locorda_builder:web_worker**: Compiles `lib/worker.dart` to
 ///   `web/worker.dart.js` for web platform support.
-/// - **locorda_mapping_bootstrap_generator:mapping_bootstrap**: Embeds TTL
-///   mapping files as `const List<String>` for offline-first bootstrap loading.
+/// - **locorda_mapping_bootstrap_generator:mapping_bootstrap**: Embeds CRDT
+///   mapping documents (merge strategy definitions) as `const List<String>`
+///   for offline-first bootstrap loading.
 /// - **locorda_rdf_mapper_generator**: Runs the RDF mapper generators
-///   (cache, source, and init file builders).
+///   (cache, source, and init file builders) for Dart ↔ RDF serialization.
 ///
 /// Run `dart run build_runner build` or use watch mode:
 /// `dart run build_runner watch`

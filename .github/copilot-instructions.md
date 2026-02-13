@@ -155,6 +155,24 @@ You: [Now you may edit]
 - ✗ Making changes while explaining the problem
 - ✗ Assuming silence = approval
 
+### 🚫 Truthfulness & Requirement Fidelity (Mandatory)
+
+If a requirement cannot be implemented exactly as requested, the agent MUST:
+1. State this explicitly and immediately (no ambiguity).
+2. Explain the concrete technical constraint briefly.
+3. Present viable alternatives with trade-offs.
+4. Ask for a user decision before changing requirements or behavior.
+
+Hard rules:
+- ✗ Never silently change requirements.
+- ✗ Never claim a requirement is implemented when it is not fully implemented.
+- ✗ Never report success without verification of the exact requested outcome.
+- ✗ Never substitute a “close enough” implementation without explicit approval.
+
+Required escalation wording:
+- "I cannot implement this requirement exactly with the current constraints."
+- "Here are the consequences and options. Which option do you want?"
+
 ### Code Patterns
 
 **CRDT Types**: LWW-Register (single-value), OR-Set (multi-value, re-addable), 2P-Set (permanent removal), Immutable (strict), G-Register (max wins)

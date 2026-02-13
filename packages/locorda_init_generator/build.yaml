@@ -1,4 +1,18 @@
 builders:
+  crdt_mapping_generator:
+    import: "package:locorda_init_generator/builder.dart"
+    builder_factories: ["crdtMappingBuilder"]
+    build_extensions:
+      lib/{{}}.dart:
+        - lib/{{}}.crdt.cache.trig
+    auto_apply: dependents
+    build_to: cache
+    runs_before:
+      - locorda_mapping_bootstrap_generator:mapping_bootstrap
+    defaults:
+      generate_for:
+        - lib/**.dart
+
   init_locorda_generator:
     import: "package:locorda_init_generator/builder.dart"
     builder_factories: ["initLocordaBuilder"]

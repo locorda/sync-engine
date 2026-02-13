@@ -9,6 +9,7 @@ builders:
     auto_apply: dependents
     build_to: cache
     applies_builders:
+      - locorda_init_generator:crdt_mapping_generator
       - locorda_mapping_bootstrap_generator:mapping_bootstrap
       - locorda_rdf_mapper_generator:cache_builder
       - locorda_rdf_mapper_generator:source_builder

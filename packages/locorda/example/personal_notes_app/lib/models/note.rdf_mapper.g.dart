@@ -68,7 +68,7 @@ class NoteMapper implements GlobalResourceMapper<note.Note> {
         );
     final Set<Comment> comments = reader
         .requireCollection<Set<Comment>, Comment>(
-          Schema.comment,
+          SchemaNoteDigitalDocument.comment,
           UnorderedItemsSetMapper.new,
           itemDeserializer: crmg.CommentMapper(
             rootResourceIriProvider: () =>
@@ -126,7 +126,7 @@ class NoteMapper implements GlobalResourceMapper<note.Note> {
           UnorderedItemsSetMapper.new,
         )
         .addCollection<Set<Comment>, Comment>(
-          Schema.comment,
+          SchemaNoteDigitalDocument.comment,
           resource.comments,
           UnorderedItemsSetMapper.new,
           itemSerializer: crmg.CommentMapper(

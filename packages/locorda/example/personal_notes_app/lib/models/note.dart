@@ -32,7 +32,12 @@ class NoteCategoryProperty extends RdfProperty {
 ///
 @LcrdRootResource(
   PersonalNotesVocab.PersonalNote,
-  '$appBaseUrl/mappings/note-v1.ttl',
+  LcrdCrdt(
+    '$appBaseUrl/mappings/note-v1#',
+    label: 'Personal Note CRDT Document Mapping v1',
+    comment:
+        'Defines how personal notes should merge when conflicts occur during sync.',
+  ),
   iriStrategy: RootIriStrategy(RootIriConfig('note')),
   fullIndex: LcrdFullIndex.disabled(),
 )
@@ -77,7 +82,7 @@ class Note {
   final Set<Weblink> weblinks;
 
   /// Comments on this note (IRI-identified sub-resources)
-  @RdfProperty(Schema.comment)
+  @RdfProperty(SchemaNoteDigitalDocument.comment)
   @CrdtOrSet()
   final Set<Comment> comments;
 

@@ -11,7 +11,7 @@ import 'package:minimal_task_sync/consts.dart' show appBaseUrl;
 /// A simple task with CRDT sync.
 @LcrdRootResource(
   IriTerm('$appBaseUrl/vocabulary/task#Task'),
-  '$appBaseUrl/mappings/task-v1.ttl',
+  LcrdCrdt('$appBaseUrl/mappings/task-v1#'),
 )
 class Task {
   /// Unique ID for this task
@@ -19,13 +19,11 @@ class Task {
   final String id;
 
   /// Task title - LWW (Last Writer Wins)
-  @RdfProperty(SchemaThing.name)
-  @CrdtLwwRegister()
+  @RdfProperty(SchemaCreativeWork.name)
   final String title;
 
   /// Completion status - LWW (schema.org has no boolean completion property)
   @RdfProperty(IriTerm('$appBaseUrl/vocabulary/task#completed'))
-  @CrdtLwwRegister()
   final bool completed;
 
   /// Creation timestamp - Immutable

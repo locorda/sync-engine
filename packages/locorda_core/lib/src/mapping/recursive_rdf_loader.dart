@@ -114,10 +114,17 @@ class BootstrapRdfGraphFetcher implements RdfGraphFetcher {
   Map<IriTerm, RdfGraph> _buildBootstrapMap(
       Iterable<String>? bootstrapSources) {
     final allSources = [...bootstrapMappings, ...?bootstrapSources];
-    final graphEntries = allSources.map((source) {
-      final graph = rdfCore.decode(source);
-      final documentIri = _extractDocumentIri(graph, iriFactory);
-      return MapEntry(documentIri, graph);
+    final graphEntries =
+        allSources.expand<MapEntry<IriTerm, RdfGraph>>((source) {
+      final dataset = rdfCore.decodeDataset(source);
+      final graph = dataset.defaultGraph;
+
+      return [
+        if (graph.isNotEmpty)
+          MapEntry(_extractDocumentIri(graph, iriFactory), graph),
+        for (final e in dataset.namedGraphs)
+          MapEntry(e.name as IriTerm, e.graph)
+      ];
     });
     return Map.fromEntries(graphEntries);
   }

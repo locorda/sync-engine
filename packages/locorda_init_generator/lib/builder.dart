@@ -6,3 +6,4 @@ library;
 
 export 'src/init_locorda_builder.dart';
 export 'src/config/config_builder.dart';
+export 'src/config/crdt_mapping_builder.dart';
