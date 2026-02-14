@@ -25,7 +25,13 @@ ns1:groupIndexTemplate a idx:GroupIndexTemplate;
     idx:groupedBy _:b1;
     idx:indexesClass schema:Recipe;
     idx:readBy ns3:installation;
-    idx:shardingAlgorithm [ a idx:ModuloHashSharding ; idx:hashAlgorithm "md5" ; idx:numberOfShards 1 ; idx:configVersion "1_0_0" ; idx:autoScaleThreshold 1000 ] .
+    idx:shardingAlgorithm [
+        a idx:ModuloHashSharding ;
+        idx:hashAlgorithm "md5" ;
+        idx:numberOfShards 1 ;
+        idx:configVersion "1_0_0" ;
+        idx:autoScaleThreshold 1000
+    ] .
 
 ns1:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
     cm:physicalTime 1704075000006 .

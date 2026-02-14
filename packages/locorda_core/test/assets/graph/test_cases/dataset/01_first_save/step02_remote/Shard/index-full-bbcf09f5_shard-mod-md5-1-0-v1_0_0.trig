@@ -63,7 +63,13 @@ GRAPH <https://example.com/fullindex/index-full-5f68b5b7%2Findex> {
       idx:indexesClass idx:GroupIndexTemplate;
       idx:populationState "active";
       idx:readBy </clientinstallation/test-installation#installation>;
-      idx:shardingAlgorithm [ a idx:ModuloHashSharding ; idx:hashAlgorithm "md5" ; idx:numberOfShards 1 ; idx:configVersion "1_0_0" ; idx:autoScaleThreshold 1000 ] .
+      idx:shardingAlgorithm [
+          a idx:ModuloHashSharding ;
+          idx:hashAlgorithm "md5" ;
+          idx:numberOfShards 1 ;
+          idx:configVersion "1_0_0" ;
+          idx:autoScaleThreshold 1000
+      ] .
   if5:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 1;
       cm:physicalTime 1704067200004 .
   if5:lcrd-ibn-md5-f7d7db17ed3c6b875f87c9c8c5e3894f sync:blankNode _:b2 .
@@ -86,7 +92,13 @@ GRAPH <https://example.com/fullindex/index-full-e679d72f%2Findex> {
       idx:indexesClass schema:Recipe;
       idx:populationState "active";
       idx:readBy </clientinstallation/test-installation#installation>;
-      idx:shardingAlgorithm [ a idx:ModuloHashSharding ; idx:hashAlgorithm "md5" ; idx:numberOfShards 1 ; idx:configVersion "1_0_0" ; idx:autoScaleThreshold 1000 ] .
+      idx:shardingAlgorithm [
+          a idx:ModuloHashSharding ;
+          idx:hashAlgorithm "md5" ;
+          idx:numberOfShards 1 ;
+          idx:configVersion "1_0_0" ;
+          idx:autoScaleThreshold 1000
+      ] .
   ife:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 1;
       cm:physicalTime 1704067200007 .
 }
@@ -105,7 +117,13 @@ GRAPH <https://example.com/fullindex/index-full-388036f3%2Findex> {
       idx:indexesClass cm:ClientInstallation;
       idx:populationState "active";
       idx:readBy </clientinstallation/test-installation#installation>;
-      idx:shardingAlgorithm [ a idx:ModuloHashSharding ; idx:hashAlgorithm "md5" ; idx:numberOfShards 1 ; idx:configVersion "1_0_0" ; idx:autoScaleThreshold 1000 ] .
+      idx:shardingAlgorithm [
+          a idx:ModuloHashSharding ;
+          idx:hashAlgorithm "md5" ;
+          idx:numberOfShards 1 ;
+          idx:configVersion "1_0_0" ;
+          idx:autoScaleThreshold 1000
+      ] .
   if3:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 1;
       cm:physicalTime 1704067200010 .
 }
@@ -126,7 +144,13 @@ GRAPH <https://example.com/fullindex/index-full-bbcf09f5%2Findex> {
       idx:indexesClass idx:FullIndex;
       idx:populationState "active";
       idx:readBy </clientinstallation/test-installation#installation>;
-      idx:shardingAlgorithm [ a idx:ModuloHashSharding ; idx:hashAlgorithm "md5" ; idx:numberOfShards 1 ; idx:configVersion "1_0_0" ; idx:autoScaleThreshold 1000 ] .
+      idx:shardingAlgorithm [
+          a idx:ModuloHashSharding ;
+          idx:hashAlgorithm "md5" ;
+          idx:numberOfShards 1 ;
+          idx:configVersion "1_0_0" ;
+          idx:autoScaleThreshold 1000
+      ] .
   ifb:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 1;
       cm:physicalTime 1704067200001 .
   ifb:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b sync:blankNode _:b9 .

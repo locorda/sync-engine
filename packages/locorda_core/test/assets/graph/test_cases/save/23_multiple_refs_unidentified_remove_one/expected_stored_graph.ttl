@@ -22,7 +22,8 @@
 
 ns1:it a schema:Recipe;
     schema:name "Tomato Soup";
-    schema:recipeIngredient _:b2, _:b3 .
+    schema:recipeIngredient _:b2,
+        _:b3 .
 
 ns1:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 2;
     cm:physicalTime 1704074400000 .
@@ -34,7 +35,11 @@ ns1:lcrd-ibn-md5-9110880a000d224b944a75c68db15db9 sync:blankNode _:b3 .
 _:b2 a schema:Ingredient;
     schema:amount "2";
     schema:name "Tomato";
-    schema:provider [ a schema:Organization ; schema:name "Local Farmers Market" ; schema:telephone "555-1234" ];
+    schema:provider [
+        a schema:Organization ;
+        schema:name "Local Farmers Market" ;
+        schema:telephone "555-1234"
+    ];
     schema:unit "cups" .
 
 _:b3 a schema:Ingredient;

@@ -1,0 +1,9 @@
+{
+  "resources": [
+    {
+      "typeIri": "https://locorda.dev/example/minimal/vocabulary/task#Task",
+      "crdtMapping": "https://locorda.dev/example/minimal/mappings/task-v1",
+      "indices": []
+    }
+  ]
+}

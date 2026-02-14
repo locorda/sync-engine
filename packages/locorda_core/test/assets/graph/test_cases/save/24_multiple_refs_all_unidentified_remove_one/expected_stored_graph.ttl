@@ -21,7 +21,23 @@
 
 ns1:it a schema:Recipe;
     schema:name "Tomato Soup";
-    schema:recipeIngredient [ a schema:Ingredient ; schema:name "Tomato" ; schema:amount "2" ; schema:unit "cups" ; schema:provider [ a schema:Organization ; schema:name "Local Farmers Market" ; schema:telephone "555-1234" ] ], [ a schema:Ingredient ; schema:name "Basil" ; schema:amount "1" ; schema:unit "bunch" ] .
+    schema:recipeIngredient [
+        a schema:Ingredient ;
+        schema:name "Tomato" ;
+        schema:amount "2" ;
+        schema:unit "cups" ;
+        schema:provider [
+                a schema:Organization ;
+                schema:name "Local Farmers Market" ;
+                schema:telephone "555-1234"
+            ]
+    ],
+        [
+        a schema:Ingredient ;
+        schema:name "Basil" ;
+        schema:amount "1" ;
+        schema:unit "bunch"
+    ] .
 
 ns1:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 2;
     cm:physicalTime 1704074400000 .

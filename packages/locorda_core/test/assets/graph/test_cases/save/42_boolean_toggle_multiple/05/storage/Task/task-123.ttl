@@ -1,0 +1,26 @@
+@base <tag:locorda.org,2025:l:aHR0cHM6Ly9sb2NvcmRhLmRldi9leGFtcGxlL21pbmltYWwvdm9jYWJ1bGFyeS90YXNrI1Rhc2s=:dGFzay0xMjM=> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix mappings: <https://locorda.dev/example/minimal/mappings/> .
+@prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly9sb2NvcmRhLmRldi9leGFtcGxlL21pbmltYWwvdm9jYWJ1bGFyeS90YXNrI1Rhc2s=:dGFzay0xMjM=#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix schema: <https://schema.org/> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix task: <https://locorda.dev/example/minimal/vocabulary/task#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<tag:locorda.org,2025:l:aHR0cHM6Ly9sb2NvcmRhLmRldi9leGFtcGxlL21pbmltYWwvdm9jYWJ1bGFyeS90YXNrI1Rhc2s=:dGFzay0xMjM=> a sync:ManagedDocument;
+    foaf:primaryTopic ns1:it;
+    cm:clockHash "70a44486c8f2fcb161f97e057aefe057";
+    cm:createdAt "2024-01-01T01:00:00.001Z"^^xsd:dateTime;
+    cm:hasClockEntry ns1:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
+    sync:isGovernedBy (mappings:task-v1);
+    sync:managedResourceType task:Task .
+
+ns1:it a task:Task;
+    task:completed false;
+    schema:dateCreated "2024-01-01T00:00:00Z"^^xsd:dateTime;
+    schema:name "Write unit tests" .
+
+ns1:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 5;
+    cm:physicalTime 1704085200000 .
