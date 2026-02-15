@@ -19,24 +19,20 @@ GRAPH <https://locorda.dev/example/personal_notes_app/mappings/category-v1#> {
           [
               a mc:ClassMapping ;
               mc:appliesToClass pn:NotesCategory ;
-              mc:rule (
-                      [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ]
-                      [ mc:predicate schema:description ; ca:mergeWith ca:LWW_Register ]
-                      [ mc:predicate pn:displaySettings ; ca:mergeWith ca:LWW_Register ]
-                      [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ]
-                      [ mc:predicate schema:dateModified ; ca:mergeWith ca:LWW_Register ]
-                      [ mc:predicate pn:archived ; ca:mergeWith ca:LWW_Register ]
-                  )
+              mc:rule [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate schema:description ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate pn:displaySettings ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ],
+                  [ mc:predicate schema:dateModified ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate pn:archived ; ca:mergeWith ca:LWW_Register ]
           ]
       );
       mc:imports (mappings:core-v1);
       mc:predicateMapping (
           [
-              a mc:PredicateMapping ;
-              mc:rule (
-                      [ mc:predicate pn:categoryColor ; ca:mergeWith ca:LWW_Register ]
-                      [ mc:predicate pn:categoryIcon ; ca:mergeWith ca:LWW_Register ]
-                  )
+              mc:rule [ mc:predicate pn:categoryColor ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate pn:categoryIcon ; ca:mergeWith ca:LWW_Register ] ;
+              a mc:PredicateMapping
           ]
       ) .
 }
@@ -59,33 +55,27 @@ GRAPH <https://locorda.dev/example/personal_notes_app/mappings/note-v1#> {
           [
               a mc:ClassMapping ;
               mc:appliesToClass schema:Comment ;
-              mc:rule (
-                      [ mc:predicate schema:text ; ca:mergeWith ca:LWW_Register ]
-                      [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ]
-                  )
+              mc:rule [ mc:predicate schema:text ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ]
           ]
           [
               a mc:ClassMapping ;
               mc:appliesToClass pn:PersonalNote ;
-              mc:rule (
-                      [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ]
-                      [ mc:predicate schema:text ; ca:mergeWith ca:LWW_Register ]
-                      [ mc:predicate schema:keywords ; ca:mergeWith ca:OR_Set ]
-                      [ mc:predicate pn:belongsToCategory ; ca:mergeWith ca:LWW_Register ]
-                      [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ]
-                      [ mc:predicate schema:dateModified ; ca:mergeWith ca:LWW_Register ]
-                      [ mc:predicate schema:relatedLink ; ca:mergeWith ca:OR_Set ]
-                      [ mc:predicate schema:comment ; ca:mergeWith ca:OR_Set ]
-                  )
+              mc:rule [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate schema:text ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate schema:keywords ; ca:mergeWith ca:OR_Set ],
+                  [ mc:predicate pn:belongsToCategory ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ],
+                  [ mc:predicate schema:dateModified ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate schema:relatedLink ; ca:mergeWith ca:OR_Set ],
+                  [ mc:predicate schema:comment ; ca:mergeWith ca:OR_Set ]
           ]
           [
               a mc:ClassMapping ;
               mc:appliesToClass pn:Weblink ;
-              mc:rule (
-                      [ mc:predicate schema:url ; ca:mergeWith ca:Immutable ; mc:isIdentifying true ]
-                      [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ]
-                      [ mc:predicate schema:description ; ca:mergeWith ca:LWW_Register ]
-                  )
+              mc:rule [ mc:predicate schema:url ; ca:mergeWith ca:Immutable ; mc:isIdentifying true ],
+                  [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate schema:description ; ca:mergeWith ca:LWW_Register ]
           ]
       );
       mc:imports (mappings:core-v1);

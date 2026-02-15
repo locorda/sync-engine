@@ -95,7 +95,10 @@ class AnnotationScanner {
             'Could not extract crdt.mappingIri for ${element.displayName}');
         continue;
       }
-      final crdtMapping = dartObjectToCode(crdtMappingField);
+      final mappingLiteral = crdtMappingField.toStringValue();
+      final crdtMapping = mappingLiteral == null
+          ? dartObjectToCode(crdtMappingField)
+          : Code.value("'${mappingLiteral.replaceAll("'", "\\'")}'");
 
       // Extract crdt.generate
       final generateCrdtMapping =

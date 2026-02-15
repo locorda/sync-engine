@@ -123,7 +123,7 @@ class BootstrapRdfGraphFetcher implements RdfGraphFetcher {
         if (graph.isNotEmpty)
           MapEntry(_extractDocumentIri(graph, iriFactory), graph),
         for (final e in dataset.namedGraphs)
-          MapEntry(e.name as IriTerm, e.graph)
+          MapEntry((e.name as IriTerm).getDocumentIri(iriFactory), e.graph)
       ];
     });
     return Map.fromEntries(graphEntries);
@@ -141,7 +141,7 @@ class BootstrapRdfGraphFetcher implements RdfGraphFetcher {
       if (onlineFetcher != null) {
         try {
           _log.info(
-              'No bootstrap mapping for ${documentIri.value}, attempting online fetch');
+              'No bootstrap mapping for ${documentIri.value} - got sources for ${_bootstrapSourcesMap.keys.map((k) => k.value).join(', ')}, attempting online fetch');
           return await onlineFetcher!.fetch(iri);
         } catch (e) {
           // ignore and fall back to error below
@@ -195,6 +195,12 @@ class RecursiveRdfLoader {
     inProgress[iri] = future;
 
     final graph = await future;
+    if (graph.findTriples(subject: inputIri, predicate: Rdf.type).isEmpty) {
+      throw Exception(
+          'Loaded graph from document $iri does not contain the requested IRI $inputIri as subject with rdf:type. '
+          'Is this really a valid mapping document? '
+          'Graph contains the subjects: ${graph.subjects.map((s) => s.toString()).join(', ')}');
+    }
     loadedContracts[iri] = graph;
     inProgress.remove(iri);
 

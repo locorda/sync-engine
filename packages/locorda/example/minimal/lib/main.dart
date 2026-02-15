@@ -1,10 +1,13 @@
 /// Minimal Locorda example - Task sync app.
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:locorda/locorda.dart';
 import 'package:locorda_dir/locorda_dir.dart';
+import 'package:logging/logging.dart';
 import 'package:minimal_task_sync/init_locorda.g.dart';
+import 'package:minimal_task_sync/utils/logging_setup.dart';
 
 import 'task.dart';
 import 'task_repository.dart';
@@ -38,6 +41,11 @@ class _MinimalTaskAppState extends State<MinimalTaskApp> {
       /// Initialize Locorda with worker architecture.
 
       final locorda = await initLocorda(
+        onWorkerSpawn: () => setupLogging(
+          level: kDebugMode ? Level.ALL : Level.WARNING,
+          threadName: 'WORKER',
+        ),
+
         // Local Dir for testing/debugging (not for production!)
         remotes: [
           await DirMainIntegration.create(
@@ -56,7 +64,9 @@ class _MinimalTaskAppState extends State<MinimalTaskApp> {
         _locorda = locorda;
         _taskRepo = taskRepo;
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('Error during initialization: $e');
+      debugPrintStack(stackTrace: stackTrace);
       setState(() => _errorMessage = 'Init failed: $e');
     }
   }
@@ -77,7 +87,13 @@ class _MinimalTaskAppState extends State<MinimalTaskApp> {
 
     return MaterialApp(
       title: 'Minimal Task Sync',
-      home: TaskListScreen(repository: _taskRepo!),
+      localizationsDelegates: LocordaUILocalizations.localizationsDelegates,
+      supportedLocales: LocordaUILocalizations.supportedLocales,
+      home: TaskListScreen(
+        repository: _taskRepo!,
+        uiAdapterRegistry: _locorda!.uiAdapterRegistry,
+        syncManager: _locorda!.syncManager,
+      ),
     );
   }
 
@@ -92,7 +108,14 @@ class _MinimalTaskAppState extends State<MinimalTaskApp> {
 // #docregion ui
 class TaskListScreen extends StatefulWidget {
   final TaskRepository repository;
-  const TaskListScreen({required this.repository, super.key});
+  final UiAdapterRegistry uiAdapterRegistry;
+  final SyncManager syncManager;
+  const TaskListScreen({
+    required this.repository,
+    required this.uiAdapterRegistry,
+    required this.syncManager,
+    super.key,
+  });
 
   @override
   State<TaskListScreen> createState() => _TaskListScreenState();
@@ -104,7 +127,20 @@ class _TaskListScreenState extends State<TaskListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tasks')),
+      appBar: AppBar(
+        title: const Text('Tasks'),
+        actions: [
+          Padding(
+            padding: EdgeInsets.only(
+              right: kDebugMode ? 60.0 : 0.0, // Space for debug banner
+            ),
+            child: MultiBackendStatusWidget(
+              registry: widget.uiAdapterRegistry,
+              syncManager: widget.syncManager,
+            ),
+          ),
+        ],
+      ),
       body: StreamBuilder<List<Task>>(
         stream: widget.repository.watchAll(),
         initialData: widget.repository.getAll(),

@@ -45,7 +45,12 @@ class ConfigBaseValidator {
     for (final resource in config.resources) {
       final uri = resource.crdtMapping;
 
-      if (!uri.isAbsolute) {
+      // Check if base URI (without fragment) is absolute.
+      // URIs with fragments (e.g., https://example.org/path#) are valid
+      // as long as the base is absolute.
+      final baseUri =
+          uri.hasFragment ? uri.removeFragment() : uri;
+      if (!baseUri.isAbsolute) {
         result.addError(
             'CRDT mapping URI must be absolute for ${_getDebugName(resource)}: $uri',
             details: {'type': _getDebugName(resource), 'uri': uri});

@@ -90,11 +90,16 @@ class CrdtMappingBuilder implements Builder {
         continue;
       }
 
+      final normalizedMappingIri = _validateAndNormalizeMappingIri(
+        mappingIri,
+        classElement.name ?? 'UnknownResource',
+      );
+
       roots.add(
         _RootResourceEntry(
           classElement: classElement,
           crdt: _CrdtConfig(
-            mappingIri: mappingIri,
+            mappingIri: normalizedMappingIri,
             label: getField(crdtObject, 'label')?.toStringValue(),
             comment: getField(crdtObject, 'comment')?.toStringValue(),
             imports: _extractIriList(getField(crdtObject, 'imports')),
@@ -172,7 +177,6 @@ class CrdtMappingBuilder implements Builder {
           Triple(classNode, McClassMapping.rdfType, McClassMapping.classIri));
       triples.add(Triple(classNode, McClassMapping.appliesToClass, classIri));
 
-      final ruleNodes = <RdfObject>[];
       for (final field in classElement.fields) {
         final predicate = _extractPropertyPredicate(field);
         if (predicate == null) {
@@ -180,7 +184,7 @@ class CrdtMappingBuilder implements Builder {
         }
 
         final ruleNode = BlankNodeTerm();
-        ruleNodes.add(ruleNode);
+        triples.add(Triple(classNode, McClassMapping.rule, ruleNode));
         triples.add(Triple(ruleNode, McRule.predicate, predicate));
         triples.add(
             Triple(ruleNode, McRule.algoMergeWith, _resolveAlgorithm(field)));
@@ -193,8 +197,6 @@ class CrdtMappingBuilder implements Builder {
           ));
         }
       }
-
-      _addRdfList(triples, classNode, McClassMapping.rule, ruleNodes);
     }
 
     _addRdfList(triples, documentIri, McDocumentMapping.classMapping,
@@ -286,6 +288,37 @@ class CrdtMappingBuilder implements Builder {
     return null;
   }
 
+  String _validateAndNormalizeMappingIri(
+    String mappingIri,
+    String className,
+  ) {
+    final uri = Uri.parse(mappingIri);
+
+    // Ensure base URI (without fragment) is absolute
+    final baseUri = uri.hasFragment ? uri.removeFragment() : uri;
+    if (!baseUri.isAbsolute) {
+      throw ArgumentError.value(
+        mappingIri,
+        'mappingIri',
+        'CRDT mapping IRI for $className must be absolute.',
+      );
+    }
+
+    try {
+      IriTerm.validated(mappingIri);
+    } catch (e) {
+      throw ArgumentError.value(
+        mappingIri,
+        'mappingIri',
+        'CRDT mapping IRI for $className is invalid: $e',
+      );
+    }
+
+    // Return IRI as-is without modifications. Consistency throughout the system
+    // depends on using the exact IRI provided in the annotation.
+    return mappingIri;
+  }
+
   IriTerm? _extractClassIri(ClassElement classElement) {
     final root = _findAnnotationByType(
         classElement.metadata.annotations, 'LcrdRootResource');
@@ -312,15 +345,19 @@ class CrdtMappingBuilder implements Builder {
     ClassElement classElement,
     List<Triple> triples,
   ) {
-    final ruleNodes = <RdfObject>[];
+    final predicateMappingNode = BlankNodeTerm();
+    var hasRules = false;
+
     for (final field in classElement.fields) {
       final predicate = _extractPropertyPredicate(field);
       if (predicate == null) {
         continue;
       }
 
+      hasRules = true;
       final ruleNode = BlankNodeTerm();
-      ruleNodes.add(ruleNode);
+      triples
+          .add(Triple(predicateMappingNode, McPredicateMapping.rule, ruleNode));
       triples.add(Triple(ruleNode, McRule.predicate, predicate));
       triples.add(Triple(ruleNode, Algo.mergeWith, _resolveAlgorithm(field)));
 
@@ -333,16 +370,13 @@ class CrdtMappingBuilder implements Builder {
       }
     }
 
-    if (ruleNodes.isEmpty) {
+    if (!hasRules) {
       return null;
     }
 
-    final predicateMappingNode = BlankNodeTerm();
     triples.add(
       Triple(predicateMappingNode, Rdf.type, McPredicateMapping.classIri),
     );
-    _addRdfList(
-        triples, predicateMappingNode, McPredicateMapping.rule, ruleNodes);
     return predicateMappingNode;
   }
 

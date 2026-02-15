@@ -16,11 +16,9 @@ GRAPH <https://locorda.dev/example/minimal/mappings/task-v1#> {
           [
               a mc:ClassMapping ;
               mc:appliesToClass task:Task ;
-              mc:rule (
-                      [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ]
-                      [ mc:predicate task:completed ; ca:mergeWith ca:LWW_Register ]
-                      [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ]
-                  )
+              mc:rule [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate task:completed ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ]
           ]
       );
       mc:imports (mappings:core-v1);

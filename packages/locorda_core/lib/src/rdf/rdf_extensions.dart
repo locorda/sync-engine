@@ -52,8 +52,9 @@ extension RdfGraphExtensions on RdfGraph {
     final first = it.current;
 
     if (it.moveNext()) {
+      final next = it.current;
       expectationFailed(
-        "Multiple values for property that should have at most one",
+        "Multiple values for property that should have at most one. First value: ${first.object}, next value: ${next.object}",
         subject: subject,
         predicate: predicate,
         graph: this,

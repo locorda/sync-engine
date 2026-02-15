@@ -68,7 +68,11 @@ class CachingMergeContractLoader extends MergeContractLoader {
           final result = await _bootstrapInner.load(isGovernedBy);
           _maybeRefresh(key, isGovernedBy, force: true);
           return result;
-        } catch (_) {
+        } catch (e, stackTrace) {
+          _log.info(
+              'Bootstrap loader failed for $key, falling back to online loader',
+              e,
+              stackTrace);
           return _inner.load(isGovernedBy);
         }
       }
@@ -100,7 +104,9 @@ class CachingMergeContractLoader extends MergeContractLoader {
     final refresh = _inner.load(isGovernedBy).then((result) {
       _cache[key] = Future.value(result);
       _lastRefresh[key] = DateTime.now();
-    }).catchError((_) {
+    }).catchError((error, stackTrace) {
+      _log.fine(
+          'Online loader refresh failed for $key, keeping cached value. Will ignore because this is a non-critical refresh and the file is probably unchanged anyways. \nError: $error');
       // Keep cached value on refresh failure.
     }).whenComplete(() {
       _refreshInFlight.remove(key);

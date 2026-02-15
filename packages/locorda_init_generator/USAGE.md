@@ -180,6 +180,14 @@ If you have a manual `lib/worker.dart` instead of `worker_generated.g.dart`, the
 
 If you don't use the RDF mapper generator, the generated function will require `mapperInitializer` as a parameter.
 
+### CRDT Mapping IRI Validation
+
+CRDT mapping IRIs provided via `@LcrdRootResource(crdt: LcrdCrdt(...))` are validated during CRDT mapping generation:
+
+- The base IRI must be absolute.
+- A non-empty fragment (e.g. `#v1`) is rejected.
+- If the IRI has no fragment, a trailing `#` is added for the document mapping subject.
+
 ## Debugging
 
 If generation fails or produces unexpected output:

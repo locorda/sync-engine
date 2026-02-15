@@ -127,7 +127,7 @@ void main() {
 
         final testGraph = RdfGraph.fromTriples([
           Triple(
-            documentUri,
+            fragmentUri,  // Graph should contain the fragment as subject
             Rdf.type,
             const IriTerm('https://example.com/TestType'),
           ),
