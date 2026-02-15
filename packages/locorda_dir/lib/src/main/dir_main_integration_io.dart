@@ -72,14 +72,37 @@ class DirMainIntegration implements RemoteIntegration {
 
   /// Gets platform-appropriate sync directory path.
   static Future<String> _getSyncDirectoryPath(String appName, String id) async {
+    // Sanitize ID for filesystem: replace problematic characters
+    final sanitizedId = _sanitizeForFilesystem(id);
+
     if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
       final docsDir = await getApplicationDocumentsDirectory();
-      return '${docsDir.path}/$appName/$id';
+      return '${docsDir.path}/$appName/$sanitizedId';
     }
 
     // Fallback for unsupported platforms (mobile)
     final appDir = await getApplicationSupportDirectory();
-    return '${appDir.path}/$id';
+    return '${appDir.path}/$sanitizedId';
+  }
+
+  /// Sanitizes a string for use in filesystem paths.
+  ///
+  /// Replaces characters that are problematic in file/directory names:
+  /// - `:` (colon) - reserved on Windows, problematic on macOS/Unix
+  /// - `/` (forward slash) - path separator
+  /// - `\` (backslash) - path separator on Windows
+  /// - `*`, `?`, `"`, `<`, `>`, `|` - invalid on Windows
+  static String _sanitizeForFilesystem(String input) {
+    return input
+        .replaceAll(':', '_')
+        .replaceAll('/', '_')
+        .replaceAll('\\', '_')
+        .replaceAll('*', '_')
+        .replaceAll('?', '_')
+        .replaceAll('"', '_')
+        .replaceAll('<', '_')
+        .replaceAll('>', '_')
+        .replaceAll('|', '_');
   }
 
   @override

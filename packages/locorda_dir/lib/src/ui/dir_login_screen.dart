@@ -342,7 +342,7 @@ class _DirLoginScreenState extends State<DirLoginScreen> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Text(
+                          SelectableText(
                             widget.dirAuth.syncDirectoryPath,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontFamily: 'monospace',
