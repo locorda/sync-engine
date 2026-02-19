@@ -189,7 +189,8 @@ class CrdtMappingBuilder implements Builder {
         triples.add(
             Triple(ruleNode, McRule.algoMergeWith, _resolveAlgorithm(field)));
 
-        if (_hasAnnotationByType(field.metadata.annotations, 'McIdentifying')) {
+        if (_hasAnnotationByType(
+            field.metadata.annotations, 'MergeIdentifying')) {
           triples.add(Triple(
             ruleNode,
             McRule.isIdentifying,
@@ -361,7 +362,8 @@ class CrdtMappingBuilder implements Builder {
       triples.add(Triple(ruleNode, McRule.predicate, predicate));
       triples.add(Triple(ruleNode, Algo.mergeWith, _resolveAlgorithm(field)));
 
-      if (_hasAnnotationByType(field.metadata.annotations, 'McIdentifying')) {
+      if (_hasAnnotationByType(
+          field.metadata.annotations, 'MergeIdentifying')) {
         triples.add(Triple(
           ruleNode,
           McRule.isIdentifying,

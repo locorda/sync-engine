@@ -159,6 +159,79 @@ class SubResource extends RdfGlobalResource implements LocordaAnnotation {
       : super(classIri, iriStrategy, registerGlobally: false);
 }
 
+/// Annotation for local RDF resources (blank nodes).
+///
+/// Marks a Dart class as a local resource (blank node) that exists only
+/// within the context of a parent resource. Unlike global resources
+/// ([RootResource], [SubResource]), local resources do not have globally
+/// unique IRIs.
+///
+/// ## CRDT Merge Identification
+///
+/// For CRDT merging, blank nodes can be identified in two ways:
+///
+/// - **Single-path blank nodes**: Reachable via exactly one property path
+///   from the parent resource (e.g., `Category → displaySettings`).
+///   No [@MergeIdentifying()] annotation needed.
+///
+/// - **Property-identified blank nodes**: Multiple instances can exist and are
+///   matched during CRDT merge operations by a unique property marked with
+///   [@MergeIdentifying()] (e.g., Weblink instances matched by URL).
+///
+/// ## RDF Type (classIri)
+///
+/// Optionally specify an RDF type for the blank node via the [classIri] parameter.
+/// This is independent of merge identification and purely affects RDF serialization.
+///
+/// ## Usage Examples
+///
+/// **Single-path blank node without RDF type**:
+/// ```dart
+/// @LocalResource()
+/// class CategoryDisplaySettings {
+///   @RdfProperty(PersonalNotesVocab.categoryColor)
+///   @CrdtLwwRegister()
+///   final String? color;
+///
+///   @RdfProperty(PersonalNotesVocab.categoryIcon)
+///   @CrdtLwwRegister()
+///   final String? icon;
+/// }
+/// ```
+///
+/// **Property-identified blank node with RDF type**:
+/// ```dart
+/// @LocalResource(PersonalNotesVocab.Weblink)
+/// class Weblink {
+///   @RdfProperty(Schema.url)
+///   @MergeIdentifying()  // Identifies this blank node for CRDT merging
+///   @CrdtImmutable()
+///   final String url;
+///
+///   @RdfProperty(Schema.name)
+///   @CrdtLwwRegister()
+///   final String? title;
+/// }
+/// ```
+///
+/// ## CRDT Merge Strategies
+///
+/// Local resources inherit CRDT merge strategies from their parent
+/// [RootResource]'s merge contract. Use standard CRDT property annotations:
+///
+/// - `@CrdtLwwRegister()` - Last-Write-Wins (single value)
+/// - `@CrdtOrSet()` - Observed-Remove Set (multi-value, re-addable)
+/// - `@CrdtImmutable()` - Write-once, never changes
+///
+/// ## See Also
+///
+/// - [RootResource] - Top-level resources with global IRIs
+/// - [SubResource] - Nested global resources with fragment IRIs
+/// - [@MergeIdentifying()] - Mark identifying properties for blank nodes
+class LocalResource extends RdfLocalResource implements LocordaAnnotation {
+  const LocalResource([IriTerm? classIri]) : super(classIri);
+}
+
 /// Annotation for index item (entry) classes.
 ///
 /// Use [IndexItem.fullIndex] for FullIndex entries and

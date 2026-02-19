@@ -318,7 +318,7 @@ class Weblink {
 
 **CRDT Default:** Properties without CRDT annotation → `@CrdtLwwRegister()`
 
-**Identifying Properties:** `@McIdentifying()` generates `McRule.isIdentifying true` triple (must be `@CrdtImmutable()`)
+**Identifying Properties:** `@MergeIdentifying()` generates `McRule.isIdentifying true` triple (must be `@CrdtImmutable()`)
 
 **Optional:** Build warning `[INFO] Note.title has no CRDT annotation, defaulting to LWW_Register`
 
@@ -461,7 +461,7 @@ return trig.encode(dataset);
 **Per-Class Processing:**
 1. Discover all `@RdfProperty` fields
 2. Look up CRDT annotation (default: `@CrdtLwwRegister()`)
-3. Check `@McIdentifying()`
+3. Check `@MergeIdentifying()`
 4. Generate rule triple using `McRule.predicate`, `AlgoVocab.mergeWith`, optional `McRule.isIdentifying`
 
 ### Error Handling

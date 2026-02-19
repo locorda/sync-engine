@@ -33,15 +33,15 @@ class CrdtImmutable {
 ///
 /// Example:
 /// ```dart
-/// @RdfLocalResource()
+/// @LocalResource()
 /// class Weblink {
 ///   @RdfProperty(Schema.url)
-///   @McIdentifying()
+///   @MergeIdentifying()
 ///   @CrdtImmutable()
 ///   final String url;
 ///   // ...
 /// }
 /// ```
-class McIdentifying {
-  const McIdentifying();
+class MergeIdentifying {
+  const MergeIdentifying();
 }

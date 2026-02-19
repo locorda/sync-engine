@@ -7,9 +7,9 @@ library locorda_annotations;
 
 export 'src/marker.dart' show LocordaAnnotation;
 export 'src/crdt_annotations.dart'
-    show CrdtImmutable, CrdtLwwRegister, CrdtOrSet, McIdentifying;
+    show CrdtImmutable, CrdtLwwRegister, CrdtOrSet, MergeIdentifying;
 export 'src/annotations.dart'
-    show RootResource, SubResource, GroupKey, IndexItem;
+    show RootResource, SubResource, LocalResource, GroupKey, IndexItem;
 export 'src/parameters.dart'
     show
         MergeContract,

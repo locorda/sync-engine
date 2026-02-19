@@ -102,6 +102,6 @@ export 'package:locorda_annotations/locorda_annotations.dart'
         RootResource,
         RootResourceRef,
         SubResource,
-        McIdentifying,
+        MergeIdentifying,
         RootIriStrategy,
         SubIriStrategy;

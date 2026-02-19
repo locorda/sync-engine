@@ -13,7 +13,7 @@ import '../vocabulary/personal_notes_vocab.dart';
 /// Uses CRDT merge strategies:
 /// - LWW-Register for color and icon (last writer wins)
 ///
-@RdfLocalResource()
+@LocalResource()
 class CategoryDisplaySettings {
   /// Color for UI display (hex code, CSS color name, etc.)
   @RdfProperty(PersonalNotesVocab.categoryColor)
