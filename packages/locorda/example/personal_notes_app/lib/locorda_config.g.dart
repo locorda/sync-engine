@@ -21,14 +21,14 @@ LocordaConfig generateLocordaConfig() => LocordaConfig(
     ResourceConfig(
       type: category.Category,
       crdtMapping: Uri.parse(
-        'https://locorda.dev/example/personal_notes_app/contracts/category-v1#',
+        'https://locorda.dev/example/personal_notes_app/mappings/category-v1#',
       ),
       indices: [FullIndexConfig()],
     ),
     ResourceConfig(
       type: note.Note,
       crdtMapping: Uri.parse(
-        'https://locorda.dev/example/personal_notes_app/contracts/note-v1#',
+        'https://locorda.dev/example/personal_notes_app/mappings/note-v1#',
       ),
       indices: [
         GroupIndexConfig(

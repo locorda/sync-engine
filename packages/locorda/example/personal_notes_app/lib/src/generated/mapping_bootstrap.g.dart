@@ -11,8 +11,8 @@ const List<String> bootstrapMappings = [
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix schema: <https://schema.org/> .
 
-GRAPH <contracts/category-v1#> {
-  <contracts/category-v1#> a mc:DocumentMapping;
+GRAPH <mappings/category-v1#> {
+  <mappings/category-v1#> a mc:DocumentMapping;
       rdfs:comment "Defines how note categories should merge when conflicts occur during sync.";
       rdfs:label "Notes Category CRDT Document Mapping v1";
       mc:classMapping (
@@ -59,8 +59,8 @@ GRAPH <contracts/category-v1#> {
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix schema: <https://schema.org/> .
 
-GRAPH <contracts/note-v1#> {
-  <contracts/note-v1#> a mc:DocumentMapping;
+GRAPH <mappings/note-v1#> {
+  <mappings/note-v1#> a mc:DocumentMapping;
       rdfs:comment "Defines how personal notes should merge when conflicts occur during sync.";
       rdfs:label "Personal Note CRDT Document Mapping v1";
       mc:classMapping (

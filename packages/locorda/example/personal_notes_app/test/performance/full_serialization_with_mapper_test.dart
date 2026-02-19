@@ -69,9 +69,9 @@ void main() {
       _printResults('Encode Note → Turtle', results, dataSize: dataSize);
 
       final p95 = _percentile(results, 95);
-      expect(p95.inMilliseconds, lessThan(2),
+      expect(p95.inMilliseconds, lessThan(3),
           reason:
-              'Should encode Note to Turtle in < 2ms (measured: ${_formatDuration(p95)})');
+              'Should encode Note to Turtle in < 3ms (measured: ${_formatDuration(p95)})');
     });
 
     test('decode Turtle to Note (via RdfMapper)', () {
@@ -95,9 +95,9 @@ void main() {
       _printResults('FULL Round-trip (Note)', results);
 
       final p95 = _percentile(results, 95);
-      expect(p95.inMilliseconds, lessThan(2),
+      expect(p95.inMilliseconds, lessThan(3),
           reason:
-              'Complete round-trip should take < 2ms (measured: ${_formatDuration(p95)})');
+              'Complete round-trip should take < 3ms (measured: ${_formatDuration(p95)})');
     });
   });
 

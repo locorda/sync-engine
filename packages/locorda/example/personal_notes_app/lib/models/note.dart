@@ -32,13 +32,13 @@ class NoteCategoryProperty extends RdfProperty {
 @RootResource.externalVocab(
   PersonalNotesVocab.PersonalNote,
   appBaseUrl,
-  mergeContractPath: '/mappings/note-v1',
-  mergeContractLabel: 'Personal Note CRDT Document Mapping v1',
-  mergeContractComment:
-      'Defines how personal notes should merge when conflicts occur during sync.',
-  mergeContractImports: [
-    MergeContracts.coreV1,
-  ],
+  mergeContract: MergeContract(
+    label: 'Personal Note CRDT Document Mapping v1',
+    comment:
+        'Defines how personal notes should merge when conflicts occur during sync.',
+  ),
+  // we could also use the default iriStrategy, but we want to
+  // use `note` instead of `it` for the fragment.
   iriStrategy: RootIriStrategy(RootIriConfig('note')),
   fullIndex: FullIndex.disabled(),
 )

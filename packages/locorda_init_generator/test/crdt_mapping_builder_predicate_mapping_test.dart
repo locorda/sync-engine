@@ -27,20 +27,20 @@ class IriTerm {
 }
 
 class MergeContract {
-  final String mappingIri;
+  final String? mappingIri;
   final String? label;
   final String? comment;
   final List<IriTerm> imports;
   final bool generate;
 
-  const MergeContract(this.mappingIri,
-      {this.label, this.comment, this.imports = const [], this.generate = true});
+  const MergeContract({this.mappingIri,
+      this.label, this.comment, this.imports = const [], this.generate = true});
 }
 
 class RootResource {
   final IriTerm? classIri;
-  final MergeContract crdt;
-  const RootResource(this.classIri, this.crdt);
+  final MergeContract contract;
+  const RootResource(this.classIri, this.contract);
 }
 
 class LocalResource {
@@ -74,7 +74,7 @@ class CategoryDisplaySettings {
 
 @RootResource(
   IriTerm('https://example.dev/vocab#Category'),
-  MergeContract('$mappingIri'),
+  MergeContract(mappingIri: '$mappingIri'),
 )
 class Category {
   @RdfProperty(IriTerm('https://example.dev/vocab#displaySettings'))

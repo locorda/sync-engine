@@ -519,12 +519,13 @@ class CrdtMappingBuilder implements Builder {
     final explicitContract =
         getField(rootAnnotation, 'explicitContractIri')?.toStringValue();
     if (explicitContract != null && explicitContract.isNotEmpty) {
+      final contractField = getField(rootAnnotation, 'contract');
       return _CrdtConfig(
         mappingIri:
             _validateAndNormalizeMappingIri(explicitContract, className),
-        label: getField(rootAnnotation, 'contractLabel')?.toStringValue(),
-        comment: getField(rootAnnotation, 'contractComment')?.toStringValue(),
-        imports: _extractIriList(getField(rootAnnotation, 'contractImports')),
+        label: contractField?.getField('label')?.toStringValue(),
+        comment: contractField?.getField('comment')?.toStringValue(),
+        imports: _extractIriList(contractField?.getField('imports')),
         generate: getField(rootAnnotation, 'generateContract')?.toBoolValue() ??
             false,
       );
@@ -536,39 +537,40 @@ class CrdtMappingBuilder implements Builder {
                 ?.getField('appBaseUri')
                 ?.toStringValue();
     if (appBaseUri != null && appBaseUri.isNotEmpty) {
+      final contractField = getField(rootAnnotation, 'contract');
       final mappingIri = _resolveGeneratedContractIri(
         appBaseUri,
         className,
-        (getField(rootAnnotation, 'contractPath'))?.toStringValue(),
-        (getField(rootAnnotation, 'contractVersion'))?.toStringValue() ?? 'v1',
+        contractField?.getField('path')?.toStringValue(),
+        contractField?.getField('version')?.toStringValue() ?? 'v1',
       );
       return _CrdtConfig(
         appBaseUri: appBaseUri,
         mappingIri: _validateAndNormalizeMappingIri(mappingIri, className),
-        label: getField(rootAnnotation, 'contractLabel')?.toStringValue(),
-        comment: getField(rootAnnotation, 'contractComment')?.toStringValue(),
-        imports: _extractIriList(getField(rootAnnotation, 'contractImports')),
+        label: contractField?.getField('label')?.toStringValue(),
+        comment: contractField?.getField('comment')?.toStringValue(),
+        imports: _extractIriList(contractField?.getField('imports')),
         generate:
             getField(rootAnnotation, 'generateContract')?.toBoolValue() ?? true,
       );
     }
 
-    final crdtObject = getField(rootAnnotation, 'crdt');
-    if (crdtObject == null || crdtObject.isNull) {
+    final contractObject = getField(rootAnnotation, 'contract');
+    if (contractObject == null || contractObject.isNull) {
       return null;
     }
 
-    final mappingIri = getField(crdtObject, 'mappingIri')?.toStringValue();
+    final mappingIri = getField(contractObject, 'mappingIri')?.toStringValue();
     if (mappingIri == null || mappingIri.isEmpty) {
       return null;
     }
 
     return _CrdtConfig(
       mappingIri: _validateAndNormalizeMappingIri(mappingIri, className),
-      label: getField(crdtObject, 'label')?.toStringValue(),
-      comment: getField(crdtObject, 'comment')?.toStringValue(),
-      imports: _extractIriList(getField(crdtObject, 'imports')),
-      generate: getField(crdtObject, 'generate')?.toBoolValue() ?? true,
+      label: getField(contractObject, 'label')?.toStringValue(),
+      comment: getField(contractObject, 'comment')?.toStringValue(),
+      imports: _extractIriList(getField(contractObject, 'imports')),
+      generate: getField(contractObject, 'generate')?.toBoolValue() ?? true,
     );
   }
 

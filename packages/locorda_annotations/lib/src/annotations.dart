@@ -113,12 +113,8 @@ class RootResource extends RdfGlobalResource implements LocordaAnnotation {
   final IriTerm? explicitClassIri;
   final String? contractAppBaseUri;
   final String? explicitContractIri;
-  final String contractVersion;
-  final String? contractPath;
+  final MergeContract? contract;
   final bool generateContract;
-  final String? contractLabel;
-  final String? contractComment;
-  final List<IriTerm> contractImports;
 
   /// Configuration for the default FullIndex.
   ///
@@ -129,46 +125,30 @@ class RootResource extends RdfGlobalResource implements LocordaAnnotation {
   /// Generated vocabulary + generated merge contract.
   const RootResource(
     AppVocab vocab, {
-    String mergeContractVersion = 'v1',
-    String? mergeContractPath,
-    String? mergeContractLabel,
-    String? mergeContractComment,
-    List<IriTerm> mergeContractImports = const [MergeContracts.coreV1],
+    MergeContract mergeContract = const MergeContract(),
     RootIriStrategy iriStrategy = const RootIriStrategy(),
     this.fullIndex = const FullIndex(),
   })  : generatorVocab = vocab,
         explicitClassIri = null,
         contractAppBaseUri = null,
         explicitContractIri = null,
-        contractVersion = mergeContractVersion,
-        contractPath = mergeContractPath,
         generateContract = true,
-        contractLabel = mergeContractLabel,
-        contractComment = mergeContractComment,
-        contractImports = mergeContractImports,
+        contract = mergeContract,
         super.define(vocab, iriStrategy);
 
   /// External vocabulary + generated merge contract.
   const RootResource.externalVocab(
     IriTerm classIri,
     String mergeContractAppBaseUri, {
-    String mergeContractVersion = 'v1',
-    String? mergeContractPath,
-    String? mergeContractLabel,
-    String? mergeContractComment,
-    List<IriTerm> mergeContractImports = const [MergeContracts.coreV1],
+    MergeContract mergeContract = const MergeContract(),
     RootIriStrategy iriStrategy = const RootIriStrategy(),
     this.fullIndex = const FullIndex(),
   })  : generatorVocab = null,
         explicitClassIri = classIri,
         contractAppBaseUri = mergeContractAppBaseUri,
         explicitContractIri = null,
-        contractVersion = mergeContractVersion,
-        contractPath = mergeContractPath,
+        contract = mergeContract,
         generateContract = true,
-        contractLabel = mergeContractLabel,
-        contractComment = mergeContractComment,
-        contractImports = mergeContractImports,
         super(classIri, iriStrategy);
 
   /// Generated vocabulary + external merge contract.
@@ -181,12 +161,8 @@ class RootResource extends RdfGlobalResource implements LocordaAnnotation {
         explicitClassIri = null,
         contractAppBaseUri = null,
         explicitContractIri = mergeContractIri,
-        contractVersion = 'v1',
-        contractPath = null,
+        contract = null,
         generateContract = false,
-        contractLabel = null,
-        contractComment = null,
-        contractImports = const [],
         super.define(vocab, iriStrategy);
 
   /// External vocabulary + external merge contract.
@@ -199,12 +175,8 @@ class RootResource extends RdfGlobalResource implements LocordaAnnotation {
         explicitClassIri = classIri,
         contractAppBaseUri = null,
         explicitContractIri = mergeContractIri,
-        contractVersion = 'v1',
-        contractPath = null,
+        contract = null,
         generateContract = false,
-        contractLabel = null,
-        contractComment = null,
-        contractImports = const [],
         super(classIri, iriStrategy);
 }
 

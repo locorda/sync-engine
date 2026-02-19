@@ -73,11 +73,17 @@ class MergeContracts {
 /// References a manually authored or third-party CRDT mapping document. The builder
 /// does not generate merge rules for this resource; the mapping must be provided separately.
 class MergeContract {
-  /// Canonical IRI of the CRDT mapping document.
+  /// Version identifier for the merge contract (e.g., 'v1', 'v2').
   ///
-  /// Must be a stable, app-owned IRI. Use `#` fragment for generated mappings
-  /// (e.g., `https://myapp.example.com/mappings/note-v1#`).
-  final String mappingIri;
+  /// Used to construct versioned mapping IRIs when [path] is provided.
+  final String version;
+
+  /// Optional path component for generated merge contract IRI.
+  ///
+  /// Combined with app base URI and version to construct the full mapping IRI.
+  /// Example: path='/mappings/note' + base='https://app.com' + version='v1'
+  /// → 'https://app.com/mappings/note-v1'
+  final String? path;
 
   /// Optional human-readable label for generated CRDT mapping metadata.
   ///
@@ -95,24 +101,13 @@ class MergeContract {
   /// Add additional imports for shared vocabularies or extension mappings.
   final List<IriTerm> imports;
 
-  /// Whether CRDT mapping should be generated from annotations.
-  ///
-  /// `true` for default constructor (builder generates merge rules from CRDT annotations).
-  /// `false` for `.external()` constructor (CRDT mapping provided separately).
-  final bool generate;
-
-  const MergeContract(
-    this.mappingIri, {
+  const MergeContract({
+    this.version = 'v1',
+    this.path,
     this.label,
     this.comment,
     this.imports = const [MergeContracts.coreV1],
-  }) : generate = true;
-
-  const MergeContract.external(this.mappingIri)
-      : label = null,
-        comment = null,
-        imports = const [],
-        generate = false;
+  });
 }
 
 /// Configuration for the default FullIndex of a root resource.

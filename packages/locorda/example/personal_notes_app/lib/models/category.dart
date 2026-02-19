@@ -20,13 +20,11 @@ import 'category_display_settings.dart';
 @RootResource.externalVocab(
   PersonalNotesVocab.NotesCategory,
   appBaseUrl,
-  mergeContractPath: '/mappings/category-v1',
-  mergeContractLabel: 'Notes Category CRDT Document Mapping v1',
-  mergeContractComment:
-      'Defines how note categories should merge when conflicts occur during sync.',
-  mergeContractImports: [
-    MergeContracts.coreV1,
-  ],
+  mergeContract: MergeContract(
+    label: 'Notes Category CRDT Document Mapping v1',
+    comment:
+        'Defines how note categories should merge when conflicts occur during sync.',
+  ),
 )
 class Category {
   /// Unique identifier for this category

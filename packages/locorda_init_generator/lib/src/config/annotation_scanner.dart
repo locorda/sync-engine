@@ -119,8 +119,7 @@ class AnnotationScanner {
     String className,
   ) {
     final explicitContractField =
-        getField(annotationValue, 'explicitContractIri') ??
-            getField(annotationValue, '_explicitContractIri');
+        getField(annotationValue, 'explicitContractIri');
     final explicitContract = explicitContractField?.toStringValue();
     if (explicitContract != null && explicitContract.isNotEmpty) {
       return _ResolvedContract(
@@ -130,54 +129,31 @@ class AnnotationScanner {
     }
 
     final contractAppBaseField =
-        getField(annotationValue, 'contractAppBaseUri') ??
-            getField(annotationValue, '_contractAppBaseUri');
+        getField(annotationValue, 'contractAppBaseUri');
     final contractAppBaseUri = contractAppBaseField?.toStringValue() ??
         (getField(annotationValue, 'generatorVocab') ??
-                getField(annotationValue, '_vocab'))
+                getField(annotationValue, 'vocab'))
             ?.getField('appBaseUri')
             ?.toStringValue();
-    if (contractAppBaseUri != null && contractAppBaseUri.isNotEmpty) {
-      final contractPath = (getField(annotationValue, 'contractPath') ??
-              getField(annotationValue, '_contractPath'))
-          ?.toStringValue();
-      final contractVersion = (getField(annotationValue, 'contractVersion') ??
-                  getField(annotationValue, '_contractVersion'))
-              ?.toStringValue() ??
-          'v1';
-      final generated = _resolveGeneratedContractIri(
-        contractAppBaseUri,
-        className,
-        contractPath,
-        contractVersion,
-      );
-      final generate = (getField(annotationValue, 'generateContract') ??
-                  getField(annotationValue, '_generateContract'))
-              ?.toBoolValue() ??
-          true;
-      return _ResolvedContract(
-        mappingCode: Code.value("'${generated.replaceAll("'", "\\'")}'"),
-        generate: generate,
-      );
-    }
-
-    final crdtField = getField(annotationValue, 'crdt');
-    if (crdtField == null || crdtField.isNull) {
+    if (contractAppBaseUri == null || contractAppBaseUri.isEmpty) {
       return null;
     }
-
-    final crdtMappingField = getField(crdtField, 'mappingIri');
-    if (crdtMappingField == null) {
-      return null;
-    }
-
-    final mappingLiteral = crdtMappingField.toStringValue();
-    final mappingCode = mappingLiteral == null
-        ? dartObjectToCode(crdtMappingField)
-        : Code.value("'${mappingLiteral.replaceAll("'", "\\'")}'");
-    final generate = getField(crdtField, 'generate')?.toBoolValue() ?? true;
-
-    return _ResolvedContract(mappingCode: mappingCode, generate: generate);
+    final contractField = getField(annotationValue, 'contract');
+    final contractPath = contractField?.getField('path')?.toStringValue();
+    final contractVersion =
+        contractField?.getField('version')?.toStringValue() ?? 'v1';
+    final generated = _resolveGeneratedContractIri(
+      contractAppBaseUri,
+      className,
+      contractPath,
+      contractVersion,
+    );
+    final generate =
+        getField(annotationValue, 'generateContract')?.toBoolValue() ?? true;
+    return _ResolvedContract(
+      mappingCode: Code.value("'${generated.replaceAll("'", "\\'")}'"),
+      generate: generate,
+    );
   }
 
   String _resolveGeneratedContractIri(

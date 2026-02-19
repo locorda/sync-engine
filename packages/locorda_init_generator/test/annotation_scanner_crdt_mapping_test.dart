@@ -22,49 +22,6 @@ import 'test_helpers/analyzer_test_utils.dart';
 // Status: deferred for now due to delivery timing; tracked explicitly here to
 // prevent this test style from becoming the long-term default.
 void main() {
-  test('supports legacy RootResource + MergeContract shape', () async {
-    const source = r'''
-library;
-
-class IriTerm {
-  final String value;
-  const IriTerm(this.value);
-}
-
-class MergeContract {
-  final String mappingIri;
-  final bool generate;
-  const MergeContract(this.mappingIri, {this.generate = true});
-}
-
-class RootResource {
-  final IriTerm? classIri;
-  final MergeContract crdt;
-  const RootResource(this.classIri, this.crdt);
-}
-
-@RootResource(
-  IriTerm('https://example.dev/vocab#Note'),
-  MergeContract('https://example.dev/mappings/note-v1#'),
-)
-class Note {}
-''';
-
-    final resolved = await resolveTestLibrary(files: {
-      'main.dart': source,
-    });
-    final library = resolved.resolved.libraryElement;
-
-    final result = AnnotationScanner().scanLibrary(library, 'package:a/a.dart');
-    final root = result.rootResources.single;
-
-    expect(
-      root.crdtMapping.codeWithoutAlias,
-      "'https://example.dev/mappings/note-v1#'",
-    );
-    expect(root.generateCrdtMapping, isTrue);
-  });
-
   test('resolves RootResource.externalVocab generated contract', () async {
     const source = r'''
 library;
@@ -74,26 +31,30 @@ class IriTerm {
   const IriTerm(this.value);
 }
 
+class MergeContract {
+  final String version;
+  final String? path;
+  final bool generate;
+  const MergeContract({this.version = 'v1', this.path, this.generate = true});
+}
+
 class RootResource {
   final Object? _vocab;
   final IriTerm? _explicitClassIri;
   final String? _contractAppBaseUri;
   final String? _explicitContractIri;
-  final String _contractVersion;
-  final String? _contractPath;
+  final MergeContract? contract;
   final bool _generateContract;
 
   const RootResource.externalVocab(
     IriTerm classIri,
     String mergeContractAppBaseUri, {
-    String mergeContractVersion = 'v1',
-    String? mergeContractPath,
+    MergeContract mergeContract = const MergeContract(),
   })  : _vocab = null,
         _explicitClassIri = classIri,
         _contractAppBaseUri = mergeContractAppBaseUri,
         _explicitContractIri = null,
-        _contractVersion = mergeContractVersion,
-        _contractPath = mergeContractPath,
+        contract = mergeContract,
         _generateContract = true;
 }
 
@@ -125,26 +86,30 @@ class IriTerm {
   const IriTerm(this.value);
 }
 
+class MergeContract {
+  final String version;
+  final String? path;
+  final bool generate;
+  const MergeContract({this.version = 'v1', this.path, this.generate = true});
+}
+
 class RootResource {
   final Object? _vocab;
   final IriTerm? _explicitClassIri;
   final String? _contractAppBaseUri;
   final String? _explicitContractIri;
-  final String _contractVersion;
-  final String? _contractPath;
+  final MergeContract? contract;
   final bool _generateContract;
 
   const RootResource.externalVocab(
     IriTerm classIri,
     String mergeContractAppBaseUri, {
-    String mergeContractVersion = 'v1',
-    String? mergeContractPath,
+    MergeContract mergeContract = const MergeContract(),
   })  : _vocab = null,
         _explicitClassIri = classIri,
         _contractAppBaseUri = mergeContractAppBaseUri,
         _explicitContractIri = null,
-        _contractVersion = mergeContractVersion,
-        _contractPath = mergeContractPath,
+        contract = mergeContract,
         _generateContract = true;
 }
 
@@ -179,8 +144,7 @@ class RootResource {
   final Object? _explicitClassIri;
   final String? _contractAppBaseUri;
   final String? _explicitContractIri;
-  final String _contractVersion;
-  final String? _contractPath;
+  final Object? contract;
   final bool _generateContract;
 
   const RootResource.externalContract(
@@ -190,8 +154,7 @@ class RootResource {
         _explicitClassIri = null,
         _contractAppBaseUri = null,
         _explicitContractIri = mergeContractIri,
-        _contractVersion = 'v1',
-        _contractPath = null,
+        contract = null,
         _generateContract = false;
 }
 
@@ -229,8 +192,7 @@ class RootResource {
   final IriTerm? _explicitClassIri;
   final String? _contractAppBaseUri;
   final String? _explicitContractIri;
-  final String _contractVersion;
-  final String? _contractPath;
+  final Object? contract;
   final bool _generateContract;
 
   const RootResource.external(
@@ -240,8 +202,7 @@ class RootResource {
         _explicitClassIri = classIri,
         _contractAppBaseUri = null,
         _explicitContractIri = mergeContractIri,
-        _contractVersion = 'v1',
-        _contractPath = null,
+        contract = null,
         _generateContract = false;
 }
 

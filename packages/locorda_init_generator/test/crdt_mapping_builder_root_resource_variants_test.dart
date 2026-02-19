@@ -44,35 +44,41 @@ class AppVocab {
   });
 }
 
+class MergeContract {
+  final String version;
+  final String? path;
+  final List<IriTerm> imports;
+  final String? label;
+  final String? comment;
+  final bool generate;
+
+  const MergeContract({
+    this.version = 'v1',
+    this.path,
+    this.imports = const [],
+    this.label,
+    this.comment,
+    this.generate = true,
+  });
+}
+
 class RootResource {
   final AppVocab? generatorVocab;
   final IriTerm? explicitClassIri;
   final String? contractAppBaseUri;
   final String? explicitContractIri;
-  final String contractVersion;
-  final String? contractPath;
+  final MergeContract? contract;
   final bool generateContract;
-  final List<IriTerm> contractImports;
-  final String? contractLabel;
-  final String? contractComment;
 
   const RootResource(
     AppVocab vocab, {
-    String mergeContractVersion = 'v1',
-    String? mergeContractPath,
-    List<IriTerm> mergeContractImports = const [],
-    String? mergeContractLabel,
-    String? mergeContractComment,
+    MergeContract mergeContract = const MergeContract(),
     })  : generatorVocab = vocab,
       explicitClassIri = null,
       contractAppBaseUri = null,
       explicitContractIri = null,
-      contractVersion = mergeContractVersion,
-      contractPath = mergeContractPath,
-      generateContract = true,
-      contractImports = mergeContractImports,
-      contractLabel = mergeContractLabel,
-      contractComment = mergeContractComment;
+      contract = mergeContract,
+      generateContract = true;
 }
 
 class CrdtImmutable {
@@ -145,12 +151,8 @@ class RootResource {
   final IriTerm? explicitClassIri;
   final String? contractAppBaseUri;
   final String? explicitContractIri;
-  final String contractVersion;
-  final String? contractPath;
+  final Object? contract;
   final bool generateContract;
-  final List<IriTerm> contractImports;
-  final String? contractLabel;
-  final String? contractComment;
 
   const RootResource.external(
     IriTerm classIri,
@@ -159,12 +161,8 @@ class RootResource {
       explicitClassIri = classIri,
       contractAppBaseUri = null,
       explicitContractIri = mergeContractIri,
-      contractVersion = 'v1',
-      contractPath = null,
-      generateContract = false,
-      contractImports = const [],
-      contractLabel = null,
-      contractComment = null;
+      contract = null,
+      generateContract = false;
 }
 
 @RootResource.external(
