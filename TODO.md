@@ -181,6 +181,7 @@
 - [ ] Implement namespace in Resource Identity => maybe later
 - [ ] Final check if the spec in ARCHITECTURE.md is fully implemented
 - [ ] do not check generated *.js files in for example apps, rather make sure we run the build_runner before deployment
+- [ ] BUGFIX: generated crdt merge mapping files like packages/locorda/example/minimal/lib/src/generated/mapping_bootstrap.g.dart contain a rule for `mc:predicate <vocab#id> ; ca:mergeWith ca:LWW_Register` - but where does this id thing come from? Why is it not excluded like other excluded fields are? Are we missing some more exclusions here, which are done in the RDF mapper vocabulary generator?
 
 ## Future Feature Ideas
 
