@@ -334,7 +334,7 @@ class CrdtMappingBuilder implements Builder {
     }
 
     final local = _findAnnotationByType(
-        classElement.metadata.annotations, 'RdfLocalResource');
+        classElement.metadata.annotations, 'LocalResource');
     if (local != null) {
       return _readIri(getField(local, 'classIri'));
     }
@@ -385,7 +385,7 @@ class CrdtMappingBuilder implements Builder {
   bool _isTypelessLocalResource(ClassElement classElement) {
     return _findAnnotationByType(
               classElement.metadata.annotations,
-              'RdfLocalResource',
+              'LocalResource',
             ) !=
             null &&
         _extractClassIri(classElement) == null;
@@ -396,7 +396,7 @@ class CrdtMappingBuilder implements Builder {
                 classElement.metadata.annotations, 'SubResource') !=
             null ||
         _findAnnotationByType(
-                classElement.metadata.annotations, 'RdfLocalResource') !=
+                classElement.metadata.annotations, 'LocalResource') !=
             null ||
         _findAnnotationByType(
                 classElement.metadata.annotations, 'RootResource') !=

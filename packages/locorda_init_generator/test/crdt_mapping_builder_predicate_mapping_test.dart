@@ -4,6 +4,7 @@ import 'package:locorda_init_generator/src/config/crdt_mapping_builder.dart';
 import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 
+// TODO: is this useful? What is the idea of this test? Why does it re-implement the annotations as plain classes instead of importing them from locorda_annotations?
 String _sourceWithMappingIri(String mappingIri) => '''
 library;
 
@@ -29,9 +30,9 @@ class RootResource {
   const RootResource(this.classIri, this.crdt);
 }
 
-class RdfLocalResource {
+class LocalResource {
   final IriTerm? classIri;
-  const RdfLocalResource({this.classIri});
+  const LocalResource({this.classIri});
 }
 
 class RdfProperty {
@@ -47,7 +48,7 @@ class CrdtImmutable {
   const CrdtImmutable();
 }
 
-@RdfLocalResource()
+@LocalResource()
 class CategoryDisplaySettings {
   @RdfProperty(IriTerm('https://example.dev/vocab#categoryColor'))
   @CrdtLwwRegister()

@@ -93,18 +93,18 @@ class LocordaConfigValidator {
       if (!hasSerializer && !hasDeserializer) {
         result.addError(
             'Type $type is not registered in RdfMapper. '
-            'Ensure the type is properly annotated with @PodResource, @RdfGlobalResource or @RdfLocalResource - or a mapper is implemented and registered manually.',
+            'Ensure the type is properly annotated with @RootResource, @SubResource or @LocalResource - or a mapper is implemented and registered manually.',
             details: {'type': type});
       } else {
         if (!hasDeserializer) {
           result.addError(
               'Type $type has ${hasSerializer ? 'a serializer but ' : ''}no deserializer registered in RdfMapper. '
-              'Ensure the type is properly annotated with @PodResource, @RdfGlobalResource or @RdfLocalResource - or a mapper is implemented and registered manually.',
+              'Ensure the type is properly annotated with @RootResource, @SubResource or @LocalResource - or a mapper is implemented and registered manually.',
               details: {'type': type});
         } else if (!hasSerializer && needsSerializer) {
           result.addError(
               'Type $type has a deserializer but no serializer registered in RdfMapper. '
-              'Ensure the type is properly annotated with @PodResource, @RdfGlobalResource or @RdfLocalResource - or a mapper is implemented and registered manually.',
+              'Ensure the type is properly annotated with @RootResource, @SubResource or @LocalResource - or a mapper is implemented and registered manually.',
               details: {'type': type});
         }
       }
