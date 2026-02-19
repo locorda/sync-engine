@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:locorda/locorda.dart';
 import 'package:personal_notes_app/models/note.dart';
 import 'package:personal_notes_app/models/note_index_entry.dart';
 import 'package:personal_notes_app/models/note_group_key.dart';
 import 'package:personal_notes_app/storage/repositories.dart';
-import 'package:locorda_core/locorda_core.dart';
 
 /// Mock repository for testing
 class MockNoteRepository implements NoteRepository {

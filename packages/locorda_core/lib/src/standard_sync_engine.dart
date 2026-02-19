@@ -27,7 +27,6 @@ import 'package:locorda_core/src/storage/storage_interface.dart' as storage;
 import 'package:locorda_core/src/sync/remote_document_merger.dart';
 import 'package:locorda_core/src/sync/remote_sync_orchestrator.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
-import 'package:locorda_core/src/sync/standard_sync_manager.dart';
 import 'package:locorda_core/src/sync/sync_function.dart';
 import 'package:locorda_core/src/util/build_effective_config.dart';
 import 'package:locorda_core/src/util/retry.dart';

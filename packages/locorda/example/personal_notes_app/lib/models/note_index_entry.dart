@@ -5,10 +5,9 @@
 /// like Hybrid Logical Clock hashes for change detection.
 library;
 
-import 'package:locorda_annotations/locorda_annotations.dart';
+import 'package:locorda/annotations.dart';
 import 'package:personal_notes_app/models/note.dart';
 import 'package:personal_notes_app/models/note_group_key.dart';
-import 'package:locorda_rdf_mapper_annotations/annotations.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
 
 /// Lightweight index entry for Note resources.

@@ -6,26 +6,12 @@ import 'package:test/test.dart';
 
 void main() {
   late RdfMapper mapper;
-  late TurtleCodec turtleCodec;
 
   setUp(() {
-    final iriTermFactory = IriTerm.validated;
-    final rdfCore = RdfCore.withStandardCodecs();
-
     // Create mapper registry and register TaskMapper
-    final registry = RdfMapperRegistry();
-
     // Simple IRI mapper for Task resources
-    final taskIriMapper = _SimpleTaskIriMapper();
-    registry.registerMapper<Task>(TaskMapper(iriMapper: taskIriMapper));
-
-    mapper = RdfMapper(
-      registry: registry,
-      iriTermFactory: iriTermFactory,
-      rdfCore: rdfCore,
-    );
-
-    turtleCodec = TurtleCodec(iriTermFactory: iriTermFactory);
+    mapper = RdfMapper.withDefaultRegistry()
+      ..registerMapper<Task>(TaskMapper(iriMapper: _SimpleTaskIriMapper()));
   });
 
   group('Task RDF Roundtrip', () {
@@ -61,8 +47,8 @@ void main() {
 
       final graph = mapper.graph.encodeObject(originalTask);
       final decodedTask = mapper.graph.decodeObject<Task>(graph);
-      final turtleString = turtleCodec.encode(graph);
-      final decodedGraph = turtleCodec.decode(turtleString);
+      final turtleString = turtle.encode(graph);
+      final decodedGraph = turtle.decode(turtleString);
       expect(graph, equals(decodedGraph),
           reason: 'Graph should be the same after Turtle roundtrip');
       expect(decodedTask.id, equals(originalTask.id));
@@ -81,12 +67,12 @@ void main() {
 
       // Full roundtrip: Task → RdfGraph → Turtle → RdfGraph → Task
       final graph = mapper.graph.encodeObject(originalTask);
-      final turtle = turtleCodec.encode(graph);
+      final turtleString = turtle.encode(graph);
 
-      expect(turtle, contains('Add RDF roundtrip test'),
+      expect(turtleString, contains('Add RDF roundtrip test'),
           reason: 'Turtle should contain task title');
 
-      final decodedGraph = turtleCodec.decode(turtle);
+      final decodedGraph = turtle.decode(turtleString);
       final decodedTask = mapper.graph.decodeObject<Task>(decodedGraph);
 
       expect(decodedTask.id, equals(originalTask.id));
@@ -105,7 +91,7 @@ void main() {
       final taskSubjects = graph.triples
           .where((t) =>
               t.predicate is IriTerm &&
-              (t.predicate as IriTerm).value.contains('name'))
+              (t.predicate as IriTerm).value.contains('title'))
           .map((t) => t.subject)
           .toSet();
 

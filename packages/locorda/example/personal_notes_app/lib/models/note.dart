@@ -1,17 +1,16 @@
 /// Simple Note model with CRDT annotations for offline-first sync.
 library;
 
-import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda/annotations.dart';
 import 'package:locorda_rdf_core/core.dart';
-import 'package:locorda_rdf_mapper_annotations/annotations.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
-import 'package:locorda_annotations/locorda_annotations.dart';
-import '../vocabulary/personal_notes_vocab.dart';
-import '../utils/optional.dart';
+
 import '../consts.dart' show appBaseUrl;
+import '../utils/optional.dart';
+import '../vocabulary/personal_notes_vocab.dart';
 import 'category.dart';
-import 'weblink.dart';
 import 'comment.dart';
+import 'weblink.dart';
 
 class NoteCategoryProperty extends RdfProperty {
   const NoteCategoryProperty()
@@ -33,11 +32,11 @@ class NoteCategoryProperty extends RdfProperty {
 @RootResource.externalVocab(
   PersonalNotesVocab.PersonalNote,
   appBaseUrl,
-  mergeContractPath: '/contracts/note-v1',
+  mergeContractPath: '/mappings/note-v1',
   mergeContractLabel: 'Personal Note CRDT Document Mapping v1',
   mergeContractComment:
       'Defines how personal notes should merge when conflicts occur during sync.',
-  mergeContractImports: const [
+  mergeContractImports: [
     MergeContracts.coreV1,
   ],
   iriStrategy: RootIriStrategy(RootIriConfig('note')),

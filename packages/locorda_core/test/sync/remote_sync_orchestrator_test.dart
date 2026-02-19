@@ -8,7 +8,6 @@ import 'package:locorda_core/src/hlc_service.dart';
 import 'package:locorda_core/src/index/index_discovery.dart';
 import 'package:locorda_core/src/index/index_manager.dart';
 import 'package:locorda_core/src/index/index_parser.dart';
-import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/index/index_rdf_generator.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart';
 import 'package:locorda_core/src/index/shard_manager.dart';

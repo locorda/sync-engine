@@ -18,9 +18,13 @@ dependencies:
   locorda_flutter: any
   locorda_worker: any
   
+  # Annotations for model classes
+  locorda_annotations: any
+  
   # RDF mapping
   locorda_rdf_core: ^0.11.8
   locorda_rdf_mapper: ^0.11.8
+  locorda_rdf_mapper_annotations: ^0.11.8
 
   # Web Worker support (modern API)
   web: ^1.1.0

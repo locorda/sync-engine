@@ -8,11 +8,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda/locorda.dart';
+
 import 'package:personal_notes_app/screens/notes_list_screen.dart';
 import 'package:personal_notes_app/services/categories_service.dart';
 import 'package:personal_notes_app/services/notes_service.dart';
+
 //import 'package:locorda_worker/worker_main.dart';
 import 'services/mock_category_repository.dart';
 import 'services/mock_note_repository.dart';

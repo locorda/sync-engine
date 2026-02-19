@@ -130,12 +130,12 @@ class ConfigCodeGenerator {
         "localName": groupKey.localName,
       if (groupKey.groupingProperties.isNotEmpty)
         'groupingProperties': groupKey.groupingProperties.map((prop) {
-          return locordaCore('GroupingProperty').newInstance([
+          return locordaCore('GroupingPropertyData').newInstance([
             prop.property
           ], {
             if (prop.transforms.isNotEmpty)
               'transforms': prop.transforms.map((transform) {
-                return locordaCore('RegexTransform').newInstance([
+                return locordaCore('RegexTransformData').newInstance([
                   "r'${transform.pattern}'",
                   "r'${transform.replacement}'",
                 ]);

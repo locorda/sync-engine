@@ -7,6 +7,7 @@
 // ignore_for_file: unnecessary_brace_in_string_interps, prefer_conditional_assignment
 // ignore_for_file: lines_longer_than_80_chars, avoid_redundant_argument_values
 // ignore_for_file: unused_field, unnecessary_string_interpolations
+// ignore_for_file: depend_on_referenced_packages
 
 import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_rdf_mapper/mapper.dart';

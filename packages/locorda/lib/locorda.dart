@@ -73,7 +73,16 @@ export 'package:locorda_objects/locorda_objects.dart'
         MapperInitializerFunction,
         TypedHydrationBatch;
 export 'package:locorda_core/locorda_core.dart'
-    show SyncManager, ItemFetchPolicy, SyncEngine, SyncEngineConfig;
+    show
+        SyncManager,
+        ItemFetchPolicy,
+        SyncEngine,
+        SyncEngineConfig,
+        StandardSyncManager,
+        StandardSyncEngine,
+        SimpleConfigService,
+        AuthValueListenable,
+        Auth;
 export 'package:locorda_ui/locorda_ui.dart'
     show
         LocordaUILocalizations,

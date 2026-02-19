@@ -4,10 +4,32 @@ A minimal task sync app demonstrating Locorda's core concepts.
 
 ## What this shows
 
-- **Worker architecture** - Heavy operations isolated from UI thread
-- **Object sync** - Work with plain Dart classes (RDF handled internally)
-- **CRDT merge** - Automatic conflict resolution (LWW strategy)
-- **Repository pattern** - Clean separation: sync ↔ storage ↔ UI
+- **Automatic sync** - Changes sync across devices without backend code
+- **Offline-first** - App works fully offline, syncs when connected
+- **Conflict-free** - Multiple devices can edit simultaneously, conflicts resolve automatically
+- **Plain Dart objects** - No special base classes or complex model definitions
+- **Repository pattern** - Clean separation: UI ↔ local storage ↔ sync engine
+
+## Getting started
+
+Add dependencies:
+
+```bash
+# Core package (includes annotations)
+dart pub add locorda
+
+# Testing remote (replace with Solid Pods or Google Drive in production)
+dart pub add locorda_dir
+
+# Development tools for code generation
+dart pub add --dev build_runner locorda_dev
+```
+
+Annotate your models, then run code generation:
+
+```bash
+dart run build_runner build
+```
 
 ## Architecture
 
@@ -27,14 +49,14 @@ Locorda SyncEngine
 
 <?code-excerpt "lib/task.dart (task-model)"?>
 ```dart
-/// A simple task with CRDT sync.
+/// A simple task that syncs across devices.
 @RootResource(AppVocab(appBaseUri: 'https://locorda.dev/example/minimal'))
 class Task {
   /// Unique ID for this task
   @RdfIriPart()
   final String id;
 
-  /// Task title - LWW (Last Writer Wins) is the default merge strategy
+  /// Task title
   final String title;
 
   /// Completion status
@@ -60,41 +82,49 @@ class Task {
 
 ```
 
-**Annotations explained:**
-- `@RootResource(AppVocab(...))` - Defines this class as an RDF resource type
-- `@RdfIriPart()` - Uses `id` field as the unique identifier in URIs
-- CRDT merge strategies are configured separately in the CRDT mapping file (generated)
+**What the annotations do:**
+- `@RootResource(AppVocab(...))` - Makes this class syncable across devices
+- `@RdfIriPart()` - Marks `id` as the unique identifier for sync
+- Merge strategies (how conflicts are resolved) are auto-generated from these annotations
 
-### Repository: the sync integration point
+### Repository: connecting sync to your app
 
 <?code-excerpt "lib/task_repository.dart (repository)"?>
 ```dart
 /// Repository integrating local storage with Locorda sync.
+///
+/// This example uses a simple Map as a mock database. In a real app,
+/// you'd use your preferred storage solution (Drift, Hive, Isar, etc.)
+/// and connect it to sync via the same callback pattern.
 class TaskRepository {
   final ObjectSyncEngine _syncEngine;
-  final Map<String, Task> _tasks = {}; // In-memory storage
+  final Map<String, Task> _tasks =
+      {}; // Mock DB - use Drift/Hive/etc. in real apps
   final StreamController<List<Task>> _controller = StreamController.broadcast();
   StreamSubscription? _hydrationSubscription;
 
   TaskRepository._(this._syncEngine);
 
-  /// Create and initialize repository with hydration.
+  /// Create and initialize repository with sync.
   static Future<TaskRepository> create(ObjectSyncEngine syncEngine) async {
     final repo = TaskRepository._(syncEngine);
 
-    // Setup hydration: remote changes → local storage
+    // Connect your local storage to sync via callbacks:
+    // - onUpdate: save synced items to your database
+    // - onDelete: remove synced items from your database
+    // - getCurrentCursor: provide last sync position (for efficient catch-up)
     repo._hydrationSubscription = await syncEngine.hydrateWithCallbacks<Task>(
       getCurrentCursor: () async => null, // Simple: no cursor persistence
       onUpdate: (task) async {
-        repo._tasks[task.id] = task;
+        repo._tasks[task.id] = task; // In real app: await db.upsert(task)
         repo._notifyListeners();
       },
       onDelete: (id) async {
-        repo._tasks.remove(id);
+        repo._tasks.remove(id); // In real app: await db.delete(id)
         repo._notifyListeners();
       },
       onCursorUpdate:
-          (cursor) async {}, // Skip cursor persistence for minimal example
+          (cursor) async {}, // Skipped for simplicity in minimal example
     );
 
     return repo;
@@ -104,20 +134,20 @@ class TaskRepository {
   Stream<List<Task>> watchAll() => _controller.stream;
 
   /// Get all tasks (snapshot)
-  List<Task> getAll() =>
-      _tasks.values.toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  List<Task> getAll() => _tasks.values
+      .toList() // In real app: query your database however you want
+    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-  /// Save task (create or update) - triggers sync
+  /// Save task (create or update) - queued for sync to other devices
   Future<void> save(Task task) async {
     await _syncEngine.save<Task>(task);
-    // Local update happens via hydration callback
+    // Local update happens via sync callback
   }
 
-  /// Delete task - triggers sync
+  /// Delete task - queued for sync to other devices
   Future<void> delete(String id) async {
     await _syncEngine.deleteDocument<Task>(id);
-    // Local delete happens via hydration callback
+    // Local delete happens via sync callback
   }
 
   void _notifyListeners() {
@@ -132,16 +162,20 @@ class TaskRepository {
 
 ```
 
-**Key pattern:**
-1. `hydrateWithCallbacks` syncs remote → local
-2. `save()`/`delete()` go through `syncEngine`
-3. Local updates happen via hydration callbacks (no double-write!)
+**How it works:**
+1. **Callbacks connect your storage to sync**: `onUpdate`/`onDelete` let you save synced data to your database (Drift, Hive, etc.)
+2. **You control local storage**: Query, index, and structure your data however you want
+3. **`save()`/`delete()` register changes**: Your changes are saved locally (via callbacks) and queued for sync
+4. **Sync happens automatically**: When connected, changes sync to other devices; offline changes sync later
+5. **One source of truth**: Callbacks keep your local database up-to-date automatically
 
 ### Main thread: Locorda setup
 
+The `initLocorda()` function is **generated by build_runner** from your model annotations. You just configure which storage and remotes to use:
+
 <?code-excerpt "lib/main.dart (locorda-setup)"?>
 ```dart
-/// Initialize Locorda with worker architecture.
+/// Initialize Locorda for automatic sync.
 
 final locorda = await initLocorda(
   onWorkerSpawn: () => setupLogging(
@@ -162,29 +196,33 @@ final locorda = await initLocorda(
 ```
 
 **What you configure:**
+- `storage` - Where to store sync metadata locally (here: InMemoryStorage for simplicity)
+- `remotes` - Which backends to sync with (here: Local Dir for testing; use Solid Pods, Google Drive, etc. in production)
 - `onWorkerSpawn` - Optional callback when worker thread starts (useful for logging setup)
-- `remotes` - Storage backends (here: Local Dir for testing; use Solid/GDrive in production)
-- `storage` - Local storage handler (here: InMemoryStorage - data lost on restart)
 
-All other configuration (RDF mapping, CRDT merge strategies, resource types) is automatically generated from your `@RootResource` annotations.
+**What's generated for you:**
+- Full `initLocorda()` function with all your models configured
+- Object serialization/deserialization logic
+- Sync protocols and conflict resolution strategies
+- Worker thread setup and communication
 
 **Generated files** (created by `dart run build_runner build`):
-- `init_locorda.g.dart` - Locorda initialization
-- `init_rdf_mapper.g.dart` - RDF object mapping
-- `locorda_config.g.dart` - Resource configuration with CRDT mappings
-- `task.rdf_mapper.g.dart` - Task-specific RDF serialization
-- `worker_generated.g.dart` - Worker thread setup
-- `vocab.g.ttl` - RDF vocabulary definition
+- `init_locorda.g.dart` - Locorda initialization code
+- `init_rdf_mapper.g.dart` - Object ↔ sync format conversion
+- `locorda_config.g.dart` - Sync configuration
+- `task.rdf_mapper.g.dart` - Task-specific conversion logic
+- `worker_generated.g.dart` - Background worker setup
+- `vocab.g.ttl` - Data vocabulary definition
 
-### Worker thread: heavy lifting
+### Worker thread: keeping the UI responsive
 
-The worker code is **automatically generated** by `build_runner` in `lib/worker_generated.g.dart`. The generator creates:
+Heavy tasks (network requests, sync processing) run in a background worker **automatically generated** by `build_runner`. The generator creates:
 
-- Worker entry point that runs in an isolate (native) or web worker (web)
-- Storage and remote handlers matching your main thread configuration
-- All necessary setup code
+- Background thread setup (isolate on mobile/desktop, web worker on web)
+- Sync handlers matching your main thread configuration
+- All communication plumbing
 
-No manual worker configuration needed! The `initLocorda()` function handles the worker setup automatically.
+No manual worker configuration needed! Your UI stays smooth while sync happens in the background.
 
 ### UI: simple task list
 
@@ -294,14 +332,14 @@ class _TaskListScreenState extends State<TaskListScreen> {
 
 ```
 
-UI only knows about `TaskRepository` - no sync/CRDT awareness needed.
+UI only knows about `TaskRepository` - no sync awareness needed. Edit tasks, the repository handles the rest.
 
 ## Running this example
 
 From the main example directory:
 
 ```bash
-# Generate RDF mappers
+# Generate sync code
 dart run build_runner build
 
 # Run the app
@@ -320,7 +358,25 @@ See the full Personal Notes App for production patterns.
 ## Next steps
 
 1. **Add persistence**: Replace InMemoryStorage with DriftStorage
-2. **Add production remote**: Replace Local Dir with Solid/GDrive
+2. **Add production remote**: Replace Local Dir with Solid Pods or Google Drive
 3. **Add cursor tracking**: Persist sync position for efficient catch-up
 4. **Add error handling**: Handle network failures gracefully
+
+---
+
+## Under the hood
+
+Locorda uses two technologies to power sync:
+
+- **RDF (Resource Description Framework)**: Your objects are stored as semantic web data, enabling:
+  - Interoperability between different apps
+  - Flexible storage backends (Solid Pods, Google Drive, etc.)
+  - Standard vocabularies for common data types
+
+- **CRDTs (Conflict-free Replicated Data Types)**: Automatic conflict resolution using:
+  - LWW (Last Writer Wins) for simple fields like `title` and `completed`
+  - Timestamp-based merge strategies
+  - Guaranteed convergence across devices
+
+You don't need to understand these to use Locorda, but you can customize merge strategies and vocabularies for advanced use cases.
 

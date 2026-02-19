@@ -671,12 +671,13 @@ packages:
     source: hosted
     version: "0.11.8"
   locorda_rdf_mapper_generator:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: locorda_rdf_mapper_generator
-      sha256: c5d7ebf976a9af059c316b42687ba680d1f2e605b442ce7734fc6df4e7c79473
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/locorda_rdf_mapper_generator"
+      ref: HEAD
+      resolved-ref: "4feb0ed063e1266358e3cc8785cb099887f901a3"
+      url: "https://github.com/locorda/rdf"
+    source: git
     version: "0.11.8"
   locorda_rdf_terms_core:
     dependency: transitive

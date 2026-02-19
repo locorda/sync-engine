@@ -3,35 +3,47 @@
 
 const List<String> bootstrapMappings = [
   r"""
+@base <https://locorda.dev/example/personal_notes_app/> .
 @prefix ca: <https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#> .
 @prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
 @prefix mc: <https://w3id.org/solid-crdt-sync/vocab/merge-contract#> .
-@prefix pn: <https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix schema: <https://schema.org/> .
 
-GRAPH <https://locorda.dev/example/personal_notes_app/mappings/category-v1#> {
-  <https://locorda.dev/example/personal_notes_app/mappings/category-v1#> a mc:DocumentMapping;
+GRAPH <contracts/category-v1#> {
+  <contracts/category-v1#> a mc:DocumentMapping;
       rdfs:comment "Defines how note categories should merge when conflicts occur during sync.";
       rdfs:label "Notes Category CRDT Document Mapping v1";
       mc:classMapping (
           [
               a mc:ClassMapping ;
-              mc:appliesToClass pn:NotesCategory ;
+              mc:appliesToClass <vocabulary/personal-notes#NotesCategory> ;
               mc:rule [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ],
                   [ mc:predicate schema:description ; ca:mergeWith ca:LWW_Register ],
-                  [ mc:predicate pn:displaySettings ; ca:mergeWith ca:LWW_Register ],
+                  [
+                      mc:predicate <vocabulary/personal-notes#displaySettings> ;
+                      ca:mergeWith ca:LWW_Register
+                  ],
                   [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ],
                   [ mc:predicate schema:dateModified ; ca:mergeWith ca:LWW_Register ],
-                  [ mc:predicate pn:archived ; ca:mergeWith ca:LWW_Register ]
+                  [
+                      mc:predicate <vocabulary/personal-notes#archived> ;
+                      ca:mergeWith ca:LWW_Register
+                  ]
           ]
       );
       mc:imports (mappings:core-v1);
       mc:predicateMapping (
           [
-              mc:rule [ mc:predicate pn:categoryColor ; ca:mergeWith ca:LWW_Register ],
-                  [ mc:predicate pn:categoryIcon ; ca:mergeWith ca:LWW_Register ] ;
+              mc:rule [
+                      mc:predicate <vocabulary/personal-notes#categoryColor> ;
+                      ca:mergeWith ca:LWW_Register
+                  ],
+                  [
+                      mc:predicate <vocabulary/personal-notes#categoryIcon> ;
+                      ca:mergeWith ca:LWW_Register
+                  ] ;
               a mc:PredicateMapping
           ]
       ) .
@@ -39,16 +51,16 @@ GRAPH <https://locorda.dev/example/personal_notes_app/mappings/category-v1#> {
 """,
 
   r"""
+@base <https://locorda.dev/example/personal_notes_app/> .
 @prefix ca: <https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#> .
 @prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
 @prefix mc: <https://w3id.org/solid-crdt-sync/vocab/merge-contract#> .
-@prefix pn: <https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix schema: <https://schema.org/> .
 
-GRAPH <https://locorda.dev/example/personal_notes_app/mappings/note-v1#> {
-  <https://locorda.dev/example/personal_notes_app/mappings/note-v1#> a mc:DocumentMapping;
+GRAPH <contracts/note-v1#> {
+  <contracts/note-v1#> a mc:DocumentMapping;
       rdfs:comment "Defines how personal notes should merge when conflicts occur during sync.";
       rdfs:label "Personal Note CRDT Document Mapping v1";
       mc:classMapping (
@@ -60,11 +72,14 @@ GRAPH <https://locorda.dev/example/personal_notes_app/mappings/note-v1#> {
           ]
           [
               a mc:ClassMapping ;
-              mc:appliesToClass pn:PersonalNote ;
+              mc:appliesToClass <vocabulary/personal-notes#PersonalNote> ;
               mc:rule [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ],
                   [ mc:predicate schema:text ; ca:mergeWith ca:LWW_Register ],
                   [ mc:predicate schema:keywords ; ca:mergeWith ca:OR_Set ],
-                  [ mc:predicate pn:belongsToCategory ; ca:mergeWith ca:LWW_Register ],
+                  [
+                      mc:predicate <vocabulary/personal-notes#belongsToCategory> ;
+                      ca:mergeWith ca:LWW_Register
+                  ],
                   [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ],
                   [ mc:predicate schema:dateModified ; ca:mergeWith ca:LWW_Register ],
                   [ mc:predicate schema:relatedLink ; ca:mergeWith ca:OR_Set ],
@@ -72,7 +87,7 @@ GRAPH <https://locorda.dev/example/personal_notes_app/mappings/note-v1#> {
           ]
           [
               a mc:ClassMapping ;
-              mc:appliesToClass pn:Weblink ;
+              mc:appliesToClass <vocabulary/personal-notes#Weblink> ;
               mc:rule [ mc:predicate schema:url ; ca:mergeWith ca:Immutable ; mc:isIdentifying true ],
                   [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ],
                   [ mc:predicate schema:description ; ca:mergeWith ca:LWW_Register ]

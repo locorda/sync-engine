@@ -7,31 +7,39 @@ import 'task.dart';
 
 // #docregion repository
 /// Repository integrating local storage with Locorda sync.
+///
+/// This example uses a simple Map as a mock database. In a real app,
+/// you'd use your preferred storage solution (Drift, Hive, Isar, etc.)
+/// and connect it to sync via the same callback pattern.
 class TaskRepository {
   final ObjectSyncEngine _syncEngine;
-  final Map<String, Task> _tasks = {}; // In-memory storage
+  final Map<String, Task> _tasks =
+      {}; // Mock DB - use Drift/Hive/etc. in real apps
   final StreamController<List<Task>> _controller = StreamController.broadcast();
   StreamSubscription? _hydrationSubscription;
 
   TaskRepository._(this._syncEngine);
 
-  /// Create and initialize repository with hydration.
+  /// Create and initialize repository with sync.
   static Future<TaskRepository> create(ObjectSyncEngine syncEngine) async {
     final repo = TaskRepository._(syncEngine);
 
-    // Setup hydration: remote changes → local storage
+    // Connect your local storage to sync via callbacks:
+    // - onUpdate: save synced items to your database
+    // - onDelete: remove synced items from your database
+    // - getCurrentCursor: provide last sync position (for efficient catch-up)
     repo._hydrationSubscription = await syncEngine.hydrateWithCallbacks<Task>(
       getCurrentCursor: () async => null, // Simple: no cursor persistence
       onUpdate: (task) async {
-        repo._tasks[task.id] = task;
+        repo._tasks[task.id] = task; // In real app: await db.upsert(task)
         repo._notifyListeners();
       },
       onDelete: (id) async {
-        repo._tasks.remove(id);
+        repo._tasks.remove(id); // In real app: await db.delete(id)
         repo._notifyListeners();
       },
       onCursorUpdate:
-          (cursor) async {}, // Skip cursor persistence for minimal example
+          (cursor) async {}, // Skipped for simplicity in minimal example
     );
 
     return repo;
@@ -41,20 +49,20 @@ class TaskRepository {
   Stream<List<Task>> watchAll() => _controller.stream;
 
   /// Get all tasks (snapshot)
-  List<Task> getAll() =>
-      _tasks.values.toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  List<Task> getAll() => _tasks.values
+      .toList() // In real app: query your database however you want
+    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-  /// Save task (create or update) - triggers sync
+  /// Save task (create or update) - queued for sync to other devices
   Future<void> save(Task task) async {
     await _syncEngine.save<Task>(task);
-    // Local update happens via hydration callback
+    // Local update happens via sync callback
   }
 
-  /// Delete task - triggers sync
+  /// Delete task - queued for sync to other devices
   Future<void> delete(String id) async {
     await _syncEngine.deleteDocument<Task>(id);
-    // Local delete happens via hydration callback
+    // Local delete happens via sync callback
   }
 
   void _notifyListeners() {

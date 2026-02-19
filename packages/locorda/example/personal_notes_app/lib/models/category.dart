@@ -2,9 +2,8 @@
 library;
 
 import 'package:locorda_rdf_core/core.dart';
-import 'package:locorda_rdf_mapper_annotations/annotations.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
-import 'package:locorda_annotations/locorda_annotations.dart';
+import 'package:locorda/annotations.dart';
 import '../vocabulary/personal_notes_vocab.dart';
 import '../consts.dart' show appBaseUrl;
 import 'category_display_settings.dart';
@@ -21,11 +20,11 @@ import 'category_display_settings.dart';
 @RootResource.externalVocab(
   PersonalNotesVocab.NotesCategory,
   appBaseUrl,
-  mergeContractPath: '/contracts/category-v1',
+  mergeContractPath: '/mappings/category-v1',
   mergeContractLabel: 'Notes Category CRDT Document Mapping v1',
   mergeContractComment:
       'Defines how note categories should merge when conflicts occur during sync.',
-  mergeContractImports: const [
+  mergeContractImports: [
     MergeContracts.coreV1,
   ],
 )

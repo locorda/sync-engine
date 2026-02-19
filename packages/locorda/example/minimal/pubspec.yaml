@@ -14,34 +14,26 @@ dependencies:
   flutter_localizations:
     sdk: flutter
     
-  # Locorda sync packages
-  locorda: any
-  locorda_annotations: any
-  locorda_core: any
-  locorda_dir: any
-  locorda_worker: any
+  # Core Locorda packages
+  locorda: any                # Main package (includes annotations)
+  locorda_dir: any            # Testing remote (use Solid/GDrive in production)
   
-  # RDF mapping
-  locorda_rdf_core: ^0.11.8
-  locorda_rdf_mapper: ^0.11.8
-  locorda_rdf_terms_schema: ^0.11.4
-  locorda_rdf_mapper_annotations: ^0.11.8
-  
-  # Reactive streams
-  rxdart: ^0.28.0
-
-  # Logging
+  # Utilities
   logging: ^1.3.0
-
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
   test: any
   flutter_lints: ^6.0.0
   
-  # Code generation for RDF mapper
+  # Code generation
   build_runner: ^2.4.0
   locorda_dev: any
+  
+  # Needed by tests to verify RDF output
+  locorda_rdf_core: ^0.11.8
+  locorda_rdf_mapper: ^0.11.8
 
 flutter:
   uses-material-design: true

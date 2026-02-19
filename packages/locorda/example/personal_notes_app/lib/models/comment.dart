@@ -1,9 +1,8 @@
 /// Comment model representing a comment on a note.
 library;
 
-import 'package:locorda_rdf_mapper_annotations/annotations.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
-import 'package:locorda_annotations/locorda_annotations.dart';
+import 'package:locorda/annotations.dart';
 
 /// A comment attached to a note, demonstrating IRI-identified sub-content.
 ///

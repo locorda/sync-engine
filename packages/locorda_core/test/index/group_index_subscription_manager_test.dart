@@ -1,7 +1,6 @@
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_core/src/index/group_index_subscription_manager.dart';
-import 'package:locorda_core/src/standard_sync_engine.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:test/test.dart';
 
 void main() {

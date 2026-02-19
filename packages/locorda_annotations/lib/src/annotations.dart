@@ -6,7 +6,6 @@
 library;
 
 import 'package:locorda_annotations/locorda_annotations.dart';
-import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_rdf_mapper_annotations/annotations.dart';
 

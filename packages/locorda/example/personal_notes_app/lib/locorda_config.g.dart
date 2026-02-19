@@ -17,44 +17,44 @@ import 'package:personal_notes_app/models/note_group_key.dart' as ngk;
 import 'package:personal_notes_app/models/note_index_entry.dart' as nie;
 
 LocordaConfig generateLocordaConfig() => LocordaConfig(
-      resources: [
-        ResourceConfig(
-          type: category.Category,
-          crdtMapping: Uri.parse(
-            'https://locorda.dev/example/personal_notes_app/mappings/category-v1#',
-          ),
-          indices: [FullIndexConfig()],
-        ),
-        ResourceConfig(
-          type: note.Note,
-          crdtMapping: Uri.parse(
-            'https://locorda.dev/example/personal_notes_app/mappings/note-v1#',
-          ),
-          indices: [
-            GroupIndexConfig(
-              ngk.NoteGroupKey,
-              groupingProperties: [
-                GroupingPropertyData(
-                  const rdf_term.IriTerm('https://schema.org/dateCreated'),
-                  transforms: [
-                    RegexTransformData(
-                      r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*',
-                      r'${1}-${2}',
-                    ),
-                  ],
+  resources: [
+    ResourceConfig(
+      type: category.Category,
+      crdtMapping: Uri.parse(
+        'https://locorda.dev/example/personal_notes_app/contracts/category-v1#',
+      ),
+      indices: [FullIndexConfig()],
+    ),
+    ResourceConfig(
+      type: note.Note,
+      crdtMapping: Uri.parse(
+        'https://locorda.dev/example/personal_notes_app/contracts/note-v1#',
+      ),
+      indices: [
+        GroupIndexConfig(
+          ngk.NoteGroupKey,
+          groupingProperties: [
+            GroupingPropertyData(
+              const rdf_term.IriTerm('https://schema.org/dateCreated'),
+              transforms: [
+                RegexTransformData(
+                  r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*',
+                  r'${1}-${2}',
                 ),
               ],
-              item: IndexItemConfig(nie.NoteIndexEntry, {
-                const rdf_term.IriTerm('https://schema.org/name'),
-                const rdf_term.IriTerm('https://schema.org/dateCreated'),
-                const rdf_term.IriTerm('https://schema.org/dateModified'),
-                const rdf_term.IriTerm('https://schema.org/keywords'),
-                const rdf_term.IriTerm(
-                  'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#belongsToCategory',
-                ),
-              }),
             ),
           ],
+          item: IndexItemConfig(nie.NoteIndexEntry, {
+            const rdf_term.IriTerm('https://schema.org/name'),
+            const rdf_term.IriTerm('https://schema.org/dateCreated'),
+            const rdf_term.IriTerm('https://schema.org/dateModified'),
+            const rdf_term.IriTerm('https://schema.org/keywords'),
+            const rdf_term.IriTerm(
+              'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#belongsToCategory',
+            ),
+          }),
         ),
       ],
-    );
+    ),
+  ],
+);

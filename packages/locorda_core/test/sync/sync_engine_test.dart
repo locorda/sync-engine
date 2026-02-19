@@ -17,7 +17,6 @@ import 'package:locorda_core/src/mapping/framework_iri_generator.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
 import 'package:locorda_core/src/util/build_effective_config.dart';
 import 'package:locorda_rdf_core/core.dart';

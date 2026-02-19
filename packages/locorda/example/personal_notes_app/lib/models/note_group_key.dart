@@ -1,6 +1,6 @@
-import 'package:locorda_rdf_mapper_annotations/annotations.dart';
+import 'package:locorda/annotations.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
-import 'package:locorda_annotations/locorda_annotations.dart';
+
 import 'note.dart';
 
 @GroupKey(

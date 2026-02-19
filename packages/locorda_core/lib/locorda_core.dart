@@ -132,7 +132,8 @@ export 'src/index/group_index_subscription_manager.dart'
     show GroupIndexGraphSubscriptionException;
 export 'src/installation_service.dart' show InstallationIdFactory;
 export 'src/mapping/recursive_rdf_loader.dart' show Fetcher;
-export 'src/standard_sync_engine.dart' show StandardSyncEngine;
+export 'src/standard_sync_engine.dart'
+    show StandardSyncEngine, SimpleConfigService;
 
 // NOTE: CRDT annotations have been moved to locorda_annotations package
 // Use that package for @CrdtLwwRegister, @CrdtOrSet, etc. annotations
@@ -140,4 +141,5 @@ export 'src/standard_sync_engine.dart' show StandardSyncEngine;
 // Sync engine and manager
 export 'src/sync_engine.dart' show SyncEngine, EngineParams;
 export 'src/sync/sync_manager.dart' show SyncManager, AutoSyncConfig;
+export 'src/sync/standard_sync_manager.dart' show StandardSyncManager;
 export 'src/sync/sync_state.dart' show SyncState, SyncStatus, SyncTrigger;

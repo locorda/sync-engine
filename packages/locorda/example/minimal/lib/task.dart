@@ -1,18 +1,17 @@
 /// Minimal Task model demonstrating Locorda sync.
 library;
 
-import 'package:locorda_annotations/locorda_annotations.dart';
-import 'package:locorda_rdf_mapper_annotations/annotations.dart';
+import 'package:locorda/annotations.dart';
 
 // #docregion task-model
-/// A simple task with CRDT sync.
+/// A simple task that syncs across devices.
 @RootResource(AppVocab(appBaseUri: 'https://locorda.dev/example/minimal'))
 class Task {
   /// Unique ID for this task
   @RdfIriPart()
   final String id;
 
-  /// Task title - LWW (Last Writer Wins) is the default merge strategy
+  /// Task title
   final String title;
 
   /// Completion status

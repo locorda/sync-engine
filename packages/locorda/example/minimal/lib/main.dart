@@ -38,7 +38,7 @@ class _MinimalTaskAppState extends State<MinimalTaskApp> {
   Future<void> _initialize() async {
     try {
       // #docregion locorda-setup
-      /// Initialize Locorda with worker architecture.
+      /// Initialize Locorda for automatic sync.
 
       final locorda = await initLocorda(
         onWorkerSpawn: () => setupLogging(

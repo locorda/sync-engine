@@ -21,3 +21,4 @@ export 'src/parameters.dart'
         SubIriStrategy,
         IndexItemIriStrategy;
 export 'src/resource_ref.dart' show RootResourceRef, resourceRefFactoryKey;
+export 'package:locorda_core/locorda_core.dart' show RootIriConfig;

@@ -3,9 +3,9 @@ library;
 
 import 'dart:math';
 
+import 'package:locorda/locorda.dart';
 import 'package:personal_notes_app/models/note_group_key.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:locorda_core/locorda_core.dart';
 
 import '../models/note.dart';
 import '../models/note_index_entry.dart';
