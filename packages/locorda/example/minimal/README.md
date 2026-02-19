@@ -28,28 +28,19 @@ Locorda SyncEngine
 <?code-excerpt "lib/task.dart (task-model)"?>
 ```dart
 /// A simple task with CRDT sync.
-@RdfGlobalResource(
-  IriTerm('https://locorda.dev/example/minimal/Task'),
-  IriStrategy(),
-)
+@RootResource(AppVocab(appBaseUri: appBaseUrl))
 class Task {
   /// Unique ID for this task
   @RdfIriPart()
   final String id;
 
-  /// Task title - LWW (Last Writer Wins)
-  @RdfProperty(SchemaActionEvent.name)
-  @LwwRegister()
+  /// Task title - LWW (Last Writer Wins) is the default merge strategy
   final String title;
 
-  /// Completion status - LWW
-  @RdfProperty(SchemaAction.actionStatus)
-  @LwwRegister()
+  /// Completion status
   final bool completed;
 
-  /// Creation timestamp - Immutable
-  @RdfProperty(SchemaAction.startTime)
-  @Immutable()
+  /// Creation timestamp
   final DateTime createdAt;
 
   Task({
@@ -66,6 +57,7 @@ class Task {
         createdAt: createdAt,
       );
 }
+
 ```
 
 **Annotations explained:**
@@ -100,7 +92,8 @@ class TaskRepository {
         repo._tasks.remove(id);
         repo._notifyListeners();
       },
-      onCursorUpdate: (cursor) async {}, // Skip cursor persistence for minimal example
+      onCursorUpdate:
+          (cursor) async {}, // Skip cursor persistence for minimal example
     );
 
     return repo;
@@ -110,8 +103,9 @@ class TaskRepository {
   Stream<List<Task>> watchAll() => _controller.stream;
 
   /// Get all tasks (snapshot)
-  List<Task> getAll() => _tasks.values.toList()
-    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  List<Task> getAll() =>
+      _tasks.values.toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
   /// Save task (create or update) - triggers sync
   Future<void> save(Task task) async {
@@ -134,6 +128,7 @@ class TaskRepository {
     _controller.close();
   }
 }
+
 ```
 
 **Key pattern:**
@@ -146,41 +141,23 @@ class TaskRepository {
 <?code-excerpt "lib/main.dart (locorda-setup)"?>
 ```dart
 /// Initialize Locorda with worker architecture.
-Future<Locorda> setupLocorda() async {
-  return Locorda.create(
-    // Worker handles heavy operations (CRDT, HTTP, storage)
-    workerSetup: setupWorkerEngine,
 
-    // Local Dir for testing/debugging (not for production!)
-    remotes: [
-      await DirMainIntegration.create(
-        id: 'local_dir',
-        displayName: 'Local Directory (Testing)',
-      ),
-    ],
+final locorda = await initLocorda(
+  onWorkerSpawn: () => setupLogging(
+    level: kDebugMode ? Level.ALL : Level.WARNING,
+    threadName: 'WORKER',
+  ),
 
-    // InMemoryStorage - data lost on app restart
-    storage: InMemoryMainHandler(),
+  // Local Dir for testing/debugging (not for production!)
+  remotes: [
+    await DirMainIntegration.create(
+        displayName: 'Local Directory (Testing)'),
+  ],
 
-    // RDF mapper for Task model (generated)
-    mapperInitializer: (context) => initRdfMapper(
-      rdfMapper: context.baseRdfMapper,
-      $resourceIriFactory: context.resourceIriFactory,
-      $resourceRefFactory: context.resourceRefFactory,
-    ),
+  // InMemoryStorage for simplicity - data won't persist across app restarts
+  storage: InMemoryStorageMainHandler(),
+);
 
-    // Configure Task resource with CRDT mapping
-    config: LocordaConfig(
-      resources: [
-        ResourceConfig(
-          type: Task,
-          crdtMapping: Uri.parse('https://locorda.dev/example/minimal/mappings/task-v1.ttl'),
-          indices: [FullIndexConfig()], // Simple: fetch all tasks
-        ),
-      ],
-    ),
-  );
-}
 ```
 
 **Configuration:**
@@ -192,7 +169,6 @@ Future<Locorda> setupLocorda() async {
 
 ### Worker thread: heavy lifting
 
-<?code-excerpt "lib/worker.dart (worker-setup)"?>
 ```dart
 /// Worker entry point (runs in isolate/web worker).
 void main() {
@@ -217,7 +193,14 @@ Worker mirrors main thread choices for remotes/storage but runs in separate isol
 ```dart
 class TaskListScreen extends StatefulWidget {
   final TaskRepository repository;
-  const TaskListScreen({required this.repository, super.key});
+  final UiAdapterRegistry uiAdapterRegistry;
+  final SyncManager syncManager;
+  const TaskListScreen({
+    required this.repository,
+    required this.uiAdapterRegistry,
+    required this.syncManager,
+    super.key,
+  });
 
   @override
   State<TaskListScreen> createState() => _TaskListScreenState();
@@ -229,7 +212,20 @@ class _TaskListScreenState extends State<TaskListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tasks')),
+      appBar: AppBar(
+        title: const Text('Tasks'),
+        actions: [
+          Padding(
+            padding: EdgeInsets.only(
+              right: kDebugMode ? 60.0 : 0.0, // Space for debug banner
+            ),
+            child: MultiBackendStatusWidget(
+              registry: widget.uiAdapterRegistry,
+              syncManager: widget.syncManager,
+            ),
+          ),
+        ],
+      ),
       body: StreamBuilder<List<Task>>(
         stream: widget.repository.watchAll(),
         initialData: widget.repository.getAll(),
@@ -273,10 +269,12 @@ class _TaskListScreenState extends State<TaskListScreen> {
             onPressed: () {
               final title = _controller.text.trim();
               if (title.isNotEmpty) {
-                widget.repository.save(Task(
-                  id: 'task_${DateTime.now().millisecondsSinceEpoch}',
-                  title: title,
-                ));
+                widget.repository.save(
+                  Task(
+                    id: 'task_${DateTime.now().millisecondsSinceEpoch}',
+                    title: title,
+                  ),
+                );
               }
               _controller.clear();
               Navigator.pop(context);
@@ -294,6 +292,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
     super.dispose();
   }
 }
+
 ```
 
 UI only knows about `TaskRepository` - no sync/CRDT awareness needed.

@@ -29,8 +29,10 @@ jobs:
         
       - name: Update code excerpts in documentation
         run: |
-          cd packages/locorda/example
-          dart run excerpter --write-in-place README.md minimal/README.md || true
+          cd packages/locorda/example/mini
+          dart run excerpter README.md 
+          cd ../personal_notes_app
+          dart run excerpter README.md 
           
       - name: Check for changes
         id: check_changes
