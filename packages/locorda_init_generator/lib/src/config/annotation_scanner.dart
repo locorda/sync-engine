@@ -78,31 +78,25 @@ class AnnotationScanner {
       Code? classIri;
       if (classIriField != null && !classIriField.isNull) {
         classIri = dartObjectToCode(classIriField);
+      } else {
+        final explicitClassIri =
+            getField(annotationValue, 'explicitClassIri') ??
+                getField(annotationValue, '_explicitClassIri');
+        if (explicitClassIri != null && !explicitClassIri.isNull) {
+          classIri = dartObjectToCode(explicitClassIri);
+        }
       }
 
-      // Extract crdt config
-      final crdtField = getField(annotationValue, 'crdt');
-      if (crdtField == null || crdtField.isNull) {
+      final resolvedContract = _resolveMergeContract(
+        annotationValue,
+        element.displayName,
+      );
+
+      if (resolvedContract == null) {
         _log.warning(
-            'Could not extract crdt config for ${element.displayName}');
+            'Could not resolve merge contract for ${element.displayName}');
         continue;
       }
-
-      // Extract crdt.mappingIri as Code
-      final crdtMappingField = getField(crdtField, 'mappingIri');
-      if (crdtMappingField == null) {
-        _log.warning(
-            'Could not extract crdt.mappingIri for ${element.displayName}');
-        continue;
-      }
-      final mappingLiteral = crdtMappingField.toStringValue();
-      final crdtMapping = mappingLiteral == null
-          ? dartObjectToCode(crdtMappingField)
-          : Code.value("'${mappingLiteral.replaceAll("'", "\\'")}'");
-
-      // Extract crdt.generate
-      final generateCrdtMapping =
-          getField(crdtField, 'generate')?.toBoolValue() ?? true;
 
       // Extract fullIndex
       final fullIndexField = getField(annotationValue, 'fullIndex');
@@ -111,13 +105,111 @@ class AnnotationScanner {
       return RootResourceData(
         className: classToCode(element),
         classIri: classIri,
-        crdtMapping: crdtMapping,
-        generateCrdtMapping: generateCrdtMapping,
+        crdtMapping: resolvedContract.mappingCode,
+        generateCrdtMapping: resolvedContract.generate,
         fullIndex: fullIndexData,
       );
     }
 
     return null;
+  }
+
+  _ResolvedContract? _resolveMergeContract(
+    DartObject annotationValue,
+    String className,
+  ) {
+    final explicitContractField =
+        getField(annotationValue, 'explicitContractIri') ??
+            getField(annotationValue, '_explicitContractIri');
+    final explicitContract = explicitContractField?.toStringValue();
+    if (explicitContract != null && explicitContract.isNotEmpty) {
+      return _ResolvedContract(
+        mappingCode: Code.value("'${explicitContract.replaceAll("'", "\\'")}'"),
+        generate: false,
+      );
+    }
+
+    final contractAppBaseField =
+        getField(annotationValue, 'contractAppBaseUri') ??
+            getField(annotationValue, '_contractAppBaseUri');
+    final contractAppBaseUri = contractAppBaseField?.toStringValue() ??
+        (getField(annotationValue, 'generatorVocab') ??
+                getField(annotationValue, '_vocab'))
+            ?.getField('appBaseUri')
+            ?.toStringValue();
+    if (contractAppBaseUri != null && contractAppBaseUri.isNotEmpty) {
+      final contractPath = (getField(annotationValue, 'contractPath') ??
+              getField(annotationValue, '_contractPath'))
+          ?.toStringValue();
+      final contractVersion = (getField(annotationValue, 'contractVersion') ??
+                  getField(annotationValue, '_contractVersion'))
+              ?.toStringValue() ??
+          'v1';
+      final generated = _resolveGeneratedContractIri(
+        contractAppBaseUri,
+        className,
+        contractPath,
+        contractVersion,
+      );
+      final generate = (getField(annotationValue, 'generateContract') ??
+                  getField(annotationValue, '_generateContract'))
+              ?.toBoolValue() ??
+          true;
+      return _ResolvedContract(
+        mappingCode: Code.value("'${generated.replaceAll("'", "\\'")}'"),
+        generate: generate,
+      );
+    }
+
+    final crdtField = getField(annotationValue, 'crdt');
+    if (crdtField == null || crdtField.isNull) {
+      return null;
+    }
+
+    final crdtMappingField = getField(crdtField, 'mappingIri');
+    if (crdtMappingField == null) {
+      return null;
+    }
+
+    final mappingLiteral = crdtMappingField.toStringValue();
+    final mappingCode = mappingLiteral == null
+        ? dartObjectToCode(crdtMappingField)
+        : Code.value("'${mappingLiteral.replaceAll("'", "\\'")}'");
+    final generate = getField(crdtField, 'generate')?.toBoolValue() ?? true;
+
+    return _ResolvedContract(mappingCode: mappingCode, generate: generate);
+  }
+
+  String _resolveGeneratedContractIri(
+    String contractAppBaseUri,
+    String className,
+    String? contractPath,
+    String contractVersion,
+  ) {
+    final normalizedClassName = className.toLowerCase();
+    final path =
+        contractPath ?? '/mappings/$normalizedClassName-$contractVersion';
+    return '${_joinBaseAndPath(contractAppBaseUri, path)}#';
+  }
+
+  String _joinBaseAndPath(String baseUri, String path) {
+    final normalizedBase = _normalizeBaseUri(baseUri);
+    final normalizedPath = _normalizePath(path);
+    return '$normalizedBase$normalizedPath';
+  }
+
+  String _normalizeBaseUri(String baseUri) {
+    if (baseUri.length > 1 && baseUri.endsWith('/')) {
+      return baseUri.substring(0, baseUri.length - 1);
+    }
+    return baseUri;
+  }
+
+  String _normalizePath(String path) {
+    if (path.isEmpty) {
+      return '';
+    }
+    return path.startsWith('/') ? path : '/$path';
   }
 
   GroupKeyData? _scanGroupKey(
@@ -356,5 +448,15 @@ class ScanResult {
     required this.rootResources,
     required this.groupKeys,
     required this.indexItems,
+  });
+}
+
+class _ResolvedContract {
+  final Code mappingCode;
+  final bool generate;
+
+  const _ResolvedContract({
+    required this.mappingCode,
+    required this.generate,
   });
 }

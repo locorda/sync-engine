@@ -61,8 +61,14 @@ class CrdtMappingBuilder implements Builder {
     if (roots.isEmpty) {
       return;
     }
+    final baseUris = roots
+        .map((e) => e.crdt.appBaseUri)
+        .whereType<String>()
+        .toSet()
+      ..removeWhere((uri) => uri.isEmpty);
 
-    final trigContent = await _generateTrigDataset(roots);
+    final trigContent = await _generateTrigDataset(
+        roots, baseUris.length == 1 ? baseUris.first : null);
     await buildStep.writeAsString(buildStep.allowedOutputs.single, trigContent);
   }
 
@@ -76,35 +82,21 @@ class CrdtMappingBuilder implements Builder {
         continue;
       }
 
-      final crdtObject = getField(rootAnnotation, 'crdt');
-      if (crdtObject == null || crdtObject.isNull) {
-        log.warning(
-            'Skipping ${classElement.name}: @RootResource.crdt is missing.');
-        continue;
-      }
-
-      final mappingIri = getField(crdtObject, 'mappingIri')?.toStringValue();
-      if (mappingIri == null || mappingIri.isEmpty) {
-        log.warning(
-            'Skipping ${classElement.name}: crdt.mappingIri is missing.');
-        continue;
-      }
-
-      final normalizedMappingIri = _validateAndNormalizeMappingIri(
-        mappingIri,
+      final crdtConfig = _extractCrdtConfig(
+        rootAnnotation,
         classElement.name ?? 'UnknownResource',
       );
+      if (crdtConfig == null) {
+        log.warning(
+          'Skipping ${classElement.name}: merge contract configuration is missing.',
+        );
+        continue;
+      }
 
       roots.add(
         _RootResourceEntry(
           classElement: classElement,
-          crdt: _CrdtConfig(
-            mappingIri: normalizedMappingIri,
-            label: getField(crdtObject, 'label')?.toStringValue(),
-            comment: getField(crdtObject, 'comment')?.toStringValue(),
-            imports: _extractIriList(getField(crdtObject, 'imports')),
-            generate: getField(crdtObject, 'generate')?.toBoolValue() ?? true,
-          ),
+          crdt: crdtConfig,
         ),
       );
     }
@@ -112,7 +104,8 @@ class CrdtMappingBuilder implements Builder {
     return roots;
   }
 
-  Future<String> _generateTrigDataset(List<_RootResourceEntry> roots) async {
+  Future<String> _generateTrigDataset(
+      List<_RootResourceEntry> roots, String? baseUri) async {
     final namedGraphs = <RdfGraphName, RdfGraph>{};
     for (final root in roots) {
       final triples = await _buildTriplesForRoot(root);
@@ -125,6 +118,11 @@ class CrdtMappingBuilder implements Builder {
         defaultGraph: RdfGraph(),
         namedGraphs: namedGraphs,
       ),
+      baseUri: baseUri == null
+          ? null
+          : baseUri.endsWith('/')
+              ? baseUri
+              : '$baseUri/',
     );
   }
 
@@ -178,7 +176,7 @@ class CrdtMappingBuilder implements Builder {
       triples.add(Triple(classNode, McClassMapping.appliesToClass, classIri));
 
       for (final field in classElement.fields) {
-        final predicate = _extractPropertyPredicate(field);
+        final predicate = _extractPropertyPredicate(field, classElement);
         if (predicate == null) {
           continue;
         }
@@ -223,7 +221,7 @@ class CrdtMappingBuilder implements Builder {
       }
 
       for (final field in current.fields) {
-        if (_extractPropertyPredicate(field) == null) {
+        if (_extractPropertyPredicate(field, current) == null) {
           continue;
         }
 
@@ -275,7 +273,14 @@ class CrdtMappingBuilder implements Builder {
     return Algo.LWW_Register;
   }
 
-  IriTerm? _extractPropertyPredicate(FieldElement field) {
+  IriTerm? _extractPropertyPredicate(
+    FieldElement field,
+    ClassElement classElement,
+  ) {
+    if (field.isSynthetic || field.isStatic) {
+      return null;
+    }
+
     for (final annotation in field.metadata.annotations) {
       final value = annotation.computeConstantValue();
       if (value == null) {
@@ -284,9 +289,46 @@ class CrdtMappingBuilder implements Builder {
       if (!_matchesAnnotationInHierarchy(value.type, 'RdfProperty')) {
         continue;
       }
-      return _readIri(getField(value, 'predicate'));
+
+      final explicitPredicate = _readIri(getField(value, 'predicate'));
+      if (explicitPredicate != null) {
+        return explicitPredicate;
+      }
+
+      final fragment = getField(value, 'fragment')?.toStringValue();
+      if (fragment != null && fragment.isNotEmpty) {
+        final vocabBaseIri = _resolveVocabBaseIri(classElement);
+        if (vocabBaseIri != null) {
+          return IriTerm('$vocabBaseIri$fragment');
+        }
+      }
+
+      return null;
     }
-    return null;
+
+    if (_hasAnnotationByType(field.metadata.annotations, 'RdfIgnore') ||
+        _hasAnnotationByType(
+            field.metadata.annotations, 'RdfUnmappedTriples')) {
+      return null;
+    }
+
+    final vocabBaseIri = _resolveVocabBaseIri(classElement);
+    if (vocabBaseIri == null) {
+      return null;
+    }
+
+    final fieldName = field.name;
+    if (fieldName == null) {
+      return null;
+    }
+
+    final wellKnownProperty =
+        _resolveWellKnownProperty(classElement, fieldName);
+    if (wellKnownProperty != null) {
+      return wellKnownProperty;
+    }
+
+    return IriTerm('$vocabBaseIri$fieldName');
   }
 
   String _validateAndNormalizeMappingIri(
@@ -324,19 +366,19 @@ class CrdtMappingBuilder implements Builder {
     final root = _findAnnotationByType(
         classElement.metadata.annotations, 'RootResource');
     if (root != null) {
-      return _readIri(getField(root, 'classIri'));
+      return _resolveClassIri(root, classElement);
     }
 
     final sub =
         _findAnnotationByType(classElement.metadata.annotations, 'SubResource');
     if (sub != null) {
-      return _readIri(getField(sub, 'classIri'));
+      return _resolveClassIri(sub, classElement);
     }
 
     final local = _findAnnotationByType(
         classElement.metadata.annotations, 'LocalResource');
     if (local != null) {
-      return _readIri(getField(local, 'classIri'));
+      return _resolveClassIri(local, classElement);
     }
 
     return null;
@@ -350,7 +392,7 @@ class CrdtMappingBuilder implements Builder {
     var hasRules = false;
 
     for (final field in classElement.fields) {
-      final predicate = _extractPropertyPredicate(field);
+      final predicate = _extractPropertyPredicate(field, classElement);
       if (predicate == null) {
         continue;
       }
@@ -473,6 +515,197 @@ class CrdtMappingBuilder implements Builder {
     return null;
   }
 
+  _CrdtConfig? _extractCrdtConfig(DartObject rootAnnotation, String className) {
+    final explicitContract =
+        getField(rootAnnotation, 'explicitContractIri')?.toStringValue();
+    if (explicitContract != null && explicitContract.isNotEmpty) {
+      return _CrdtConfig(
+        mappingIri:
+            _validateAndNormalizeMappingIri(explicitContract, className),
+        label: getField(rootAnnotation, 'contractLabel')?.toStringValue(),
+        comment: getField(rootAnnotation, 'contractComment')?.toStringValue(),
+        imports: _extractIriList(getField(rootAnnotation, 'contractImports')),
+        generate: getField(rootAnnotation, 'generateContract')?.toBoolValue() ??
+            false,
+      );
+    }
+
+    final appBaseUri =
+        (getField(rootAnnotation, 'contractAppBaseUri'))?.toStringValue() ??
+            (getField(rootAnnotation, 'generatorVocab'))
+                ?.getField('appBaseUri')
+                ?.toStringValue();
+    if (appBaseUri != null && appBaseUri.isNotEmpty) {
+      final mappingIri = _resolveGeneratedContractIri(
+        appBaseUri,
+        className,
+        (getField(rootAnnotation, 'contractPath'))?.toStringValue(),
+        (getField(rootAnnotation, 'contractVersion'))?.toStringValue() ?? 'v1',
+      );
+      return _CrdtConfig(
+        appBaseUri: appBaseUri,
+        mappingIri: _validateAndNormalizeMappingIri(mappingIri, className),
+        label: getField(rootAnnotation, 'contractLabel')?.toStringValue(),
+        comment: getField(rootAnnotation, 'contractComment')?.toStringValue(),
+        imports: _extractIriList(getField(rootAnnotation, 'contractImports')),
+        generate:
+            getField(rootAnnotation, 'generateContract')?.toBoolValue() ?? true,
+      );
+    }
+
+    final crdtObject = getField(rootAnnotation, 'crdt');
+    if (crdtObject == null || crdtObject.isNull) {
+      return null;
+    }
+
+    final mappingIri = getField(crdtObject, 'mappingIri')?.toStringValue();
+    if (mappingIri == null || mappingIri.isEmpty) {
+      return null;
+    }
+
+    return _CrdtConfig(
+      mappingIri: _validateAndNormalizeMappingIri(mappingIri, className),
+      label: getField(crdtObject, 'label')?.toStringValue(),
+      comment: getField(crdtObject, 'comment')?.toStringValue(),
+      imports: _extractIriList(getField(crdtObject, 'imports')),
+      generate: getField(crdtObject, 'generate')?.toBoolValue() ?? true,
+    );
+  }
+
+  String _resolveGeneratedContractIri(
+    String contractAppBaseUri,
+    String className,
+    String? contractPath,
+    String contractVersion,
+  ) {
+    final normalizedClassName = className.toLowerCase();
+    final path =
+        contractPath ?? '/mappings/$normalizedClassName-$contractVersion';
+    return '${_joinBaseAndPath(contractAppBaseUri, path)}#';
+  }
+
+  IriTerm? _resolveClassIri(
+    DartObject annotation,
+    ClassElement classElement,
+  ) {
+    final explicitClassIri = _readIri(
+      getField(annotation, 'explicitClassIri'),
+    );
+    if (explicitClassIri != null) {
+      return explicitClassIri;
+    }
+
+    final classIri = _readIri(getField(annotation, 'classIri'));
+    if (classIri != null) {
+      return classIri;
+    }
+
+    final vocabBaseIri = _resolveVocabBaseIri(classElement);
+    if (vocabBaseIri != null) {
+      return IriTerm('$vocabBaseIri${classElement.name}');
+    }
+
+    return null;
+  }
+
+  IriTerm? _resolveWellKnownProperty(
+    ClassElement classElement,
+    String fieldName,
+  ) {
+    final vocabObject = _resolveVocabObject(classElement);
+    if (vocabObject == null) {
+      return null;
+    }
+
+    final wellKnownProperties = getField(vocabObject, 'wellKnownProperties');
+    final entries = wellKnownProperties?.toMapValue();
+    if (entries == null || entries.isEmpty) {
+      return null;
+    }
+
+    for (final entry in entries.entries) {
+      final key = entry.key?.toStringValue();
+      if (key == fieldName) {
+        return _readIri(entry.value);
+      }
+    }
+
+    return null;
+  }
+
+  String? _resolveVocabBaseIri(ClassElement classElement) {
+    final vocabObject = _resolveVocabObject(classElement);
+    if (vocabObject == null) {
+      return null;
+    }
+
+    final appBaseUri = getField(vocabObject, 'appBaseUri')?.toStringValue();
+    if (appBaseUri == null || appBaseUri.isEmpty) {
+      return null;
+    }
+
+    final vocabPath =
+        getField(vocabObject, 'vocabPath')?.toStringValue() ?? '/vocab';
+    return '${_joinBaseAndPath(appBaseUri, vocabPath)}#';
+  }
+
+  String _joinBaseAndPath(String baseUri, String path) {
+    final normalizedBase = _normalizeBaseUri(baseUri);
+    final normalizedPath = _normalizePath(path);
+    return '$normalizedBase$normalizedPath';
+  }
+
+  String _normalizeBaseUri(String baseUri) {
+    if (baseUri.length > 1 && baseUri.endsWith('/')) {
+      return baseUri.substring(0, baseUri.length - 1);
+    }
+    return baseUri;
+  }
+
+  String _normalizePath(String path) {
+    if (path.isEmpty) {
+      return '';
+    }
+    return path.startsWith('/') ? path : '/$path';
+  }
+
+  DartObject? _resolveVocabObject(ClassElement classElement) {
+    final resourceAnnotation = _findResourceAnnotation(classElement);
+    if (resourceAnnotation == null) {
+      return null;
+    }
+
+    final localVocab = getField(resourceAnnotation, 'generatorVocab') ??
+        getField(resourceAnnotation, '_vocab');
+    if (localVocab != null && !localVocab.isNull) {
+      return localVocab;
+    }
+
+    final inheritedVocab = getField(resourceAnnotation, 'vocab');
+    if (inheritedVocab != null && !inheritedVocab.isNull) {
+      return inheritedVocab;
+    }
+
+    return null;
+  }
+
+  DartObject? _findResourceAnnotation(ClassElement classElement) {
+    final root = _findAnnotationByType(
+        classElement.metadata.annotations, 'RootResource');
+    if (root != null) {
+      return root;
+    }
+
+    final sub =
+        _findAnnotationByType(classElement.metadata.annotations, 'SubResource');
+    if (sub != null) {
+      return sub;
+    }
+
+    return _findAnnotationByType(
+        classElement.metadata.annotations, 'LocalResource');
+  }
+
   DartObject? _findAnnotationByType(
       Iterable<ElementAnnotation> annotations, String typeName) {
     for (final annotation in annotations) {
@@ -531,6 +764,7 @@ class _RootResourceEntry {
 }
 
 class _CrdtConfig {
+  final String? appBaseUri;
   final String mappingIri;
   final String? label;
   final String? comment;
@@ -538,6 +772,7 @@ class _CrdtConfig {
   final bool generate;
 
   const _CrdtConfig({
+    this.appBaseUri,
     required this.mappingIri,
     required this.label,
     required this.comment,

@@ -30,14 +30,16 @@ class NoteCategoryProperty extends RdfProperty {
 /// - LWW-Register for title and content (last writer wins)
 /// - OR-Set for tags (additions and removals merge)
 ///
-@RootResource(
+@RootResource.externalVocab(
   PersonalNotesVocab.PersonalNote,
-  MergeContract(
-    '$appBaseUrl/mappings/note-v1#',
-    label: 'Personal Note CRDT Document Mapping v1',
-    comment:
-        'Defines how personal notes should merge when conflicts occur during sync.',
-  ),
+  appBaseUrl,
+  mergeContractPath: '/contracts/note-v1',
+  mergeContractLabel: 'Personal Note CRDT Document Mapping v1',
+  mergeContractComment:
+      'Defines how personal notes should merge when conflicts occur during sync.',
+  mergeContractImports: const [
+    MergeContracts.coreV1,
+  ],
   iriStrategy: RootIriStrategy(RootIriConfig('note')),
   fullIndex: FullIndex.disabled(),
 )

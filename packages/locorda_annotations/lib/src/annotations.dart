@@ -109,8 +109,17 @@ const resourceIriVar = r'rootResourceIri';
 /// - [RdfGlobalResource] - Base RDF resource annotation
 /// - CRDT annotations: [CrdtLwwRegister], [CrdtOrSet], [CrdtImmutable]
 class RootResource extends RdfGlobalResource implements LocordaAnnotation {
-  /// CRDT mapping configuration for this resource.
-  final MergeContract crdt;
+  // TODO: can we make those private?
+  final AppVocab? generatorVocab;
+  final IriTerm? explicitClassIri;
+  final String? contractAppBaseUri;
+  final String? explicitContractIri;
+  final String contractVersion;
+  final String? contractPath;
+  final bool generateContract;
+  final String? contractLabel;
+  final String? contractComment;
+  final List<IriTerm> contractImports;
 
   /// Configuration for the default FullIndex.
   ///
@@ -118,12 +127,86 @@ class RootResource extends RdfGlobalResource implements LocordaAnnotation {
   /// Use `FullIndex.disabled()` when only GroupIndex indices apply.
   final FullIndex fullIndex;
 
+  /// Generated vocabulary + generated merge contract.
   const RootResource(
-    IriTerm? classIri,
-    this.crdt, {
+    AppVocab vocab, {
+    String mergeContractVersion = 'v1',
+    String? mergeContractPath,
+    String? mergeContractLabel,
+    String? mergeContractComment,
+    List<IriTerm> mergeContractImports = const [MergeContracts.coreV1],
     RootIriStrategy iriStrategy = const RootIriStrategy(),
     this.fullIndex = const FullIndex(),
-  }) : super(classIri, iriStrategy);
+  })  : generatorVocab = vocab,
+        explicitClassIri = null,
+        contractAppBaseUri = null,
+        explicitContractIri = null,
+        contractVersion = mergeContractVersion,
+        contractPath = mergeContractPath,
+        generateContract = true,
+        contractLabel = mergeContractLabel,
+        contractComment = mergeContractComment,
+        contractImports = mergeContractImports,
+        super.define(vocab, iriStrategy);
+
+  /// External vocabulary + generated merge contract.
+  const RootResource.externalVocab(
+    IriTerm classIri,
+    String mergeContractAppBaseUri, {
+    String mergeContractVersion = 'v1',
+    String? mergeContractPath,
+    String? mergeContractLabel,
+    String? mergeContractComment,
+    List<IriTerm> mergeContractImports = const [MergeContracts.coreV1],
+    RootIriStrategy iriStrategy = const RootIriStrategy(),
+    this.fullIndex = const FullIndex(),
+  })  : generatorVocab = null,
+        explicitClassIri = classIri,
+        contractAppBaseUri = mergeContractAppBaseUri,
+        explicitContractIri = null,
+        contractVersion = mergeContractVersion,
+        contractPath = mergeContractPath,
+        generateContract = true,
+        contractLabel = mergeContractLabel,
+        contractComment = mergeContractComment,
+        contractImports = mergeContractImports,
+        super(classIri, iriStrategy);
+
+  /// Generated vocabulary + external merge contract.
+  const RootResource.externalContract(
+    AppVocab vocab,
+    String mergeContractIri, {
+    RootIriStrategy iriStrategy = const RootIriStrategy(),
+    this.fullIndex = const FullIndex(),
+  })  : generatorVocab = vocab,
+        explicitClassIri = null,
+        contractAppBaseUri = null,
+        explicitContractIri = mergeContractIri,
+        contractVersion = 'v1',
+        contractPath = null,
+        generateContract = false,
+        contractLabel = null,
+        contractComment = null,
+        contractImports = const [],
+        super.define(vocab, iriStrategy);
+
+  /// External vocabulary + external merge contract.
+  const RootResource.external(
+    IriTerm classIri,
+    String mergeContractIri, {
+    RootIriStrategy iriStrategy = const RootIriStrategy(),
+    this.fullIndex = const FullIndex(),
+  })  : generatorVocab = null,
+        explicitClassIri = classIri,
+        contractAppBaseUri = null,
+        explicitContractIri = mergeContractIri,
+        contractVersion = 'v1',
+        contractPath = null,
+        generateContract = false,
+        contractLabel = null,
+        contractComment = null,
+        contractImports = const [],
+        super(classIri, iriStrategy);
 }
 
 /// Annotation for nested RDF resources within a root resource.

@@ -13,7 +13,6 @@ import 'package:locorda_rdf_mapper/mapper.dart';
 
 // Other imports
 import 'package:minimal_task_sync/task.dart' as task;
-import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:locorda_core/locorda_core.dart' as locorda_core;
 
 /// Generated mapper for [task.Task] global resources.
@@ -29,7 +28,7 @@ class TaskMapper implements GlobalResourceMapper<task.Task> {
 
   @override
   IriTerm? get typeIri =>
-      const IriTerm('https://locorda.dev/example/minimal/vocabulary/task#Task');
+      const IriTerm('https://locorda.dev/example/minimal/vocab#Task');
 
   @override
   task.Task fromRdfResource(IriTerm subject, DeserializationContext context) {
@@ -37,13 +36,15 @@ class TaskMapper implements GlobalResourceMapper<task.Task> {
 
     final (id,) = _iriMapper.fromRdfTerm(subject, context);
 
-    final String title = reader.require(SchemaCreativeWork.name);
-    final bool completed = reader.require(
-      const IriTerm(
-        'https://locorda.dev/example/minimal/vocabulary/task#completed',
-      ),
+    final String title = reader.require(
+      const IriTerm('http://purl.org/dc/terms/title'),
     );
-    final DateTime createdAt = reader.require(SchemaCreativeWork.dateCreated);
+    final bool completed = reader.require(
+      const IriTerm('https://locorda.dev/example/minimal/vocab#completed'),
+    );
+    final DateTime createdAt = reader.require(
+      const IriTerm('https://locorda.dev/example/minimal/vocab#createdAt'),
+    );
 
     return task.Task(
       id: id,
@@ -63,14 +64,18 @@ class TaskMapper implements GlobalResourceMapper<task.Task> {
 
     return context
         .resourceBuilder(subject)
-        .addValue(SchemaCreativeWork.name, resource.title)
         .addValue(
-          const IriTerm(
-            'https://locorda.dev/example/minimal/vocabulary/task#completed',
-          ),
+          const IriTerm('http://purl.org/dc/terms/title'),
+          resource.title,
+        )
+        .addValue(
+          const IriTerm('https://locorda.dev/example/minimal/vocab#completed'),
           resource.completed,
         )
-        .addValue(SchemaCreativeWork.dateCreated, resource.createdAt)
+        .addValue(
+          const IriTerm('https://locorda.dev/example/minimal/vocab#createdAt'),
+          resource.createdAt,
+        )
         .build();
   }
 }

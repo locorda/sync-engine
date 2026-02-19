@@ -142,7 +142,7 @@ class Note {
   localName: 'byMonth',
   groupingProperties: [
     LcrdGroupingProperty(
-      Dc.created,
+      Dcterms.created,
       transforms: [LcrdRegexTransform(r'(\d{4}-\d{2})-.*', r'$1')],
     ),
   ],
@@ -159,7 +159,7 @@ const appVocab = AppVocab(appBaseUri: appBaseUrl);
 
 @RootResource(appVocab)  // Clean, simple!
 class Note {
-  final String title;  // Auto-matched to dc:title
+  final String title;  // Auto-matched to dcterms:title
 }
 
 @GroupKey(
@@ -167,7 +167,7 @@ class Note {
   localName: 'byMonth',
   groupingProperties: [
     GroupingProperty(
-      Dc.created,
+      Dcterms.created,
       transforms: [RegexTransform(r'(\d{4}-\d{2})-.*', r'$1')],
     ),
   ],

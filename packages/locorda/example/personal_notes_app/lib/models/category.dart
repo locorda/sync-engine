@@ -18,14 +18,16 @@ import 'category_display_settings.dart';
 /// - LWW-Register for name and description (last writer wins)
 /// - Immutable for creation date
 ///
-@RootResource(
+@RootResource.externalVocab(
   PersonalNotesVocab.NotesCategory,
-  MergeContract(
-    '$appBaseUrl/mappings/category-v1#',
-    label: 'Notes Category CRDT Document Mapping v1',
-    comment:
-        'Defines how note categories should merge when conflicts occur during sync.',
-  ),
+  appBaseUrl,
+  mergeContractPath: '/contracts/category-v1',
+  mergeContractLabel: 'Notes Category CRDT Document Mapping v1',
+  mergeContractComment:
+      'Defines how note categories should merge when conflicts occur during sync.',
+  mergeContractImports: const [
+    MergeContracts.coreV1,
+  ],
 )
 class Category {
   /// Unique identifier for this category

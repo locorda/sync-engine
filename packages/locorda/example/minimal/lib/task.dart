@@ -3,32 +3,23 @@ library;
 
 import 'package:locorda_annotations/locorda_annotations.dart';
 import 'package:locorda_rdf_mapper_annotations/annotations.dart';
-import 'package:locorda_rdf_core/core.dart';
-import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:minimal_task_sync/consts.dart' show appBaseUrl;
 
 // #docregion task-model
 /// A simple task with CRDT sync.
-@RootResource(
-  IriTerm('$appBaseUrl/vocabulary/task#Task'),
-  MergeContract('$appBaseUrl/mappings/task-v1#'),
-)
+@RootResource(AppVocab(appBaseUri: appBaseUrl))
 class Task {
   /// Unique ID for this task
   @RdfIriPart()
   final String id;
 
-  /// Task title - LWW (Last Writer Wins)
-  @RdfProperty(SchemaCreativeWork.name)
+  /// Task title - LWW (Last Writer Wins) is the default merge strategy
   final String title;
 
-  /// Completion status - LWW (schema.org has no boolean completion property)
-  @RdfProperty(IriTerm('$appBaseUrl/vocabulary/task#completed'))
+  /// Completion status
   final bool completed;
 
-  /// Creation timestamp - Immutable
-  @RdfProperty(SchemaCreativeWork.dateCreated)
-  @CrdtImmutable()
+  /// Creation timestamp
   final DateTime createdAt;
 
   Task({

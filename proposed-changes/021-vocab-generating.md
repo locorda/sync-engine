@@ -194,13 +194,13 @@ class RootResource extends RdfGlobalResource {
 ```dart
 class MergeContracts {
   static const IriTerm coreV1 =
-      IriTerm('https://w3id.org/solid-crdt-sync/contracts/core-v1');
+      IriTerm('https://w3id.org/solid-crdt-sync/mappings/core-v1');
   static const IriTerm indexV1 =
-      IriTerm('https://w3id.org/solid-crdt-sync/contracts/index-v1');
+      IriTerm('https://w3id.org/solid-crdt-sync/mappings/index-v1');
   static const IriTerm shardV1 =
-      IriTerm('https://w3id.org/solid-crdt-sync/contracts/shard-v1');
+      IriTerm('https://w3id.org/solid-crdt-sync/mappings/shard-v1');
   static const IriTerm clientInstallationV1 = IriTerm(
-      'https://w3id.org/solid-crdt-sync/contracts/client-installation-v1');
+      'https://w3id.org/solid-crdt-sync/mappings/client-installation-v1');
 }
 ```
 
@@ -236,7 +236,7 @@ class Note {
   @RdfIriPart()
   final String id;
 
-  final String title;       // Auto: dc:title or app:title
+  final String title;       // Auto: dcterms:title or app:title
   final String content;     // Auto: app:content
 
   @OrSet()
@@ -406,10 +406,10 @@ class Note {
 const appVocab = AppVocab(
   appBaseUri: appBaseUrl,
   wellKnownProperties: {
-    'title': Dc.title,           // Use Dublin Core for title
-    'description': Dc.description,
-    'created': Dc.created,
-    'modified': Dc.modified,
+    'title': Dcterms.title,           // Use Dublin Core for title
+    'description': Dcterms.description,
+    'created': Dcterms.created,
+    'modified': Dcterms.modified,
   },
 );
 
@@ -443,10 +443,10 @@ class Note {
 const appVocab = AppVocab(
   appBaseUri: appBaseUrl,
   wellKnownProperties: {
-    'title': Dc.title,           // Use Dublin Core for title
-    'description': Dc.description,
-    'created': Dc.created,
-    'modified': Dc.modified,
+    'title': Dcterms.title,           // Use Dublin Core for title
+    'description': Dcterms.description,
+    'created': Dcterms.created,
+    'modified': Dcterms.modified,
   },
 );
 
@@ -456,7 +456,7 @@ class Note {
   @RdfIriPart()
   final String id;
   
-  final String title;       // → dc:title (via wellKnownProperties)
+  final String title;       // → dcterms:title (via wellKnownProperties)
   final String content;     // → app:content (auto-generated)
   final String? categoryId; // → app:categoryId (auto-generated)
   final bool archived;      // → app:archived (auto-generated)
@@ -527,7 +527,7 @@ The RDF mapper library provides automatic vocabulary generation. Key features:
 
 - **`AppVocab`** — Configure app vocabulary base URI and well-known properties
 - **`.define()` constructor** — Auto-generate vocabulary from class/field names
-- **Well-known properties** — Auto-match common fields to standard vocabularies (dc:title, etc.)
+- **Well-known properties** — Auto-match common fields to standard vocabularies (dcterms:title, etc.)
 - **TTL generation** — Build process creates `lib/vocab.g.ttl`
 - **Lock file** — `.locorda_rdf_mapper.lock` prevents breaking RDF schema changes
 
@@ -544,7 +544,7 @@ class Book {
   @RdfIriPart('id')
   final String id;
   
-  final String title;  // → dc:title (auto-matched)
+  final String title;  // → dcterms:title (auto-matched)
   final String isbn;   // → app:isbn (auto-generated)
 }
 ```

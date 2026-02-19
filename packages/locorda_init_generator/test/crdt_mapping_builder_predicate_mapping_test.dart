@@ -4,7 +4,20 @@ import 'package:locorda_init_generator/src/config/crdt_mapping_builder.dart';
 import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 
-// TODO: is this useful? What is the idea of this test? Why does it re-implement the annotations as plain classes instead of importing them from locorda_annotations?
+// TODO(annotations-tests): This file currently uses synthetic inlined
+// annotation class copies to validate predicate mapping generation behavior.
+//
+// Problem:
+// - It validates a reconstructed shape of annotations, not the real API.
+// - This can pass while real locorda_annotations-based flows break.
+//
+// Follow-up (must be implemented):
+// 1) Keep only a minimal synthetic regression case for parser edge behavior.
+// 2) Add/shift primary coverage to integration tests with real
+//    locorda_annotations classes and builder execution.
+// 3) Remove reliance on copied internal fields as test contract.
+//
+// Status: deferred for now due to delivery timing; tracked explicitly.
 String _sourceWithMappingIri(String mappingIri) => '''
 library;
 

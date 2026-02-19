@@ -1,0 +1,22 @@
+{
+  "lockFileVersion": 1,
+  "types": {
+    "minimal_task_sync/lib/task.dart#Task": {
+      "classIri": "https://locorda.dev/example/minimal/vocab#Task",
+      "properties": {
+        "completed": {
+          "iri": "https://locorda.dev/example/minimal/vocab#completed",
+          "source": "auto"
+        },
+        "createdAt": {
+          "iri": "https://locorda.dev/example/minimal/vocab#createdAt",
+          "source": "auto"
+        },
+        "title": {
+          "iri": "http://purl.org/dc/terms/title",
+          "source": "auto"
+        }
+      }
+    }
+  }
+}

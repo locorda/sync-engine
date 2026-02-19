@@ -10,7 +10,13 @@ import 'package:analyzer/dart/element/type.dart';
 
 import 'code.dart';
 
-DartObject? getField(DartObject obj, String fieldName) {
+DartObject? getField(DartObject obj, String fieldName,
+    {bool fallbackToPrivate = true}) {
+  return _getField(obj, fieldName) ??
+      (fallbackToPrivate ? _getField(obj, '_' + fieldName) : null);
+}
+
+DartObject? _getField(DartObject obj, String fieldName) {
   final field = obj.getField(fieldName);
   if (field != null && !field.isNull) {
     return field;
@@ -19,7 +25,7 @@ DartObject? getField(DartObject obj, String fieldName) {
   if (superInstance == null) {
     return null;
   }
-  return getField(superInstance, fieldName);
+  return _getField(superInstance, fieldName);
 }
 
 /// Converts a DartType to a Code instance with proper import tracking
