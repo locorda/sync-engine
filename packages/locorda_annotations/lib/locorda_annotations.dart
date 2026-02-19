@@ -5,6 +5,7 @@
 /// the locorda generator to create proper merge logic.
 library locorda_annotations;
 
+export 'src/marker.dart' show LocordaAnnotation;
 export 'src/crdt_annotations.dart'
     show CrdtImmutable, CrdtLwwRegister, CrdtOrSet, McIdentifying;
 export 'src/annotations.dart'

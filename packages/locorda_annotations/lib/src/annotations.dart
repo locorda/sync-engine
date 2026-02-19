@@ -5,11 +5,10 @@
 /// state-based CRDTs for conflict-free collaboration.
 library;
 
-import 'package:locorda_annotations/src/parameters.dart';
-import 'package:locorda_rdf_mapper_annotations/annotations.dart';
-import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_annotations/locorda_annotations.dart';
-import 'package:locorda_core/locorda_core.dart' hide GroupingPropertyData;
+import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_mapper_annotations/annotations.dart';
 
 const resourceIriFactoryKey = r'$resourceIriFactory';
 const indexItemIriFactoryKey = r'$indexItemIriFactory';
@@ -109,7 +108,7 @@ const resourceIriVar = r'rootResourceIri';
 /// - [SubResource] - Nested resources within a root resource
 /// - [RdfGlobalResource] - Base RDF resource annotation
 /// - CRDT annotations: [CrdtLwwRegister], [CrdtOrSet], [CrdtImmutable]
-class RootResource extends RdfGlobalResource {
+class RootResource extends RdfGlobalResource implements LocordaAnnotation {
   /// CRDT mapping configuration for this resource.
   final MergeContract crdt;
 
@@ -155,7 +154,7 @@ class RootResource extends RdfGlobalResource {
 ///
 /// The [SubIriStrategy] automatically uses the parent resource's IRI as base,
 /// removing any existing fragment before appending the new one.
-class SubResource extends RdfGlobalResource {
+class SubResource extends RdfGlobalResource implements LocordaAnnotation {
   const SubResource(IriTerm? classIri, SubIriStrategy iriStrategy)
       : super(classIri, iriStrategy, registerGlobally: false);
 }
@@ -164,7 +163,7 @@ class SubResource extends RdfGlobalResource {
 ///
 /// Use [IndexItem.fullIndex] for FullIndex entries and
 /// [IndexItem.groupIndex] for GroupIndex entries.
-class IndexItem extends RdfGlobalResource {
+class IndexItem extends RdfGlobalResource implements LocordaAnnotation {
   /// The GroupKey type this item belongs to, or `null` for FullIndex items.
   final Type? groupKeyType;
 
@@ -188,7 +187,7 @@ class IndexItem extends RdfGlobalResource {
 ///
 /// Links a group key to its parent resource type and configures
 /// the GroupIndex with an optional local name and grouping properties.
-class GroupKey extends RdfLocalResource {
+class GroupKey extends RdfLocalResource implements LocordaAnnotation {
   /// The resource type this group index is for.
   final Type resourceType;
 
