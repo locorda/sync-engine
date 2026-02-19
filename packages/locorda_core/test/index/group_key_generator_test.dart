@@ -17,10 +17,10 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               dateCreatedPredicate,
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                     r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
               ],
             ),
@@ -41,7 +41,7 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(categoryPredicate),
+            GroupingPropertyData(categoryPredicate),
           ],
         );
 
@@ -58,7 +58,7 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(dateCreatedPredicate),
+            GroupingPropertyData(dateCreatedPredicate),
           ],
         );
 
@@ -76,7 +76,7 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               categoryPredicate,
               missingValue: 'uncategorized',
             ),
@@ -100,19 +100,19 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               dateCreatedPredicate,
               hierarchyLevel: 1,
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                     r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}'), // Year
               ],
             ),
-            GroupingProperty(
+            GroupingPropertyData(
               dateCreatedPredicate,
               hierarchyLevel: 2,
               transforms: [
-                RegexTransform(r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$',
+                RegexTransformData(r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$',
                     r'${1}-${2}'), // Month
               ],
             ),
@@ -133,15 +133,15 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               categoryPredicate, // http://example.org/category
               hierarchyLevel: 1,
             ),
-            GroupingProperty(
+            GroupingPropertyData(
               dateCreatedPredicate,
               hierarchyLevel: 1,
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                     r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
               ],
             ),
@@ -165,23 +165,23 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               dateCreatedPredicate,
               hierarchyLevel: 3, // Intentionally out of order
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                     r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${3}'), // Day
               ],
             ),
-            GroupingProperty(
+            GroupingPropertyData(
               categoryPredicate,
               hierarchyLevel: 1,
             ),
-            GroupingProperty(
+            GroupingPropertyData(
               dateCreatedPredicate,
               hierarchyLevel: 2,
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                     r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${2}'), // Month
               ],
             ),
@@ -205,12 +205,12 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               dateCreatedPredicate,
               transforms: [
-                RegexTransform(r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$',
+                RegexTransformData(r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$',
                     r'${1}-${2}'), // ISO format
-                RegexTransform(r'^([0-9]{4})/([0-9]{2})/([0-9]{2})$',
+                RegexTransformData(r'^([0-9]{4})/([0-9]{2})/([0-9]{2})$',
                     r'${1}-${2}'), // US format
               ],
             ),
@@ -238,13 +238,13 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               categoryPredicate,
               transforms: [
-                RegexTransform(r'^project[-_]([a-zA-Z0-9]+)$', r'${1}'),
-                RegexTransform(r'^proj[-_]([a-zA-Z0-9]+)$', r'${1}'),
-                RegexTransform(r'^([a-zA-Z0-9]+)[-_]project$', r'${1}'),
-                RegexTransform(r'^([a-zA-Z0-9]+)[-_]proj$', r'${1}'),
+                RegexTransformData(r'^project[-_]([a-zA-Z0-9]+)$', r'${1}'),
+                RegexTransformData(r'^proj[-_]([a-zA-Z0-9]+)$', r'${1}'),
+                RegexTransformData(r'^([a-zA-Z0-9]+)[-_]project$', r'${1}'),
+                RegexTransformData(r'^([a-zA-Z0-9]+)[-_]proj$', r'${1}'),
               ],
             ),
           ],
@@ -272,10 +272,10 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               categoryPredicate,
               transforms: [
-                RegexTransform(r'^number-(\d+)$', r'${1}'), // Won't match
+                RegexTransformData(r'^number-(\d+)$', r'${1}'), // Won't match
               ],
             ),
           ],
@@ -297,10 +297,11 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               categoryPredicate,
               transforms: [
-                RegexTransform(r'^http://example\.org/category/(.+)$', r'${1}'),
+                RegexTransformData(
+                    r'^http://example\.org/category/(.+)$', r'${1}'),
               ],
             ),
           ],
@@ -320,10 +321,10 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               dateCreatedPredicate,
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                     r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
               ],
             ),
@@ -344,7 +345,7 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(categoryPredicate),
+            GroupingPropertyData(categoryPredicate),
           ],
         );
 
@@ -366,10 +367,10 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
                 categoryPredicate), // Multiple values: work, personal
-            GroupingProperty(dateCreatedPredicate, transforms: [
-              RegexTransform(
+            GroupingPropertyData(dateCreatedPredicate, transforms: [
+              RegexTransformData(
                   r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
             ]), // Multiple values: 2024-08, 2024-09
           ],
@@ -408,13 +409,13 @@ void main() {
           localName: 'test-index',
           groupingProperties: [
             // Level 1: Two properties, each with multiple values
-            GroupingProperty(categoryPredicate, hierarchyLevel: 1),
-            GroupingProperty(priorityPredicate, hierarchyLevel: 1),
+            GroupingPropertyData(categoryPredicate, hierarchyLevel: 1),
+            GroupingPropertyData(priorityPredicate, hierarchyLevel: 1),
             // Level 2: One property with multiple values
-            GroupingProperty(dateCreatedPredicate,
+            GroupingPropertyData(dateCreatedPredicate,
                 hierarchyLevel: 2,
                 transforms: [
-                  RegexTransform(
+                  RegexTransformData(
                       r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}'),
                 ]),
           ],
@@ -458,9 +459,9 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(categoryPredicate, missingValue: 'default'),
-            GroupingProperty(dateCreatedPredicate, transforms: [
-              RegexTransform(
+            GroupingPropertyData(categoryPredicate, missingValue: 'default'),
+            GroupingPropertyData(dateCreatedPredicate, transforms: [
+              RegexTransformData(
                   r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
             ]),
           ],
@@ -493,11 +494,11 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               categoryPredicate,
               transforms: [
-                RegexTransform(r'^work-(.+)$', r'${1}'), // Transform 1
-                RegexTransform(r'^(.+)-project$', r'${1}'), // Transform 2
+                RegexTransformData(r'^work-(.+)$', r'${1}'), // Transform 1
+                RegexTransformData(r'^(.+)-project$', r'${1}'), // Transform 2
               ],
             ),
           ],
@@ -521,7 +522,7 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(dateCreatedPredicate),
+            GroupingPropertyData(dateCreatedPredicate),
           ],
         );
 
@@ -546,7 +547,7 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(categoryPredicate),
+            GroupingPropertyData(categoryPredicate),
           ],
         );
 
@@ -571,7 +572,7 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(categoryPredicate),
+            GroupingPropertyData(categoryPredicate),
           ],
         );
 
@@ -595,10 +596,10 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               dateCreatedPredicate,
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                     r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
               ],
             ),
@@ -625,7 +626,7 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(categoryPredicate),
+            GroupingPropertyData(categoryPredicate),
           ],
         );
 
@@ -639,7 +640,7 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               categoryPredicate,
               missingValue: 'default',
             ),
@@ -667,16 +668,16 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               categoryPredicate,
               hierarchyLevel: 1,
               missingValue: 'uncategorized',
             ),
-            GroupingProperty(
+            GroupingPropertyData(
               dateCreatedPredicate,
               hierarchyLevel: 2,
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                     r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
               ],
             ),
@@ -700,9 +701,9 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(categoryPredicate, hierarchyLevel: 2),
-            GroupingProperty(dateCreatedPredicate, hierarchyLevel: 1),
-            GroupingProperty(const IriTerm('http://example.org/priority'),
+            GroupingPropertyData(categoryPredicate, hierarchyLevel: 2),
+            GroupingPropertyData(dateCreatedPredicate, hierarchyLevel: 1),
+            GroupingPropertyData(const IriTerm('http://example.org/priority'),
                 hierarchyLevel: 2),
           ],
         );
@@ -731,8 +732,8 @@ void main() {
           localName: 'test-index',
           groupingProperties: [
             // Intentionally declare in reverse alphabetical order
-            GroupingProperty(zProperty, hierarchyLevel: 1),
-            GroupingProperty(aProperty, hierarchyLevel: 1),
+            GroupingPropertyData(zProperty, hierarchyLevel: 1),
+            GroupingPropertyData(aProperty, hierarchyLevel: 1),
           ],
         );
 
@@ -751,10 +752,10 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               dateCreatedPredicate,
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                     r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
               ],
             ),
@@ -783,7 +784,7 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(categoryPredicate),
+            GroupingPropertyData(categoryPredicate),
           ],
         );
 
@@ -801,7 +802,7 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(categoryPredicate),
+            GroupingPropertyData(categoryPredicate),
           ],
         );
 
@@ -822,15 +823,15 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               categoryPredicate,
               hierarchyLevel: 1,
             ),
-            GroupingProperty(
+            GroupingPropertyData(
               dateCreatedPredicate,
               hierarchyLevel: 2,
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                     r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
               ],
             ),
@@ -857,15 +858,16 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               categoryPredicate,
               hierarchyLevel: 1,
             ),
-            GroupingProperty(
+            GroupingPropertyData(
               dateCreatedPredicate,
               hierarchyLevel: 2,
               transforms: [
-                RegexTransform(r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}'),
+                RegexTransformData(
+                    r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}'),
               ],
             ),
           ],
@@ -888,7 +890,7 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(categoryPredicate),
+            GroupingPropertyData(categoryPredicate),
           ],
         );
 
@@ -909,7 +911,7 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-index',
           groupingProperties: [
-            GroupingProperty(categoryPredicate),
+            GroupingPropertyData(categoryPredicate),
           ],
         );
 

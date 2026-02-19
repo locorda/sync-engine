@@ -7,14 +7,12 @@ library locorda_annotations;
 
 export 'src/crdt_annotations.dart'
     show CrdtImmutable, CrdtLwwRegister, CrdtOrSet, McIdentifying;
-export 'src/resource.dart'
+export 'src/annotations.dart'
+    show RootResource, SubResource, GroupKey, IndexItem;
+export 'src/parameters.dart'
     show
         MergeContract,
         MergeContracts,
-        RootResource,
-        SubResource,
-        GroupKey,
-        IndexItem,
         FullIndex,
         GroupingProperty,
         RegexTransform,

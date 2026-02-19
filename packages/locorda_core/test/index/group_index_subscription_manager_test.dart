@@ -26,7 +26,7 @@ void main() {
               GroupIndexData(
                 localName: 'document-groups',
                 groupingProperties: [
-                  GroupingProperty(categoryPredicate),
+                  GroupingPropertyData(categoryPredicate),
                 ],
               ),
             ],
@@ -68,10 +68,10 @@ void main() {
                 GroupIndexData(
                   localName: 'date-groups',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       createdAtPredicate,
                       transforms: [
-                        RegexTransform(
+                        RegexTransformData(
                           r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*',
                           r'${1}-${2}',
                         ),
@@ -141,8 +141,8 @@ void main() {
                 GroupIndexData(
                   localName: 'multi-groups',
                   groupingProperties: [
-                    GroupingProperty(categoryPredicate),
-                    GroupingProperty(
+                    GroupingPropertyData(categoryPredicate),
+                    GroupingPropertyData(
                         const IriTerm('https://example.org/priority')),
                   ],
                 ),
@@ -185,15 +185,16 @@ void main() {
                 GroupIndexData(
                   localName: 'hierarchy-groups',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       createdAtPredicate,
                       hierarchyLevel: 1,
                       transforms: [
-                        RegexTransform(r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*',
+                        RegexTransformData(
+                            r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*',
                             r'${1}'), // Year
                       ],
                     ),
-                    GroupingProperty(
+                    GroupingPropertyData(
                       categoryPredicate,
                       hierarchyLevel: 2,
                     ),

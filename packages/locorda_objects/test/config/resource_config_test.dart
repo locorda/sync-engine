@@ -28,7 +28,7 @@ void main() {
           localName: 'documents-by-category',
           item: IndexItemConfig(TestDocument, {}),
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               const IriTerm('https://schema.org/category'),
               // No transforms - use raw value as group key
             ),

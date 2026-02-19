@@ -25,10 +25,10 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-shopping',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               IriTerm('https://example.org/vocab/meal#requiredForDate'),
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                   r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$',
                   r'${1}-${2}',
                 ),
@@ -57,11 +57,11 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-multi',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               IriTerm('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'),
               hierarchyLevel: 1,
             ),
-            GroupingProperty(
+            GroupingPropertyData(
               IriTerm('https://schema.org/keywords'),
               hierarchyLevel: 2,
               missingValue: 'default',
@@ -88,10 +88,10 @@ void main() {
         final config1 = GroupIndexData(
           localName: 'test-1',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               IriTerm('https://schema.org/dateCreated'),
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                   r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$',
                   r'${1}-${2}',
                 ),
@@ -103,10 +103,10 @@ void main() {
         final config2 = GroupIndexData(
           localName: 'test-2', // Different local name
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               IriTerm('https://schema.org/dateCreated'),
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                   r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$',
                   r'${1}-${2}',
                 ),
@@ -129,10 +129,10 @@ void main() {
         final config1 = GroupIndexData(
           localName: 'test',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               IriTerm('https://schema.org/dateCreated'),
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                   r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$',
                   r'${1}-${2}',
                 ),
@@ -144,10 +144,10 @@ void main() {
         final config2 = GroupIndexData(
           localName: 'test',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               IriTerm('https://schema.org/dateCreated'),
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                   r'^([0-9]{4})-[0-9]{2}-[0-9]{2}$',
                   r'${1}',
                 ),
@@ -172,10 +172,10 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-shopping',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               IriTerm('https://example.org/vocab/meal#requiredForDate'),
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                   r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$',
                   r'${1}-${2}',
                 ),
@@ -213,21 +213,21 @@ void main() {
         final config = GroupIndexData(
           localName: 'test-hierarchical',
           groupingProperties: [
-            GroupingProperty(
+            GroupingPropertyData(
               IriTerm('https://schema.org/dateCreated'),
               hierarchyLevel: 1,
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                   r'^([0-9]{4})-[0-9]{2}-[0-9]{2}$',
                   r'${1}',
                 ),
               ],
             ),
-            GroupingProperty(
+            GroupingPropertyData(
               IriTerm('https://schema.org/dateCreated'),
               hierarchyLevel: 2,
               transforms: [
-                RegexTransform(
+                RegexTransformData(
                   r'^[0-9]{4}-([0-9]{2})-[0-9]{2}$',
                   r'${1}',
                 ),

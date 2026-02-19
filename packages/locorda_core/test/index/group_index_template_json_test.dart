@@ -389,19 +389,19 @@ GroupIndexData _configFromJson(Map<String, dynamic> json) {
     final hierarchyLevel = prop['hierarchyLevel'] as int? ?? 1;
     final missingValue = prop['missingValue'] as String?;
 
-    List<RegexTransform>? transforms;
+    List<RegexTransformData>? transforms;
     if (prop.containsKey('transforms')) {
       final transformsJson = prop['transforms'] as List<dynamic>;
       transforms = transformsJson.map((t) {
         final transformMap = t as Map<String, dynamic>;
-        return RegexTransform(
+        return RegexTransformData(
           transformMap['pattern'] as String,
           transformMap['replacement'] as String,
         );
       }).toList();
     }
 
-    return GroupingProperty(
+    return GroupingPropertyData(
       predicate,
       hierarchyLevel: hierarchyLevel,
       missingValue: missingValue,

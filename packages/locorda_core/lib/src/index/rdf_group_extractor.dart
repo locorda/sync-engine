@@ -10,12 +10,12 @@ import 'index_config_base.dart';
 /// the REGEX-TRANSFORMS.md specification. It efficiently caches compiled regex
 /// patterns to avoid recompilation on repeated use.
 class RdfGroupExtractor {
-  final List<RegexTransform> _transforms;
+  final List<RegexTransformData> _transforms;
   final List<RegExp> _compiledPatterns;
 
   /// Creates an extractor with the given transform rules.
   /// Compiles all regex patterns once during construction for efficiency.
-  RdfGroupExtractor(List<RegexTransform> transforms)
+  RdfGroupExtractor(List<RegexTransformData> transforms)
       : _transforms = List.unmodifiable(transforms),
         _compiledPatterns = transforms.map((t) => RegExp(t.pattern)).toList();
 

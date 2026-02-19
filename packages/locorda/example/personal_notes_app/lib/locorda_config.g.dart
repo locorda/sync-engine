@@ -34,10 +34,10 @@ LocordaConfig generateLocordaConfig() => LocordaConfig(
             GroupIndexConfig(
               ngk.NoteGroupKey,
               groupingProperties: [
-                GroupingProperty(
+                GroupingPropertyData(
                   const rdf_term.IriTerm('https://schema.org/dateCreated'),
                   transforms: [
-                    RegexTransform(
+                    RegexTransformData(
                       r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*',
                       r'${1}-${2}',
                     ),

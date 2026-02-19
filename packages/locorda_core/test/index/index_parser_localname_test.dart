@@ -30,7 +30,7 @@ void main() {
               GroupIndexData(
                 localName: 'recipes-by-category',
                 groupingProperties: [
-                  GroupingProperty(
+                  GroupingPropertyData(
                     IriTerm('https://schema.org/recipeCategory'),
                     hierarchyLevel: 1,
                   ),
@@ -117,7 +117,7 @@ void main() {
       final unknownConfig = GroupIndexData(
         localName: 'original-name-should-not-be-used',
         groupingProperties: [
-          GroupingProperty(
+          GroupingPropertyData(
             IriTerm('https://schema.org/status'),
             hierarchyLevel: 1,
           ),

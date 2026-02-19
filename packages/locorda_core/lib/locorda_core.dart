@@ -89,8 +89,8 @@ export 'src/index/index_config_base.dart'
         CrdtIndexConfigBase,
         GroupIndexConfigBase,
         FullIndexConfigBase,
-        RegexTransform,
-        GroupingProperty;
+        RegexTransformData,
+        GroupingPropertyData;
 // Main API facade
 export 'src/sync_engine.dart' show SyncEngine, IdentifiedGraph;
 export 'src/mapping/root_iri_config.dart' show RootIriConfig;

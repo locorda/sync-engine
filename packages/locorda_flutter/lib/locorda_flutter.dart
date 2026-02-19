@@ -7,6 +7,6 @@ export 'package:locorda_objects/locorda_objects.dart'
         IndexItemConfig,
         GroupIndexConfig,
         ItemFetchPolicy,
-        RegexTransform,
+        RegexTransformData,
         ResourceConfig,
-        GroupingProperty;
+        GroupingPropertyData;

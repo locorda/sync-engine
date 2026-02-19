@@ -222,7 +222,7 @@ void main() {
                 GroupIndexConfig(
                   TestDocumentGroupKey,
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory),
+                    GroupingPropertyData(TestVocab.testCategory),
                   ],
                 ),
               ],
@@ -248,10 +248,10 @@ void main() {
                   TestDocumentGroupKey,
                   localName: 'invalid-regex',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       TestVocab.testCategory,
                       transforms: [
-                        RegexTransform(
+                        RegexTransformData(
                           r'^(work|personal)$', // Contains alternation - should fail!
                           r'${1}',
                         ),
@@ -288,10 +288,10 @@ void main() {
                   TestDocumentGroupKey,
                   localName: 'invalid-replacement',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       TestVocab.testCategory,
                       transforms: [
-                        RegexTransform(
+                        RegexTransformData(
                           r'^([a-z]+)$',
                           r'$1', // Should be ${1}!
                         ),
@@ -324,7 +324,7 @@ void main() {
                   TestDocumentGroupKey,
                   localName: 'shared-name',
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory),
+                    GroupingPropertyData(TestVocab.testCategory),
                   ],
                 ),
               ],
@@ -337,7 +337,7 @@ void main() {
                   TestDocumentGroupKey, // Same groupKeyType!
                   localName: 'shared-name', // Same localName!
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory),
+                    GroupingPropertyData(TestVocab.testCategory),
                   ],
                 ),
               ],
@@ -368,7 +368,7 @@ void main() {
                   TestDocumentGroupKey,
                   localName: 'by-category',
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory),
+                    GroupingPropertyData(TestVocab.testCategory),
                   ],
                 ),
               ],
@@ -381,7 +381,7 @@ void main() {
                   TestDocumentGroupKey, // Same groupKeyType is OK
                   localName: 'different-name', // Different localName
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory),
+                    GroupingPropertyData(TestVocab.testCategory),
                   ],
                 ),
               ],
@@ -405,7 +405,7 @@ void main() {
                   TestDocumentGroupKey,
                   localName: 'by-category',
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory),
+                    GroupingPropertyData(TestVocab.testCategory),
                   ],
                 ),
               ],
@@ -418,8 +418,8 @@ void main() {
                   MultiPropertyGroupKey, // Different groupKeyType
                   localName: 'by-category', // Same localName is OK
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory),
-                    GroupingProperty(
+                    GroupingPropertyData(TestVocab.testCategory),
+                    GroupingPropertyData(
                         const IriTerm('https://test.example/vocab#priority')),
                   ],
                 ),
@@ -444,7 +444,7 @@ void main() {
                   TestDocumentGroupKey,
                   localName: 'unmapped-dart-type',
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory),
+                    GroupingPropertyData(TestVocab.testCategory),
                   ],
                 ),
               ],
@@ -474,7 +474,7 @@ void main() {
                   UnmappedType, // This groupKeyType has no mapper!
                   localName: 'unmapped-group-key',
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory),
+                    GroupingPropertyData(TestVocab.testCategory),
                   ],
                 ),
               ],
@@ -505,7 +505,7 @@ void main() {
                   item: IndexItemConfig(
                       UnmappedType, {}), // This itemType has no mapper!
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory),
+                    GroupingPropertyData(TestVocab.testCategory),
                   ],
                 ),
               ],
@@ -536,7 +536,7 @@ void main() {
                   localName: 'all-mapped',
                   item: IndexItemConfig(TestDocument, {}), // Has mapper
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory),
+                    GroupingPropertyData(TestVocab.testCategory),
                   ],
                 ),
               ],
@@ -561,11 +561,12 @@ void main() {
                   MultiPropertyGroupKey,
                   localName: 'hierarchical',
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory, hierarchyLevel: 1),
-                    GroupingProperty(
+                    GroupingPropertyData(TestVocab.testCategory,
+                        hierarchyLevel: 1),
+                    GroupingPropertyData(
                         const IriTerm('https://test.example/vocab#priority'),
                         hierarchyLevel: 2),
-                    GroupingProperty(
+                    GroupingPropertyData(
                         const IriTerm('https://test.example/vocab#department'),
                         hierarchyLevel: 3),
                   ],
@@ -591,8 +592,9 @@ void main() {
                   MultiPropertyGroupKey,
                   localName: 'level-gap',
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory, hierarchyLevel: 1),
-                    GroupingProperty(
+                    GroupingPropertyData(TestVocab.testCategory,
+                        hierarchyLevel: 1),
+                    GroupingPropertyData(
                         const IriTerm('https://test.example/vocab#priority'),
                         hierarchyLevel: 3), // Gap! Missing level 2
                   ],
@@ -624,12 +626,13 @@ void main() {
                   MultiPropertyGroupKey,
                   localName: 'duplicate-levels-ok',
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory, hierarchyLevel: 1),
-                    GroupingProperty(
+                    GroupingPropertyData(TestVocab.testCategory,
+                        hierarchyLevel: 1),
+                    GroupingPropertyData(
                         const IriTerm('https://test.example/vocab#priority'),
                         hierarchyLevel:
                             1), // Same level = Cartesian product (valid)
-                    GroupingProperty(
+                    GroupingPropertyData(
                         const IriTerm('https://test.example/vocab#department'),
                         hierarchyLevel: 2),
                   ],
@@ -656,7 +659,7 @@ void main() {
                   TestDocumentGroupKey,
                   localName: 'invalid-level',
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory,
+                    GroupingPropertyData(TestVocab.testCategory,
                         hierarchyLevel: 0), // Invalid!
                   ],
                 ),
@@ -684,7 +687,7 @@ void main() {
                   TestDocumentGroupKey,
                   localName: 'empty-missing-value',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       TestVocab.testCategory,
                       missingValue: '', // Empty!
                     ),
@@ -714,15 +717,15 @@ void main() {
                   TestDocumentGroupKey,
                   localName: 'multi-transform',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm('https://schema.org/dateCreated'),
                       transforms: [
                         // Multiple transforms for different date formats
-                        RegexTransform(
+                        RegexTransformData(
                           r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$',
                           r'${1}-${2}',
                         ),
-                        RegexTransform(
+                        RegexTransformData(
                           r'^([0-9]{2})/([0-9]{2})/([0-9]{4})$',
                           r'${3}-${1}',
                         ),
@@ -753,13 +756,14 @@ void main() {
                   TestDocumentGroupKey,
                   localName: 'multiple-invalid-transforms',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       TestVocab.testCategory,
                       transforms: [
-                        RegexTransform(r'^(a|b)$', r'${1}'), // Alternation
-                        RegexTransform(
+                        RegexTransformData(r'^(a|b)$', r'${1}'), // Alternation
+                        RegexTransformData(
                             r'[[:alpha:]]', r'${0}'), // Named character class
-                        RegexTransform(r'^(.*)$', r'$1'), // Invalid replacement
+                        RegexTransformData(
+                            r'^(.*)$', r'$1'), // Invalid replacement
                       ],
                     ),
                   ],
@@ -823,10 +827,10 @@ void main() {
                     TestDocumentGroupKey,
                     localName: 'valid-pattern-test',
                     groupingProperties: [
-                      GroupingProperty(
+                      GroupingPropertyData(
                         TestVocab.testCategory,
                         transforms: [
-                          RegexTransform(pattern, r'${0}'),
+                          RegexTransformData(pattern, r'${0}'),
                         ],
                       ),
                     ],
@@ -862,10 +866,10 @@ void main() {
                     TestDocumentGroupKey,
                     localName: 'forbidden-pattern-test',
                     groupingProperties: [
-                      GroupingProperty(
+                      GroupingPropertyData(
                         TestVocab.testCategory,
                         transforms: [
-                          RegexTransform(pattern, r'${0}'),
+                          RegexTransformData(pattern, r'${0}'),
                         ],
                       ),
                     ],
@@ -909,10 +913,10 @@ void main() {
                     TestDocumentGroupKey,
                     localName: 'valid-replacement-test',
                     groupingProperties: [
-                      GroupingProperty(
+                      GroupingPropertyData(
                         TestVocab.testCategory,
                         transforms: [
-                          RegexTransform(pattern, replacement),
+                          RegexTransformData(pattern, replacement),
                         ],
                       ),
                     ],
@@ -948,7 +952,7 @@ void main() {
                   localName: 'grouped-documents',
                   item: IndexItemConfig(TestDocument, {}), // Has global mapper
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory),
+                    GroupingPropertyData(TestVocab.testCategory),
                   ],
                 ),
               ],
@@ -962,8 +966,8 @@ void main() {
                   localName: 'multi-prop-categories',
                   item: IndexItemConfig(TestCategory, {}), // Has global mapper
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory),
-                    GroupingProperty(
+                    GroupingPropertyData(TestVocab.testCategory),
+                    GroupingPropertyData(
                         const IriTerm('https://test.example/vocab#priority')),
                   ],
                 ),
@@ -990,7 +994,7 @@ void main() {
                   item: IndexItemConfig(
                       UnmappedType, {}), // No mapper for itemType either
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory),
+                    GroupingPropertyData(TestVocab.testCategory),
                   ],
                 ),
               ],
@@ -1020,7 +1024,7 @@ void main() {
                   localName: 'complex-group-key',
                   item: IndexItemConfig(TestDocument, {}), // Has mapper
                   groupingProperties: [
-                    GroupingProperty(TestVocab.testCategory),
+                    GroupingPropertyData(TestVocab.testCategory),
                   ],
                 ),
               ],
@@ -1049,7 +1053,7 @@ void main() {
 
       test('should fail with null predicate in GroupingProperty', () {
         expect(
-          () => GroupingProperty(
+          () => GroupingPropertyData(
             const IriTerm(''), // Empty IRI
           ),
           returnsNormally, // Constructor should accept this, validation catches it
@@ -1066,7 +1070,7 @@ void main() {
                   TestDocumentGroupKey,
                   localName: 'empty-predicate',
                   groupingProperties: [
-                    GroupingProperty(const IriTerm('')), // Empty predicate
+                    GroupingPropertyData(const IriTerm('')), // Empty predicate
                   ],
                 ),
               ],
@@ -1091,10 +1095,10 @@ void main() {
                   TestDocumentGroupKey,
                   localName: 'malformed-regex',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       TestVocab.testCategory,
                       transforms: [
-                        RegexTransform(
+                        RegexTransformData(
                           r'\', // Incomplete escape sequence
                           r'${0}',
                         ),
@@ -1126,10 +1130,10 @@ void main() {
                   TestDocumentGroupKey,
                   localName: 'invalid-capture-group',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       TestVocab.testCategory,
                       transforms: [
-                        RegexTransform(
+                        RegexTransformData(
                           r'^([a-z]+)$', // Only one capture group
                           r'${2}', // References non-existent group 2!
                         ),
@@ -1159,7 +1163,7 @@ void main() {
                   TestDocumentGroupKey,
                   localName: 'large-hierarchy',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       TestVocab.testCategory,
                       hierarchyLevel: 999999, // Very large level
                     ),
@@ -1190,15 +1194,18 @@ void main() {
                   TestDocumentGroupKey,
                   localName: 'multi-format-dates',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm('https://schema.org/dateCreated'),
                       transforms: [
                         // Handle multiple date formats per GROUP-INDEXING.md examples
-                        RegexTransform(r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$',
+                        RegexTransformData(
+                            r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$',
                             r'${1}-${2}'), // ISO
-                        RegexTransform(r'^([0-9]{2})/([0-9]{2})/([0-9]{4})$',
+                        RegexTransformData(
+                            r'^([0-9]{2})/([0-9]{2})/([0-9]{4})$',
                             r'${3}-${1}'), // US
-                        RegexTransform(r'^([0-9]{2})\.([0-9]{2})\.([0-9]{4})$',
+                        RegexTransformData(
+                            r'^([0-9]{2})\.([0-9]{2})\.([0-9]{4})$',
                             r'${3}-${1}'), // EU
                       ],
                     ),

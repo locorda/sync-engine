@@ -53,7 +53,7 @@ void main() {
         ];
 
         for (final (pattern, replacement) in validTransforms) {
-          final transform = RegexTransform(pattern, replacement);
+          final transform = RegexTransformData(pattern, replacement);
           final result = RegexTransformValidator.validate(transform);
           expect(result.isValid, isTrue,
               reason: 'Transform should be valid: $pattern -> $replacement');
@@ -68,7 +68,7 @@ void main() {
         ];
 
         for (final pattern in invalidPatterns) {
-          final transform = RegexTransform(pattern, r'${1}');
+          final transform = RegexTransformData(pattern, r'${1}');
           final result = RegexTransformValidator.validate(transform);
           expect(result.isValid, isFalse,
               reason: 'Pattern with alternation should be invalid: $pattern');
@@ -93,7 +93,7 @@ void main() {
         ];
 
         for (final pattern in invalidPatterns) {
-          final transform = RegexTransform(pattern, r'${1}');
+          final transform = RegexTransformData(pattern, r'${1}');
           final result = RegexTransformValidator.validate(transform);
           expect(result.isValid, isFalse,
               reason:
@@ -115,7 +115,7 @@ void main() {
         ];
 
         for (final pattern in invalidPatterns) {
-          final transform = RegexTransform(pattern, r'${1}');
+          final transform = RegexTransformData(pattern, r'${1}');
           final result = RegexTransformValidator.validate(transform);
           expect(result.isValid, isFalse,
               reason: 'Invalid regex syntax should be rejected: $pattern');
@@ -126,7 +126,7 @@ void main() {
       });
 
       test('rejects empty patterns', () {
-        final transform = RegexTransform('', r'${1}');
+        final transform = RegexTransformData('', r'${1}');
         final result = RegexTransformValidator.validate(transform);
         expect(result.isValid, isFalse);
         expect(result.errors.any((e) => e.message.contains('cannot be empty')),
@@ -140,7 +140,7 @@ void main() {
         ];
 
         for (final pattern in patterns) {
-          final transform = RegexTransform(pattern, r'${1}');
+          final transform = RegexTransformData(pattern, r'${1}');
           final result = RegexTransformValidator.validate(transform);
           expect(
               result.warnings
@@ -151,7 +151,7 @@ void main() {
       });
 
       test('detects incomplete escape sequences', () {
-        final transform = RegexTransform(r'test\', r'${1}');
+        final transform = RegexTransformData(r'test\', r'${1}');
         final result = RegexTransformValidator.validate(transform);
         expect(result.isValid, isFalse);
         expect(
@@ -183,7 +183,7 @@ void main() {
         ];
 
         for (final (pattern, replacement) in validTransforms) {
-          final transform = RegexTransform(pattern, replacement);
+          final transform = RegexTransformData(pattern, replacement);
           final result = RegexTransformValidator.validate(transform);
           expect(result.isValid, isTrue,
               reason:
@@ -199,7 +199,7 @@ void main() {
         ];
 
         for (final replacement in invalidReplacements) {
-          final transform = RegexTransform(r'(.+)', replacement);
+          final transform = RegexTransformData(r'(.+)', replacement);
           final result = RegexTransformValidator.validate(transform);
           expect(result.isValid, isFalse,
               reason: 'Invalid dollar usage should be rejected: $replacement');
@@ -210,7 +210,7 @@ void main() {
       });
 
       test('rejects empty braces', () {
-        final transform = RegexTransform(r'(.+)', r'${}');
+        final transform = RegexTransformData(r'(.+)', r'${}');
         final result = RegexTransformValidator.validate(transform);
         expect(result.isValid, isFalse);
         expect(result.errors.any((e) => e.message.contains('empty braces')),
@@ -224,7 +224,7 @@ void main() {
         ];
 
         for (final replacement in invalidReplacements) {
-          final transform = RegexTransform(r'(.+)', replacement);
+          final transform = RegexTransformData(r'(.+)', replacement);
           final result = RegexTransformValidator.validate(transform);
           expect(result.isValid, isFalse,
               reason: 'Invalid backreference should be rejected: $replacement');
@@ -236,7 +236,7 @@ void main() {
       });
 
       test('rejects empty replacements', () {
-        final transform = RegexTransform(r'(.+)', '');
+        final transform = RegexTransformData(r'(.+)', '');
         final result = RegexTransformValidator.validate(transform);
         expect(result.isValid, isFalse);
         expect(result.errors.any((e) => e.message.contains('cannot be empty')),
@@ -247,8 +247,10 @@ void main() {
     group('list validation', () {
       test('validates multiple transforms', () {
         final transforms = [
-          RegexTransform(r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
-          RegexTransform(r'^([0-9]{4})/([0-9]{2})/([0-9]{2})$', r'${1}-${2}'),
+          RegexTransformData(
+              r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
+          RegexTransformData(
+              r'^([0-9]{4})/([0-9]{2})/([0-9]{2})$', r'${1}-${2}'),
         ];
 
         final result = RegexTransformValidator.validateList(transforms);
@@ -257,8 +259,8 @@ void main() {
 
       test('reports errors from all transforms', () {
         final transforms = [
-          RegexTransform(r'cat|dog', r'${1}'), // Invalid: alternation
-          RegexTransform(r'(.+)', r'$1'), // Invalid: replacement syntax
+          RegexTransformData(r'cat|dog', r'${1}'), // Invalid: alternation
+          RegexTransformData(r'(.+)', r'$1'), // Invalid: replacement syntax
         ];
 
         final result = RegexTransformValidator.validateList(transforms);
@@ -285,11 +287,13 @@ void main() {
       test('validates date transformation examples', () {
         final transforms = [
           // Monthly grouping
-          RegexTransform(r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
+          RegexTransformData(
+              r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
           // Yearly grouping
-          RegexTransform(r'^([0-9]{4})-[0-9]{2}-[0-9]{2}$', r'${1}'),
+          RegexTransformData(r'^([0-9]{4})-[0-9]{2}-[0-9]{2}$', r'${1}'),
           // Multiple date formats
-          RegexTransform(r'^([0-9]{4})/([0-9]{2})/([0-9]{2})$', r'${1}-${2}'),
+          RegexTransformData(
+              r'^([0-9]{4})/([0-9]{2})/([0-9]{2})$', r'${1}-${2}'),
         ];
 
         for (final transform in transforms) {
@@ -302,14 +306,14 @@ void main() {
       test('validates string normalization examples', () {
         final transforms = [
           // Category extraction
-          RegexTransform(r'^([a-zA-Z]+)[-_].*$', r'${1}'),
+          RegexTransformData(r'^([a-zA-Z]+)[-_].*$', r'${1}'),
           // Identifier reformatting
-          RegexTransform(r'^([A-Z]{2})([0-9]+)$', r'${1}-${2}'),
+          RegexTransformData(r'^([A-Z]{2})([0-9]+)$', r'${1}-${2}'),
           // Project name extraction variants
-          RegexTransform(r'^project[-_]([a-zA-Z0-9]+)$', r'${1}'),
-          RegexTransform(r'^proj[-_]([a-zA-Z0-9]+)$', r'${1}'),
-          RegexTransform(r'^([a-zA-Z0-9]+)[-_]project$', r'${1}'),
-          RegexTransform(r'^([a-zA-Z0-9]+)[-_]proj$', r'${1}'),
+          RegexTransformData(r'^project[-_]([a-zA-Z0-9]+)$', r'${1}'),
+          RegexTransformData(r'^proj[-_]([a-zA-Z0-9]+)$', r'${1}'),
+          RegexTransformData(r'^([a-zA-Z0-9]+)[-_]project$', r'${1}'),
+          RegexTransformData(r'^([a-zA-Z0-9]+)[-_]proj$', r'${1}'),
         ];
 
         for (final transform in transforms) {

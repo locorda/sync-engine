@@ -1,7 +1,7 @@
 import 'package:locorda_core/locorda_core.dart';
 
 export 'package:locorda_core/locorda_core.dart'
-    show GroupingProperty, RegexTransform, ItemFetchPolicy;
+    show GroupingPropertyData, RegexTransformData, ItemFetchPolicy;
 
 const defaultIndexLocalName = "default";
 

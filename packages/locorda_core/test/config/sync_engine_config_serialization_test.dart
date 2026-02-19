@@ -19,27 +19,27 @@ void main() {
     });
 
     test('RegexTransform serialization', () {
-      const original = RegexTransform(r'^(\d{4})-(\d{2})', r'$1-$2');
+      const original = RegexTransformData(r'^(\d{4})-(\d{2})', r'$1-$2');
 
       final json = original.toJson();
-      final deserialized = RegexTransform.fromJson(json);
+      final deserialized = RegexTransformData.fromJson(json);
 
       expect(deserialized.pattern, equals(original.pattern));
       expect(deserialized.replacement, equals(original.replacement));
     });
 
     test('GroupingProperty serialization with transforms', () {
-      final original = GroupingProperty(
+      final original = GroupingPropertyData(
         IriTerm('http://schema.org/dateCreated'),
         hierarchyLevel: 2,
         missingValue: 'unknown',
         transforms: [
-          const RegexTransform(r'^(\d{4})-(\d{2})', r'$1-$2'),
+          const RegexTransformData(r'^(\d{4})-(\d{2})', r'$1-$2'),
         ],
       );
 
       final json = original.toJson();
-      final deserialized = GroupingProperty.fromJson(json);
+      final deserialized = GroupingPropertyData.fromJson(json);
 
       expect(deserialized.predicate, equals(original.predicate));
       expect(deserialized.hierarchyLevel, equals(original.hierarchyLevel));
@@ -69,11 +69,11 @@ void main() {
       final original = GroupIndexData(
         localName: 'byMonth',
         groupingProperties: [
-          GroupingProperty(
+          GroupingPropertyData(
             IriTerm('http://schema.org/dateCreated'),
             hierarchyLevel: 1,
             transforms: [
-              const RegexTransform(r'^(\d{4})-(\d{2})', r'$1-$2'),
+              const RegexTransformData(r'^(\d{4})-(\d{2})', r'$1-$2'),
             ],
           ),
         ],
@@ -128,7 +128,7 @@ void main() {
           GroupIndexData(
             localName: 'byMonth',
             groupingProperties: [
-              GroupingProperty(
+              GroupingPropertyData(
                 IriTerm('http://schema.org/dateCreated'),
                 hierarchyLevel: 1,
               ),
@@ -168,12 +168,12 @@ void main() {
               GroupIndexData(
                 localName: 'byMonth',
                 groupingProperties: [
-                  GroupingProperty(
+                  GroupingPropertyData(
                     IriTerm('http://schema.org/dateCreated'),
                     hierarchyLevel: 1,
                     missingValue: 'unknown',
                     transforms: [
-                      const RegexTransform(r'^(\d{4})-(\d{2})', r'$1-$2'),
+                      const RegexTransformData(r'^(\d{4})-(\d{2})', r'$1-$2'),
                     ],
                   ),
                 ],

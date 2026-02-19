@@ -17,7 +17,7 @@ void main() {
 
       test('returns original value when no transforms match', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^number-(\d+)$', r'${1}'),
+          RegexTransformData(r'^number-(\d+)$', r'${1}'),
         ]);
 
         final literal = LiteralTerm.string('text-value');
@@ -28,8 +28,9 @@ void main() {
 
       test('applies first matching transform', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
-          RegexTransform(
+          RegexTransformData(
+              r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
+          RegexTransformData(
               r'^([0-9]{4}).*$', r'${1}'), // Would match but shouldn't be used
         ]);
 
@@ -41,8 +42,9 @@ void main() {
 
       test('stops at first match in transform list', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^test.*$', r'first'),
-          RegexTransform(r'^test.*$', r'second'), // This should not be reached
+          RegexTransformData(r'^test.*$', r'first'),
+          RegexTransformData(
+              r'^test.*$', r'second'), // This should not be reached
         ]);
 
         final literal = LiteralTerm.string('test-value');
@@ -55,7 +57,7 @@ void main() {
     group('RDF term type handling', () {
       test('extracts value from LiteralTerm', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^prefix-(.+)$', r'${1}'),
+          RegexTransformData(r'^prefix-(.+)$', r'${1}'),
         ]);
 
         final literal = LiteralTerm.string('prefix-value');
@@ -66,7 +68,7 @@ void main() {
 
       test('extracts IRI from IriTerm', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^http://example\.org/(.+)$', r'${1}'),
+          RegexTransformData(r'^http://example\.org/(.+)$', r'${1}'),
         ]);
 
         final iri = const IriTerm('http://example.org/resource');
@@ -77,7 +79,7 @@ void main() {
 
       test('returns null for BlankNodeTerm', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'.*', r'transformed'),
+          RegexTransformData(r'.*', r'transformed'),
         ]);
 
         final blankNode = BlankNodeTerm();
@@ -88,7 +90,7 @@ void main() {
 
       test('handles literal with datatype (ignores datatype)', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^(\d+)$', r'number-${1}'),
+          RegexTransformData(r'^(\d+)$', r'number-${1}'),
         ]);
 
         final literal = LiteralTerm.integer(42);
@@ -99,7 +101,7 @@ void main() {
 
       test('handles literal with language tag (ignores language)', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^(.+)$', r'text-${1}'),
+          RegexTransformData(r'^(.+)$', r'text-${1}'),
         ]);
 
         final literal = LiteralTerm.withLanguage('hello', 'en');
@@ -112,7 +114,8 @@ void main() {
     group('regex transform examples from specification', () {
       test('date monthly grouping', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
+          RegexTransformData(
+              r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
         ]);
 
         final testCases = [
@@ -130,7 +133,7 @@ void main() {
 
       test('date yearly grouping', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^([0-9]{4})-[0-9]{2}-[0-9]{2}$', r'${1}'),
+          RegexTransformData(r'^([0-9]{4})-[0-9]{2}-[0-9]{2}$', r'${1}'),
         ]);
 
         final testCases = [
@@ -148,7 +151,7 @@ void main() {
 
       test('category extraction', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^([a-zA-Z]+)[-_].*$', r'${1}'),
+          RegexTransformData(r'^([a-zA-Z]+)[-_].*$', r'${1}'),
         ]);
 
         final testCases = [
@@ -166,7 +169,7 @@ void main() {
 
       test('identifier reformatting', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^([A-Z]{2})([0-9]+)$', r'${1}-${2}'),
+          RegexTransformData(r'^([A-Z]{2})([0-9]+)$', r'${1}-${2}'),
         ]);
 
         final testCases = [
@@ -184,8 +187,10 @@ void main() {
 
       test('multiple date formats handling', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
-          RegexTransform(r'^([0-9]{4})/([0-9]{2})/([0-9]{2})$', r'${1}-${2}'),
+          RegexTransformData(
+              r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', r'${1}-${2}'),
+          RegexTransformData(
+              r'^([0-9]{4})/([0-9]{2})/([0-9]{2})$', r'${1}-${2}'),
         ]);
 
         final testCases = [
@@ -204,10 +209,10 @@ void main() {
 
       test('complex multi-format project name extraction', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^project[-_]([a-zA-Z0-9]+)$', r'${1}'),
-          RegexTransform(r'^proj[-_]([a-zA-Z0-9]+)$', r'${1}'),
-          RegexTransform(r'^([a-zA-Z0-9]+)[-_]project$', r'${1}'),
-          RegexTransform(r'^([a-zA-Z0-9]+)[-_]proj$', r'${1}'),
+          RegexTransformData(r'^project[-_]([a-zA-Z0-9]+)$', r'${1}'),
+          RegexTransformData(r'^proj[-_]([a-zA-Z0-9]+)$', r'${1}'),
+          RegexTransformData(r'^([a-zA-Z0-9]+)[-_]project$', r'${1}'),
+          RegexTransformData(r'^([a-zA-Z0-9]+)[-_]proj$', r'${1}'),
         ]);
 
         final testCases = [
@@ -228,7 +233,7 @@ void main() {
     group('backreference handling', () {
       test('handles group 0 (entire match)', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'test-\d+', r'match:${0}'),
+          RegexTransformData(r'test-\d+', r'match:${0}'),
         ]);
 
         final literal = LiteralTerm.string('test-123');
@@ -239,7 +244,8 @@ void main() {
 
       test('handles multiple capture groups', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^([a-z]+)-([0-9]+)-([a-z]+)$', r'${3}_${1}_${2}'),
+          RegexTransformData(
+              r'^([a-z]+)-([0-9]+)-([a-z]+)$', r'${3}_${1}_${2}'),
         ]);
 
         final literal = LiteralTerm.string('abc-123-xyz');
@@ -250,7 +256,7 @@ void main() {
 
       test('handles missing capture groups gracefully', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^([a-z]+)(?:-([0-9]+))?$', r'${1}_${2}'),
+          RegexTransformData(r'^([a-z]+)(?:-([0-9]+))?$', r'${1}_${2}'),
         ]);
 
         final testCases = [
@@ -267,7 +273,7 @@ void main() {
 
       test('handles literal dollar signs in replacement', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^(.+)$', r'${1}$$price'),
+          RegexTransformData(r'^(.+)$', r'${1}$$price'),
         ]);
 
         final literal = LiteralTerm.string('item');
@@ -280,7 +286,7 @@ void main() {
     group('edge cases and error handling', () {
       test('handles empty string input', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^(.*)$', r'prefix-${1}'),
+          RegexTransformData(r'^(.*)$', r'prefix-${1}'),
         ]);
 
         final literal = LiteralTerm.string('');
@@ -291,7 +297,8 @@ void main() {
 
       test('handles patterns that do not match empty string', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^.+$', r'${0}'), // Requires at least one character
+          RegexTransformData(
+              r'^.+$', r'${0}'), // Requires at least one character
         ]);
 
         final literal = LiteralTerm.string('');
@@ -303,7 +310,7 @@ void main() {
       test('efficient pattern compilation and reuse', () {
         // Test that patterns are compiled once and reused efficiently
         final transforms = [
-          RegexTransform(r'^test-(.+)$', r'${1}'),
+          RegexTransformData(r'^test-(.+)$', r'${1}'),
         ];
         final extractor = RdfGroupExtractor(transforms);
 
@@ -320,7 +327,7 @@ void main() {
 
       test('handles unicode characters', () {
         final extractor = RdfGroupExtractor([
-          RegexTransform(r'^(.+)-suffix$', r'${1}'),
+          RegexTransformData(r'^(.+)-suffix$', r'${1}'),
         ]);
 
         final literal = LiteralTerm.string('测试-suffix');
@@ -333,7 +340,7 @@ void main() {
     group('immutability and thread safety', () {
       test('transform list is immutable', () {
         final originalTransforms = [
-          RegexTransform(r'^(.+)$', r'${1}'),
+          RegexTransformData(r'^(.+)$', r'${1}'),
         ];
         final extractor = RdfGroupExtractor(originalTransforms);
 

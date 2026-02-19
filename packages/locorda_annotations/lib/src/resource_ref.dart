@@ -7,5 +7,5 @@ const resourceRefFactoryKey = r'$resourceRefFactory';
 
 class RootResourceRef extends IriMapping {
   const RootResourceRef(Type cls)
-    : super.namedFactory(resourceRefFactoryKey, cls);
+      : super.namedFactory(resourceRefFactoryKey, cls);
 }

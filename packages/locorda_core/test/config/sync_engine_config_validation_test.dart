@@ -163,7 +163,7 @@ void main() {
                 GroupIndexData(
                   localName: 'test-groups',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm(''), // Empty IRI!
                     ),
                   ],
@@ -189,7 +189,7 @@ void main() {
                 GroupIndexData(
                   localName: 'test-groups',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm('https://schema.org/category'),
                       hierarchyLevel: 0, // Invalid!
                     ),
@@ -218,7 +218,7 @@ void main() {
                 GroupIndexData(
                   localName: 'test-groups',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm('https://schema.org/category'),
                       hierarchyLevel: -1, // Invalid!
                     ),
@@ -247,7 +247,7 @@ void main() {
                 GroupIndexData(
                   localName: 'test-groups',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm('https://schema.org/category'),
                       missingValue: '', // Empty string!
                     ),
@@ -276,7 +276,7 @@ void main() {
                 GroupIndexData(
                   localName: 'test-groups',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm('https://schema.org/category'),
                       missingValue: null, // OK
                     ),
@@ -304,10 +304,10 @@ void main() {
                 GroupIndexData(
                   localName: 'date-groups',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm('https://schema.org/dateCreated'),
                       transforms: [
-                        RegexTransform(
+                        RegexTransformData(
                           r'[invalid', // Malformed regex!
                           r'\${1}',
                         ),
@@ -335,10 +335,10 @@ void main() {
                 GroupIndexData(
                   localName: 'date-groups',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm('https://schema.org/dateCreated'),
                       transforms: [
-                        RegexTransform(
+                        RegexTransformData(
                           r'([0-9]{4})', // Only 1 capture group
                           r'\${2}', // But referencing group 2!
                         ),
@@ -367,10 +367,10 @@ void main() {
                 GroupIndexData(
                   localName: 'date-groups',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm('https://schema.org/dateCreated'),
                       transforms: [
-                        RegexTransform(
+                        RegexTransformData(
                           r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*',
                           r'\${1}-\${2}', // Valid capture group references
                         ),
@@ -400,11 +400,11 @@ void main() {
                 GroupIndexData(
                   localName: 'test-groups',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm('https://schema.org/category'),
                       hierarchyLevel: 1,
                     ),
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm('https://schema.org/priority'),
                       hierarchyLevel: 3, // Gap! (missing level 2)
                     ),
@@ -433,11 +433,11 @@ void main() {
                 GroupIndexData(
                   localName: 'test-groups',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm('https://schema.org/category'),
                       hierarchyLevel: 1,
                     ),
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm('https://schema.org/priority'),
                       hierarchyLevel: 2, // Consecutive
                     ),
@@ -472,7 +472,7 @@ void main() {
                 GroupIndexData(
                   localName: 'category-groups',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm('https://schema.org/category'),
                     ),
                   ],
@@ -486,10 +486,10 @@ void main() {
                 GroupIndexData(
                   localName: 'date-groups',
                   groupingProperties: [
-                    GroupingProperty(
+                    GroupingPropertyData(
                       const IriTerm('https://schema.org/dateCreated'),
                       transforms: [
-                        RegexTransform(
+                        RegexTransformData(
                           r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*',
                           r'\${1}', // Extract year
                         ),

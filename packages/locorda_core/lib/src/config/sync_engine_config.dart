@@ -86,7 +86,7 @@ class GroupIndexData extends GroupIndexConfigBase implements CrdtIndexData {
     final groupingPropertiesJson =
         json['groupingProperties'] as List<dynamic>? ?? [];
     final groupingProperties = groupingPropertiesJson
-        .map((gp) => GroupingProperty.fromJson(gp as Map<String, dynamic>))
+        .map((gp) => GroupingPropertyData.fromJson(gp as Map<String, dynamic>))
         .toList(growable: false);
 
     return GroupIndexData(

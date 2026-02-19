@@ -167,7 +167,7 @@ abstract class GroupIndexConfigBase extends CrdtIndexConfigBase {
   final IndexItemConfigBase? item;
 
   /// Properties used for grouping resources, must be in sync with the groupKeyType
-  final List<GroupingProperty> groupingProperties;
+  final List<GroupingPropertyData> groupingProperties;
 
   const GroupIndexConfigBase({
     required this.localName,
@@ -217,19 +217,19 @@ abstract class FullIndexConfigBase extends CrdtIndexConfigBase {
 /// Example: Extract 'yyyy-MM' from schema:dateCreated to group by month.
 /// A regex transform rule for extracting group keys from RDF literal values
 /// Uses cross-platform compatible regex subset with deterministic list processing
-class RegexTransform {
+class RegexTransformData {
   /// Cross-platform compatible regex pattern (no alternation, no named character classes)
   final String pattern;
 
   /// Replacement template with ${n} backreferences to capture groups
   final String replacement;
 
-  const RegexTransform(this.pattern, this.replacement);
+  const RegexTransformData(this.pattern, this.replacement);
 
-  factory RegexTransform.fromJson(Map<String, dynamic> json) {
+  factory RegexTransformData.fromJson(Map<String, dynamic> json) {
     final pattern = json['pattern'] as String;
     final replacement = json['replacement'] as String;
-    return RegexTransform(pattern, replacement);
+    return RegexTransformData(pattern, replacement);
   }
 
   Map<String, dynamic> toJson() {
@@ -245,7 +245,7 @@ class RegexTransform {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is RegexTransform &&
+      other is RegexTransformData &&
           runtimeType == other.runtimeType &&
           pattern == other.pattern &&
           replacement == other.replacement;
@@ -254,7 +254,7 @@ class RegexTransform {
   int get hashCode => pattern.hashCode ^ replacement.hashCode;
 }
 
-class GroupingProperty {
+class GroupingPropertyData {
   /// RDF predicate IRI for the source property (e.g., schema:dateCreated)
   final IriTerm predicate;
 
@@ -274,30 +274,30 @@ class GroupingProperty {
   /// If not specified, the RDF representation of the property value is used as-is.
   /// For literals, this is the lexical value (without language tag or datatype); for IRIs, the IRI string.
   ///
-  final List<RegexTransform>? transforms;
+  final List<RegexTransformData>? transforms;
 
   /// Value to use when the source property is missing
   /// If null, resources missing the property are excluded from the index
   /// Example: 'unknown' to group all missing values together
   final String? missingValue;
 
-  const GroupingProperty(
+  const GroupingPropertyData(
     this.predicate, {
     this.transforms,
     this.hierarchyLevel = 1,
     this.missingValue,
   });
 
-  factory GroupingProperty.fromJson(Map<String, dynamic> json) {
+  factory GroupingPropertyData.fromJson(Map<String, dynamic> json) {
     final predicate = IriTerm(json['predicate'] as String);
     final hierarchyLevel = (json['hierarchyLevel'] as int?) ?? 1;
     final missingValue = json['missingValue'] as String?;
     final transformsJson = json['transforms'] as List<dynamic>?;
     final transforms = transformsJson
-        ?.map((t) => RegexTransform.fromJson(t as Map<String, dynamic>))
+        ?.map((t) => RegexTransformData.fromJson(t as Map<String, dynamic>))
         .toList(growable: false);
 
-    return GroupingProperty(
+    return GroupingPropertyData(
       predicate,
       hierarchyLevel: hierarchyLevel,
       missingValue: missingValue,

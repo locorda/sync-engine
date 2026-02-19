@@ -30,7 +30,7 @@ class RegexTransformValidator {
   static final RegExp _alphanumPattern = RegExp(r'[a-zA-Z0-9]');
 
   /// Validates a single RegexTransform according to the specification
-  static ValidationResult validate(RegexTransform transform) {
+  static ValidationResult validate(RegexTransformData transform) {
     final result = ValidationResult();
 
     final captureGroupCount = _validatePattern(transform.pattern, result);
@@ -40,7 +40,7 @@ class RegexTransformValidator {
   }
 
   /// Validates a list of RegexTransforms
-  static ValidationResult validateList(List<RegexTransform> transforms) {
+  static ValidationResult validateList(List<RegexTransformData> transforms) {
     final results = transforms.map(validate).toList();
     return ValidationResult.merge(results);
   }

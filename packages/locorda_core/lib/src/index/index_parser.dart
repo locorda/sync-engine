@@ -221,7 +221,7 @@ class IndexParser {
   ///
   /// Returns null if the graph doesn't contain a valid GroupingRule.
   /// Throws ArgumentError if the structure is invalid.
-  List<GroupingProperty>? _parseGroupingProperties(
+  List<GroupingPropertyData>? _parseGroupingProperties(
     RdfGraph graph,
     IriTerm templateResourceIri,
   ) {
@@ -262,7 +262,7 @@ class IndexParser {
   }
 
   /// Parses a single GroupingRuleProperty node.
-  GroupingProperty? _parseGroupingProperty(
+  GroupingPropertyData? _parseGroupingProperty(
       RdfGraph graph, RdfSubject propNode) {
     // Extract sourceProperty (required) - CRITICAL because GroupingProperty is unusable without it
     final sourceProperty = graph.expectSingleObject<IriTerm>(
@@ -297,7 +297,7 @@ class IndexParser {
         .map((node) => _parseRegexTransform(graph, node))
         .toList();
 
-    return GroupingProperty(
+    return GroupingPropertyData(
       sourceProperty,
       hierarchyLevel: hierarchyLevel,
       missingValue: missingValue,
@@ -306,7 +306,7 @@ class IndexParser {
   }
 
   /// Parses a RegexTransform node.
-  RegexTransform _parseRegexTransform(
+  RegexTransformData _parseRegexTransform(
       RdfGraph graph, RdfSubject transformNode) {
     // Extract pattern (required)
     final pattern = graph
@@ -322,6 +322,6 @@ class IndexParser {
             ?.value ??
         (throw ArgumentError('RegexTransform missing required replacement'));
 
-    return RegexTransform(pattern, replacement);
+    return RegexTransformData(pattern, replacement);
   }
 }
