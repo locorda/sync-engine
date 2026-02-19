@@ -1,6 +1,5 @@
 import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_rdf_mapper/mapper.dart';
-import 'package:minimal_task_sync/consts.dart';
 import 'package:minimal_task_sync/task.dart';
 import 'package:minimal_task_sync/task.rdf_mapper.g.dart';
 import 'package:test/test.dart';
@@ -113,7 +112,7 @@ void main() {
       expect(taskSubjects, hasLength(1));
       final taskIri = taskSubjects.first as IriTerm;
 
-      expect(taskIri.value, contains(appBaseUrl));
+      expect(taskIri.value, contains('https://locorda.dev/example/minimal'));
       expect(taskIri.value, contains('my-task-id'));
       expect(taskIri.value, endsWith('#it'));
     });
@@ -135,6 +134,6 @@ class _SimpleTaskIriMapper implements IriTermMapper<(String,)> {
   @override
   IriTerm toRdfTerm((String,) value, SerializationContext context) {
     final (id,) = value;
-    return IriTerm('$appBaseUrl/resources/$id#it');
+    return IriTerm('https://locorda.dev/example/minimal/resources/$id#it');
   }
 }

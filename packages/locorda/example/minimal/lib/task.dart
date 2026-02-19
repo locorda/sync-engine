@@ -3,11 +3,10 @@ library;
 
 import 'package:locorda_annotations/locorda_annotations.dart';
 import 'package:locorda_rdf_mapper_annotations/annotations.dart';
-import 'package:minimal_task_sync/consts.dart' show appBaseUrl;
 
 // #docregion task-model
 /// A simple task with CRDT sync.
-@RootResource(AppVocab(appBaseUri: appBaseUrl))
+@RootResource(AppVocab(appBaseUri: 'https://locorda.dev/example/minimal'))
 class Task {
   /// Unique ID for this task
   @RdfIriPart()

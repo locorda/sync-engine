@@ -1,11 +1,11 @@
 # Minimal Locorda Example
 
-A minimal task sync app demonstrating Locorda's core concepts in ~150 lines.
+A minimal task sync app demonstrating Locorda's core concepts.
 
 ## What this shows
 
 - **Worker architecture** - Heavy operations isolated from UI thread
-- **Object sync** - Work with plain Dart classes, not RDF
+- **Object sync** - Work with plain Dart classes (RDF handled internally)
 - **CRDT merge** - Automatic conflict resolution (LWW strategy)
 - **Repository pattern** - Clean separation: sync ↔ storage ↔ UI
 
@@ -23,12 +23,12 @@ Locorda SyncEngine
 
 ## Key files
 
-### Task model with CRDT annotations
+### Task model for sync
 
 <?code-excerpt "lib/task.dart (task-model)"?>
 ```dart
 /// A simple task with CRDT sync.
-@RootResource(AppVocab(appBaseUri: appBaseUrl))
+@RootResource(AppVocab(appBaseUri: 'https://locorda.dev/example/minimal'))
 class Task {
   /// Unique ID for this task
   @RdfIriPart()
@@ -61,8 +61,9 @@ class Task {
 ```
 
 **Annotations explained:**
-- `@LwwRegister()` - Last Writer Wins for title/completed
-- `@Immutable()` - createdAt never changes
+- `@RootResource(AppVocab(...))` - Defines this class as an RDF resource type
+- `@RdfIriPart()` - Uses `id` field as the unique identifier in URIs
+- CRDT merge strategies are configured separately in the CRDT mapping file (generated)
 
 ### Repository: the sync integration point
 
@@ -160,32 +161,30 @@ final locorda = await initLocorda(
 
 ```
 
-**Configuration:**
-- `workerSetup` creates isolated compute thread
-- `remotes` - Local Dir for testing (replace with Solid/GDrive in production)
-- `storage` - InMemoryStorage (data lost on restart)
-- `mapperInitializer` - generated RDF converter
-- `resources` - Task type with CRDT mapping
+**What you configure:**
+- `onWorkerSpawn` - Optional callback when worker thread starts (useful for logging setup)
+- `remotes` - Storage backends (here: Local Dir for testing; use Solid/GDrive in production)
+- `storage` - Local storage handler (here: InMemoryStorage - data lost on restart)
+
+All other configuration (RDF mapping, CRDT merge strategies, resource types) is automatically generated from your `@RootResource` annotations.
+
+**Generated files** (created by `dart run build_runner build`):
+- `init_locorda.g.dart` - Locorda initialization
+- `init_rdf_mapper.g.dart` - RDF object mapping
+- `locorda_config.g.dart` - Resource configuration with CRDT mappings
+- `task.rdf_mapper.g.dart` - Task-specific RDF serialization
+- `worker_generated.g.dart` - Worker thread setup
+- `vocab.g.ttl` - RDF vocabulary definition
 
 ### Worker thread: heavy lifting
 
-```dart
-/// Worker entry point (runs in isolate/web worker).
-void main() {
-  workerMain(setupWorkerEngine);
-}
+The worker code is **automatically generated** by `build_runner` in `lib/worker_generated.g.dart`. The generator creates:
 
-/// Configure SyncEngine in the worker.
-Future<WorkerParams> setupWorkerEngine() async => WorkerParams(
-      // Must match main thread remotes
-      remotes: [DirWorkerHandler(id: 'local_dir')],
+- Worker entry point that runs in an isolate (native) or web worker (web)
+- Storage and remote handlers matching your main thread configuration
+- All necessary setup code
 
-      // InMemoryStorage for worker
-      storage: InMemoryWorkerHandler(),
-    );
-```
-
-Worker mirrors main thread choices for remotes/storage but runs in separate isolate.
+No manual worker configuration needed! The `initLocorda()` function handles the worker setup automatically.
 
 ### UI: simple task list
 
@@ -325,4 +324,3 @@ See the full Personal Notes App for production patterns.
 3. **Add cursor tracking**: Persist sync position for efficient catch-up
 4. **Add error handling**: Handle network failures gracefully
 
-See [../README.md](../README.md) for detailed architecture guide.
