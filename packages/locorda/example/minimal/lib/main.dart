@@ -52,7 +52,9 @@ class _MinimalTaskAppState extends State<MinimalTaskApp> {
               displayName: 'Local Directory (Testing)'),
         ],
 
-        // InMemoryStorage for simplicity - data won't persist across app restarts
+        // InMemoryStorage demonstrates sync power: Even though local storage
+        // doesn't persist across restarts, your data comes back automatically
+        // as soon as you reconnect to a remote! Perfect for testing sync.
         storage: InMemoryStorageMainHandler(),
       );
 
@@ -134,10 +136,13 @@ class _TaskListScreenState extends State<TaskListScreen> {
             padding: EdgeInsets.only(
               right: kDebugMode ? 60.0 : 0.0, // Space for debug banner
             ),
+            // Tap this widget to connect to remotes and trigger sync
+            // #docregion status-widget
             child: MultiBackendStatusWidget(
               registry: widget.uiAdapterRegistry,
               syncManager: widget.syncManager,
             ),
+            // #enddocregion status-widget
           ),
         ],
       ),
@@ -151,9 +156,11 @@ class _TaskListScreenState extends State<TaskListScreen> {
             itemBuilder: (context, i) => CheckboxListTile(
               value: tasks[i].completed,
               title: Text(tasks[i].title),
+              // #docregion repository-usage
               onChanged: (val) => widget.repository.save(
                 tasks[i].copyWith(completed: val ?? false),
               ),
+              // #enddocregion repository-usage
               secondary: IconButton(
                 icon: const Icon(Icons.delete),
                 onPressed: () => widget.repository.delete(tasks[i].id),

@@ -24,10 +24,15 @@ class TaskRepository {
   static Future<TaskRepository> create(ObjectSyncEngine syncEngine) async {
     final repo = TaskRepository._(syncEngine);
 
-    // Connect your local storage to sync via callbacks:
-    // - onUpdate: save synced items to your database
-    // - onDelete: remove synced items from your database
-    // - getCurrentCursor: provide last sync position (for efficient catch-up)
+    // Connect your local storage to sync via callbacks.
+    //
+    // IMPORTANT: These callbacks are your "single source of truth" for data updates.
+    // ALL changes (local saves, remote sync, conflict resolution) flow through these
+    // callbacks. This ensures your UI always shows the merged, conflict-free state.
+    //
+    // - onUpdate: Save/update items in your local database
+    // - onDelete: Remove deleted items from your local database
+    // - getCurrentCursor: Track last sync position (for efficient incremental sync)
     repo._hydrationSubscription = await syncEngine.hydrateWithCallbacks<Task>(
       getCurrentCursor: () async => null, // Simple: no cursor persistence
       onUpdate: (task) async {
@@ -53,16 +58,27 @@ class TaskRepository {
       .toList() // In real app: query your database however you want
     ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-  /// Save task (create or update) - queued for sync to other devices
+  /// Save task (create or update) - queued for sync to other devices.
+  ///
+  /// IMPORTANT: Do NOT update _tasks directly here!
+  ///
+  /// The sync engine will call our onUpdate callback, which updates _tasks.
+  /// This ensures all updates (local saves, remote changes, merged conflicts)
+  /// flow through the same code path, keeping everything consistent.
   Future<void> save(Task task) async {
     await _syncEngine.save<Task>(task);
-    // Local update happens via sync callback
+    // ↓ onUpdate callback will be triggered ↓
+    // ↓ which updates _tasks and notifies listeners ↓
   }
 
-  /// Delete task - queued for sync to other devices
+  /// Delete task - queued for sync to other devices.
+  ///
+  /// Like save(), the actual removal from _tasks happens via onDelete callback.
+  /// This ensures deletions from any source are handled consistently.
   Future<void> delete(String id) async {
     await _syncEngine.deleteDocument<Task>(id);
-    // Local delete happens via sync callback
+    // ↓ onDelete callback will be triggered ↓
+    // ↓ which removes from _tasks and notifies listeners ↓
   }
 
   void _notifyListeners() {

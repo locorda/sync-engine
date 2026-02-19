@@ -85,7 +85,7 @@ class Task {
 **What the annotations do:**
 - `@RootResource(AppVocab(...))` - Makes this class syncable across devices
 - `@RdfIriPart()` - Marks `id` as the unique identifier for sync
-- Merge strategies (how conflicts are resolved) are auto-generated from these annotations
+- Conflict resolution rules are auto-generated from these annotations (see "Understanding Conflicts" below)
 
 ### Repository: connecting sync to your app
 
@@ -109,10 +109,15 @@ class TaskRepository {
   static Future<TaskRepository> create(ObjectSyncEngine syncEngine) async {
     final repo = TaskRepository._(syncEngine);
 
-    // Connect your local storage to sync via callbacks:
-    // - onUpdate: save synced items to your database
-    // - onDelete: remove synced items from your database
-    // - getCurrentCursor: provide last sync position (for efficient catch-up)
+    // Connect your local storage to sync via callbacks.
+    //
+    // IMPORTANT: These callbacks are your "single source of truth" for data updates.
+    // ALL changes (local saves, remote sync, conflict resolution) flow through these
+    // callbacks. This ensures your UI always shows the merged, conflict-free state.
+    //
+    // - onUpdate: Save/update items in your local database
+    // - onDelete: Remove deleted items from your local database
+    // - getCurrentCursor: Track last sync position (for efficient incremental sync)
     repo._hydrationSubscription = await syncEngine.hydrateWithCallbacks<Task>(
       getCurrentCursor: () async => null, // Simple: no cursor persistence
       onUpdate: (task) async {
@@ -138,16 +143,27 @@ class TaskRepository {
       .toList() // In real app: query your database however you want
     ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-  /// Save task (create or update) - queued for sync to other devices
+  /// Save task (create or update) - queued for sync to other devices.
+  ///
+  /// IMPORTANT: Do NOT update _tasks directly here!
+  ///
+  /// The sync engine will call our onUpdate callback, which updates _tasks.
+  /// This ensures all updates (local saves, remote changes, merged conflicts)
+  /// flow through the same code path, keeping everything consistent.
   Future<void> save(Task task) async {
     await _syncEngine.save<Task>(task);
-    // Local update happens via sync callback
+    // ↓ onUpdate callback will be triggered ↓
+    // ↓ which updates _tasks and notifies listeners ↓
   }
 
-  /// Delete task - queued for sync to other devices
+  /// Delete task - queued for sync to other devices.
+  ///
+  /// Like save(), the actual removal from _tasks happens via onDelete callback.
+  /// This ensures deletions from any source are handled consistently.
   Future<void> delete(String id) async {
     await _syncEngine.deleteDocument<Task>(id);
-    // Local delete happens via sync callback
+    // ↓ onDelete callback will be triggered ↓
+    // ↓ which removes from _tasks and notifies listeners ↓
   }
 
   void _notifyListeners() {
@@ -167,7 +183,51 @@ class TaskRepository {
 2. **You control local storage**: Query, index, and structure your data however you want
 3. **`save()`/`delete()` register changes**: Your changes are saved locally (via callbacks) and queued for sync
 4. **Sync happens automatically**: When connected, changes sync to other devices; offline changes sync later
-5. **One source of truth**: Callbacks keep your local database up-to-date automatically
+5. **Single source of truth**: ALL updates (local, remote, merged) flow through the same callbacks, keeping everything consistent
+
+### How sync works behind the scenes
+
+**When you make a local change** (`repository.save(task)`):
+
+```
+1. 📱 Your app calls save(task)
+   ↓
+2. 🔧 SyncEngine merges & stores in Locorda's local storage
+   ↓  
+3. 📞 onUpdate callback → your app saves to its own database (_tasks Map)
+   ↓
+4. 🎨 UI updates via StreamBuilder
+   ↓
+   [Change is queued for sync when connected]
+```
+
+**Sync process** (runs automatically in background on all devices):
+
+```
+1. 🔄 Worker thread checks remote storage for changes
+   ↓
+2. 📥 Downloads new/updated data
+   ↓
+3. 🔧 SyncEngine merges with local storage (resolves conflicts automatically)
+   ↓
+4. � Uploads merged state + queued local changes to remote
+   ↓
+5. 📞 onUpdate callback → your app saves to its database (same as step 3 above!)
+   ↓
+6. 🎨 UI updates via StreamBuilder (same callback flow!)
+```
+
+**The key insight**: Whether changes come from your device or from sync, they flow through the **same callbacks**. This is why you never update `_tasks` directly - all updates (local and remote) go through `onUpdate`, keeping everything consistent.
+
+**Two separate storage layers:**
+- **Locorda storage**: Tracks sync metadata, clocks, merge state. You configure this in `initLocorda()` (InMemoryStorage, DriftStorage, etc.)
+- **Your app storage**: Your database (`_tasks`, Drift, Hive, Isar, etc.). You control queries, structure, and access.
+
+**What about offline?**  
+Local changes are queued automatically. When you reconnect, the sync process runs and uploads your queued changes while downloading and merging changes from other devices.
+
+**Why InMemoryStorage in this example?**  
+It demonstrates the power of sync! Even though Locorda's sync metadata doesn't persist across app restarts, your data reappears as soon as the sync process runs and downloads from the remote. This shows that sync truly works - your data lives in the remote storage and syncs reliably across all devices.
 
 ### Main thread: Locorda setup
 
@@ -189,7 +249,9 @@ final locorda = await initLocorda(
         displayName: 'Local Directory (Testing)'),
   ],
 
-  // InMemoryStorage for simplicity - data won't persist across app restarts
+  // InMemoryStorage demonstrates sync power: Even though local storage
+  // doesn't persist across restarts, your data comes back automatically
+  // as soon as you reconnect to a remote! Perfect for testing sync.
   storage: InMemoryStorageMainHandler(),
 );
 
@@ -205,14 +267,7 @@ final locorda = await initLocorda(
 - Object serialization/deserialization logic
 - Sync protocols and conflict resolution strategies
 - Worker thread setup and communication
-
-**Generated files** (created by `dart run build_runner build`):
-- `init_locorda.g.dart` - Locorda initialization code
-- `init_rdf_mapper.g.dart` - Object ↔ sync format conversion
-- `locorda_config.g.dart` - Sync configuration
-- `task.rdf_mapper.g.dart` - Task-specific conversion logic
-- `worker_generated.g.dart` - Background worker setup
-- `vocab.g.ttl` - Data vocabulary definition
+- See "Generated files" section below for details
 
 ### Worker thread: keeping the UI responsive
 
@@ -224,136 +279,109 @@ Heavy tasks (network requests, sync processing) run in a background worker **aut
 
 No manual worker configuration needed! Your UI stays smooth while sync happens in the background.
 
-### UI: simple task list
+### UI: sync-unaware and simple
 
-<?code-excerpt "lib/main.dart (ui)"?>
+The UI layer has no sync awareness - it just uses the `TaskRepository`. Here's how to save changes:
+
+<?code-excerpt "lib/main.dart (repository-usage)"?>
 ```dart
-class TaskListScreen extends StatefulWidget {
-  final TaskRepository repository;
-  final UiAdapterRegistry uiAdapterRegistry;
-  final SyncManager syncManager;
-  const TaskListScreen({
-    required this.repository,
-    required this.uiAdapterRegistry,
-    required this.syncManager,
-    super.key,
-  });
-
-  @override
-  State<TaskListScreen> createState() => _TaskListScreenState();
-}
-
-class _TaskListScreenState extends State<TaskListScreen> {
-  final _controller = TextEditingController();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tasks'),
-        actions: [
-          Padding(
-            padding: EdgeInsets.only(
-              right: kDebugMode ? 60.0 : 0.0, // Space for debug banner
-            ),
-            child: MultiBackendStatusWidget(
-              registry: widget.uiAdapterRegistry,
-              syncManager: widget.syncManager,
-            ),
-          ),
-        ],
-      ),
-      body: StreamBuilder<List<Task>>(
-        stream: widget.repository.watchAll(),
-        initialData: widget.repository.getAll(),
-        builder: (context, snapshot) {
-          final tasks = snapshot.data ?? [];
-          return ListView.builder(
-            itemCount: tasks.length,
-            itemBuilder: (context, i) => CheckboxListTile(
-              value: tasks[i].completed,
-              title: Text(tasks[i].title),
-              onChanged: (val) => widget.repository.save(
-                tasks[i].copyWith(completed: val ?? false),
-              ),
-              secondary: IconButton(
-                icon: const Icon(Icons.delete),
-                onPressed: () => widget.repository.delete(tasks[i].id),
-              ),
-            ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.add),
-        onPressed: () => _showAddDialog(),
-      ),
-    );
-  }
-
-  void _showAddDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('New Task'),
-        content: TextField(controller: _controller),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              final title = _controller.text.trim();
-              if (title.isNotEmpty) {
-                widget.repository.save(
-                  Task(
-                    id: 'task_${DateTime.now().millisecondsSinceEpoch}',
-                    title: title,
-                  ),
-                );
-              }
-              _controller.clear();
-              Navigator.pop(context);
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-}
-
+onChanged: (val) => widget.repository.save(
+  tasks[i].copyWith(completed: val ?? false),
+),
 ```
 
-UI only knows about `TaskRepository` - no sync awareness needed. Edit tasks, the repository handles the rest.
+Deletions work the same way: `repository.delete(taskId)` - both trigger automatic sync.
+
+**Sync control center** - Locorda provides a ready-to-use widget for remote management:
+
+<?code-excerpt "lib/main.dart (status-widget)"?>
+```dart
+child: MultiBackendStatusWidget(
+  registry: widget.uiAdapterRegistry,
+  syncManager: widget.syncManager,
+),
+```
+
+This widget gives users full control over sync:
+- **Select remotes** - Choose from the remotes you configured in `initLocorda`
+- **Connect** - Triggers authentication flows automatically (e.g., OAuth for Google Drive, WebID for Solid Pods)
+- **Manual sync** - Force sync on demand
+- **Monitor status** - See connection state and ongoing sync operations
+
+**Customization**: This widget is provided for quick start and convenience. You can build your own sync UI in your app's style using the same `SyncManager` and `UiAdapterRegistry` APIs.
+
+The complete UI code is standard Flutter - see `lib/main.dart` for the full implementation.
 
 ## Running this example
 
-From the main example directory:
+This example comes **preconfigured for macOS**. To run on other platforms:
 
 ```bash
 # Generate sync code
 dart run build_runner build
 
-# Run the app
+# Run on macOS (default)
 flutter run
+
+# Or enable and run on other platforms:
+flutter create --platforms=windows,linux,android,ios .
+flutter run -d <your-device>
 ```
+
+**Note about platform compatibility:**  
+The Local Directory remote (`locorda_dir`) used in this example works best on desktop platforms (macOS, Linux, Windows). For mobile platforms (iOS, Android) or web, consider using Solid Pods or Google Drive instead, which work across all platforms.
+
+## Understanding conflicts
+
+What happens when two devices edit the same task while offline? Locorda automatically resolves conflicts using **Hybrid Logical Clocks** (HLC) - a system that combines:
+
+- **Causality tracking**: Knows which edit came "after" another, even across devices
+- **Timestamp-based tie-breaking**: When edits are truly concurrent (neither came "after" the other), the most recent one wins
+
+**Key behaviors:**
+
+- **Same field, different values**: Most recent edit wins
+- **Different fields changed**: Both changes are kept (conflicts are per-field, not per-object)
+- **Deletion vs. edit**: Deletion wins (deleted items don't "zombie back")
+
+**The bottom line**: You don't need to think about conflicts during development. The framework handles them automatically with sensible defaults. For advanced use cases, you can customize merge strategies per field using annotations.
 
 ## Limitations (by design for minimal example)
 
 - ❌ No cursor persistence (full re-sync on restart)
-- ❌ InMemoryStorage (not persistent)
-- ❌ Local Dir remote (testing only)
-- ❌ No error handling
+- ❌ Local Dir remote (testing only - use Solid Pods or Google Drive in production)
+- ❌ Minimal error handling
 
 See the full Personal Notes App for production patterns.
+
+## Generated files (after running build_runner)
+
+The `dart run build_runner build` command generates these files:
+
+- `init_locorda.g.dart` - Initialization code with all your models configured
+- `init_rdf_mapper.g.dart` - Object ↔ RDF conversion logic
+- `locorda_config.g.dart` - Sync configuration
+- `mapping_bootstrap.g.dart` - Merge rules for conflict resolution
+- `task.rdf_mapper.g.dart` - Task-specific serialization
+- `worker_generated.g.dart` - Background worker setup
+- `worker_generated.dart.js` - Web worker JavaScript (for web platform)
+- `vocab.g.ttl` - Vocabulary definition (for RDF nerds)
+
+**Should I commit them?**  
+Yes! Generated files should be committed to version control. This ensures:
+- Faster builds (no need to regenerate on CI/clean checkouts)
+- Reproducible builds across team members
+- Clear diffs showing how code generation changes
+
+**When to regenerate:**
+- After changing annotations on your model classes
+- After updating Locorda packages
+- If build errors mention generated files
+
+**What if generation fails?**
+- Run `dart run build_runner clean` first, then build again
+- Check for typos in annotations
+- Make sure all dependencies are up to date (`dart pub get`)
 
 ## Next steps
 
@@ -364,19 +392,40 @@ See the full Personal Notes App for production patterns.
 
 ---
 
-## Under the hood
+## Under the hood: Why RDF?
 
-Locorda uses two technologies to power sync:
+Locorda stores your data as **RDF (Resource Description Framework)** instead of JSON. What does this mean for you?
 
-- **RDF (Resource Description Framework)**: Your objects are stored as semantic web data, enabling:
-  - Interoperability between different apps
-  - Flexible storage backends (Solid Pods, Google Drive, etc.)
-  - Standard vocabularies for common data types
+### Interoperability
 
-- **CRDTs (Conflict-free Replicated Data Types)**: Automatic conflict resolution using:
-  - LWW (Last Writer Wins) for simple fields like `title` and `completed`
-  - Timestamp-based merge strategies
-  - Guaranteed convergence across devices
+Your task data can be read and written by other apps, not just yours:
 
-You don't need to understand these to use Locorda, but you can customize merge strategies and vocabularies for advanced use cases.
+```dart
+// Your task app writes:
+Task(id: 'task-1', title: 'Buy milk');
+
+// Another calendar app can read the same data:
+Event(id: 'task-1', name: 'Buy milk'); // same underlying data!
+```
+
+Locorda makes it easy to use standard RDF vocabularies (like schema.org) in your annotations. When you do, different apps can understand each other's data. No API needed!
+
+### Choose your storage backend
+
+- **Solid Pods** - User-owned decentralized storage
+- **Google Drive** - Familiar, free storage
+- **Local Directory** - For development/testing
+- **More coming** - Dropbox, OneDrive, etc.
+
+Your app code stays the same regardless of where data is stored. Users choose their preferred backend.
+
+### Future-proof data
+
+RDF is a W3C web standard that's been stable for 20+ years. Your data will remain readable long after your app is gone. No vendor lock-in, no proprietary formats.
+
+**Do I need to learn RDF?**  
+No! The code generator automatically creates RDF vocabularies from your Dart classes (see `vocab.g.ttl`). You work with normal Dart objects - RDF serialization happens invisibly in the background.
+
+**Want cross-app interoperability?**  
+Use standard vocabularies (like schema.org) in your annotations. The generated vocabularies can be deployed at their IRI for discoverability, but this is optional - your app works fine without it.
 
