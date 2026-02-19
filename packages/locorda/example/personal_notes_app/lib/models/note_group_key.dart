@@ -3,13 +3,13 @@ import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:locorda_annotations/locorda_annotations.dart';
 import 'note.dart';
 
-@LcrdGroupKey(
+@GroupKey(
   Note,
   groupingProperties: [
-    LcrdGroupingProperty(
+    GroupingProperty(
       SchemaNoteDigitalDocument.dateCreated,
       transforms: [
-        LcrdRegexTransform(
+        RegexTransform(
           r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*',
           r'${1}-${2}',
         ),

@@ -12,13 +12,13 @@ import 'package:locorda_objects/locorda_objects.dart';
 import 'package:minimal_task_sync/task.dart' as task;
 
 LocordaConfig generateLocordaConfig() => LocordaConfig(
-  resources: [
-    ResourceConfig(
-      type: task.Task,
-      crdtMapping: Uri.parse(
-        'https://locorda.dev/example/minimal/mappings/task-v1#',
-      ),
-      indices: [FullIndex()],
-    ),
-  ],
-);
+      resources: [
+        ResourceConfig(
+          type: task.Task,
+          crdtMapping: Uri.parse(
+            'https://locorda.dev/example/minimal/mappings/task-v1#',
+          ),
+          indices: [FullIndexConfig()],
+        ),
+      ],
+    );

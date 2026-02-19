@@ -37,7 +37,7 @@ dependencies:
   locorda_flutter_core: any
   
   # RDF dependencies
-  locorda_rdf_core: ^0.11.7
+  locorda_rdf_core: ^0.11.8
 
   # Google Drive API
   googleapis: ^16.0.0

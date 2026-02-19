@@ -3,13 +3,13 @@ import 'package:locorda_core/locorda_core.dart';
 import 'locorda_config.dart';
 import 'locorda_config_util.dart';
 
-IndexItemData? _toIndexItemGraphConfig(IndexItem? item) {
+IndexItemData? _toIndexItemGraphConfig(IndexItemConfig? item) {
   if (item == null) return null;
   return IndexItemData(item.properties);
 }
 
 FullIndexData _toFullIndexGraphConfig(
-        ResourceConfig parentConfig, FullIndex index) =>
+        ResourceConfig parentConfig, FullIndexConfig index) =>
     FullIndexData(
       localName: getIndexName(parentConfig, index),
       item: _toIndexItemGraphConfig(index.item),
@@ -17,7 +17,7 @@ FullIndexData _toFullIndexGraphConfig(
     );
 
 GroupIndexData _toGroupIndexGraphConfig(
-        ResourceConfig parentConfig, GroupIndex index) =>
+        ResourceConfig parentConfig, GroupIndexConfig index) =>
     GroupIndexData(
       localName: getIndexName(parentConfig, index),
       item: _toIndexItemGraphConfig(index.item),
@@ -25,10 +25,10 @@ GroupIndexData _toGroupIndexGraphConfig(
     );
 
 CrdtIndexData _toCrdtIndexGraphConfig(
-    ResourceConfig parentConfig, CrdtIndex index) {
-  if (index is FullIndex) {
+    ResourceConfig parentConfig, CrdtIndexConfig index) {
+  if (index is FullIndexConfig) {
     return _toFullIndexGraphConfig(parentConfig, index);
-  } else if (index is GroupIndex) {
+  } else if (index is GroupIndexConfig) {
     return _toGroupIndexGraphConfig(parentConfig, index);
   } else {
     throw ArgumentError('Unknown index type: ${index.runtimeType}');

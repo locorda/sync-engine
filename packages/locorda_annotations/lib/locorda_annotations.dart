@@ -9,16 +9,16 @@ export 'src/crdt_annotations.dart'
     show CrdtImmutable, CrdtLwwRegister, CrdtOrSet, McIdentifying;
 export 'src/resource.dart'
     show
-        LcrdCrdt,
-        LcrdMappings,
-        LcrdRootResource,
-        LcrdSubResource,
-        LcrdGroupKey,
-        LcrdIndexItem,
-        LcrdFullIndex,
-        LcrdGroupingProperty,
-        LcrdRegexTransform,
+        MergeContract,
+        MergeContracts,
+        RootResource,
+        SubResource,
+        GroupKey,
+        IndexItem,
+        FullIndex,
+        GroupingProperty,
+        RegexTransform,
         RootIriStrategy,
         SubIriStrategy,
         IndexItemIriStrategy;
-export 'src/resource_ref.dart' show LcrdRootResourceRef, resourceRefFactoryKey;
+export 'src/resource_ref.dart' show RootResourceRef, resourceRefFactoryKey;

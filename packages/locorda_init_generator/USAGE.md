@@ -182,7 +182,7 @@ If you don't use the RDF mapper generator, the generated function will require `
 
 ### CRDT Mapping IRI Validation
 
-CRDT mapping IRIs provided via `@LcrdRootResource(crdt: LcrdCrdt(...))` are validated during CRDT mapping generation:
+CRDT mapping IRIs provided via `@RootResource(crdt: MergeContract(...))` are validated during CRDT mapping generation:
 
 - The base IRI must be absolute.
 - A non-empty fragment (e.g. `#v1`) is rejected.

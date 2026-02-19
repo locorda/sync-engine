@@ -71,7 +71,7 @@ class CrdtMappingBuilder implements Builder {
 
     for (final classElement in library.classes) {
       final rootAnnotation = _findAnnotationByType(
-          classElement.metadata.annotations, 'LcrdRootResource');
+          classElement.metadata.annotations, 'RootResource');
       if (rootAnnotation == null) {
         continue;
       }
@@ -79,7 +79,7 @@ class CrdtMappingBuilder implements Builder {
       final crdtObject = getField(rootAnnotation, 'crdt');
       if (crdtObject == null || crdtObject.isNull) {
         log.warning(
-            'Skipping ${classElement.name}: @LcrdRootResource.crdt is missing.');
+            'Skipping ${classElement.name}: @RootResource.crdt is missing.');
         continue;
       }
 
@@ -321,13 +321,13 @@ class CrdtMappingBuilder implements Builder {
 
   IriTerm? _extractClassIri(ClassElement classElement) {
     final root = _findAnnotationByType(
-        classElement.metadata.annotations, 'LcrdRootResource');
+        classElement.metadata.annotations, 'RootResource');
     if (root != null) {
       return _readIri(getField(root, 'classIri'));
     }
 
-    final sub = _findAnnotationByType(
-        classElement.metadata.annotations, 'LcrdSubResource');
+    final sub =
+        _findAnnotationByType(classElement.metadata.annotations, 'SubResource');
     if (sub != null) {
       return _readIri(getField(sub, 'classIri'));
     }
@@ -391,13 +391,13 @@ class CrdtMappingBuilder implements Builder {
 
   bool _isTraversableResource(ClassElement classElement) {
     return _findAnnotationByType(
-                classElement.metadata.annotations, 'LcrdSubResource') !=
+                classElement.metadata.annotations, 'SubResource') !=
             null ||
         _findAnnotationByType(
                 classElement.metadata.annotations, 'RdfLocalResource') !=
             null ||
         _findAnnotationByType(
-                classElement.metadata.annotations, 'LcrdRootResource') !=
+                classElement.metadata.annotations, 'RootResource') !=
             null;
   }
 

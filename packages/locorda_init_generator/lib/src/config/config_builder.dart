@@ -15,7 +15,7 @@ final _log = Logger('ConfigBuilder');
 /// Builder that generates lib/locorda_config.g.dart
 ///
 /// Scans all .dart files in the consumer package's lib/ directory for
-/// @LcrdRootResource, @LcrdGroupKey, and @LcrdIndexItem annotations,
+/// @RootResource, @GroupKey, and @IndexItem annotations,
 /// then generates a LocordaConfig factory function.
 class ConfigBuilder implements Builder {
   final BuilderOptions options;

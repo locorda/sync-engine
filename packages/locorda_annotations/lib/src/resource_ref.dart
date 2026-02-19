@@ -5,7 +5,7 @@ import 'package:locorda_rdf_mapper_annotations/annotations.dart';
 
 const resourceRefFactoryKey = r'$resourceRefFactory';
 
-class LcrdRootResourceRef extends IriMapping {
-  const LcrdRootResourceRef(Type cls)
+class RootResourceRef extends IriMapping {
+  const RootResourceRef(Type cls)
     : super.namedFactory(resourceRefFactoryKey, cls);
 }

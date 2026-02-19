@@ -17,16 +17,16 @@ void main() {
           equals('https://example.com/document.ttl'));
       expect(config.indices, isNotEmpty);
       expect(config.indices.length, equals(1));
-      expect(config.indices.first, isA<FullIndex>());
+      expect(config.indices.first, isA<FullIndexConfig>());
     });
 
     test('should create ResourceConfig with indices', () {
       final indices = [
-        FullIndex(localName: 'documents'),
-        GroupIndex(
+        FullIndexConfig(localName: 'documents'),
+        GroupIndexConfig(
           TestDocumentGroupKey,
           localName: 'documents-by-category',
-          item: IndexItem(TestDocument, {}),
+          item: IndexItemConfig(TestDocument, {}),
           groupingProperties: [
             GroupingProperty(
               const IriTerm('https://schema.org/category'),
@@ -43,8 +43,8 @@ void main() {
       );
 
       expect(config.indices, hasLength(2));
-      expect(config.indices[0], isA<FullIndex>());
-      expect(config.indices[1], isA<GroupIndex>());
+      expect(config.indices[0], isA<FullIndexConfig>());
+      expect(config.indices[1], isA<GroupIndexConfig>());
     });
 
     test('should create ResourceConfig without default path', () {
@@ -78,8 +78,8 @@ void main() {
     });
 
     test('should get all indices across all resources', () {
-      final docIndex = FullIndex(localName: 'documents');
-      final categoryIndex = FullIndex(localName: 'categories');
+      final docIndex = FullIndexConfig(localName: 'documents');
+      final categoryIndex = FullIndexConfig(localName: 'categories');
 
       final config = LocordaConfig(
         resources: [

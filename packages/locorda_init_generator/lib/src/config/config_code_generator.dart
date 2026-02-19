@@ -94,13 +94,13 @@ class ConfigCodeGenerator {
         properties: const [],
       ),
     );
-    return locordaObjects('FullIndex').newInstance(
+    return locordaObjects('FullIndexConfig').newInstance(
       {
         if (resource.fullIndex.localName != 'default')
           "localName": resource.fullIndex.localName,
         if (fullIndexItem.className != null &&
             fullIndexItem.properties.isNotEmpty)
-          'item': locordaObjects('IndexItem').newInstance([
+          'item': locordaObjects('IndexItemConfig').newInstance([
             fullIndexItem.className!,
             fullIndexItem.properties.map((prop) => prop.code).toSet(),
           ]),
@@ -123,7 +123,7 @@ class ConfigCodeGenerator {
       ),
     );
 
-    return locordaObjects('GroupIndex').newInstance([
+    return locordaObjects('GroupIndexConfig').newInstance([
       groupKey.className
     ], {
       if (groupKey.localName != null && groupKey.localName != 'default')
@@ -144,7 +144,7 @@ class ConfigCodeGenerator {
         }).toList(),
       if (groupIndexItem.className != null &&
           groupIndexItem.properties.isNotEmpty)
-        'item': locordaObjects('IndexItem').newInstance([
+        'item': locordaObjects('IndexItemConfig').newInstance([
           groupIndexItem.className!,
           groupIndexItem.properties.map((prop) => prop.code).toSet(),
         ]),

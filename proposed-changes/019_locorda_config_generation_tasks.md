@@ -21,20 +21,20 @@
 ## Task 1: Add New Annotation Classes to `locorda_annotations`
 
 ### Objective
-Add `LcrdFullIndex`, `LcrdGroupingProperty`, `LcrdRegexTransform` as new classes, and enhance existing `LcrdRootResource`, `LcrdGroupKey`, and `LcrdIndexItem` annotations.
+Add `FullIndex`, `GroupingProperty`, `RegexTransform` as new classes, and enhance existing `RootResource`, `GroupKey`, and `IndexItem` annotations.
 
 ### Files to Modify
 
 **`packages/locorda_annotations/lib/src/resource.dart`**
 
-#### 1a. Add `LcrdFullIndex` class (new, add above `LcrdRootResource`)
+#### 1a. Add `FullIndex` class (new, add above `RootResource`)
 
 ```dart
 /// Configuration for the default FullIndex of a root resource.
 ///
 /// Controls whether a FullIndex is generated and its parameters.
-/// Used as parameter in [LcrdRootResource.fullIndex].
-class LcrdFullIndex {
+/// Used as parameter in [RootResource.fullIndex].
+class FullIndex {
   /// Whether FullIndex generation is enabled.
   final bool isEnabled;
 
@@ -45,14 +45,14 @@ class LcrdFullIndex {
   final ItemFetchPolicy policy;
 
   /// Creates a FullIndex configuration with defaults.
-  const LcrdFullIndex({
+  const FullIndex({
     this.localName = 'default',
     this.policy = ItemFetchPolicy.prefetch,
   }) : isEnabled = true;
 
   /// Disables FullIndex generation for this resource.
   /// Use when a resource only has GroupIndex indices.
-  const LcrdFullIndex.disabled()
+  const FullIndex.disabled()
       : isEnabled = false,
         localName = '',
         policy = ItemFetchPolicy.prefetch;
@@ -61,46 +61,46 @@ class LcrdFullIndex {
 
 Note: `ItemFetchPolicy` is imported from `locorda_core` which is already a dependency. The sealed class `ItemFetchPolicy` has static const members `prefetch` and `onRequest`, so use those as default values. Verify the import path works via `package:locorda_core/locorda_core.dart`.
 
-#### 1b. Add `LcrdGroupingProperty` and `LcrdRegexTransform` (new, add before or after `LcrdGroupKey`)
+#### 1b. Add `GroupingProperty` and `RegexTransform` (new, add before or after `GroupKey`)
 
 ```dart
 /// Defines a regex transformation applied to a grouping property value.
 ///
-/// Used within [LcrdGroupingProperty] to transform raw RDF values
+/// Used within [GroupingProperty] to transform raw RDF values
 /// (e.g., extracting year-month from a full date string).
-class LcrdRegexTransform {
+class RegexTransform {
   final String pattern;
   final String replacement;
 
-  const LcrdRegexTransform(this.pattern, this.replacement);
+  const RegexTransform(this.pattern, this.replacement);
 }
 
 /// Defines a property used for grouping in a GroupIndex, with optional transforms.
 ///
 /// The [property] IRI identifies which RDF predicate to group by.
 /// Optional [transforms] apply regex transformations before grouping.
-class LcrdGroupingProperty {
+class GroupingProperty {
   final IriTerm property;
-  final List<LcrdRegexTransform> transforms;
+  final List<RegexTransform> transforms;
 
-  const LcrdGroupingProperty(this.property, {this.transforms = const []});
+  const GroupingProperty(this.property, {this.transforms = const []});
 }
 ```
 
 Note: `IriTerm` is already available via `package:locorda_rdf_core/core.dart` which is transitively available through existing imports.
 
-#### 1c. Enhance `LcrdRootResource` (modify existing class)
+#### 1c. Enhance `RootResource` (modify existing class)
 
 Current constructor:
 ```dart
-const LcrdRootResource(IriTerm? classIri,
+const RootResource(IriTerm? classIri,
     [RootIriStrategy iriStrategy = const RootIriStrategy()])
     : super(classIri, iriStrategy);
 ```
 
 New constructor — add `crdtMapping`, `generateCrdtMapping`, and `fullIndex` fields:
 ```dart
-class LcrdRootResource extends RdfGlobalResource {
+class RootResource extends RdfGlobalResource {
   /// Full absolute IRI identifying the CRDT mapping document.
   ///
   /// This is a static, app-owned IRI — fully known at compile time,
@@ -120,28 +120,28 @@ class LcrdRootResource extends RdfGlobalResource {
 
   /// Configuration for the default FullIndex.
   ///
-  /// Defaults to `LcrdFullIndex()` (enabled, localName='default', prefetch).
-  /// Use `LcrdFullIndex.disabled()` when only GroupIndex indices apply.
-  final LcrdFullIndex fullIndex;
+  /// Defaults to `FullIndex()` (enabled, localName='default', prefetch).
+  /// Use `FullIndex.disabled()` when only GroupIndex indices apply.
+  final FullIndex fullIndex;
 
-  const LcrdRootResource(
+  const RootResource(
     IriTerm? classIri,
     this.crdtMapping, {
     RootIriStrategy iriStrategy = const RootIriStrategy(),
     this.generateCrdtMapping = true,
-    this.fullIndex = const LcrdFullIndex(),
+    this.fullIndex = const FullIndex(),
   }) : super(classIri, iriStrategy);
 }
 ```
 
 **BREAKING CHANGE**: The constructor signature changes from positional `[RootIriStrategy]` to named `{RootIriStrategy iriStrategy}`, and adds required positional `crdtMapping`. This is intentional — all call sites must be updated (see Task 5).
 
-#### 1d. Enhance `LcrdGroupKey` (modify existing class)
+#### 1d. Enhance `GroupKey` (modify existing class)
 
 Current:
 ```dart
-class LcrdGroupKey extends RdfLocalResource {
-  const LcrdGroupKey();
+class GroupKey extends RdfLocalResource {
+  const GroupKey();
 }
 ```
 
@@ -151,7 +151,7 @@ New:
 ///
 /// Links a group key to its parent resource type and configures
 /// the GroupIndex with an optional local name and grouping properties.
-class LcrdGroupKey extends RdfLocalResource {
+class GroupKey extends RdfLocalResource {
   /// The resource type this group index is for.
   final Type resourceType;
 
@@ -159,9 +159,9 @@ class LcrdGroupKey extends RdfLocalResource {
   final String? localName;
 
   /// Grouping property definitions with optional transforms.
-  final List<LcrdGroupingProperty> groupingProperties;
+  final List<GroupingProperty> groupingProperties;
 
-  const LcrdGroupKey(
+  const GroupKey(
     this.resourceType, {
     this.localName,
     this.groupingProperties = const [],
@@ -169,12 +169,12 @@ class LcrdGroupKey extends RdfLocalResource {
 }
 ```
 
-#### 1e. Enhance `LcrdIndexItem` (modify existing class)
+#### 1e. Enhance `IndexItem` (modify existing class)
 
 Current:
 ```dart
-class LcrdIndexItem extends RdfGlobalResource {
-  const LcrdIndexItem(IndexItemIriStrategy iriStrategy)
+class IndexItem extends RdfGlobalResource {
+  const IndexItem(IndexItemIriStrategy iriStrategy)
       : super.deserializeOnly(null, iri: iriStrategy);
 }
 ```
@@ -183,9 +183,9 @@ New — add `groupKeyType` field and named constructors:
 ```dart
 /// Annotation for index item (entry) classes.
 ///
-/// Use [LcrdIndexItem.fullIndex] for FullIndex entries and
-/// [LcrdIndexItem.groupIndex] for GroupIndex entries.
-class LcrdIndexItem extends RdfGlobalResource {
+/// Use [IndexItem.fullIndex] for FullIndex entries and
+/// [IndexItem.groupIndex] for GroupIndex entries.
+class IndexItem extends RdfGlobalResource {
   /// The GroupKey type this item belongs to, or `null` for FullIndex items.
   final Type? groupKeyType;
 
@@ -194,18 +194,18 @@ class LcrdIndexItem extends RdfGlobalResource {
   /// The [iriStrategy] links back to the root resource type.
   /// Due to Dart const-constructor limitations, `IndexItemIriStrategy`
   /// must be passed as a parameter rather than constructed inline.
-  const LcrdIndexItem.fullIndex(IndexItemIriStrategy iriStrategy)
+  const IndexItem.fullIndex(IndexItemIriStrategy iriStrategy)
       : groupKeyType = null,
         super.deserializeOnly(null, iri: iriStrategy);
 
   /// Creates a GroupIndex item entry linked to a specific [groupKeyType].
-  const LcrdIndexItem.groupIndex(
+  const IndexItem.groupIndex(
       this.groupKeyType, IndexItemIriStrategy iriStrategy)
       : super.deserializeOnly(null, iri: iriStrategy);
 }
 ```
 
-**Note**: The old single constructor `LcrdIndexItem(iriStrategy)` is removed. Call sites must migrate to `.fullIndex()` or `.groupIndex()` (see Task 5).
+**Note**: The old single constructor `IndexItem(iriStrategy)` is removed. Call sites must migrate to `.fullIndex()` or `.groupIndex()` (see Task 5).
 
 ### File to Modify: Exports
 
@@ -216,13 +216,13 @@ Add the new classes to the `show` list in the `resource.dart` export:
 ```dart
 export 'src/resource.dart'
     show
-        LcrdRootResource,
-        LcrdSubResource,
-        LcrdGroupKey,
-        LcrdIndexItem,
-        LcrdFullIndex,           // NEW
-        LcrdGroupingProperty,     // NEW
-        LcrdRegexTransform,       // NEW
+        RootResource,
+        SubResource,
+        GroupKey,
+        IndexItem,
+        FullIndex,           // NEW
+        GroupingProperty,     // NEW
+        RegexTransform,       // NEW
         RootIriStrategy,
         SubIriStrategy,
         IndexItemIriStrategy;
@@ -230,12 +230,12 @@ export 'src/resource.dart'
 
 ### Acceptance Criteria
 - [ ] All new classes are `const`-constructable
-- [ ] `LcrdFullIndex.disabled()` sets `isEnabled = false` 
-- [ ] `LcrdRootResource` has `crdtMapping` as required positional parameter (after `classIri`)
-- [ ] `LcrdRootResource.iriStrategy` is now a named parameter with default
-- [ ] `LcrdGroupKey` takes `Type resourceType` as first positional parameter
-- [ ] `LcrdIndexItem` has two named constructors: `.fullIndex()` and `.groupIndex()`
-- [ ] No old single-constructor `LcrdIndexItem(...)` exists
+- [ ] `FullIndex.disabled()` sets `isEnabled = false` 
+- [ ] `RootResource` has `crdtMapping` as required positional parameter (after `classIri`)
+- [ ] `RootResource.iriStrategy` is now a named parameter with default
+- [ ] `GroupKey` takes `Type resourceType` as first positional parameter
+- [ ] `IndexItem` has two named constructors: `.fullIndex()` and `.groupIndex()`
+- [ ] No old single-constructor `IndexItem(...)` exists
 - [ ] `dart analyze packages/locorda_annotations` passes (after updating call sites in Task 5)
 - [ ] All new classes are exported from `locorda_annotations.dart`
 
@@ -244,7 +244,7 @@ export 'src/resource.dart'
 ## Task 2: Create the Config Generator Builder
 
 ### Objective
-Create a new build_runner builder that scans `.dart` files for `@LcrdRootResource`, `@LcrdGroupKey`, and `@LcrdIndexItem` annotations, and generates a `locorda_config.g.dart` file.
+Create a new build_runner builder that scans `.dart` files for `@RootResource`, `@GroupKey`, and `@IndexItem` annotations, and generates a `locorda_config.g.dart` file.
 
 ### Architecture Overview
 
@@ -259,7 +259,7 @@ The config generator uses `package:source_gen` with a `SharedPartBuilder` or, mo
 Data classes to hold extracted annotation information:
 
 ```dart
-/// Immutable data extracted from @LcrdRootResource annotations.
+/// Immutable data extracted from @RootResource annotations.
 class RootResourceData {
   final String className;
   final String? classIri;
@@ -293,7 +293,7 @@ class FullIndexData {
   });
 }
 
-/// Immutable data extracted from @LcrdGroupKey annotations.
+/// Immutable data extracted from @GroupKey annotations.
 class GroupKeyData {
   final String className;
   final String resourceTypeName;
@@ -332,7 +332,7 @@ class RegexTransformData {
   });
 }
 
-/// Immutable data extracted from @LcrdIndexItem annotations.
+/// Immutable data extracted from @IndexItem annotations.
 class IndexItemData {
   final String className;
   /// Resource type name from IndexItemIriStrategy
@@ -402,8 +402,8 @@ class ScanResult {
 ```
 
 **Implementation Notes:**
-- For `@LcrdRootResource`, `@LcrdGroupKey`, `@LcrdIndexItem`: Use `computeConstantValue()` on `ClassElement.metadata` and check `annotation.type?.element?.name` for a name match. These are framework annotations that users don't subclass, so simple name matching on the resolved type suffices.
-- For `@RdfProperty(iri)` on fields of IndexItem classes: Use `computeConstantValue()` + **type hierarchy walking** (see Task 3 for details). This detects both `@RdfProperty` and custom subclasses like `@NoteCategoryProperty()`.
+- For `@RootResource`, `@GroupKey`, `@IndexItem`: Use `computeConstantValue()` on `ClassElement.metadata` and check `annotation.type?.element?.name` for a name match. These are framework annotations that users don't subclass, so simple name matching on the resolved type suffices.
+- For `@RdfProperty(iri)` on fields of IndexItemConfig classes: Use `computeConstantValue()` + **type hierarchy walking** (see Task 3 for details). This detects both `@RdfProperty` and custom subclasses like `@NoteCategoryProperty()`.
 - For **source expression extraction** (crdtMapping, property IRIs): Use the parsed AST `CompilationUnit`. Locate the annotation's `Annotation` AST node via the class name + annotation name, then call `.toSource()` on the relevant argument expressions.
 - The `sourceImport` for each data item should be the `package:` URI of the file it was found in, so the generated code can import it.
 
@@ -483,7 +483,7 @@ The builder itself:
 /// Builder that generates lib/locorda_config.g.dart
 ///
 /// Scans all .dart files in the consumer package's lib/ directory for
-/// @LcrdRootResource, @LcrdGroupKey, and @LcrdIndexItem annotations,
+/// @RootResource, @GroupKey, and @IndexItem annotations,
 /// then generates a LocordaConfig factory function.
 class ConfigBuilder implements Builder {
   final BuilderOptions options;
@@ -595,15 +595,15 @@ This mirrors the approach used by `locorda_rdf_mapper_generator` (see `processor
 **Detecting Lcrd\* annotations (resolved):**
 
 For each `ClassElement` in the resolved `LibraryElement`, iterate `element.metadata` (list of `ElementAnnotation`). Use `computeConstantValue()` to get the `DartObject`, then check `annotation.type?.element?.name`:
-- `'LcrdRootResource'` — extract classIri, crdtMapping, generateCrdtMapping, fullIndex
-- `'LcrdGroupKey'` — extract resourceType, localName, groupingProperties
-- `'LcrdIndexItem'` — detect fullIndex vs groupIndex constructor via DartObject fields
+- `'RootResource'` — extract classIri, crdtMapping, generateCrdtMapping, fullIndex
+- `'GroupKey'` — extract resourceType, localName, groupingProperties
+- `'IndexItem'` — detect fullIndex vs groupIndex constructor via DartObject fields
 
 These are framework annotations that users don't subclass, so simple name matching on the resolved type suffices.
 
-**Detecting `@RdfProperty` and subclasses on IndexItem fields (resolved + hierarchy walk):**
+**Detecting `@RdfProperty` and subclasses on IndexItemConfig fields (resolved + hierarchy walk):**
 
-For fields of `@LcrdIndexItem`-annotated classes, detect `@RdfProperty` annotations including custom subclasses (e.g., `@NoteCategoryProperty()`) using **type hierarchy walking**. This is the same pattern used by `locorda_rdf_mapper_generator/processor_utils.dart`:
+For fields of `@IndexItem`-annotated classes, detect `@RdfProperty` annotations including custom subclasses (e.g., `@NoteCategoryProperty()`) using **type hierarchy walking**. This is the same pattern used by `locorda_rdf_mapper_generator/processor_utils.dart`:
 
 ```dart
 /// Checks if the given type or any of its supertypes match the target annotation name.
@@ -626,7 +626,7 @@ bool _checkTypeHierarchy(DartType type, String targetAnnotationName, Set<String>
 }
 ```
 
-For each `FieldElement` in an IndexItem class:
+For each `FieldElement` in an IndexItemConfig class:
 1. Iterate `field.metadata` (list of `ElementAnnotation`)
 2. Call `elementAnnotation.computeConstantValue()` to get the `DartObject`
 3. Check `_matchesAnnotationInHierarchy(dartObject.type, 'RdfProperty')`
@@ -638,40 +638,40 @@ This automatically supports `@RdfProperty(iri)`, `@NoteCategoryProperty()`, and 
 
 For values that must be preserved as raw Dart source in generated code, use the parsed AST `CompilationUnit`:
 
-- **`crdtMapping`**: Locate the `@LcrdRootResource` annotation's AST node by matching the class name. Access `annotation.arguments?.arguments[1]` (second positional arg) and call `.toSource()`. This preserves const interpolation like `'$appBaseUrl/mappings/note-v1.ttl'`.
+- **`crdtMapping`**: Locate the `@RootResource` annotation's AST node by matching the class name. Access `annotation.arguments?.arguments[1]` (second positional arg) and call `.toSource()`. This preserves const interpolation like `'$appBaseUrl/mappings/note-v1.ttl'`.
 - **Property IRI references**: Locate the field's `@RdfProperty(...)` (or subclass) AST annotation. Access `annotation.arguments?.arguments[0]` (first positional arg) and call `.toSource()`. This preserves references like `SchemaNoteDigitalDocument.name`.
 - **`classIri`**: Same approach — `annotation.arguments?.arguments[0].toSource()`.
 
 **Cross-referencing resolved ↔ AST**: Match by class name (`ClassElement.name` == `ClassDeclaration.name.lexeme`) to find the corresponding AST node for a resolved element.
 
-**Extracting `@LcrdRootResource` parameters (resolved):**
+**Extracting `@RootResource` parameters (resolved):**
 - `classIri` — via `dartObject.getField('classIri')` (resolved value for validation) + AST `.toSource()` (for generated code)
 - `crdtMapping` — AST `.toSource()` only (preserves const interpolation)
 - `generateCrdtMapping` — `dartObject.getField('generateCrdtMapping')?.toBoolValue()`
 - `fullIndex` — `dartObject.getField('fullIndex')`: check `getField('isEnabled')?.toBoolValue()`, `getField('localName')?.toStringValue()`, `getField('policy')` enum value
 
-**Extracting `@LcrdGroupKey` parameters (resolved):**
+**Extracting `@GroupKey` parameters (resolved):**
 - `resourceType` — `dartObject.getField('resourceType')?.toTypeValue()?.element?.name`
 - `localName` — `dartObject.getField('localName')?.toStringValue()`
-- `groupingProperties` — iterate list field, extract nested `LcrdGroupingProperty` data
-- For each `LcrdGroupingProperty`: extract `property` IRI via `getField('property')` + AST `.toSource()`, extract `transforms` list
+- `groupingProperties` — iterate list field, extract nested `GroupingProperty` data
+- For each `GroupingProperty`: extract `property` IRI via `getField('property')` + AST `.toSource()`, extract `transforms` list
 
-**Extracting `@LcrdIndexItem` parameters (resolved):**
+**Extracting `@IndexItem` parameters (resolved):**
 - Detect `.fullIndex` vs `.groupIndex` via `dartObject.getField('groupKeyType')`: null means fullIndex
 - `resourceType` — extracted from the `IndexItemIriStrategy` parameter (via resolved field or AST)
 - `groupKeyType` — `dartObject.getField('groupKeyType')?.toTypeValue()?.element?.name`
 
-**Empty IndexItem handling:**
+**Empty IndexItemConfig handling:**
 
-If an `@LcrdIndexItem`-annotated class has no fields with `@RdfProperty` (or subclass), emit a **build warning** (via `log.warning(...)`) and generate `IndexItem(Type, {})` with an empty property set. This is valid but pointless — the warning alerts the developer.
+If an `@IndexItem`-annotated class has no fields with `@RdfProperty` (or subclass), emit a **build warning** (via `log.warning(...)`) and generate `IndexItemConfig(Type, {})` with an empty property set. This is valid but pointless — the warning alerts the developer.
 
 ### Acceptance Criteria
-- [ ] Correctly parses `@LcrdRootResource` with all parameter variants
-- [ ] Correctly parses `@LcrdGroupKey` with `groupingProperties` including nested `LcrdRegexTransform`
-- [ ] Correctly parses both `@LcrdIndexItem.fullIndex()` and `.groupIndex()`
+- [ ] Correctly parses `@RootResource` with all parameter variants
+- [ ] Correctly parses `@GroupKey` with `groupingProperties` including nested `RegexTransform`
+- [ ] Correctly parses both `@IndexItem.fullIndex()` and `.groupIndex()`
 - [ ] Extracts `@RdfProperty` IRIs from index item class fields (using hierarchy walk)
 - [ ] Detects custom property annotations that extend `@RdfProperty` (e.g., `@NoteCategoryProperty()`)
-- [ ] Warns on empty IndexItem (no `@RdfProperty` fields) and generates empty property set
+- [ ] Warns on empty IndexItemConfig (no `@RdfProperty` fields) and generates empty property set
 - [ ] Returns empty results for files without relevant annotations
 - [ ] Handles edge cases: no annotations, unnamed files, abstract classes
 - [ ] Unit tests cover all parseable variants (see Task 6)
@@ -714,9 +714,9 @@ Example: if the annotation has `'$appBaseUrl/mappings/note-v1.ttl'`, the generat
 crdtMapping: Uri.parse('$appBaseUrl/mappings/note-v1.ttl'),
 ```
 
-**Property set generation for IndexItem:**
+**Property set generation for IndexItemConfig:**
 ```dart
-IndexItem(NoteIndexEntry, {
+IndexItemConfig(NoteIndexEntry, {
   SchemaNoteDigitalDocument.name,
   SchemaNoteDigitalDocument.dateCreated,
 })
@@ -736,8 +736,8 @@ GroupingProperty(SchemaNoteDigitalDocument.dateCreated,
 - [ ] Generated code follows the exact `LocordaConfig` API from `locorda_objects`
 - [ ] `generateLocordaConfig()` signature has no parameters
 - [ ] Resources with only GroupIndex (fullIndex disabled) have no FullIndex in output
-- [ ] Resources with default FullIndex and no IndexItem generate `FullIndex()` without `item:`
-- [ ] Resources with FullIndex and IndexItem generate full `FullIndex(item: IndexItem(...))` 
+- [ ] Resources with default FullIndex and no IndexItemConfig generate `FullIndex()` without `item:`
+- [ ] Resources with FullIndex and IndexItemConfig generate full `FullIndex(item: IndexItemConfig(...))` 
 - [ ] All model class imports are included
 - [ ] Correct Dart formatting (run `dart format` on output)
 - [ ] Unit tests verify generated code structure (see Task 6)
@@ -755,16 +755,16 @@ Update the personal notes app model files to use the enhanced annotation API. Up
 
 Change the annotation from:
 ```dart
-@LcrdRootResource(PersonalNotesVocab.PersonalNote,
+@RootResource(PersonalNotesVocab.PersonalNote,
     RootIriStrategy(RootIriConfig('note')))
 ```
 To:
 ```dart
-@LcrdRootResource(
+@RootResource(
   PersonalNotesVocab.PersonalNote,
   '$appBaseUrl/mappings/note-v1.ttl',
   iriStrategy: RootIriStrategy(RootIriConfig('note')),
-  fullIndex: LcrdFullIndex.disabled(),
+  fullIndex: FullIndex.disabled(),
 )
 ```
 
@@ -772,34 +772,34 @@ To:
 
 Change from:
 ```dart
-@LcrdRootResource(PersonalNotesVocab.NotesCategory)
+@RootResource(PersonalNotesVocab.NotesCategory)
 ```
 To:
 ```dart
-@LcrdRootResource(
+@RootResource(
   PersonalNotesVocab.NotesCategory,
   '$appBaseUrl/mappings/category-v1.ttl',
 )
 ```
 
-(Default `fullIndex: LcrdFullIndex()` provides FullIndex with prefetch.)
+(Default `fullIndex: FullIndex()` provides FullIndex with prefetch.)
 
 #### 5c. `packages/locorda/example/personal_notes_app/lib/models/note_group_key.dart`
 
 Change from:
 ```dart
-@LcrdGroupKey()
+@GroupKey()
 ```
 To:
 ```dart
-@LcrdGroupKey(
+@GroupKey(
   Note,
   localName: 'notes_by_month',
   groupingProperties: [
-    LcrdGroupingProperty(
+    GroupingProperty(
       SchemaNoteDigitalDocument.dateCreated,
       transforms: [
-        LcrdRegexTransform(
+        RegexTransform(
           r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*',
           r'${1}-${2}',
         ),
@@ -815,18 +815,18 @@ Ensure `Note` is imported and available.
 
 Change from:
 ```dart
-@LcrdIndexItem(IndexItemIriStrategy(Note))
+@IndexItem(IndexItemIriStrategy(Note))
 ```
 To:
 ```dart
-@LcrdIndexItem.groupIndex(NoteGroupKey, IndexItemIriStrategy(Note))
+@IndexItem.groupIndex(NoteGroupKey, IndexItemIriStrategy(Note))
 ```
 
 Ensure `NoteGroupKey` is imported.
 
 #### 5e. Create `packages/locorda/example/personal_notes_app/lib/models/category_index_entry.dart` (NEW)
 
-This is optional but recommended — if Category should have an IndexItem for its FullIndex:
+This is optional but recommended — if Category should have an IndexItemConfig for its FullIndex:
 
 ```dart
 import 'package:locorda_annotations/locorda_annotations.dart';
@@ -834,7 +834,7 @@ import 'package:locorda_rdf_mapper_annotations/annotations.dart';
 import 'category.dart';
 // import vocabulary for SchemaCreativeWork
 
-@LcrdIndexItem.fullIndex(IndexItemIriStrategy(Category))
+@IndexItem.fullIndex(IndexItemIriStrategy(Category))
 class CategoryIndexEntry {
   @RdfProperty(SchemaCreativeWork.name) 
   final String name;
@@ -843,7 +843,7 @@ class CategoryIndexEntry {
 }
 ```
 
-> **Note**: This file is optional. Category's FullIndex works without an IndexItem (it just won't have property filtering). Check whether the example app benefits from this.
+> **Note**: This file is optional. Category's FullIndex works without an IndexItemConfig (it just won't have property filtering). Check whether the example app benefits from this.
 
 #### 5f. `packages/locorda/example/personal_notes_app/lib/main.dart`
 
@@ -877,19 +877,19 @@ Comprehensive unit tests for the annotation scanner and config code generator.
 
 Test cases:
 1. **Empty file** → empty `ScanResult`
-2. **File with `@LcrdRootResource` only** → extracts `RootResourceData` with classIri, crdtMapping, defaults
-3. **`@LcrdRootResource` with all parameters** → extracts iriStrategy, generateCrdtMapping=false, fullIndex with custom localName/policy
-4. **`@LcrdRootResource` with `LcrdFullIndex.disabled()`** → `fullIndex.isEnabled == false`
-5. **`@LcrdGroupKey` with resourceType and groupingProperties** → extracts all nested data including regex transforms
-6. **`@LcrdGroupKey` with no optional parameters** → defaults applied
-7. **`@LcrdIndexItem.fullIndex()`** → `groupKeyType == null`, extracts resourceType from IriStrategy
-8. **`@LcrdIndexItem.groupIndex()`** → extracts both groupKeyType and resourceType
-9. **IndexItem field scanning** → extracts `@RdfProperty` IRIs from class fields
+2. **File with `@RootResource` only** → extracts `RootResourceData` with classIri, crdtMapping, defaults
+3. **`@RootResource` with all parameters** → extracts iriStrategy, generateCrdtMapping=false, fullIndex with custom localName/policy
+4. **`@RootResource` with `FullIndex.disabled()`** → `fullIndex.isEnabled == false`
+5. **`@GroupKey` with resourceType and groupingProperties** → extracts all nested data including regex transforms
+6. **`@GroupKey` with no optional parameters** → defaults applied
+7. **`@IndexItem.fullIndex()`** → `groupKeyType == null`, extracts resourceType from IriStrategy
+8. **`@IndexItem.groupIndex()`** → extracts both groupKeyType and resourceType
+9. **IndexItemConfig field scanning** → extracts `@RdfProperty` IRIs from class fields
 10. **Custom property annotation** → `@NoteCategoryProperty()` (extends `RdfProperty`) detected via hierarchy walk
 11. **Multiple annotations in one file** → all collected
 12. **File with no relevant annotations** → empty result
 13. **`.g.dart` filename** → skipped (test at builder level)
-14. **Empty IndexItem** → class with `@LcrdIndexItem` but no `@RdfProperty` fields → generates empty property set with warning
+14. **Empty IndexItemConfig** → class with `@IndexItem` but no `@RdfProperty` fields → generates empty property set with warning
 
 **Test approach**: Because the scanner uses resolved analysis (hierarchy walking via `computeConstantValue()` and `type.allSupertypes`), scanner tests require a real analyzer context. Use the same test infrastructure pattern as `locorda_rdf_mapper_generator`:
 - Create source strings with proper imports
@@ -904,7 +904,7 @@ Test cases:
 2. **Single resource with disabled FullIndex and GroupIndex** → no FullIndex in output
 3. **Resource with FullIndex + GroupIndex** → both indices generated
 4. **GroupIndex with groupingProperties and transforms** → correct `GroupingProperty` and `RegexTransform` output
-5. **IndexItem with properties** → correct `IndexItem(Type, {prop1, prop2})` output
+5. **IndexItemConfig with properties** → correct `IndexItemConfig(Type, {prop1, prop2})` output
 6. **Multiple resources** → all in `resources: [...]`
 7. **Imports are correct** → all sourceImport URIs appear as imports
 8. **crdtMapping URI generation** → `Uri.parse(<source expression>)` emits raw Dart source
@@ -927,7 +927,7 @@ This is more complex and can be deferred. The unit tests in 6a and 6b provide th
 - [ ] Scanner tests use resolved analysis context (may be tagged `'slow'`)
 - [ ] Code generator tests use in-memory data objects (fast, no I/O)
 - [ ] `dart test packages/locorda_init_generator` passes
-- [ ] Edge cases covered (empty input, missing annotations, defaults, empty IndexItem)
+- [ ] Edge cases covered (empty input, missing annotations, defaults, empty IndexItemConfig)
 
 ---
 
@@ -1082,7 +1082,7 @@ These items were resolved during design review:
 
 1. **Custom property annotations in IndexItems**: ✅ **Resolved — use resolved analysis with hierarchy walking.** Custom property annotations like `@NoteCategoryProperty()` that extend `RdfProperty` are detected by walking the annotation's type hierarchy via `computeConstantValue()` and `type.allSupertypes`. This is the same approach used by `locorda_rdf_mapper_generator/processor_utils.dart` (`_matchesAnnotationInHierarchy()` / `_checkTypeHierarchy()`). No limitation on custom properties.
 
-2. **Index items without `@RdfProperty`**: ✅ **Resolved — warn and generate empty set.** When an `@LcrdIndexItem`-annotated class has no fields with `@RdfProperty` (or subclass), emit a build warning and generate `IndexItem(Type, {})` with an empty property set. Valid but pointless — the warning alerts the developer.
+2. **Index items without `@RdfProperty`**: ✅ **Resolved — warn and generate empty set.** When an `@IndexItem`-annotated class has no fields with `@RdfProperty` (or subclass), emit a build warning and generate `IndexItemConfig(Type, {})` with an empty property set. Valid but pointless — the warning alerts the developer.
 
 ---
 

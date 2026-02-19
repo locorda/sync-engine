@@ -18,7 +18,7 @@ import 'package:locorda_rdf_terms_schema/schema.dart';
 /// on-demand sync scenarios.
 ///
 /// No CRDT annotations needed for index entries, would be ignored anyways.
-@LcrdIndexItem.groupIndex(NoteGroupKey, IndexItemIriStrategy(Note))
+@IndexItem.groupIndex(NoteGroupKey, IndexItemIriStrategy(Note))
 class NoteIndexEntry {
   /// Unique identifier for the note
   @RdfIriPart()

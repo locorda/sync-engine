@@ -66,7 +66,7 @@ class LocordaConfigValidator {
         }
 
         // Add groupKeyType for GroupIndex
-        if (index is GroupIndex) {
+        if (index is GroupIndexConfig) {
           requiredTypes.add(index.groupKeyType);
         }
       }
@@ -179,7 +179,7 @@ class LocordaConfigValidator {
         }
 
         // Validate GroupIndex specific requirements
-        if (index is GroupIndex) {
+        if (index is GroupIndexConfig) {
           if (index.groupingProperties.isEmpty) {
             result.addError(
                 'GroupIndex must have at least one grouping property for ${resource.type}',

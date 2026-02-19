@@ -175,7 +175,7 @@ Future<Locorda> setupLocorda() async {
         ResourceConfig(
           type: Task,
           crdtMapping: Uri.parse('https://locorda.dev/example/minimal/mappings/task-v1.ttl'),
-          indices: [FullIndex()], // Simple: fetch all tasks
+          indices: [FullIndexConfig()], // Simple: fetch all tasks
         ),
       ],
     ),

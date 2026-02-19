@@ -9,9 +9,9 @@ import 'package:minimal_task_sync/consts.dart' show appBaseUrl;
 
 // #docregion task-model
 /// A simple task with CRDT sync.
-@LcrdRootResource(
+@RootResource(
   IriTerm('$appBaseUrl/vocabulary/task#Task'),
-  LcrdCrdt('$appBaseUrl/mappings/task-v1#'),
+  MergeContract('$appBaseUrl/mappings/task-v1#'),
 )
 class Task {
   /// Unique ID for this task

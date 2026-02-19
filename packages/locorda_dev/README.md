@@ -131,7 +131,7 @@ flutter run
 `locorda_dev` applies these builders via `applies_builders`:
 
 ### crdt_mapping_generator
-Generates CRDT mapping documents from `@LcrdRootResource` annotations with `@CrdtLwwRegister`, `@CrdtOrSet`, `@CrdtImmutable` on properties.
+Generates CRDT mapping documents from `@RootResource` annotations with `@CrdtLwwRegister`, `@CrdtOrSet`, `@CrdtImmutable` on properties.
 
 **Input:** `lib/**/*.dart` with annotated classes  
 **Output:** `lib/**/*.crdt.cache.trig` (build cache)
@@ -212,7 +212,7 @@ dart run build_runner build --delete-conflicting-outputs
 
 ### Empty bootstrapMappings List
 
-1. Check that `@LcrdRootResource` has `crdt.generate == true` (default)
+1. Check that `@RootResource` has `crdt.generate == true` (default)
 2. Verify CRDT annotations exist on properties
 3. Clean and rebuild
 4. Check `lib/**/*.crdt.cache.trig` files exist in `.dart_tool/build/`
@@ -234,21 +234,21 @@ If deployment fails with "Filename collision detected":
 3. Use more specific path segments:
    ```dart
    // Bad: Both produce note-v1.ttl
-   LcrdCrdt('https://app-a.com/mappings/note-v1#')
-   LcrdCrdt('https://app-b.com/mappings/note-v1#')
+   MergeContract('https://app-a.com/mappings/note-v1#')
+   MergeContract('https://app-b.com/mappings/note-v1#')
    
    // Good: Unique filenames
-   LcrdCrdt('https://app-a.com/mappings/app-a-note-v1#')  // app-a-note-v1.ttl
-   LcrdCrdt('https://app-b.com/mappings/app-b-note-v1#')  // app-b-note-v1.ttl
+   MergeContract('https://app-a.com/mappings/app-a-note-v1#')  // app-a-note-v1.ttl
+   MergeContract('https://app-b.com/mappings/app-b-note-v1#')  // app-b-note-v1.ttl
    ```
 
 ### CRDT Mappings Not Generating
 
 Check your annotations:
 ```dart
-@LcrdRootResource(
+@RootResource(
   IriTerm('https://schema.org/Note'),
-  LcrdCrdt('https://myapp.example.com/mappings/note-v1#'),  // Must have this
+  MergeContract('https://myapp.example.com/mappings/note-v1#'),  // Must have this
 )
 class Note {
   @RdfProperty(Schema.name)

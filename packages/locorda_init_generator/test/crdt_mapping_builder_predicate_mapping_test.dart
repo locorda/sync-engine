@@ -12,21 +12,21 @@ class IriTerm {
   const IriTerm(this.value);
 }
 
-class LcrdCrdt {
+class MergeContract {
   final String mappingIri;
   final String? label;
   final String? comment;
   final List<IriTerm> imports;
   final bool generate;
 
-  const LcrdCrdt(this.mappingIri,
+  const MergeContract(this.mappingIri,
       {this.label, this.comment, this.imports = const [], this.generate = true});
 }
 
-class LcrdRootResource {
+class RootResource {
   final IriTerm? classIri;
-  final LcrdCrdt crdt;
-  const LcrdRootResource(this.classIri, this.crdt);
+  final MergeContract crdt;
+  const RootResource(this.classIri, this.crdt);
 }
 
 class RdfLocalResource {
@@ -58,9 +58,9 @@ class CategoryDisplaySettings {
   final String? icon = null;
 }
 
-@LcrdRootResource(
+@RootResource(
   IriTerm('https://example.dev/vocab#Category'),
-  LcrdCrdt('$mappingIri'),
+  MergeContract('$mappingIri'),
 )
 class Category {
   @RdfProperty(IriTerm('https://example.dev/vocab#displaySettings'))

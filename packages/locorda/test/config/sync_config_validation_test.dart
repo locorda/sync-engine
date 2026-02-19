@@ -148,7 +148,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                FullIndex(localName: ''), // Empty local name!
+                FullIndexConfig(localName: ''), // Empty local name!
               ],
             ),
           ],
@@ -164,7 +164,7 @@ void main() {
 
       test('should fail with duplicate local names for same index item type',
           () {
-        final testIndexItem = IndexItem(TestDocument, {});
+        final testIndexItem = IndexItemConfig(TestDocument, {});
 
         final config = LocordaConfig(
           resources: [
@@ -172,14 +172,14 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                FullIndex(localName: 'shared', item: testIndexItem),
+                FullIndexConfig(localName: 'shared', item: testIndexItem),
               ],
             ),
             ResourceConfig(
               type: TestCategory,
               crdtMapping: Uri.parse('https://example.com/category.ttl'),
               indices: [
-                FullIndex(
+                FullIndexConfig(
                     localName: 'shared',
                     item: testIndexItem), // Same local name, same item type!
               ],
@@ -198,9 +198,9 @@ void main() {
       test('should fail when GroupIndex has no grouping properties', () {
         // Test that the constructor itself prevents creating invalid GroupIndex
         expect(
-          () => GroupIndex(
+          () => GroupIndexConfig(
             TestDocumentGroupKey,
-            item: IndexItem(TestDocument, {}),
+            item: IndexItemConfig(TestDocument, {}),
             groupingProperties: [], // Empty!
           ),
           throwsA(isA<AssertionError>()),
@@ -219,7 +219,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   groupingProperties: [
                     GroupingProperty(TestVocab.testCategory),
@@ -244,7 +244,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'invalid-regex',
                   groupingProperties: [
@@ -284,7 +284,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'invalid-replacement',
                   groupingProperties: [
@@ -320,7 +320,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'shared-name',
                   groupingProperties: [
@@ -333,7 +333,7 @@ void main() {
               type: TestCategory,
               crdtMapping: Uri.parse('https://example.com/category.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey, // Same groupKeyType!
                   localName: 'shared-name', // Same localName!
                   groupingProperties: [
@@ -364,7 +364,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'by-category',
                   groupingProperties: [
@@ -377,7 +377,7 @@ void main() {
               type: TestCategory,
               crdtMapping: Uri.parse('https://example.com/category.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey, // Same groupKeyType is OK
                   localName: 'different-name', // Different localName
                   groupingProperties: [
@@ -401,7 +401,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'by-category',
                   groupingProperties: [
@@ -414,7 +414,7 @@ void main() {
               type: TestCategory,
               crdtMapping: Uri.parse('https://example.com/category.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   MultiPropertyGroupKey, // Different groupKeyType
                   localName: 'by-category', // Same localName is OK
                   groupingProperties: [
@@ -440,7 +440,7 @@ void main() {
               type: UnmappedType, // This type has no mapper!
               crdtMapping: Uri.parse('https://example.com/unmapped.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'unmapped-dart-type',
                   groupingProperties: [
@@ -470,7 +470,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   UnmappedType, // This groupKeyType has no mapper!
                   localName: 'unmapped-group-key',
                   groupingProperties: [
@@ -499,10 +499,10 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'unmapped-item-type',
-                  item: IndexItem(
+                  item: IndexItemConfig(
                       UnmappedType, {}), // This itemType has no mapper!
                   groupingProperties: [
                     GroupingProperty(TestVocab.testCategory),
@@ -531,10 +531,10 @@ void main() {
               type: TestDocument, // Has mapper
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey, // Has mapper
                   localName: 'all-mapped',
-                  item: IndexItem(TestDocument, {}), // Has mapper
+                  item: IndexItemConfig(TestDocument, {}), // Has mapper
                   groupingProperties: [
                     GroupingProperty(TestVocab.testCategory),
                   ],
@@ -557,7 +557,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   MultiPropertyGroupKey,
                   localName: 'hierarchical',
                   groupingProperties: [
@@ -587,7 +587,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   MultiPropertyGroupKey,
                   localName: 'level-gap',
                   groupingProperties: [
@@ -620,7 +620,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   MultiPropertyGroupKey,
                   localName: 'duplicate-levels-ok',
                   groupingProperties: [
@@ -652,7 +652,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'invalid-level',
                   groupingProperties: [
@@ -680,7 +680,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'empty-missing-value',
                   groupingProperties: [
@@ -710,7 +710,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'multi-transform',
                   groupingProperties: [
@@ -749,7 +749,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'multiple-invalid-transforms',
                   groupingProperties: [
@@ -819,7 +819,7 @@ void main() {
                 type: TestDocument,
                 crdtMapping: Uri.parse('https://example.com/document.ttl'),
                 indices: [
-                  GroupIndex(
+                  GroupIndexConfig(
                     TestDocumentGroupKey,
                     localName: 'valid-pattern-test',
                     groupingProperties: [
@@ -858,7 +858,7 @@ void main() {
                 type: TestDocument,
                 crdtMapping: Uri.parse('https://example.com/document.ttl'),
                 indices: [
-                  GroupIndex(
+                  GroupIndexConfig(
                     TestDocumentGroupKey,
                     localName: 'forbidden-pattern-test',
                     groupingProperties: [
@@ -905,7 +905,7 @@ void main() {
                 type: TestDocument,
                 crdtMapping: Uri.parse('https://example.com/document.ttl'),
                 indices: [
-                  GroupIndex(
+                  GroupIndexConfig(
                     TestDocumentGroupKey,
                     localName: 'valid-replacement-test',
                     groupingProperties: [
@@ -939,14 +939,14 @@ void main() {
               type: TestDocument, // Has global mapper
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                FullIndex(
+                FullIndexConfig(
                   localName: 'full-documents',
-                  item: IndexItem(TestDocument, {}), // Has global mapper
+                  item: IndexItemConfig(TestDocument, {}), // Has global mapper
                 ),
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey, // Has local mapper
                   localName: 'grouped-documents',
-                  item: IndexItem(TestDocument, {}), // Has global mapper
+                  item: IndexItemConfig(TestDocument, {}), // Has global mapper
                   groupingProperties: [
                     GroupingProperty(TestVocab.testCategory),
                   ],
@@ -957,10 +957,10 @@ void main() {
               type: TestCategory, // Has global mapper
               crdtMapping: Uri.parse('https://example.com/category.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   MultiPropertyGroupKey, // Has local mapper
                   localName: 'multi-prop-categories',
-                  item: IndexItem(TestCategory, {}), // Has global mapper
+                  item: IndexItemConfig(TestCategory, {}), // Has global mapper
                   groupingProperties: [
                     GroupingProperty(TestVocab.testCategory),
                     GroupingProperty(
@@ -984,10 +984,10 @@ void main() {
               type: UnmappedType, // No mapper
               crdtMapping: Uri.parse('https://example.com/unmapped1.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   UnmappedType, // No mapper for groupKeyType either
                   localName: 'unmapped-group',
-                  item: IndexItem(
+                  item: IndexItemConfig(
                       UnmappedType, {}), // No mapper for itemType either
                   groupingProperties: [
                     GroupingProperty(TestVocab.testCategory),
@@ -1015,10 +1015,10 @@ void main() {
               type: TestDocument, // Has mapper
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   IriPropertyGroupKey, // Has mapper
                   localName: 'complex-group-key',
-                  item: IndexItem(TestDocument, {}), // Has mapper
+                  item: IndexItemConfig(TestDocument, {}), // Has mapper
                   groupingProperties: [
                     GroupingProperty(TestVocab.testCategory),
                   ],
@@ -1038,7 +1038,7 @@ void main() {
       test('should fail with empty grouping properties list', () {
         // This should be caught by the constructor assertion
         expect(
-          () => GroupIndex(
+          () => GroupIndexConfig(
             TestDocumentGroupKey,
             localName: 'empty-properties',
             groupingProperties: [], // Empty!
@@ -1062,7 +1062,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'empty-predicate',
                   groupingProperties: [
@@ -1087,7 +1087,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'malformed-regex',
                   groupingProperties: [
@@ -1122,7 +1122,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'invalid-capture-group',
                   groupingProperties: [
@@ -1155,7 +1155,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'large-hierarchy',
                   groupingProperties: [
@@ -1186,7 +1186,7 @@ void main() {
               type: TestDocument,
               crdtMapping: Uri.parse('https://example.com/document.ttl'),
               indices: [
-                GroupIndex(
+                GroupIndexConfig(
                   TestDocumentGroupKey,
                   localName: 'multi-format-dates',
                   groupingProperties: [

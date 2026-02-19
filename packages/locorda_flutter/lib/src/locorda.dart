@@ -99,12 +99,12 @@ class Locorda {
   ///       ResourceConfig(
   ///         type: Note,
   ///         crdtMapping: Uri.parse('$appBaseUrl/mappings/note-v1.ttl'),
-  ///         indices: [GroupIndex(NoteGroupKey, item: IndexItem(...))],
+  ///         indices: [GroupIndexConfig(NoteGroupKey, item: IndexItemConfig(...))],
   ///       ),
   ///       ResourceConfig(
   ///         type: Category,
   ///         crdtMapping: Uri.parse('$appBaseUrl/mappings/category-v1.ttl'),
-  ///         indices: [FullIndex(itemFetchPolicy: ItemFetchPolicy.prefetch)],
+  ///         indices: [FullIndexConfig(itemFetchPolicy: ItemFetchPolicy.prefetch)],
   ///       ),
   ///     ],
   ///   ),

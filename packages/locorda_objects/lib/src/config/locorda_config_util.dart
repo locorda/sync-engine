@@ -54,7 +54,7 @@ IriTerm? _getTypeIri(RdfMapper mapper, ResourceConfig resource) {
 ///
 /// This is used during hydration setup to determine how to convert
 /// resources to index items for a specific stream.
-(ResourceConfig, CrdtIndex)? findIndexConfigForType<T>(
+(ResourceConfig, CrdtIndexConfig)? findIndexConfigForType<T>(
     LocordaConfig config, String localName) {
   // Search through all resources and their indices
   for (final resourceConfig in config.resources) {
@@ -78,7 +78,7 @@ IriTerm? _getTypeIri(RdfMapper mapper, ResourceConfig resource) {
 String? getGroupIndexName<G>(LocordaConfig config, String localName) {
   for (final resource in config.resources) {
     for (final index in resource.indices) {
-      if (index is GroupIndex &&
+      if (index is GroupIndexConfig &&
           index.localName == localName &&
           index.groupKeyType == G) {
         return getIndexName(resource, index);
@@ -88,10 +88,10 @@ String? getGroupIndexName<G>(LocordaConfig config, String localName) {
   return null;
 }
 
-String getIndexName(ResourceConfig resource, CrdtIndex index) =>
+String getIndexName(ResourceConfig resource, CrdtIndexConfig index) =>
     switch (index) {
-      FullIndex _ =>
+      FullIndexConfig _ =>
         '${resource.type.toString()}_${index.item?.itemType.toString() ?? ''}_${index.localName}',
-      GroupIndex _ =>
+      GroupIndexConfig _ =>
         '${resource.type.toString()}_${index.item?.itemType.toString() ?? ''}_${index.groupKeyType.toString()}_${index.localName}',
     };

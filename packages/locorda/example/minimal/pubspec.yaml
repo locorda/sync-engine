@@ -22,10 +22,10 @@ dependencies:
   locorda_worker: any
   
   # RDF mapping
-  locorda_rdf_core: ^0.11.7
-  locorda_rdf_mapper: ^0.11.7
+  locorda_rdf_core: ^0.11.8
+  locorda_rdf_mapper: ^0.11.8
   locorda_rdf_terms_schema: ^0.11.4
-  locorda_rdf_mapper_annotations: ^0.11.7
+  locorda_rdf_mapper_annotations: ^0.11.8
   
   # Reactive streams
   rxdart: ^0.28.0

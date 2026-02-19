@@ -3,7 +3,7 @@ library;
 
 import '../code_generation/code.dart';
 
-/// Immutable data extracted from @LcrdRootResource annotations.
+/// Immutable data extracted from @RootResource annotations.
 class RootResourceData {
   final Code className;
   final Code? classIri;
@@ -35,7 +35,7 @@ class FullIndexData {
   });
 }
 
-/// Immutable data extracted from @LcrdGroupKey annotations.
+/// Immutable data extracted from @GroupKey annotations.
 class GroupKeyData {
   final Code className;
   final Code resourceTypeName;
@@ -67,7 +67,7 @@ class RegexTransformData {
   const RegexTransformData({required this.pattern, required this.replacement});
 }
 
-/// Immutable data extracted from @LcrdIndexItem annotations.
+/// Immutable data extracted from @IndexItem annotations.
 class IndexItemData {
   final Code? className;
 

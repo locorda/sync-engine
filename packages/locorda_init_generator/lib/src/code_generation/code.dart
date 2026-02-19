@@ -276,14 +276,14 @@ class Code {
   /// // Named args only: LocordaConfig(resources: [...])
   /// Code.type('LocordaConfig', importUri: pkg).newInstance({'resources': list})
   ///
-  /// // Positional + named: GroupIndex(NoteGroupKey, localName: 'byDate')
-  /// Code.type('GroupIndex', importUri: pkg).newInstance(
+  /// // Positional + named: GroupIndexConfig(NoteGroupKey, localName: 'byDate')
+  /// Code.type('GroupIndexConfig', importUri: pkg).newInstance(
   ///   [groupKeyClass],
   ///   {'localName': Code.value("'byDate'")}
   /// )
   ///
-  /// // Positional only: IndexItem(NoteIndexEntry, {propertySet})
-  /// Code.type('IndexItem', importUri: pkg).newInstance([itemClass, propSet])
+  /// // Positional only: IndexItemConfig(NoteIndexEntry, {propertySet})
+  /// Code.type('IndexItemConfig', importUri: pkg).newInstance([itemClass, propSet])
   /// ```
   Code newInstance([Object args = const [], Map namedArgs = const {}]) {
     if (namedArgs.isEmpty) {

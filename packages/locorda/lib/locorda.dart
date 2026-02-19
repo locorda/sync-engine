@@ -59,11 +59,11 @@ export 'package:locorda_solid_auth/locorda_solid_auth.dart'
     show SolidAuthLocalizations;
 export 'package:locorda_objects/locorda_objects.dart'
     show
-        CrdtIndex,
-        FullIndex,
-        GroupIndex,
+        CrdtIndexConfig,
+        FullIndexConfig,
+        GroupIndexConfig,
         GroupingProperty,
-        IndexItem,
+        IndexItemConfig,
         ItemFetchPolicy,
         LocordaConfig,
         ObjectSyncEngine,
@@ -97,11 +97,11 @@ export 'package:locorda_annotations/locorda_annotations.dart'
         CrdtLwwRegister,
         CrdtOrSet,
         IndexItemIriStrategy,
-        LcrdGroupKey,
-        LcrdIndexItem,
-        LcrdRootResource,
-        LcrdRootResourceRef,
-        LcrdSubResource,
+        GroupKey,
+        IndexItem,
+        RootResource,
+        RootResourceRef,
+        SubResource,
         McIdentifying,
         RootIriStrategy,
         SubIriStrategy;

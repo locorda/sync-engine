@@ -2,10 +2,10 @@
 export 'src/locorda.dart' show Locorda;
 export 'package:locorda_objects/locorda_objects.dart'
     show
-        CrdtIndex,
-        FullIndex,
-        IndexItem,
-        GroupIndex,
+        CrdtIndexConfig,
+        FullIndexConfig,
+        IndexItemConfig,
+        GroupIndexConfig,
         ItemFetchPolicy,
         RegexTransform,
         ResourceConfig,

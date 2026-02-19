@@ -36,8 +36,7 @@ class SubIriStrategy extends IriStrategy {
         );
 }
 
-/// Constants for standard mapping document IRIs.
-class LcrdMappings {
+class MergeContracts {
   static const IriTerm coreV1 =
       IriTerm('https://w3id.org/solid-crdt-sync/mappings/core-v1');
   static const IriTerm indexV1 =
@@ -46,8 +45,6 @@ class LcrdMappings {
       IriTerm('https://w3id.org/solid-crdt-sync/mappings/shard-v1');
   static const IriTerm clientInstallationV1 = IriTerm(
       'https://w3id.org/solid-crdt-sync/mappings/client-installation-v1');
-
-  const LcrdMappings._();
 }
 
 /// CRDT mapping configuration for automatic generation or external references.
@@ -60,10 +57,10 @@ class LcrdMappings {
 ///
 /// **Generated CRDT mappings** (default constructor):
 /// ```dart
-/// LcrdCrdt(
+/// MergeContracts(
 ///   'https://myapp.example.com/mappings/note-v1#',
 ///   label: 'Note CRDT Mapping',
-///   imports: [LcrdMappings.coreV1],
+///   imports: [MergeContracts.coreV1],
 /// )
 /// ```
 /// The builder scans `@CrdtLwwRegister`, `@CrdtOrSet`, `@CrdtImmutable` annotations
@@ -71,11 +68,11 @@ class LcrdMappings {
 ///
 /// **External CRDT mappings** (`.external()` constructor):
 /// ```dart
-/// LcrdCrdt.external('https://vocab.example.org/mappings/standard-note-v1#')
+/// MergeContract.external('https://vocab.example.org/mappings/standard-note-v1#')
 /// ```
 /// References a manually authored or third-party CRDT mapping document. The builder
 /// does not generate merge rules for this resource; the mapping must be provided separately.
-class LcrdCrdt {
+class MergeContract {
   /// Canonical IRI of the CRDT mapping document.
   ///
   /// Must be a stable, app-owned IRI. Use `#` fragment for generated mappings
@@ -94,7 +91,7 @@ class LcrdCrdt {
 
   /// Imported CRDT mapping documents for generated `mc:DocumentMapping`.
   ///
-  /// Standard framework mappings like [LcrdMappings.coreV1] are imported by default.
+  /// Standard framework mappings like [MergeContracts.coreV1] are imported by default.
   /// Add additional imports for shared vocabularies or extension mappings.
   final List<IriTerm> imports;
 
@@ -104,14 +101,14 @@ class LcrdCrdt {
   /// `false` for `.external()` constructor (CRDT mapping provided separately).
   final bool generate;
 
-  const LcrdCrdt(
+  const MergeContract(
     this.mappingIri, {
     this.label,
     this.comment,
-    this.imports = const [LcrdMappings.coreV1],
+    this.imports = const [MergeContracts.coreV1],
   }) : generate = true;
 
-  const LcrdCrdt.external(this.mappingIri)
+  const MergeContract.external(this.mappingIri)
       : label = null,
         comment = null,
         imports = const [],
@@ -127,9 +124,9 @@ class LcrdCrdt {
 /// ## Basic Example
 ///
 /// ```dart
-/// @LcrdRootResource(
+/// @RootResource(
 ///   IriTerm('https://schema.org/Note'),
-///   LcrdCrdt('https://myapp.example.com/mappings/note-v1#'),
+///   MergeContract('https://myapp.example.com/mappings/note-v1#'),
 /// )
 /// class Note {
 ///   @RdfProperty(Schema.name)
@@ -162,7 +159,7 @@ class LcrdCrdt {
 ///
 /// **Automatic generation** (recommended):
 /// ```dart
-/// LcrdCrdt(
+/// MergeContract(
 ///   'https://myapp.example.com/mappings/note-v1#',
 ///   label: 'Note CRDT Mapping',  // Optional metadata
 /// )
@@ -171,7 +168,7 @@ class LcrdCrdt {
 ///
 /// **External CRDT mapping** (for shared/standard vocabularies):
 /// ```dart
-/// LcrdCrdt.external('https://vocab.example.org/mappings/standard-note-v1#')
+/// MergeContract.external('https://vocab.example.org/mappings/standard-note-v1#')
 /// ```
 /// References a manually authored CRDT mapping document (must be provided via assets).
 ///
@@ -189,14 +186,14 @@ class LcrdCrdt {
 ///
 /// Configure default FullIndex via [fullIndex] parameter:
 /// ```dart
-/// @LcrdRootResource(
+/// @RootResource(
 ///   IriTerm('https://schema.org/Note'),
-///   LcrdCrdt('https://myapp.example.com/mappings/note-v1#'),
-///   fullIndex: LcrdFullIndex(policy: ItemFetchPolicy.onRequest),
+///   MergeContract('https://myapp.example.com/mappings/note-v1#'),
+///   fullIndex: FullIndex(policy: ItemFetchPolicy.onRequest),
 /// )
 /// ```
 ///
-/// Use `LcrdFullIndex.disabled()` when only GroupIndex applies.
+/// Use `FullIndex.disabled()` when only GroupIndex applies.
 ///
 /// ## Code Generation
 ///
@@ -208,25 +205,25 @@ class LcrdCrdt {
 ///
 /// ## See Also
 ///
-/// - [LcrdCrdt] - CRDT mapping configuration
-/// - [LcrdSubResource] - Nested resources within a root resource
+/// - [MergeContract] - CRDT mapping configuration
+/// - [SubResource] - Nested resources within a root resource
 /// - [RdfGlobalResource] - Base RDF resource annotation
 /// - CRDT annotations: [CrdtLwwRegister], [CrdtOrSet], [CrdtImmutable]
-class LcrdRootResource extends RdfGlobalResource {
+class RootResource extends RdfGlobalResource {
   /// CRDT mapping configuration for this resource.
-  final LcrdCrdt crdt;
+  final MergeContract crdt;
 
   /// Configuration for the default FullIndex.
   ///
-  /// Defaults to `LcrdFullIndex()` (enabled, localName='default', prefetch).
-  /// Use `LcrdFullIndex.disabled()` when only GroupIndex indices apply.
-  final LcrdFullIndex fullIndex;
+  /// Defaults to `FullIndex()` (enabled, localName='default', prefetch).
+  /// Use `FullIndex.disabled()` when only GroupIndex indices apply.
+  final FullIndex fullIndex;
 
-  const LcrdRootResource(
+  const RootResource(
     IriTerm? classIri,
     this.crdt, {
     RootIriStrategy iriStrategy = const RootIriStrategy(),
-    this.fullIndex = const LcrdFullIndex(),
+    this.fullIndex = const FullIndex(),
   }) : super(classIri, iriStrategy);
 }
 
@@ -238,7 +235,7 @@ class LcrdRootResource extends RdfGlobalResource {
 ///
 /// Example:
 /// ```dart
-/// @LcrdSubResource(
+/// @SubResource(
 ///   IriTerm('https://schema.org/Comment'),
 ///   SubIriStrategy('#comment-{id}'),
 /// )
@@ -258,16 +255,16 @@ class LcrdRootResource extends RdfGlobalResource {
 ///
 /// The [SubIriStrategy] automatically uses the parent resource's IRI as base,
 /// removing any existing fragment before appending the new one.
-class LcrdSubResource extends RdfGlobalResource {
-  const LcrdSubResource(IriTerm? classIri, SubIriStrategy iriStrategy)
+class SubResource extends RdfGlobalResource {
+  const SubResource(IriTerm? classIri, SubIriStrategy iriStrategy)
       : super(classIri, iriStrategy, registerGlobally: false);
 }
 
 /// Configuration for the default FullIndex of a root resource.
 ///
 /// Controls whether a FullIndex is generated and its parameters.
-/// Used as parameter in [LcrdRootResource.fullIndex].
-class LcrdFullIndex {
+/// Used as parameter in [RootResource.fullIndex].
+class FullIndex {
   /// Whether FullIndex generation is enabled.
   final bool isEnabled;
 
@@ -278,14 +275,14 @@ class LcrdFullIndex {
   final ItemFetchPolicy policy;
 
   /// Creates a FullIndex configuration with defaults.
-  const LcrdFullIndex({
+  const FullIndex({
     this.localName = 'default',
     this.policy = ItemFetchPolicy.prefetch,
   }) : isEnabled = true;
 
   /// Disables FullIndex generation for this resource.
   /// Use when a resource only has GroupIndex indices.
-  const LcrdFullIndex.disabled()
+  const FullIndex.disabled()
       : isEnabled = false,
         localName = '',
         policy = ItemFetchPolicy.prefetch;
@@ -293,24 +290,24 @@ class LcrdFullIndex {
 
 /// Defines a regex transformation applied to a grouping property value.
 ///
-/// Used within [LcrdGroupingProperty] to transform raw RDF values
+/// Used within [GroupingProperty] to transform raw RDF values
 /// (e.g., extracting year-month from a full date string).
-class LcrdRegexTransform {
+class RegexTransform {
   final String pattern;
   final String replacement;
 
-  const LcrdRegexTransform(this.pattern, this.replacement);
+  const RegexTransform(this.pattern, this.replacement);
 }
 
 /// Defines a property used for grouping in a GroupIndex, with optional transforms.
 ///
 /// The [property] IRI identifies which RDF predicate to group by.
 /// Optional [transforms] apply regex transformations before grouping.
-class LcrdGroupingProperty {
+class GroupingProperty {
   final IriTerm property;
-  final List<LcrdRegexTransform> transforms;
+  final List<RegexTransform> transforms;
 
-  const LcrdGroupingProperty(this.property, {this.transforms = const []});
+  const GroupingProperty(this.property, {this.transforms = const []});
 }
 
 class IndexItemIriStrategy extends IriStrategy {
@@ -320,9 +317,9 @@ class IndexItemIriStrategy extends IriStrategy {
 
 /// Annotation for index item (entry) classes.
 ///
-/// Use [LcrdIndexItem.fullIndex] for FullIndex entries and
-/// [LcrdIndexItem.groupIndex] for GroupIndex entries.
-class LcrdIndexItem extends RdfGlobalResource {
+/// Use [IndexItem.fullIndex] for FullIndex entries and
+/// [IndexItem.groupIndex] for GroupIndex entries.
+class IndexItem extends RdfGlobalResource {
   /// The GroupKey type this item belongs to, or `null` for FullIndex items.
   final Type? groupKeyType;
 
@@ -331,12 +328,12 @@ class LcrdIndexItem extends RdfGlobalResource {
   /// The [iriStrategy] links back to the root resource type.
   /// Due to Dart const-constructor limitations, `IndexItemIriStrategy`
   /// must be passed as a parameter rather than constructed inline.
-  const LcrdIndexItem.fullIndex(IndexItemIriStrategy iriStrategy)
+  const IndexItem.fullIndex(IndexItemIriStrategy iriStrategy)
       : groupKeyType = null,
         super.deserializeOnly(null, iri: iriStrategy);
 
   /// Creates a GroupIndex item entry linked to a specific [groupKeyType].
-  const LcrdIndexItem.groupIndex(
+  const IndexItem.groupIndex(
     this.groupKeyType,
     IndexItemIriStrategy iriStrategy,
   ) : super.deserializeOnly(null, iri: iriStrategy);
@@ -346,7 +343,7 @@ class LcrdIndexItem extends RdfGlobalResource {
 ///
 /// Links a group key to its parent resource type and configures
 /// the GroupIndex with an optional local name and grouping properties.
-class LcrdGroupKey extends RdfLocalResource {
+class GroupKey extends RdfLocalResource {
   /// The resource type this group index is for.
   final Type resourceType;
 
@@ -354,9 +351,9 @@ class LcrdGroupKey extends RdfLocalResource {
   final String? localName;
 
   /// Grouping property definitions with optional transforms.
-  final List<LcrdGroupingProperty> groupingProperties;
+  final List<GroupingProperty> groupingProperties;
 
-  const LcrdGroupKey(
+  const GroupKey(
     this.resourceType, {
     this.localName,
     this.groupingProperties = const [],

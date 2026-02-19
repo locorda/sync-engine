@@ -486,7 +486,7 @@ class Note {
 - [ ] Implement `RootResource.externalVocab(IriTerm, String)` constructor
 - [ ] Implement `RootResource.externalContract(AppVocab, String)` constructor
 - [ ] Implement `RootResource.external(IriTerm, String)` constructor
-- [ ] Add `MergeContracts` constants class (replacing `LcrdMappings`)
+- [ ] Add `MergeContracts` constants class (replacing `MergeContracts`)
 - [ ] Update `MergeContractBuilder` to resolve merge contract IRIs
 - [ ] Update `MergeContractBuilder` to resolve vocabulary IRIs (use RDF mapper logic)
 - [ ] Generate merge contract TTL files in `/contracts/` (not `/mappings/`)

@@ -18,9 +18,9 @@ import 'category_display_settings.dart';
 /// - LWW-Register for name and description (last writer wins)
 /// - Immutable for creation date
 ///
-@LcrdRootResource(
+@RootResource(
   PersonalNotesVocab.NotesCategory,
-  LcrdCrdt(
+  MergeContract(
     '$appBaseUrl/mappings/category-v1#',
     label: 'Notes Category CRDT Document Mapping v1',
     comment:

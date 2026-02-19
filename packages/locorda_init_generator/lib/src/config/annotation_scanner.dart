@@ -32,7 +32,7 @@ class AnnotationScanner {
 
     // Scan all classes in the library
     for (final element in libraryElement.classes) {
-      // Check for @LcrdRootResource
+      // Check for @RootResource
       final rootResource = _scanRootResource(
         element,
         importUri,
@@ -41,13 +41,13 @@ class AnnotationScanner {
         rootResources.add(rootResource);
       }
 
-      // Check for @LcrdGroupKey
+      // Check for @GroupKey
       final groupKey = _scanGroupKey(element, importUri);
       if (groupKey != null) {
         groupKeys.add(groupKey);
       }
 
-      // Check for @LcrdIndexItem
+      // Check for @IndexItem
       final indexItem = _scanIndexItem(element, importUri);
       if (indexItem != null) {
         indexItems.add(indexItem);
@@ -65,13 +65,13 @@ class AnnotationScanner {
     ClassElement element,
     String importUri,
   ) {
-    // Find @LcrdRootResource annotation
+    // Find @RootResource annotation
     for (final annotation in element.metadata.annotations) {
       final annotationValue = annotation.computeConstantValue();
       if (annotationValue == null) continue;
 
       final annotationType = annotationValue.type?.element?.name;
-      if (annotationType != 'LcrdRootResource') continue;
+      if (annotationType != 'RootResource') continue;
 
       // Extract classIri (first argument) as Code
       final classIriField = getField(annotationValue, 'classIri');
@@ -124,13 +124,13 @@ class AnnotationScanner {
     ClassElement element,
     String importUri,
   ) {
-    // Find @LcrdGroupKey annotation
+    // Find @GroupKey annotation
     for (final annotation in element.metadata.annotations) {
       final annotationValue = annotation.computeConstantValue();
       if (annotationValue == null) continue;
 
       final annotationType = annotationValue.type?.element?.name;
-      if (annotationType != 'LcrdGroupKey') continue;
+      if (annotationType != 'GroupKey') continue;
 
       // Extract resourceType
       final resourceTypeField = getField(annotationValue, 'resourceType');
@@ -166,13 +166,13 @@ class AnnotationScanner {
     ClassElement element,
     String importUri,
   ) {
-    // Find @LcrdIndexItem annotation
+    // Find @IndexItem annotation
     for (final annotation in element.metadata.annotations) {
       final annotationValue = annotation.computeConstantValue();
       if (annotationValue == null) continue;
 
       final annotationType = annotationValue.type?.element?.name;
-      if (annotationType != 'LcrdIndexItem') continue;
+      if (annotationType != 'IndexItem') continue;
 
       // Extract groupKeyType (null for fullIndex)
       final groupKeyTypeField = getField(annotationValue, 'groupKeyType');

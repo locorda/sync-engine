@@ -26,7 +26,7 @@ We want to be able to embed all resources of a shard together with the shard in 
 It is up to the backend to choose which mode of operation it wants. There will now be two possible modes of operation for the backend:
 
 #### 1. One File per resource
-In this mode, every root resource (@LcrdRootResource) as modelled by the application (e.g. every note, every category etc.) will be stored in a file in the remote storage. This mode of operation has the following characteristics:
+In this mode, every root resource (@RootResource) as modelled by the application (e.g. every note, every category etc.) will be stored in a file in the remote storage. This mode of operation has the following characteristics:
 
 * `ItemFetchPolicy.onRequest` is fully supported, e.g. the application only fetches those root resources it actually wants/needs
 * Might be slower than expected due to latency - if every single http request takes appr. 300ms or more, this does not work well

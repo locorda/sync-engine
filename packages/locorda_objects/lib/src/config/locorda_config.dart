@@ -5,34 +5,34 @@ export 'package:locorda_core/locorda_core.dart'
 
 const defaultIndexLocalName = "default";
 
-class IndexItem extends IndexItemConfigBase {
+class IndexItemConfig extends IndexItemConfigBase {
   final Type itemType;
-  const IndexItem(this.itemType, super.properties);
+  const IndexItemConfig(this.itemType, super.properties);
 }
 
-sealed class CrdtIndex extends CrdtIndexConfigBase {
+sealed class CrdtIndexConfig extends CrdtIndexConfigBase {
   @override
-  IndexItem? get item;
+  IndexItemConfig? get item;
 }
 
-class FullIndex extends FullIndexConfigBase implements CrdtIndex {
+class FullIndexConfig extends FullIndexConfigBase implements CrdtIndexConfig {
   @override
-  final IndexItem? item;
+  final IndexItemConfig? item;
 
-  const FullIndex({
+  const FullIndexConfig({
     super.localName = defaultIndexLocalName,
     this.item,
     super.itemFetchPolicy = ItemFetchPolicy.prefetch,
   }) : super(item: item);
 }
 
-class GroupIndex extends GroupIndexConfigBase implements CrdtIndex {
+class GroupIndexConfig extends GroupIndexConfigBase implements CrdtIndexConfig {
   final Type groupKeyType;
 
   @override
-  final IndexItem? item;
+  final IndexItemConfig? item;
 
-  const GroupIndex(
+  const GroupIndexConfig(
     this.groupKeyType, {
     super.localName = defaultIndexLocalName,
     this.item,
@@ -44,12 +44,12 @@ class ResourceConfig extends ResourceConfigBase {
   final Type type;
 
   @override
-  final List<CrdtIndex> indices;
+  final List<CrdtIndexConfig> indices;
 
   ResourceConfig({
     required this.type,
     required super.crdtMapping,
-    this.indices = const [FullIndex()],
+    this.indices = const [FullIndexConfig()],
   }) : super(indices: indices);
 }
 

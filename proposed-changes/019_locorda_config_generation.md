@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-This document defines how `LocordaConfig` is automatically generated from `@LcrdRootResource` and related annotations, eliminating the need for manual configuration in most cases.
+This document defines how `LocordaConfig` is automatically generated from `@RootResource` and related annotations, eliminating the need for manual configuration in most cases.
 
 **Note:** CRDT mapping TTL files referenced in `crdtMapping` are automatically generated from annotations. See [020-crdt-mapping-generation.md](020-crdt-mapping-generation.md) for details on the CRDT mapping generation process.
 
@@ -23,7 +23,7 @@ LocordaConfig(
       crdtMapping: Uri.parse('$appBaseUrl/mappings/note-v1.ttl'),
       indices: [
         GroupIndex(NoteGroupKey,
-            item: IndexItem(NoteIndexEntry, {
+            item: IndexItemConfig(NoteIndexEntry, {
               SchemaNoteDigitalDocument.name,
               SchemaNoteDigitalDocument.dateCreated,
               SchemaNoteDigitalDocument.dateModified,
@@ -50,19 +50,19 @@ LocordaConfig(
 ### Current Annotations
 
 ```dart
-@LcrdRootResource(PersonalNotesVocab.PersonalNote, RootIriStrategy(...))
+@RootResource(PersonalNotesVocab.PersonalNote, RootIriStrategy(...))
 class Note {
   @RdfProperty(...) @CrdtLwwRegister() final String title;
   @RdfProperty(...) @CrdtImmutable() final DateTime createdAt;
 }
 
-@LcrdIndexItem(IndexItemIriStrategy(Note))
+@IndexItem(IndexItemIriStrategy(Note))
 class NoteIndexEntry {
   @RdfProperty(SchemaNoteDigitalDocument.name) final String name;
   @RdfProperty(SchemaNoteDigitalDocument.dateCreated) final DateTime dateCreated;
 }
 
-@LcrdGroupKey()
+@GroupKey()
 class NoteGroupKey {
   @RdfProperty(SchemaNoteDigitalDocument.dateCreated) final DateTime createdMonth;
 }
@@ -76,10 +76,10 @@ class NoteGroupKey {
 
 ## Proposed Solution: Consolidated Annotations
 
-### LcrdFullIndex Configuration
+### FullIndex Configuration
 
 ```dart
-class LcrdFullIndex {
+class FullIndex {
   final bool isEnabled;
   final String localName;
   final ItemFetchPolicy policy;
@@ -87,24 +87,24 @@ class LcrdFullIndex {
   /// Creates a FullIndex configuration with defaults.
   /// Default localName: 'default'
   /// Default policy: ItemFetchPolicy.prefetch
-  const LcrdFullIndex({
+  const FullIndex({
     this.localName = 'default',
     this.policy = ItemFetchPolicy.prefetch,
   }) : isEnabled = true;
   
   /// Disables FullIndex generation for this resource.
   /// Use when resource only has GroupIndex indices.
-  const LcrdFullIndex.disabled()
+  const FullIndex.disabled()
       : isEnabled = false,
         localName = '',
         policy = ItemFetchPolicy.prefetch;
 }
 ```
 
-### Enhanced LcrdRootResource
+### Enhanced RootResource
 
 ```dart
-class LcrdRootResource extends RdfGlobalResource {
+class RootResource extends RdfGlobalResource {
   /// Full absolute IRI identifying the CRDT mapping document.
   ///
   /// This is a static, app-owned IRI — fully known at compile time,
@@ -123,24 +123,24 @@ class LcrdRootResource extends RdfGlobalResource {
   final bool generateCrdtMapping;
   
   /// Configuration for the default FullIndex.
-  /// Default: LcrdFullIndex() (enabled with localName='default', policy=prefetch)
-  /// Use LcrdFullIndex.disabled when resource only has GroupIndex indices.
-  final LcrdFullIndex fullIndex;
+  /// Default: FullIndex() (enabled with localName='default', policy=prefetch)
+  /// Use FullIndex.disabled when resource only has GroupIndex indices.
+  final FullIndex fullIndex;
 
-  const LcrdRootResource(
+  const RootResource(
     IriTerm? classIri,
     this.crdtMapping, {
     RootIriStrategy iriStrategy = const RootIriStrategy(),
     this.generateCrdtMapping = true,
-    this.fullIndex = const LcrdFullIndex(),
+    this.fullIndex = const FullIndex(),
   }) : super(classIri, iriStrategy);
 }
 ```
 
-### Enhanced LcrdGroupKey
+### Enhanced GroupKey
 
 ```dart
-class LcrdGroupKey extends RdfLocalResource {
+class GroupKey extends RdfLocalResource {
   /// The resource type this group index is for
   final Type resourceType;
   
@@ -148,50 +148,50 @@ class LcrdGroupKey extends RdfLocalResource {
   final String? localName;
   
   /// Properties to use for grouping with optional transforms
-  final List<LcrdGroupingProperty> groupingProperties;
+  final List<GroupingProperty> groupingProperties;
   
-  const LcrdGroupKey(
+  const GroupKey(
     this.resourceType, {
     this.localName,
     this.groupingProperties = const [],
   });
 }
 
-class LcrdGroupingProperty {
+class GroupingProperty {
   final IriTerm property;
-  final List<LcrdRegexTransform> transforms;
+  final List<RegexTransform> transforms;
   
-  const LcrdGroupingProperty(this.property, {this.transforms = const []});
+  const GroupingProperty(this.property, {this.transforms = const []});
 }
 
-class LcrdRegexTransform {
+class RegexTransform {
   final String pattern;
   final String replacement;
   
-  const LcrdRegexTransform(this.pattern, this.replacement);
+  const RegexTransform(this.pattern, this.replacement);
 }
 ```
 
-### Enhanced LcrdIndexItem
+### Enhanced IndexItem
 
 ```dart
-class LcrdIndexItem extends RdfGlobalResource {
+class IndexItem extends RdfGlobalResource {
   /// The index type this item belongs to (GroupKey class or null for FullIndex)
   final Type? groupKeyType;
   
   /// Named constructor for FullIndex entries
-  /// Usage: @LcrdIndexItem.fullIndex(IndexItemIriStrategy(Note))
+  /// Usage: @IndexItem.fullIndex(IndexItemIriStrategy(Note))
   /// 
   /// Note: IndexItemIriStrategy must be passed as parameter (not resourceType)
   /// due to Dart const constructor limitations - cannot create new objects
   /// inside const constructors.
-  const LcrdIndexItem.fullIndex(IndexItemIriStrategy iriStrategy)
+  const IndexItem.fullIndex(IndexItemIriStrategy iriStrategy)
       : groupKeyType = null,
         super.deserializeOnly(null, iri: iriStrategy);
   
   /// Named constructor for GroupIndex entries
-  /// Usage: @LcrdIndexItem.groupIndex(NoteGroupKey, IndexItemIriStrategy(Note))
-  const LcrdIndexItem.groupIndex(Type groupKeyType, IndexItemIriStrategy iriStrategy)
+  /// Usage: @IndexItem.groupIndex(NoteGroupKey, IndexItemIriStrategy(Note))
+  const IndexItem.groupIndex(Type groupKeyType, IndexItemIriStrategy iriStrategy)
       : groupKeyType = groupKeyType,
         super.deserializeOnly(null, iri: iriStrategy);
 }
@@ -201,11 +201,11 @@ class LcrdIndexItem extends RdfGlobalResource {
 
 **Note with GroupIndex (no FullIndex):**
 ```dart
-@LcrdRootResource(
+@RootResource(
   PersonalNotesVocab.PersonalNote,
   'https://app.example.com/mappings/note-v1.ttl',
   iriStrategy: RootIriStrategy(RootIriConfig('note')),
-  fullIndex: LcrdFullIndex.disabled,
+  fullIndex: FullIndex.disabled,
 )
 class Note {
   @RdfProperty(SchemaNoteDigitalDocument.name)
@@ -217,7 +217,7 @@ class Note {
   final DateTime createdAt;
 }
 
-@LcrdIndexItem.groupIndex(NoteGroupKey, IndexItemIriStrategy(Note))
+@IndexItem.groupIndex(NoteGroupKey, IndexItemIriStrategy(Note))
 class NoteIndexEntry {
   @RdfProperty(SchemaNoteDigitalDocument.name) final String name;
   @RdfProperty(SchemaNoteDigitalDocument.dateCreated) final DateTime dateCreated;
@@ -226,13 +226,13 @@ class NoteIndexEntry {
   @NoteCategoryProperty() final String? categoryId;
 }
 
-@LcrdGroupKey(
+@GroupKey(
   Note,
   localName: 'notes_by_month',
   groupingProperties: [
-    LcrdGroupingProperty(
+    GroupingProperty(
       SchemaNoteDigitalDocument.dateCreated,
-      transforms: [LcrdRegexTransform(r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*', r'${1}-${2}')]
+      transforms: [RegexTransform(r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*', r'${1}-${2}')]
     )
   ],
 )
@@ -243,7 +243,7 @@ class NoteGroupKey {
 
 **Category with default FullIndex:**
 ```dart
-@LcrdRootResource(
+@RootResource(
   PersonalNotesVocab.NotesCategory,
   'https://app.example.com/mappings/category-v1.ttl',
 )
@@ -253,8 +253,8 @@ class Category {
   final String name;
 }
 
-// Optional: Define IndexItem for FullIndex
-@LcrdIndexItem.fullIndex(IndexItemIriStrategy(Category))
+// Optional: Define IndexItemConfig for FullIndex
+@IndexItem.fullIndex(IndexItemIriStrategy(Category))
 class CategoryIndexEntry {
   @RdfProperty(SchemaCreativeWork.name) final String name;
 }
@@ -262,30 +262,30 @@ class CategoryIndexEntry {
 
 **Resource with both FullIndex and GroupIndex:**
 ```dart
-@LcrdRootResource(
+@RootResource(
   PersonalNotesVocab.Document,
   'https://app.example.com/mappings/document-v1.ttl',
-  fullIndex: LcrdFullIndex(
+  fullIndex: FullIndex(
     localName: 'all_documents',
     policy: ItemFetchPolicy.onRequest,
   ),
 )
 class Document { /* ... */ }
 
-// IndexItem for FullIndex
-@LcrdIndexItem.fullIndex(IndexItemIriStrategy(Document))
+// IndexItemConfig for FullIndex
+@IndexItem.fullIndex(IndexItemIriStrategy(Document))
 class DocumentFullIndexEntry {
   @RdfProperty(SchemaCreativeWork.name) final String name;
 }
 
-// IndexItem for GroupIndex
-@LcrdIndexItem.groupIndex(DocumentGroupKey, IndexItemIriStrategy(Document))
+// IndexItemConfig for GroupIndex
+@IndexItem.groupIndex(DocumentGroupKey, IndexItemIriStrategy(Document))
 class DocumentGroupIndexEntry {
   @RdfProperty(SchemaCreativeWork.name) final String name;
   @RdfProperty(SchemaNoteDigitalDocument.dateCreated) final DateTime dateCreated;
 }
 
-@LcrdGroupKey(
+@GroupKey(
   Document,
   localName: 'documents_by_type',
   groupingProperties: [/* ... */],
@@ -295,10 +295,10 @@ class DocumentGroupKey { /* ... */ }
 
 **Custom FullIndex configuration:**
 ```dart
-@LcrdRootResource(
+@RootResource(
   PersonalNotesVocab.LargeDataset,
   'https://app.example.com/mappings/dataset-v1.ttl',
-  fullIndex: LcrdFullIndex(
+  fullIndex: FullIndex(
     localName: 'all_datasets',
     policy: ItemFetchPolicy.onRequest,  // Lazy loading for large datasets
   ),
@@ -308,7 +308,7 @@ class LargeDataset { /* ... */ }
 
 **Manual CRDT Mapping:**
 ```dart
-@LcrdRootResource(
+@RootResource(
   PersonalNotesVocab.CustomResource,
   'https://app.example.com/mappings/custom-v1.ttl',
   generateCrdtMapping: false,  // Use manual .ttl file
@@ -319,25 +319,25 @@ class CustomResource { /* ... */ }
 ## Code Generation Algorithm
 
 ```
-For each class C with @LcrdRootResource:
+For each class C with @RootResource:
   1. Extract: resource type (C), crdtMapping IRI, fullIndex configuration
   
-  2. Find all @LcrdGroupKey classes K where K.resourceType == C:
+  2. Find all @GroupKey classes K where K.resourceType == C:
      - For each K: create GroupIndex with:
        - groupKeyType: K
        - localName: K.localName (default: "default")
        - groupingProperties: K.groupingProperties
-     - Find associated @LcrdIndexItem.groupIndex(K, IndexItemIriStrategy(C)) for IndexItem
+     - Find associated @IndexItem.groupIndex(K, IndexItemIriStrategy(C)) for IndexItemConfig
   
   3. If fullIndex.isEnabled == true:
      - Create FullIndex with:
        - localName: fullIndex.localName
        - itemFetchPolicy: fullIndex.policy
-     - Find associated @LcrdIndexItem.fullIndex(IndexItemIriStrategy(C)) for IndexItem (optional)
+     - Find associated @IndexItem.fullIndex(IndexItemIriStrategy(C)) for IndexItemConfig (optional)
   
-  4. For each IndexItem (full or group):
+  4. For each IndexItemConfig (full or group):
      - Extract index properties from @RdfProperty fields
-     - Create IndexItem(IndexEntryType, {properties})
+     - Create IndexItemConfig(IndexEntryType, {properties})
   
   5. Generate ResourceConfig with:
      - type: C
@@ -352,36 +352,36 @@ Generate LocordaConfig factory function with all ResourceConfigs
 ### Input (Annotated Classes)
 
 ```dart
-@LcrdRootResource(
+@RootResource(
   PersonalNotesVocab.PersonalNote,
   'https://app.example.com/mappings/note-v1.ttl',
   iriStrategy: RootIriStrategy(RootIriConfig('note')),
-  fullIndex: LcrdFullIndex.disabled,
+  fullIndex: FullIndex.disabled,
 )
 class Note {
   @RdfProperty(SchemaNoteDigitalDocument.name) @CrdtLwwRegister()
   final String title;
 }
 
-@LcrdIndexItem.groupIndex(NoteGroupKey, IndexItemIriStrategy(Note))
+@IndexItem.groupIndex(NoteGroupKey, IndexItemIriStrategy(Note))
 class NoteIndexEntry {
   @RdfProperty(SchemaNoteDigitalDocument.name) final String name;
   @RdfProperty(SchemaNoteDigitalDocument.dateCreated) final DateTime dateCreated;
 }
 
-@LcrdGroupKey(
+@GroupKey(
   Note,
   localName: 'notes_by_month',
   groupingProperties: [
-    LcrdGroupingProperty(
+    GroupingProperty(
       SchemaNoteDigitalDocument.dateCreated,
-      transforms: [LcrdRegexTransform(r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*', r'${1}-${2}')]
+      transforms: [RegexTransform(r'^([0-9]{4})-([0-9]{2})-([0-9]{2}).*', r'${1}-${2}')]
     )
   ],
 )
 class NoteGroupKey { /* ... */ }
 
-@LcrdRootResource(
+@RootResource(
   PersonalNotesVocab.NotesCategory,
   'https://app.example.com/mappings/category-v1.ttl',
 )
@@ -390,7 +390,7 @@ class Category {
   final String name;
 }
 
-@LcrdIndexItem.fullIndex(IndexItemIriStrategy(Category))
+@IndexItem.fullIndex(IndexItemIriStrategy(Category))
 class CategoryIndexEntry {
   @RdfProperty(SchemaCreativeWork.name) final String name;
 }
@@ -411,7 +411,7 @@ LocordaConfig generateLocordaConfig() {
           GroupIndex(
             NoteGroupKey,
             localName: 'notes_by_month',
-            item: IndexItem(NoteIndexEntry, {
+            item: IndexItemConfig(NoteIndexEntry, {
               SchemaNoteDigitalDocument.name,
               SchemaNoteDigitalDocument.dateCreated,
             }),
@@ -431,7 +431,7 @@ LocordaConfig generateLocordaConfig() {
           FullIndex(
             localName: 'default',
             itemFetchPolicy: ItemFetchPolicy.prefetch,
-            item: IndexItem(CategoryIndexEntry, {
+            item: IndexItemConfig(CategoryIndexEntry, {
               SchemaCreativeWork.name,
             }),
           ),
@@ -469,7 +469,7 @@ builders:
 ```
 
 ### Package Dependencies
-- **locorda_annotations**: Annotation definitions (`LcrdRootResource`, `LcrdFullIndex`, `LcrdGroupKey`, `LcrdIndexItem`) — NOT a dependency of the generator; resolved from consumer's transitive deps
+- **locorda_annotations**: Annotation definitions (`RootResource`, `FullIndex`, `GroupKey`, `IndexItem`) — NOT a dependency of the generator; resolved from consumer's transitive deps
 - **locorda_core**: Runtime config classes (`LocordaConfig`, `ResourceConfig`, `FullIndex`, `GroupIndex`) — NOT a dependency of the generator
 - **analyzer**: Resolved analysis for annotation detection + type hierarchy walking (supports custom `@RdfProperty` subclasses)
 - **build**: Code generation infrastructure
@@ -478,7 +478,7 @@ builders:
 ## Implementation Phases
 
 ### Phase 1: LocordaConfig Generation
-- Implement annotation classes: `LcrdFullIndex`, enhanced `LcrdRootResource`, `LcrdGroupKey`, `LcrdIndexItem` etc.
+- Implement annotation classes: `FullIndex`, enhanced `RootResource`, `GroupKey`, `IndexItem` etc.
 - Build annotation scanner using `package:analyzer`
 - Generate `locorda_config.g.dart` with factory function
 - Support FullIndex and GroupIndex with transforms

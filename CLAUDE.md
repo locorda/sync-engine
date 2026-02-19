@@ -286,7 +286,7 @@ When working on this codebase:
 
 **Developer Control**: App controls local storage/querying via repositories, library handles CRDT merging
 **Sync Operations**: `syncSystem.save<T>(object)` and `syncSystem.deleteDocument<T>(object)` for changes
-**Index Configuration**: Configure per-resource via FullIndex or GroupIndex with ItemFetchPolicy
+**Index Configuration**: Configure per-resource via FullIndexConfig or GroupIndexConfig with ItemFetchPolicy
 
 ### Deletion Handling
 - Framework deletion is for system-level cleanup (storage optimization, retention policies)

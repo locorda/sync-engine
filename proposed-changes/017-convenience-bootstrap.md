@@ -182,7 +182,7 @@ Core mappings are automatically included by `BootstrapRdfGraphFetcher` — the u
 **See [020-crdt-mapping-generation.md](020-crdt-mapping-generation.md) for complete specification.**
 
 ### Summary
-- Triggered by `@LcrdRootResource` annotation with `generateCrdtMapping` flag
+- Triggered by `@RootResource` annotation with `generateCrdtMapping` flag
 - Generates deployable CRDT mapping TTL files using graph-based generation (`RdfGraph` + `turtle.encode()`)
 - Automatic field traversal to discover sub-resources and local resources
 - Defaults to `CrdtLwwRegister` for properties without CRDT annotation
@@ -191,7 +191,7 @@ Core mappings are automatically included by `BootstrapRdfGraphFetcher` — the u
 
 ### Key Design Decisions (from 020)
 1. **Graph-based generation:** Use `RdfGraph` and `turtle.encode()`, not string concatenation
-2. **Field traversal:** Recursively discover `@LcrdSubResource` and `@RdfLocalResource` types
+2. **Field traversal:** Recursively discover `@SubResource` and `@RdfLocalResource` types
 3. **Smart defaults:** Apply `LWW_Register` when no CRDT annotation present
 4. **Enhanced annotation:** New `CrdtMappingConfig` class for imports, label, comment
 5. **Integration:** Seamlessly chains with mapping bootstrap, worker generator, and config builder
@@ -220,7 +220,7 @@ Core mappings are automatically included by `BootstrapRdfGraphFetcher` — the u
 - User can still override by passing explicit `workerSetup`.
 
 ### C.4 Step 4: generate full LocordaConfig
-- Generate `LocordaConfig` from annotations (using `@LcrdRootResource`, `@LcrdGroupKey`, `@LcrdIndexItem`).
+- Generate `LocordaConfig` from annotations (using `@RootResource`, `@GroupKey`, `@IndexItem`).
 - Automatically set `crdtMapping` URIs if Phase B mappings exist.
 - Add new annotations if needed for full index config generation.
 

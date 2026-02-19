@@ -17,7 +17,7 @@ class NoteCategoryProperty extends RdfProperty {
   const NoteCategoryProperty()
       : super(
           PersonalNotesVocab.belongsToCategory,
-          iri: const LcrdRootResourceRef(Category),
+          iri: const RootResourceRef(Category),
         );
 }
 
@@ -30,16 +30,16 @@ class NoteCategoryProperty extends RdfProperty {
 /// - LWW-Register for title and content (last writer wins)
 /// - OR-Set for tags (additions and removals merge)
 ///
-@LcrdRootResource(
+@RootResource(
   PersonalNotesVocab.PersonalNote,
-  LcrdCrdt(
+  MergeContract(
     '$appBaseUrl/mappings/note-v1#',
     label: 'Personal Note CRDT Document Mapping v1',
     comment:
         'Defines how personal notes should merge when conflicts occur during sync.',
   ),
   iriStrategy: RootIriStrategy(RootIriConfig('note')),
-  fullIndex: LcrdFullIndex.disabled(),
+  fullIndex: FullIndex.disabled(),
 )
 class Note {
   /// Unique identifier for this note

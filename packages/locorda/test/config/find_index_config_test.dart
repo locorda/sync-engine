@@ -31,21 +31,21 @@ void main() {
     late LocordaConfig config;
     late ResourceConfig noteResourceConfig;
     late ResourceConfig contactResourceConfig;
-    late FullIndex noteIndex;
-    late FullIndex contactIndex;
+    late FullIndexConfig noteIndex;
+    late FullIndexConfig contactIndex;
 
     setUp(() {
       // Set up test configurations
-      final noteIndexItem =
-          IndexItem(TestNoteIndex, {const IriTerm('http://example.org/title')});
-      noteIndex = FullIndex(
+      final noteIndexItem = IndexItemConfig(
+          TestNoteIndex, {const IriTerm('http://example.org/title')});
+      noteIndex = FullIndexConfig(
         localName: 'note-title-index',
         item: noteIndexItem,
       );
 
-      final contactIndexItem = IndexItem(
+      final contactIndexItem = IndexItemConfig(
           TestContactIndex, {const IriTerm('http://example.org/name')});
-      contactIndex = FullIndex(
+      contactIndex = FullIndexConfig(
         localName: 'contact-name-index',
         item: contactIndexItem,
       );
@@ -113,8 +113,8 @@ void main() {
     test('should handle resource with multiple indices', () {
       // Add another index to the note resource
       final noteTagsIndexItem =
-          IndexItem(String, {const IriTerm('http://example.org/tags')});
-      final noteTagsIndex = FullIndex(
+          IndexItemConfig(String, {const IriTerm('http://example.org/tags')});
+      final noteTagsIndex = FullIndexConfig(
         localName: 'note-tags-index',
         item: noteTagsIndexItem,
       );
@@ -164,7 +164,7 @@ void main() {
     });
 
     test('should handle index with null item', () {
-      final nullItemIndex = FullIndex(
+      final nullItemIndex = FullIndexConfig(
         localName: 'null-item-index',
         item: null, // No item specified
       );
@@ -195,17 +195,17 @@ void main() {
 
     test('should distinguish between different local names for same type', () {
       // Create two indices with same item type but different local names
-      final noteIndexItem1 =
-          IndexItem(TestNoteIndex, {const IriTerm('http://example.org/title')});
-      final noteIndexItem2 = IndexItem(
+      final noteIndexItem1 = IndexItemConfig(
+          TestNoteIndex, {const IriTerm('http://example.org/title')});
+      final noteIndexItem2 = IndexItemConfig(
           TestNoteIndex, {const IriTerm('http://example.org/content')});
 
-      final noteIndex1 = FullIndex(
+      final noteIndex1 = FullIndexConfig(
         localName: 'note-title-index',
         item: noteIndexItem1,
       );
 
-      final noteIndex2 = FullIndex(
+      final noteIndex2 = FullIndexConfig(
         localName: 'note-content-index',
         item: noteIndexItem2,
       );

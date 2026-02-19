@@ -17,7 +17,7 @@ dependencies:
   locorda_worker: any
 
   # RDF
-  locorda_rdf_core: ^0.11.7
+  locorda_rdf_core: ^0.11.8
   
   # File system paths
   path: ^1.9.1

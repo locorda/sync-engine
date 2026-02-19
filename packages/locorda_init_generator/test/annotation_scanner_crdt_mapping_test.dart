@@ -13,21 +13,21 @@ class IriTerm {
   const IriTerm(this.value);
 }
 
-class LcrdCrdt {
+class MergeContract {
   final String mappingIri;
   final bool generate;
-  const LcrdCrdt(this.mappingIri, {this.generate = true});
+  const MergeContract(this.mappingIri, {this.generate = true});
 }
 
-class LcrdRootResource {
+class RootResource {
   final IriTerm? classIri;
-  final LcrdCrdt crdt;
-  const LcrdRootResource(this.classIri, this.crdt);
+  final MergeContract crdt;
+  const RootResource(this.classIri, this.crdt);
 }
 
-@LcrdRootResource(
+@RootResource(
   IriTerm('https://example.dev/vocab#Note'),
-  LcrdCrdt('https://example.dev/mappings/note-v1#'),
+  MergeContract('https://example.dev/mappings/note-v1#'),
 )
 class Note {}
 ''';

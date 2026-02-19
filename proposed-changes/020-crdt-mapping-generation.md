@@ -7,10 +7,10 @@
 
 ## Executive Summary
 
-This document defines how CRDT mapping TTL files are automatically generated from `@LcrdRootResource` and related annotations. The generator produces deployable Turtle documents that define property-level merge strategies for conflict-free collaboration.
+This document defines how CRDT mapping TTL files are automatically generated from `@RootResource` and related annotations. The generator produces deployable Turtle documents that define property-level merge strategies for conflict-free collaboration.
 
 **Key Features:**
-- Declarative configuration via `LcrdCrdt` class in `@LcrdRootResource` annotation
+- Declarative configuration via `MergeContract` class in `@RootResource` annotation
 - Automatic generation for new mappings, `.external()` constructor for manual mappings
 - Graph-based generation using `RdfGraph` and `turtle.encode()` (not string concatenation)
 - Automatic field traversal to discover sub-resources and local resources
@@ -20,18 +20,18 @@ This document defines how CRDT mapping TTL files are automatically generated fro
 
 ## Trigger & Configuration
 
-### LcrdRootResource Enhancement
+### RootResource Enhancement
 
-The `@LcrdRootResource` annotation triggers CRDT mapping generation:
+The `@RootResource` annotation triggers CRDT mapping generation:
 
 ```dart
-@LcrdRootResource(
+@RootResource(
   PersonalNotesVocab.PersonalNote,
-  LcrdCrdt(
+  MergeContract(
     'https://myapp.example.com/mappings/note-v1.ttl',
     label: 'Personal Note CRDT Document Mapping v1',
     comment: 'Defines how personal notes should merge when conflicts occur during sync.',
-    imports: [LcrdMappings.coreV1],  // Using constant for full IRI
+    imports: [MergeContracts.coreV1],  // Using constant for full IRI
   ),
 )
 class Note extends RdfResource {
@@ -53,13 +53,13 @@ class Note extends RdfResource {
 }
 ```
 
-### LcrdCrdt Class
+### MergeContract Class
 
 Configuration class for CRDT mapping generation and referencing:
 
 ```dart
 /// Constants for standard mapping document IRIs
-class LcrdMappings {
+class MergeContracts {
   /// Core CRDT mechanics mapping (v1)
   static const coreV1 = IriTerm('https://w3id.org/solid-crdt-sync/mappings/core-v1');
   
@@ -74,7 +74,7 @@ class LcrdMappings {
 }
 
 /// CRDT mapping configuration for automatic generation
-class LcrdCrdt {
+class MergeContract {
   /// The canonical IRI of the mapping document
   final String mappingIri;
   
@@ -85,23 +85,23 @@ class LcrdCrdt {
   final String? comment;
   
   /// List of mapping document IRIs to import
-  /// Default: [LcrdMappings.coreV1]
-  /// Example: [LcrdMappings.coreV1, LcrdMappings.indexV1]
+  /// Default: [MergeContracts.coreV1]
+  /// Example: [MergeContracts.coreV1, MergeContracts.indexV1]
   final List<IriTerm> imports;
   
   /// Whether this mapping should be generated (true) or is manually provided (false)
   final bool generate;
   
   /// Default constructor for generated mappings
-  const LcrdCrdt(
+  const MergeContract(
     this.mappingIri, {
     this.label,
     this.comment,
-    this.imports = const [LcrdMappings.coreV1],
+    this.imports = const [MergeContracts.coreV1],
   }) : generate = true;
   
   /// Named constructor for external/manually provided mappings
-  const LcrdCrdt.external(this.mappingIri)
+  const MergeContract.external(this.mappingIri)
       : label = null,
         comment = null,
         imports = const [],
@@ -113,12 +113,12 @@ class LcrdCrdt {
 
 **Generated mapping:**
 ```dart
-@LcrdRootResource(
+@RootResource(
   PersonalNotesVocab.PersonalNote,
-  LcrdCrdt(
+  MergeContract(
     'https://myapp.example.com/mappings/note-v1.ttl',
     label: 'Personal Note CRDT Document Mapping v1',
-    imports: [LcrdMappings.coreV1],  // IriTerm constant
+    imports: [MergeContracts.coreV1],  // IriTerm constant
   ),
 )
 class Note extends RdfResource { /* ... */ }
@@ -126,25 +126,25 @@ class Note extends RdfResource { /* ... */ }
 
 **External/manual mapping:**
 ```dart
-@LcrdRootResource(
+@RootResource(
   PersonalNotesVocab.CustomResource,
-  LcrdCrdt.external('https://myapp.example.com/mappings/custom-v1.ttl'),
+  MergeContract.external('https://myapp.example.com/mappings/custom-v1.ttl'),
 )
 class CustomResource extends RdfResource { /* ... */ }
 ```
 
-### Updated LcrdRootResource Signature
+### Updated RootResource Signature
 
 ```dart
-class LcrdRootResource extends RdfGlobalResource {
-  final LcrdCrdt crdt;
-  final LcrdFullIndex fullIndex;
+class RootResource extends RdfGlobalResource {
+  final MergeContract crdt;
+  final FullIndex fullIndex;
 
-  const LcrdRootResource(
+  const RootResource(
     super.classIri,
     this.crdt, {
     super.iriStrategy = const RootIriStrategy(),
-    this.fullIndex = const LcrdFullIndex(),
+    this.fullIndex = const FullIndex(),
   }) : super(iriStrategy);
 }
 ```
@@ -157,24 +157,24 @@ class LcrdRootResource extends RdfGlobalResource {
 - **Format:** TriG (`.crdt.cache.trig` extension)
 - **Filename:** Derived from source file path with `.crdt.cache.trig` suffix
 - **Example:** `lib/models/note.dart` → `.dart_tool/build/.../lib/models/note.crdt.cache.trig`
-- **Generation:** Only occurs when at least one `@LcrdRootResource` with `crdt.generate == true` exists in the file
+- **Generation:** Only occurs when at least one `@RootResource` with `crdt.generate == true` exists in the file
 - **Future Extension:** `.vocab.cache.trig` reserved for vocabulary generation (Phase 2)
 
 ### Multiple Root Resources per File
 
-A single Dart file can contain multiple `@LcrdRootResource` classes. Each is converted to a **named graph** within a single TriG dataset:
+A single Dart file can contain multiple `@RootResource` classes. Each is converted to a **named graph** within a single TriG dataset:
 
 ```dart
 // lib/models/shared.dart
-@LcrdRootResource(
+@RootResource(
   NotesVocab.Note,
-  LcrdCrdt('https://example.com/mappings/note-v1#'),
+  MergeContract('https://example.com/mappings/note-v1#'),
 )
 class Note { /* ... */ }
 
-@LcrdRootResource(
+@RootResource(
   NotesVocab.Category,
-  LcrdCrdt('https://example.com/mappings/category-v1#'),
+  MergeContract('https://example.com/mappings/category-v1#'),
 )
 class Category { /* ... */ }
 ```
@@ -195,7 +195,7 @@ class Category { /* ... */ }
 ### Three-Phase Pipeline
 
 **Phase 1: CRDT Mapping Builder** (per source file)
-- Scans Dart file for `@LcrdRootResource(crdt.generate == true)`
+- Scans Dart file for `@RootResource(crdt.generate == true)`
 - Generates RDF graph for each root resource (field traversal, CRDT rules)
 - Wraps each graph as named graph (key = `crdt.mappingIri`)
 - Combines to `RdfDataset` → `trig.encode()` → `.crdt.cache.trig` file
@@ -292,21 +292,21 @@ builders:
 
 ## Field Traversal
 
-**Algorithm:** Start with `@LcrdRootResource` class, recursively traverse fields:
+**Algorithm:** Start with `@RootResource` class, recursively traverse fields:
 - Unwrap container types (`List<T>`, `Set<T>`, `T?`)
-- Include types with `@LcrdSubResource` or `@RdfLocalResource`
+- Include types with `@SubResource` or `@RdfLocalResource`
 - Stop at primitives or external classes
 - Deduplicate (each type once)
 
 **Example:**
 ```dart
-@LcrdRootResource(...)
+@RootResource(...)
 class Note {
   @RdfProperty(...) @CrdtOrSet()
   late Set<Weblink> relatedLinks;  // ← Traverse into Weblink
 }
 
-@LcrdSubResource(...)
+@SubResource(...)
 class Weblink {
   @RdfProperty(...) @CrdtImmutable()
   late String url;
@@ -338,7 +338,7 @@ class Weblink {
 - External mappings (`.external()`) must be provided as RDF files in assets/
 - Bootstrap builder configuration allows multiple asset paths via `mapping_roots` option
 - Worker receives complete list, framework parses each document at runtime
-- Config builder extracts mapping IRI from `@LcrdRootResource.crdt`
+- Config builder extracts mapping IRI from `@RootResource.crdt`
 
 **Manual Mapping Integration:**
 Users can provide handwritten mappings alongside generated ones:
@@ -387,7 +387,7 @@ Future<List<String>> collectMappings(BuildStep buildStep) async {
 
 ## Example Transformation
 
-**Input:** Dart classes with `@LcrdRootResource`, `@RdfProperty`, CRDT annotations
+**Input:** Dart classes with `@RootResource`, `@RdfProperty`, CRDT annotations
 
 **Output:** Turtle document following `mc:DocumentMapping` pattern with:
 - Document metadata (label, comment, imports list)
@@ -418,7 +418,7 @@ Future<List<String>> collectMappings(BuildStep buildStep) async {
 
 ### Generator Architecture
 
-**Builder:** `LibraryBuilder` scans `@LcrdRootResource` annotations, discovers types via field traversal, builds `RdfGraph` from triples, emits `.ttl` file via `turtle.encode()`.
+**Builder:** `LibraryBuilder` scans `@RootResource` annotations, discovers types via field traversal, builds `RdfGraph` from triples, emits `.ttl` file via `turtle.encode()`.
 
 **Build Config:** Empty `build_extensions: {$lib$: []}` (outputs determined dynamically), `build_to: source`.
 
@@ -451,10 +451,10 @@ return trig.encode(dataset);
 
 ### Type Discovery & Processing
 
-**Entry Point:** `@LcrdRootResource` → recursive field traversal (field types, Set/List generics)
+**Entry Point:** `@RootResource` → recursive field traversal (field types, Set/List generics)
 
 **Discovery Rules:**
-- Must have `@LcrdSubResource` or `@LcrdRootResource`
+- Must have `@SubResource` or `@RootResource`
 - Track processed types to avoid cycles
 - Process breadth-first (queue)
 
@@ -492,13 +492,13 @@ return trig.encode(dataset);
 
 ## Open Questions & Key Decisions
 
-**Namespace Prefixes:** Use `IriTerm` everywhere, let `turtle.encode()` optimize prefixes. Define constants in `LcrdMappings`.
+**Namespace Prefixes:** Use `IriTerm` everywhere, let `turtle.encode()` optimize prefixes. Define constants in `MergeContracts`.
 
-**Version Strategy:** Version in URL (`note-v1.ttl`), create new `@LcrdRootResource` for breaking changes.
+**Version Strategy:** Version in URL (`note-v1.ttl`), create new `@RootResource` for breaking changes.
 
 **Validation:** Builder should validate CRDT semantics (e.g., identifying properties must be Immutable).
 
-**External Types:** Only traverse types with `@LcrdSubResource`, treat others as primitives.
+**External Types:** Only traverse types with `@SubResource`, treat others as primitives.
 
 **Build Performance:** Incremental builder, only regenerate changed roots + dependents.
 
