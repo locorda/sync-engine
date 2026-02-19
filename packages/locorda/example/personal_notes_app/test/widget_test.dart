@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:locorda/locorda.dart';
+import 'package:locorda_solid/locorda_solid.dart';
+import 'package:locorda_gdrive/locorda_gdrive.dart';
 
 import 'package:personal_notes_app/screens/notes_list_screen.dart';
 import 'package:personal_notes_app/services/categories_service.dart';

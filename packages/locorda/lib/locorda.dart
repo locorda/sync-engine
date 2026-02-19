@@ -1,41 +1,3 @@
-/// Offline-first CRDT synchronization with Solid Pods.
-///
-/// This is the main entry point package that provides documentation,
-/// examples, and convenient access to the locorda ecosystem.
-///
-/// ## Quick Start
-///
-/// ```dart
-/// import 'package:locorda/locorda.dart';
-/// import 'package:locorda_drift/locorda_drift.dart';
-///
-/// // Set up offline-first sync system
-/// final storage = DriftStorage(path: 'app.db');
-/// final sync = await Locorda.setup(storage: storage);
-///
-/// // Use your annotated models
-/// final note = Note(
-///   id: 'note-1',
-///   title: 'My first note',
-///   content: 'Offline-first with optional Solid sync!',
-/// );
-///
-/// await sync.save(note);
-/// final notes = await sync.getAll<Note>();
-///
-/// // Optionally connect to Solid Pod
-/// final auth = SolidAuthProvider(/* config */);
-/// await sync.connectToSolid(auth);
-/// await sync.sync(); // Sync to pod
-/// ```
-///
-/// ## Package Architecture
-///
-/// - `locorda_core` - Core sync engine and interfaces
-/// - `locorda_annotations` - CRDT merge strategy annotations
-/// - `locorda_drift` - SQLite storage backend
-/// - `locorda_solid_auth` - Solid authentication
-/// - `locorda_solid_ui` - Flutter UI components
 library locorda;
 
 // Re-export the main API from core
@@ -44,19 +6,6 @@ export 'package:locorda_flutter_core/locorda_flutter_core.dart'
 export 'package:locorda_flutter/locorda_flutter.dart' show Locorda;
 export 'package:locorda_drift/locorda_drift.dart'
     show DriftMainHandler, LocordaDriftWebOptions;
-export 'package:locorda_gdrive/locorda_gdrive.dart'
-    show
-        GDriveMainIntegration,
-        GDriveAuth,
-        GDriveAuthProvider,
-        GDriveLocalizations,
-        GDriveConfig,
-        GDriveFolderMode,
-        GDriveLocalMirrorConfig;
-export 'package:locorda_solid/locorda_solid.dart'
-    show SolidMainIntegration, SolidConfig;
-export 'package:locorda_solid_auth/locorda_solid_auth.dart'
-    show SolidAuthLocalizations;
 export 'package:locorda_objects/locorda_objects.dart'
     show
         CrdtIndexConfig,

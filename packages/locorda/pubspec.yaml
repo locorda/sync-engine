@@ -13,7 +13,6 @@ dependencies:
   flutter:
     sdk: flutter
   locorda_drift: any
-  locorda_solid: any
   locorda_flutter_core: any
   locorda_flutter: any
   locorda_worker: any

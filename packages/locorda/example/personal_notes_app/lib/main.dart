@@ -12,6 +12,8 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:locorda/locorda.dart';
+import 'package:locorda_solid/locorda_solid.dart';
+import 'package:locorda_gdrive/locorda_gdrive.dart';
 import 'package:locorda_dir/locorda_dir.dart';
 import 'package:personal_notes_app/init_locorda.g.dart';
 import 'package:personal_notes_app/locorda_worker.manifest.dart';

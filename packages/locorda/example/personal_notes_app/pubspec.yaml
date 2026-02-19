@@ -27,6 +27,10 @@ dependencies:
       
   # Locorda Sync packages
   locorda: any
+
+  # Remote storage implementations - dir is used for testing, Solid/GDrive are used in production
+  locorda_solid: any
+  locorda_gdrive: any
   locorda_dir: any
 
   # We need RdfGraph to be passed through in our models
