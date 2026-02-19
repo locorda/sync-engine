@@ -1,29 +1,34 @@
-# Concept: Simplified Annotations & Automatic Vocabulary Generation
+# Simplified Annotations & Automatic Vocabulary Generation
 
-**Date:** 2026-02-13  
-**Status:** Draft Concept  
+**Date:** 2026-02-13 (Updated: 2026-02-19)  
+**Status:** Implementation Complete (in rdf mapper library)  
 **Author:** Klas Kalaß & AI Analysis (copilot/claude)  
-**Related:** [020-crdt-mapping-generation.md](020-crdt-mapping-generation.md), [019_locorda_config_generation.md](019_locorda_config_generation.md)
+**Related:** [020-crdt-mapping-generation.md](020-crdt-mapping-generation.md), [019_locorda_config_generation.md](019_locorda_config_generation.md), [022-annotation-api-cleanup.md](022-annotation-api-cleanup.md)
 
 ## Status
 
----
-> **Most of the document not yet reviewed.** In general I came to the conclusion that we do have to integrate the idea
-of custom RDF schemas into the rdf mapper library - this is nothing to be done in the sync engine libraries.
-> 
-> And we have to find a way to work with classes where only the class is annotated (as @RdfLocalResource, @RdfGlobalResource or any of the specific subclasses like @LcrdRootResource, @LcrdSubresource etc.). 
->
-> So we will need a constructor for those annotations where the base iri is given (the user has to come up with something... no way around) but then we append `#<class_name>` etc. for the actual type IRI and use the property names (maybe transformed by convention to lower snake case or  whatever). And we need an empty RdfProperty constructor which is the default if no annotation is given (if in custom mode), but we have to handle RdfIriPart without RdfProperty - this should usually not be considered a RdfProperty. Plus we need to be able to provide the superclass for custom mode, defaulting to e.g. rdf:Resource or such
+✅ **Implemented in `locorda_rdf_mapper_annotations` v0.11.8+**
+
+The vocabulary generation feature has been implemented in the RDF mapper library (`locorda_rdf_mapper_annotations` and `locorda_rdf_mapper_generator`). This document now serves as:
+
+1. **Problem statement** - Why vocabulary generation was needed
+2. **Implementation reference** - How to use the `.define()` API in sync-engine
+3. **Integration guide** - How sync-engine annotations should leverage this feature
+
+For complete implementation details, see:
+- [RDF Mapper Annotations README](https://github.com/locorda/rdf/blob/main/packages/locorda_rdf_mapper_annotations/README.md)
+- [Vocabulary Generation Guide](https://github.com/locorda/rdf/blob/main/packages/locorda_rdf_mapper_annotations/doc/vocab_generating.md)
+
 ---
 
 ## Problem Statement
 
-Locorda requires RDF vocabulary IRIs for every class and every custom property. For developers who use only standard vocabularies (schema.org etc.), this works well. But for developers who don't care about RDF semantics and just want CRDT sync, the current annotation burden is significant:
+Locorda requires RDF vocabulary IRIs for every class and every custom property. For developers who use only standard vocabularies (schema.org etc.), this works well. But for developers who don't care about RDF semantics and just want CRDT sync, the annotation burden was significant:
 
-### Current Pain Points
+### Previous Pain Points
 
 **1. Manual Vocabulary Class**  
-Developers must hand-write a `PersonalNotesVocab` class with `IriTerm` constants for every custom class and property:
+Developers had to hand-write vocabulary classes with `IriTerm` constants:
 
 ```dart
 class PersonalNotesVocab {
@@ -36,23 +41,23 @@ class PersonalNotesVocab {
 }
 ```
 
-**2. Boilerplate RDF Knowledge Required**  
-Developers must understand:
+**2. Extensive RDF Knowledge Required**  
+Developers needed to understand:
 - What an IRI is and what `IriTerm` means
-- Why class IRIs and predicate IRIs are different
-- How `appBaseUrl` + fragment pattern works
-- When to use schema.org vs custom predicates
+- Fragment identifiers and namespace patterns
+- When to use standard vocabularies vs custom predicates
+- How to structure OWL ontologies
 
-**3. The Turtle File is Hand-Written**  
-The `personal-notes.ttl` OWL ontology is authored manually and must be kept in sync with the Dart vocabulary class — a violation of DRY.
+**3. Manual TTL File Maintenance**  
+The OWL vocabulary file had to be hand-written and kept in sync with the Dart code — violation of DRY.
 
-**4. Verbose Annotations Even for Simple Models**  
-Compare the minimal `Task` model that embeds raw `IriTerm()` strings inline:
+**4. Annotation Verbosity**  
+Even simple models required extensive annotations:
 
 ```dart
-@LcrdRootResource(
+@RootResource.external(
   IriTerm('$appBaseUrl/vocabulary/task#Task'),
-  LcrdCrdt('$appBaseUrl/mappings/task-v1#'),
+  '$appBaseUrl/contracts/task-v1#',
 )
 class Task {
   @RdfProperty(IriTerm('$appBaseUrl/vocabulary/task#completed'))
@@ -60,884 +65,488 @@ class Task {
 }
 ```
 
-Neither approach is good: the vocab class approach is DRY but requires upfront work; the inline approach is quick but noisy with raw IRI strings.
-
-### Goal
-
-Make it **dead simple** for developers who don't care about RDF to annotate their models and still get correct RDF vocabulary files generated automatically. More advanced users who *do* care about RDF should still have full control.
+**5. Manual CRDT Merge Contract Files**  
+Developers had to manually create TTL files defining property-level CRDT merge strategies.
 
 ---
 
-## Proposed Solution: Convention-Based Defaults + Vocabulary Generation
+## Solution: Automatic Vocabulary + Merge Contract Generation
 
-The solution has two parts:
+The RDF mapper library provides automatic vocabulary generation via `AppVocab` (see [vocabulary generation guide](https://github.com/locorda/rdf/blob/main/packages/locorda_rdf_mapper_annotations/doc/vocab_generating.md)).
 
-1. **Convention-Based Annotation Defaults** — eliminate the need for explicit `IriTerm` predicates for custom properties by deriving them from Dart field names and class names
-2. **Vocabulary TTL Generator** — a new build step that generates a proper OWL vocabulary `.ttl` file from annotations, eliminating the hand-written vocabulary and Dart vocab class
+The sync-engine integrates this and adds **automatic CRDT merge contract generation** with a unified, type-safe API.
 
-### Design Principles
+### Key Insight: Two Independent Dimensions
 
-- **Zero-RDF-Knowledge**: A developer who knows nothing about RDF should be able to use Locorda with only CRDT annotations
-- **Convention over Configuration**: Sensible defaults derived from Dart naming conventions
-- **Progressive Disclosure**: Simple cases are simple; full RDF control is available when needed
-- **No Magic**: Conventions are predictable; developers can inspect generated files
-- **Backwards Compatible**: Existing explicit `@RdfProperty(IriTerm(...))` continues to work unchanged
+Vocabulary and CRDT merge contracts are **independent concerns** that can each be generated or external:
 
----
+| Vocabulary | Merge Contract | Use Case |
+|------------|---------------|----------|
+| 🔧 Generated | 🔧 Generated | Default: custom app models |
+| 📦 External | 🔧 Generated | Schema.org vocab + custom CRDT rules (common!) |
+| 🔧 Generated | 📦 External | Custom vocab + shared CRDT contracts |
+| 📦 External | 📦 External | Full interop with external standards |
 
-## Part 1: Convention-Based Annotation Defaults
+### 1. New Type-Safe API with Named Constructors
 
-### Concept A: Implicit Predicate IRIs from Field Names (Recommended)
+Four named constructors prevent invalid combinations and make intent explicit:
 
-Within a `@LcrdRootResource` class, all public fields without an explicit `@RdfProperty` get their predicate IRI derived automatically from the Dart field name. The CRDT strategy defaults to LWW-Register (no annotation needed); non-default strategies (`@CrdtOrSet()`, `@CrdtImmutable()`) still require explicit annotations.
-
-#### Convention Rules
-
-| Dart Name | Generated IRI Fragment |
-|-----------|----------------------|
-| Field `categoryColor` | `{vocabBaseIri}categoryColor` |
-| Field `isArchived` | `{vocabBaseIri}isArchived` |
-| Class `PersonalNote` | `{vocabBaseIri}PersonalNote` |
-
-The `vocabBaseIri` is derived from the `LcrdCrdt` mapping IRI's base or configured explicitly in a new `LcrdVocab` annotation (see below).
-
-#### How It Works — Current vs Proposed
-
-**Current (explicit):**
+**RootResource API:**
 ```dart
-@LcrdRootResource(
-  PersonalNotesVocab.PersonalNote,
-  LcrdCrdt('$appBaseUrl/mappings/note-v1#'),
-)
-class Note {
-  @RdfIriPart()
-  final String id;
-
-  @RdfProperty(SchemaNoteDigitalDocument.name)
-  final String title;
-
-  @RdfProperty(SchemaNoteDigitalDocument.text)
-  final String content;
-
-  @RdfProperty(SchemaNoteDigitalDocument.keywords)
-  @CrdtOrSet()
-  final Set<String> tags;
-
-  @RdfProperty(PersonalNotesVocab.belongsToCategory)
-  final String? categoryId;
-
-  @RdfProperty(SchemaNoteDigitalDocument.dateCreated)
-  @CrdtImmutable()
-  final DateTime createdAt;
-}
-```
-
-**Proposed (convention-based, zero RDF knowledge):**
-```dart
-@LcrdRootResource(
-  LcrdCrdt('$appBaseUrl/mappings/note-v1#'),
-)
-class Note {
-  @RdfIriPart()
-  final String id;
-
-  final String title;
-
-  final String content;
-
-  @CrdtOrSet()
-  final Set<String> tags;
-
-  final String? categoryId;
-
-  @CrdtImmutable()
-  final DateTime createdAt;
-}
-```
-
-Nine annotations removed! The class IRI becomes `{vocabBaseIri}Note`, each property IRI becomes `{vocabBaseIri}{fieldName}`.
-
-**Proposed (hybrid — use schema.org where it fits, auto-generate the rest):**
-```dart
-@LcrdRootResource(
-  LcrdCrdt('$appBaseUrl/mappings/note-v1#'),
-  classIri: SchemaNoteDigitalDocument.classIri, // optional: explicit class IRI
-)
-class Note {
-  @RdfIriPart()
-  final String id;
-
-  @RdfProperty(SchemaNoteDigitalDocument.name) // explicit: use schema.org
-  final String title;
-
-  final String content;    // implicit: generates {vocab}#content
-
-  @CrdtOrSet()             // implicit: generates {vocab}#tags
-  final Set<String> tags;
-
-  final String? categoryId; // implicit: generates {vocab}#categoryId
-
-  @RdfProperty(SchemaNoteDigitalDocument.dateCreated) // explicit: use schema.org
-  @CrdtImmutable()
-  final DateTime createdAt;
-}
-```
-
-### Concept B: Alternative — `@LcrdProperty` Shorthand
-
-Instead of allowing bare CRDT annotations, introduce a combined annotation that wraps `@RdfProperty` + CRDT:
-
-```dart
-@LcrdRootResource(
-  LcrdCrdt('$appBaseUrl/mappings/note-v1#'),
-)
-class Note {
-  @RdfIriPart()
-  final String id;
-
-  @LcrdLww()   // = @RdfProperty(auto) + @CrdtLwwRegister()
-  final String title;
-
-  @LcrdLww()
-  final String content;
-
-  @LcrdSet()   // = @RdfProperty(auto) + @CrdtOrSet()
-  final Set<String> tags;
-
-  @LcrdLww(predicate: SchemaNoteDigitalDocument.dateCreated) // explicit predicate
-  @LcrdImmutable()                                           // override CRDT strategy
-  final DateTime createdAt;
-}
-```
-
-**Assessment of Concept B:**  
-- Pro: All-in-one annotation, fewer lines
-- Con: Introduces a parallel annotation hierarchy (`@LcrdLww` vs `@CrdtLwwRegister`), makes it harder to mix with schema.org properties, breaks the clean separation between RDF mapping and CRDT strategy
-- **Verdict: Not recommended.** The separation of `@RdfProperty` and `@CrdtXxx` is a good design. Making `@RdfProperty` optional is cleaner than replacing it.
-
-### Recommended: Concept A
-
-Concept A is preferred because:
-1. It preserves the clean RDF/CRDT annotation separation
-2. Existing code with explicit `@RdfProperty` works unchanged
-3. Progressive: add `@RdfProperty` only where you want standard vocab
-4. The convention (field name → predicate) is trivially predictable
-
----
-
-## Part 2: Vocabulary Base IRI Configuration
-
-The generator needs to know *where* generated predicates live. Two approaches:
-
-### Option 1: Derive from `LcrdCrdt` mappingIri (Zero-Config)
-
-Convention: The mapping IRI `https://example.com/mappings/note-v1#` implies a vocabulary namespace of `https://example.com/vocabulary/{package}#`.
-
-- Heuristic: Replace `/mappings/...` with `/vocabulary/{packageName}#`  
-- Fallback: `{scheme}://{host}/vocabulary/{packageName}#`
-
-**Pro:** Zero additional config.  
-**Con:** Fragile heuristic, couples vocabulary namespace to mapping namespace.
-
-### Option 2: Explicit `LcrdVocab` Annotation (Recommended)
-
-A single top-level constant or annotation per package defines the vocabulary namespace:
-
-```dart
-// In consts.dart or a dedicated vocab_config.dart
-const appBaseUrl = 'https://locorda.dev/example/personal_notes_app';
-
-// Option 2a: Annotation on a library directive
-@LcrdVocab('$appBaseUrl/vocabulary/personal-notes#')
-library;
-
-// Option 2b: Top-level const (detected by the generator)
-@LcrdVocab('$appBaseUrl/vocabulary/personal-notes#',
-  label: 'Personal Notes Vocabulary',
-  comment: 'Vocabulary for personal note-taking applications.',
-)
-const lcrdVocab = null; // marker
-
-// Option 2c: Configured in build.yaml
-// targets:
-//   $default:
-//     builders:
-//       locorda_init_generator|vocab_generator:
-//         options:
-//           vocab_base_iri: 'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#'
-```
-
-**Recommended: Option 2a/2b** — an annotation in Dart code, scannable by the builder, keeps everything in the source.
-
-### Proposed `LcrdVocab` Annotation
-
-```dart
-/// Declares the base IRI namespace for auto-generated vocabulary terms.
-///
-/// Place this on a library directive in any file that's part of your package.
-/// Only one [LcrdVocab] annotation should exist per package.
-class LcrdVocab {
-  /// The base IRI for auto-generated class and property IRIs.
-  /// Should end with '#' (fragment) or '/' (slash namespace).
-  /// 
-  /// Example: `'https://myapp.example.com/vocabulary/myapp#'`
-  final String baseIri;
-
-  /// Human-readable label for the vocabulary (used in generated TTL).
-  final String? label;
-
-  /// Description of the vocabulary (used in generated TTL).
-  final String? comment;
-
-  /// Vocabulary version string (used in generated TTL).
-  final String? version;
-
-  const LcrdVocab(this.baseIri, {this.label, this.comment, this.version});
-}
-```
-
-### Fallback When No `LcrdVocab` Exists
-
-If no `@LcrdVocab` is found, the generator derives a vocabulary base IRI from `LcrdCrdt.mappingIri`:
-
-```
-  mappingIri: 'https://example.com/mappings/note-v1#'
-  → vocabBaseIri: 'https://example.com/vocabulary/auto#'
-```
-
-This allows the minimal example to work with zero additional config, while more serious apps should declare `@LcrdVocab` for a clean namespace.
-
----
-
-## Part 3: Simplifying `LcrdRootResource`
-
-### Current Signature
-
-```dart
-@LcrdRootResource(
-  PersonalNotesVocab.PersonalNote,           // 1st positional: classIri (IriTerm)
-  LcrdCrdt('$appBaseUrl/mappings/note-v1#'), // 2nd positional: crdt config
-)
-```
-
-The `classIri` is always the first positional parameter, inherited from `RdfGlobalResource`. For developers who don't care about RDF, this is just noise.
-
-### Proposed: Make `classIri` Optional with Convention Default
-
-```dart
-// Current (stays valid):
-@LcrdRootResource(
-  PersonalNotesVocab.PersonalNote,
-  LcrdCrdt('$appBaseUrl/mappings/note-v1#'),
-)
-class Note { ... }
-
-// New (zero-RDF, class IRI derived from Dart class name):
-@LcrdRootResource(
-  LcrdCrdt('$appBaseUrl/mappings/note-v1#'),
-)
-class Note { ... }
-// → classIri = '{vocabBaseIri}Note'
-```
-
-This requires a new constructor on `LcrdRootResource`:
-
-```dart
-class LcrdRootResource extends RdfGlobalResource {
-  final LcrdCrdt crdt;
-  final LcrdFullIndex fullIndex;
-
-  // Existing: explicit classIri
-  const LcrdRootResource(
+class RootResource extends RdfGlobalResource {
+  // Primitive fields for const compatibility (read by generator)
+  final AppVocab? _vocab;
+  final IriTerm? _explicitClassIri;
+  final String? _contractAppBaseUri;
+  final String? _explicitContractIri;
+  final String _contractVersion;
+  final String? _contractPath;
+  final bool _generateContract;
+  final String? _contractLabel;
+  final String? _contractComment;
+  final List<IriTerm> _contractImports;
+  final FullIndex fullIndex;
+  
+  // DEFAULT: Vocabulary + Merge Contract both generated (90% of cases)
+  const RootResource(
+    AppVocab vocab, {
+    String mergeContractVersion = 'v1',
+    String? mergeContractPath,      // Override: '/contracts/my-note-v2'
+    String? mergeContractLabel,
+    String? mergeContractComment,
+    List<IriTerm> mergeContractImports = const [MergeContracts.coreV1],
+    this.fullIndex = const FullIndex(),
+    RootIriStrategy iriStrategy = const RootIriStrategy(),
+  }) : _vocab = vocab,
+       _explicitClassIri = null,
+       _contractAppBaseUri = vocab.appBaseUri,
+       _explicitContractIri = null,
+       _contractVersion = mergeContractVersion,
+       _contractPath = mergeContractPath,
+       _generateContract = true,
+       _contractLabel = mergeContractLabel,
+       _contractComment = mergeContractComment,
+       _contractImports = mergeContractImports,
+       super.define(vocab, iriStrategy: iriStrategy);
+  
+  // External Vocabulary + Generated Merge Contract (second most common!)
+  const RootResource.externalVocab(
     IriTerm classIri,
-    this.crdt, {
-    this.fullIndex = const LcrdFullIndex(),
-    super.iri,
-  }) : super(classIri, iri ?? const RootIriStrategy());
-
-  // New: auto-derived classIri
-  const LcrdRootResource.auto(
-    this.crdt, {
-    this.fullIndex = const LcrdFullIndex(),
-    super.iri,
-  }) : super(null, iri ?? const RootIriStrategy());
-}
-```
-
-**Alternative: Single Constructor with Optional classIri**
-
-Since Dart's type system allows distinguishing `IriTerm` from `LcrdCrdt`, we *could* use a single constructor:
-
-```dart
-// This won't work in Dart: two positional params of different types, first optional, is not ergonomic.
-```
-
-Better approach: **named constructor** `.auto()` or simply make `classIri` a named parameter:
-
-```dart
-class LcrdRootResource extends RdfGlobalResource {
-  final LcrdCrdt crdt;
-  final LcrdFullIndex fullIndex;
-
-  // Expert: explicit classIri (positional, backwards compatible)
-  const LcrdRootResource(
+    String mergeContractAppBaseUri, {
+    String mergeContractVersion = 'v1',
+    String? mergeContractPath,
+    String? mergeContractLabel,
+    String? mergeContractComment,
+    List<IriTerm> mergeContractImports = const [MergeContracts.coreV1],
+    this.fullIndex = const FullIndex(),
+    RootIriStrategy iriStrategy = const RootIriStrategy(),
+  }) : _vocab = null,
+       _explicitClassIri = classIri,
+       _contractAppBaseUri = mergeContractAppBaseUri,
+       _explicitContractIri = null,
+       _contractVersion = mergeContractVersion,
+       _contractPath = mergeContractPath,
+       _generateContract = true,
+       _contractLabel = mergeContractLabel,
+       _contractComment = mergeContractComment,
+       _contractImports = mergeContractImports,
+       super(classIri, iri: iriStrategy);
+  
+  // Generated Vocabulary + External Merge Contract
+  const RootResource.externalContract(
+    AppVocab vocab,
+    String mergeContractIri, {
+    this.fullIndex = const FullIndex(),
+    RootIriStrategy iriStrategy = const RootIriStrategy(),
+  }) : _vocab = vocab,
+       _explicitClassIri = null,
+       _contractAppBaseUri = null,
+       _explicitContractIri = mergeContractIri,
+       _contractVersion = 'v1',
+       _contractPath = null,
+       _generateContract = false,
+       _contractLabel = null,
+       _contractComment = null,
+       _contractImports = const [],
+       super.define(vocab, iriStrategy: iriStrategy);
+  
+  // Both External (full interop with standards)
+  const RootResource.external(
     IriTerm classIri,
-    this.crdt, {
-    this.fullIndex = const LcrdFullIndex(),
-    super.iri,
-  }) : super(classIri, iri ?? const RootIriStrategy());
-
-  // Simple: classIri derived from Dart class name + vocabBaseIri
-  const LcrdRootResource.withCrdt(
-    this.crdt, {
-    IriTerm? classIri,
-    this.fullIndex = const LcrdFullIndex(),
-    super.iri,
-  }) : super(classIri, iri ?? const RootIriStrategy());
+    String mergeContractIri, {
+    this.fullIndex = const FullIndex(),
+    RootIriStrategy iriStrategy = const RootIriStrategy(),
+  }) : _vocab = null,
+       _explicitClassIri = classIri,
+       _contractAppBaseUri = null,
+       _explicitContractIri = mergeContractIri,
+       _contractVersion = 'v1',
+       _contractPath = null,
+       _generateContract = false,
+       _contractLabel = null,
+       _contractComment = null,
+       _contractImports = const [],
+       super(classIri, iri: iriStrategy);
 }
 ```
 
-### Simplifying `LcrdCrdt` Too
-
-The `LcrdCrdt` mapping IRI could also use a convention default:
-
+**MergeContracts** (standard imports):
 ```dart
-// Current:
-LcrdCrdt('$appBaseUrl/mappings/note-v1#',
-  label: 'Personal Note CRDT Document Mapping v1',
-  comment: 'Defines how personal notes should merge...',
-)
-
-// Simplified (derive from vocabBaseIri + class name):
-LcrdCrdt()  // → mappingIri = '{baseUrl}/mappings/{className}-v1#'
-```
-
-But this goes too far for now — the mapping IRI is a versioned deployment artifact and should remain explicit. The `label` and `comment` are already optional.
-
-**Minor simplification:** Default `mappingIri` from the `@LcrdVocab` base:
-
-```dart
-// If @LcrdVocab('https://myapp.example.com/vocabulary/myapp#') exists:
-LcrdCrdt()  // → mappingIri derived as 'https://myapp.example.com/mappings/{ClassName}-v1#'
-```
-
-**Assessment:** Risky. Mapping IRIs are versioned identifiers. Auto-deriving them means changes to the class name silently change the mapping IRI, potentially breaking deployed sync. **Keep `mappingIri` explicit for now**, but allow omitting `label` and `comment` (already the case).
-
----
-
-## Part 4: The Vocabulary TTL Generator
-
-### What It Generates
-
-A build step produces a `.ttl` file (OWL/RDFS vocabulary) from all `@LcrdRootResource`, `@LcrdSubResource`, `@RdfLocalResource`-annotated classes in the package. This replaces the hand-written `personal-notes.ttl`.
-
-### Generator Pipeline
-
-```
-Source Files (.dart)
-  ↓ scan @LcrdVocab, @LcrdRootResource, @RdfProperty, etc.
-  ↓ collect: classes needing class IRIs, fields needing predicate IRIs
-  ↓ filter: only include IRIs that belong to the package's vocab namespace
-  ↓ generate
-  ↓
-Two outputs:
-  1. {package}_vocab.g.dart    — Dart const class with IriTerm constants
-  2. vocabulary/{name}.g.ttl   — OWL/RDFS vocabulary file
-```
-
-### What Goes Into the Generated Vocabulary
-
-For each **class** with an auto-derived class IRI:
-```turtle
-:Note
-    a owl:Class ;
-    rdfs:label "Note" ;
-    rdfs:comment "Auto-generated from Dart class Note." ;
-    rdfs:isDefinedBy <https://myapp.example.com/vocabulary/myapp> .
-```
-
-For each **field** with an auto-derived predicate IRI:
-```turtle
-:content
-    a owl:DatatypeProperty ;   # or owl:ObjectProperty for references
-    rdfs:label "content" ;
-    rdfs:comment "Auto-generated from field Note.content." ;
-    rdfs:domain :Note ;
-    rdfs:range xsd:string ;     # derived from Dart type
-    rdfs:isDefinedBy <https://myapp.example.com/vocabulary/myapp> .
-```
-
-Properties that use explicit standard-vocabulary predicates (e.g., `@RdfProperty(Schema.name)`) are **not** included in the generated vocabulary — they already exist in their respective vocabularies.
-
-### What Goes Into the Generated Dart Vocab Class
-
-```dart
-// AUTO GENERATED - DO NOT EDIT
-// Generated by locorda vocab_generator
-class PersonalNotesVocab {
-  static const baseIri = 'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#';
-  
-  // Classes
-  static const Note = IriTerm('${baseIri}Note');
-  static const Category = IriTerm('${baseIri}Category');
-  static const Weblink = IriTerm('${baseIri}Weblink');
-  
-  // Properties
-  static const content = IriTerm('${baseIri}content');
-  static const categoryId = IriTerm('${baseIri}categoryId');
-  static const archived = IriTerm('${baseIri}archived');
-  // ... only auto-derived predicates, not schema.org ones
+class MergeContracts {
+  static const IriTerm coreV1 =
+      IriTerm('https://w3id.org/solid-crdt-sync/contracts/core-v1');
+  static const IriTerm indexV1 =
+      IriTerm('https://w3id.org/solid-crdt-sync/contracts/index-v1');
+  static const IriTerm shardV1 =
+      IriTerm('https://w3id.org/solid-crdt-sync/contracts/shard-v1');
+  static const IriTerm clientInstallationV1 = IriTerm(
+      'https://w3id.org/solid-crdt-sync/contracts/client-installation-v1');
 }
 ```
 
-This generated file replaces the hand-written one. The RDF mapper generator then uses these constants internally.
-
-### Enrichment via Annotations (Progressive)
-
-For developers who care about vocabulary quality, optional enrichment:
-
+**FullIndex** (parameter class):
 ```dart
-@LcrdRootResource.withCrdt(
-  LcrdCrdt('$appBaseUrl/mappings/note-v1#'),
-  classIri: SchemaNoteDigitalDocument.classIri,
-)
-@LcrdVocabClass(
-  label: 'Personal Note',
-  comment: 'A personal note or memo for note-taking applications.',
-  subClassOf: SchemaNoteDigitalDocument.classIri,
-)
+class FullIndex {
+  final bool isEnabled;
+  final String localName;
+  final ItemFetchPolicy policy;
+
+  const FullIndex({
+    this.localName = 'default',
+    this.policy = ItemFetchPolicy.prefetch,
+  }) : isEnabled = true;
+
+  const FullIndex.disabled()
+      : isEnabled = false,
+        localName = '',
+        policy = ItemFetchPolicy.prefetch;
+}
+```
+
+**Note:** These are **annotation parameter classes** in `locorda_annotations`. The builder generates corresponding **config classes** in `locorda_objects` with `Config` suffix (`FullIndexConfig`, etc.).
+
+**Usage Examples:**
+
+**1. Default: Both Generated (90% of cases)**
+```dart
+const appVocab = AppVocab(appBaseUri: appBaseUrl);
+
+@RootResource(appVocab)
 class Note {
-  @RdfProperty(SchemaNoteDigitalDocument.name,
-    vocabLabel: 'note title',  // enriches generated TTL  
-  )
+  @RdfIriPart()
+  final String id;
+
+  final String title;       // Auto: dc:title or app:title
+  final String content;     // Auto: app:content
+
+  @OrSet()
+  final Set<String> tags;   // Auto: app:tags
+}
+```
+**Generated IRIs:**
+- Vocabulary: `https://myapp.example.com/vocab#Note`
+- Merge Contract: `https://myapp.example.com/contracts/note-v1#`
+
+**2. External Vocab (Schema.org) + Generated Contract (Very Common!)**
+```dart
+@RootResource.externalVocab(
+  Schema.Article,
+  appBaseUrl,  // Base for contract generation
+)
+class BlogPost {
+  @RdfProperty(Schema.headline)
   final String title;
   
-  @LcrdVocabProperty(  // auto-derived predicate, enriched with vocab metadata:
-    label: 'belongs to category',
-    comment: 'Links a note to its organizing category.',
-  )
-  final String? categoryId;
+  final String excerpt;  // Custom property, needs contract rule
+}
+```
+**Generated IRIs:**
+- Vocabulary: `schema:Article` (external)
+- Merge Contract: `https://myapp.example.com/contracts/blogpost-v1#` (generated)
+
+**3. Generated Vocab + External Contract**
+```dart
+@RootResource.externalContract(
+  appVocab,
+  'https://crdt-contracts.org/standard/note-v1#',
+)
+class StandardNote {
+  final String title;
+  final String content;
+}
+```
+**Generated IRIs:**
+- Vocabulary: `https://myapp.example.com/vocab#StandardNote` (generated)
+- Merge Contract: `https://crdt-contracts.org/standard/note-v1#` (external)
+
+**4. Both External (Full Interop)**
+```dart
+@RootResource.external(
+  Schema.Recipe,
+  'https://schema.org/contracts/recipe-v1#',
+)
+class Recipe {
+  @RdfProperty(Schema.name)
+  final String name;
+}
+```
+**Generated IRIs:**
+- Vocabulary: `schema:Recipe` (external)
+- Merge Contract: `https://schema.org/contracts/recipe-v1#` (external)
+
+### 2. Merge Contract IRI Generation in Builder
+
+The generator constructs contract IRIs for cases where `_generateContract == true`:
+
+```dart
+// In locorda_builder/lib/src/merge_contract_builder.dart
+
+String _resolveMergeContractIri(RootResource annotation, String className) {
+  // Explicit IRI provided (external contract)
+  if (annotation._explicitContractIri != null) {
+    return annotation._explicitContractIri!;
+  }
+  
+  // Generate from appBaseUri (default or .externalVocab)
+  final baseUri = annotation._contractAppBaseUri!;
+  final classNameLower = className.toLowerCase();
+  
+  // Use custom path or default: /contracts/{className}-v{version}
+  final path = annotation._contractPath ?? 
+               '/contracts/$classNameLower-v${annotation._contractVersion}';
+  
+  return '$baseUri$path#';
 }
 ```
 
-The `@LcrdVocabClass` and `@LcrdVocabProperty` annotations are **purely optional** — they only add richer metadata to the generated TTL. The generator works fine without them.
-
----
-
-## Part 5: Integration with Existing Generators
-
-### Interaction with CrdtMappingBuilder
-
-The `CrdtMappingBuilder` already extracts predicate IRIs via `_extractPropertyPredicate()`. With the proposed changes:
-
-1. If `@RdfProperty` is present → use its predicate (existing behavior)
-2. If `@RdfProperty` is absent → derive predicate from field name + `vocabBaseIri` (all public fields in a `@LcrdRootResource` class are mapped by default)
-3. The `vocabBaseIri` is resolved from `@LcrdVocab` (or fallback)
-
-This requires adding the vocab-base-IRI resolution to `CrdtMappingBuilder`'s scanning phase. Since it already does a BFS traversal of all fields via `_discoverReachableTypes()`, the extension is straightforward.
-
-### Interaction with ConfigBuilder / AnnotationScanner
-
-The `ConfigBuilder` scans `@LcrdRootResource` for `classIri`. When `classIri` is null (auto-derived), the config generator needs to resolve it the same way the vocab generator does. This is deterministic given the `vocabBaseIri` + Dart class name.
-
-### Interaction with RDF Mapper Generator (External Package)
-
-The RDF mapper generator (`locorda_rdf_mapper`) generates serialization/deserialization code. It currently requires an explicit `@RdfProperty` on every serialized field. Two approaches:
-
-**Approach A: Generate `@RdfProperty` Annotations**  
-The vocab generator could produce a `.g.dart` file that augments classes with synthetic `@RdfProperty` annotations. However, Dart's build system doesn't support augmenting annotations on existing classes.
-
-**Approach B: Teach the RDF Mapper to Use CRDT Annotations as Fallback (Recommended)**  
-The RDF mapper already supports `_matchesAnnotationInHierarchy()` for custom `RdfProperty` subclasses. We can:
-
-1. Make CRDT annotations (`CrdtLwwRegister` etc.) extend or implement a marker interface
-2. The RDF mapper, when it finds a field without `@RdfProperty` but with a CRDT annotation, uses the convention-derived predicate
-3. This keeps the "single source of truth" in the CRDT annotation
-
-**Implementation sketch for the RDF mapper:**
+**Property IRI Resolution** (already handled by RDF mapper, same logic):
 ```dart
-// In RDF mapper's field scanner:
-IriTerm? resolveFieldPredicate(FieldElement field) {
-  // 1. Explicit @RdfProperty → use it
-  final explicit = findRdfPropertyAnnotation(field);
-  if (explicit != null) return explicit.predicate;
+IriTerm? _extractPropertyPredicate(FieldElement field, ClassElement classElement) {
+  // 1. Explicit @RdfProperty → use its predicate
+  final rdfProp = findRdfPropertyAnnotation(field);
+  if (rdfProp != null) return rdfProp.predicate;
   
-  // 2. Field in @LcrdRootResource class? → derive from field name (LWW default)
-  if (isInLcrdResourceClass(field.enclosingElement)) {
-    final vocabBase = resolveVocabBaseIri(field.enclosingElement);
+  // 2. Generated vocab mode? → derive from field name + wellKnownProperties
+  final annotation = findResourceAnnotation(classElement);
+  if (annotation._vocab != null) {
+    final vocabBase = '${annotation._vocab.appBaseUri}${annotation._vocab.vocabPath}#';
+    
+    // Check wellKnownProperties first
+    final wellKnown = annotation._vocab.wellKnownProperties[field.name];
+    if (wellKnown != null) return wellKnown;
+    
+    // Generate custom property
     return IriTerm('$vocabBase${field.name}');
   }
   
-  // 3. Not in LcrdRootResource class → field is not mapped (existing behavior)
-  return null;
+  // 3. External vocab → must have explicit @RdfProperty
+  return null;  // Build error if missing
 }
 ```
 
-**Approach C: Generated Intermediate Dart Code**
-The vocab generator produces a `.vocab.g.dart` file that the CRDT and RDF mapper generators depend on. This file provides a `Map<String, IriTerm>` that both generators consult. This avoids duplicating the convention logic.
+**Class IRI Resolution:**
+```dart
+IriTerm _resolveClassIri(ClassElement classElement) {
+  final annotation = findResourceAnnotation(classElement);
+  
+  // Explicit classIri provided (external vocab)
+  if (annotation._explicitClassIri != null) {
+    return annotation._explicitClassIri!;
+  }
+  
+  // Generated vocab
+  final vocabBase = '${annotation._vocab!.appBaseUri}${annotation._vocab!.vocabPath}#';
+  return IriTerm('$vocabBase${classElement.name}');
+}
+```
 
-**Recommended: Approach B** — it's the simplest, avoids cross-generator dependencies, and the convention logic is trivial enough to duplicate (it's just `vocabBaseIri + fieldName`).
+### 3. Migration Example: Personal Notes App
 
----
-
-## Part 6: Full Before/After Comparison
-
-### Before (Current State)
+**Before (manual vocabulary + CRDT mapping):**
 
 ```dart
-// consts.dart
-const appBaseUrl = 'https://locorda.dev/example/personal_notes_app';
-
-// vocabulary/personal_notes_vocab.dart  (hand-written, 15 lines)
+// lib/models/vocabulary/personal_notes_vocab.dart
 class PersonalNotesVocab {
   static const baseIri = '$appBaseUrl/vocabulary/personal-notes#';
   static const NotesCategory = IriTerm('${baseIri}NotesCategory');
   static const PersonalNote = IriTerm('${baseIri}PersonalNote');
-  static const Weblink = IriTerm('${baseIri}Weblink');
   static const belongsToCategory = IriTerm('${baseIri}belongsToCategory');
   static const categoryColor = IriTerm('${baseIri}categoryColor');
   static const categoryIcon = IriTerm('${baseIri}categoryIcon');
   static const archived = IriTerm('${baseIri}archived');
-  static const displaySettings = IriTerm('${baseIri}displaySettings');
 }
 
-// assets/contracts/vocabulary/personal-notes.ttl  (hand-written, 55 lines)
-// ... full OWL ontology ...
-
-// models/category.dart
-@LcrdRootResource(
-  PersonalNotesVocab.NotesCategory,
-  LcrdCrdt('$appBaseUrl/mappings/category-v1#', ...),
+// lib/models/note.dart
+@RootResource.external(
+  PersonalNotesVocab.PersonalNote,
+  '$appBaseUrl/contracts/personal-note-v1#',
 )
-class Category {
+class Note {
   @RdfIriPart()
   final String id;
-
-  @RdfProperty(SchemaCreativeWork.name)
-  final String name;
-
-  @RdfProperty(SchemaCreativeWork.description)
-  final String? description;
-
-  @RdfProperty(PersonalNotesVocab.displaySettings)
-  final CategoryDisplaySettings? settings;
-
-  @RdfProperty(SchemaCreativeWork.dateCreated)
-  @CrdtImmutable()
-  final DateTime createdAt;
-
-  @RdfProperty(SchemaCreativeWork.dateModified)
-  final DateTime modifiedAt;
-
+  
+  @RdfProperty(PersonalNotesVocab.title)
+  final String title;
+  
+  @RdfProperty(PersonalNotesVocab.content)
+  final String content;
+  
+  @RdfProperty(PersonalNotesVocab.belongsToCategory)
+  final String? categoryId;
+  
   @RdfProperty(PersonalNotesVocab.archived)
   final bool archived;
-
-  @RdfUnmappedTriples(globalUnmapped: true)
-  final RdfGraph other;
 }
 ```
 
-### After (Proposed, Zero-RDF Developer)
+**After (.define() mode):**
 
 ```dart
-// consts.dart
-const appBaseUrl = 'https://locorda.dev/example/personal_notes_app';
+// lib/config/vocab.dart
+const appVocab = AppVocab(
+  appBaseUri: appBaseUrl,
+  wellKnownProperties: {
+    'title': Dc.title,           // Use Dublin Core for title
+    'description': Dc.description,
+    'created': Dc.created,
+    'modified': Dc.modified,
+  },
+);
 
-// vocab_config.dart
-@LcrdVocab('$appBaseUrl/vocabulary/personal-notes#',
-  label: 'Personal Notes Vocabulary',
+// lib/models/note.dart
+@RootResource.externalContract(
+  appVocab,
+  '$appBaseUrl/contracts/personal-note-v1#',
 )
-library;
-import 'package:locorda_annotations/locorda_annotations.dart';
-import 'consts.dart';
-
-// vocabulary/personal_notes_vocab.g.dart  → GENERATED (replaces hand-written)
-// assets/contracts/vocabulary/personal-notes.g.ttl → GENERATED (replaces hand-written)
-
-// models/category.dart
-@LcrdRootResource.withCrdt(
-  LcrdCrdt('$appBaseUrl/mappings/category-v1#'),
-)
-class Category {
+class Note {
   @RdfIriPart()
   final String id;
-
-  final String name;
-
-  final String? description;
-
-  final CategoryDisplaySettings? settings;
-
-  @CrdtImmutable()
-  final DateTime createdAt;
-
-  final DateTime modifiedAt;
-
-  final bool archived;
-
-  @RdfUnmappedTriples(globalUnmapped: true)
-  final RdfGraph other;
-}
-```
-
-**Eliminated:**
-- ❌ Hand-written `PersonalNotesVocab` class (generated)
-- ❌ Hand-written `personal-notes.ttl` (generated)
-- ❌ 7× `@RdfProperty(...)` annotations on Category alone
-- ❌ 5× `@CrdtLwwRegister()` annotations (LWW is already the default)
-- ❌ `IriTerm` import
-- ❌ Understanding of RDF predicates
-
-**Kept:**
-- ✅ `@RdfIriPart()` — still needed for IRI construction
-- ✅ `@CrdtOrSet()` / `@CrdtImmutable()` — only where non-default merge strategy needed
-- ✅ `@RdfUnmappedTriples()` — still needed for round-tripping
-- ✅ `LcrdCrdt(mappingIri)` — still needed (versioned identifier)
-
-### After (Proposed, RDF-Savvy Developer)
-
-```dart
-// Same developer can still use explicit vocab where it adds semantic value:
-@LcrdRootResource(
-  PersonalNotesVocab.NotesCategory,  // explicit: custom class IRI
-  LcrdCrdt('$appBaseUrl/mappings/category-v1#'),
-)
-class Category {
-  @RdfIriPart()
-  final String id;
-
-  @RdfProperty(SchemaCreativeWork.name)  // explicit: use schema.org
-  final String name;
-
-  @RdfProperty(SchemaCreativeWork.description) // explicit: use schema.org
-  final String? description;
-
-  final CategoryDisplaySettings? settings;  // auto-derived: {vocab}#settings
-
-  @RdfProperty(SchemaCreativeWork.dateCreated) // explicit: use schema.org
-  @CrdtImmutable()
-  final DateTime createdAt;
-
-  final DateTime modifiedAt;  // auto-derived: {vocab}#modifiedAt
-
-  final bool archived;  // auto-derived: {vocab}#archived
-
-  @RdfUnmappedTriples(globalUnmapped: true)
-  final RdfGraph other;
-}
-```
-
-Both styles can be mixed freely within a single class.
-
----
-
-## Part 7: The Absolute Minimum — Task Model
-
-### Current
-
-```dart
-@LcrdRootResource(
-  IriTerm('$appBaseUrl/vocabulary/task#Task'),
-  LcrdCrdt('$appBaseUrl/mappings/task-v1#'),
-)
-class Task {
-  @RdfIriPart()
-  final String id;
-
-  @RdfProperty(SchemaCreativeWork.name)
+  
+  @RdfProperty(PersonalNotesVocab.title)
   final String title;
-
-  @RdfProperty(IriTerm('$appBaseUrl/vocabulary/task#completed'))
-  final bool completed;
-
-  @RdfProperty(SchemaCreativeWork.dateCreated)
-  @CrdtImmutable()
-  final DateTime createdAt;
+  
+  @RdfProperty(PersonalNotesVocab.content)
+  final String content;
+  
+  @RdfProperty(PersonalNotesVocab.belongsToCategory)
+  final String? categoryId;
+  
+  @RdfProperty(PersonalNotesVocab.archived)
+  final bool archived;
 }
 ```
 
-### Proposed Minimal
+**After (automatic generation):**
 
 ```dart
-@LcrdRootResource.withCrdt(
-  LcrdCrdt('$appBaseUrl/mappings/task-v1#'),
-)
-class Task {
+// lib/config/vocab.dart
+const appVocab = AppVocab(
+  appBaseUri: appBaseUrl,
+  wellKnownProperties: {
+    'title': Dc.title,           // Use Dublin Core for title
+    'description': Dc.description,
+    'created': Dc.created,
+    'modified': Dc.modified,
+  },
+);
+
+// lib/models/note.dart
+@RootResource(appVocab)  // DEFAULT constructor - both generated!
+class Note {
   @RdfIriPart()
   final String id;
-
-  final String title;       // LWW is default, predicate auto-derived
-
-  final bool completed;     // LWW is default, predicate auto-derived
-
-  @CrdtImmutable()          // only needed because non-default CRDT
-  final DateTime createdAt;
+  
+  final String title;       // → dc:title (via wellKnownProperties)
+  final String content;     // → app:content (auto-generated)
+  final String? categoryId; // → app:categoryId (auto-generated)
+  final bool archived;      // → app:archived (auto-generated)
 }
 ```
 
-This works because LWW-Register is already the default CRDT strategy — bare fields need no `@CrdtLwwRegister()`.
-
-### Decision: Include Unannotated Fields?
-
-Since `@LcrdRootResource` (or `.withCrdt`) is already an explicit class-level opt-in, all public fields within such a class are mapped by default:
-
-- **Mapped automatically:** All public fields (LWW-Register + auto-derived predicate)
-- **Excluded automatically:** Private fields (`_cachedHash` etc.), `@RdfIriPart()` fields, `@RdfUnmappedTriples` fields
-- **Opt-out:** `@RdfIgnore()` for the rare case where a public field shouldn't be synced
-- **Override:** `@RdfProperty(...)` for explicit predicates, `@CrdtOrSet()` / `@CrdtImmutable()` for non-default CRDT strategies
-
-This is safe because the class-level `@LcrdRootResource` annotation is the strong, intentional opt-in signal. Within that context, all public fields being mapped is the expected behavior — similar to how `json_serializable` with `@JsonSerializable()` maps all fields by default.
-
-The result: no `IriTerm`, no `@RdfProperty`, no `@CrdtLwwRegister()`, no vocab class, no TTL file.
+**Generated artifacts:**
+- ✅ Vocabulary: `lib/vocab.g.ttl` with `app:Note`, `app:content`, `app:categoryId`, `app:archived`
+- ✅ Merge Contract: `lib/contracts/note-v1.g.ttl` with CRDT merge rules for each property
+- ✅ No manual vocabulary class needed
+- ✅ No manual CRDT mapping TTL file needed
 
 ---
 
-## Part 8: XSD Type Mapping for Generated Vocabulary
+## Implementation Checklist
 
-The TTL generator needs to infer XSD types from Dart types for `rdfs:range`:
+### ✅ Completed (in RDF mapper library)
+- [x] `AppVocab` configuration class
+- [x] `.define()` constructor for `RdfGlobalResource`/`RdfLocalResource`
+- [x] `RdfProperty.define()` for forcing custom property generation
+- [x] Well-known property auto-matching
+- [x] Vocabulary TTL file generation
+- [x] Lock file protection (`.locorda_rdf_mapper.lock`)
 
-| Dart Type | XSD Type | OWL Property Type |
-|-----------|----------|-------------------|
-| `String` | `xsd:string` | `DatatypeProperty` |
-| `int` | `xsd:integer` | `DatatypeProperty` |
-| `double` | `xsd:double` | `DatatypeProperty` |
-| `bool` | `xsd:boolean` | `DatatypeProperty` |
-| `DateTime` | `xsd:dateTime` | `DatatypeProperty` |
-| `Uri` | `xsd:anyURI` | `DatatypeProperty` |
-| `@LcrdRootResource` class | Class IRI | `ObjectProperty` |
-| `@LcrdSubResource` class | Class IRI | `ObjectProperty` |
-| `@RdfLocalResource` class | (blank node) | `ObjectProperty` |
-| `Set<T>` / `List<T>` | Unwrap to `T` | (same as inner type) |
-
-For reference fields like `categoryId` (typed `String?` but semantically referencing `Category`), the generator produces `owl:DatatypeProperty` by default. If the developer adds `@LcrdRootResourceRef(Category)`, it becomes `owl:ObjectProperty` with `rdfs:range :Category`.
-
----
-
-## Part 9: Builder Configuration
-
-### New Builder: `vocab_generator`
-
-```yaml
-# In locorda_init_generator/build.yaml
-builders:
-  vocab_generator:
-    import: "package:locorda_init_generator/builders.dart"
-    builder_factories: ["vocabBuilder"]
-    build_extensions:
-      "pubspec.yaml":
-        - "lib/{{}}_vocab.g.dart"
-        - "assets/contracts/vocabulary/{{}}.g.ttl"
-    build_to: source
-    auto_apply: dependents
-    runs_before:
-      - locorda_init_generator|crdt_mapping_generator
-      - locorda_rdf_mapper|rdf_mapper_generator
-    required_inputs:
-      - ".dart"
-```
-
-The vocab generator must run **before** both the CRDT mapping generator and the RDF mapper generator, since they consume the resolved IRIs.
-
-### Execution Order
-
-```
-1. vocab_generator      → generates _vocab.g.dart + .g.ttl
-2. crdt_mapping_generator → generates .crdt.cache.trig (uses resolved IRIs)
-3. rdf_mapper_generator   → generates serialization code (uses resolved IRIs)
-4. mapping_bootstrap     → aggregates .crdt.cache.trig files
-5. config_generator      → generates LocordaConfig
-6. init_locorda_generator → generates convenience wrapper
-7. worker_generator      → generates worker entry point
-```
+### ⏳ To Do (sync-engine integration)
+- [ ] Implement `RootResource(AppVocab)` default constructor
+- [ ] Implement `RootResource.externalVocab(IriTerm, String)` constructor
+- [ ] Implement `RootResource.externalContract(AppVocab, String)` constructor
+- [ ] Implement `RootResource.external(IriTerm, String)` constructor
+- [ ] Add `MergeContracts` constants class (replacing `LcrdMappings`)
+- [ ] Update `MergeContractBuilder` to resolve merge contract IRIs
+- [ ] Update `MergeContractBuilder` to resolve vocabulary IRIs (use RDF mapper logic)
+- [ ] Generate merge contract TTL files in `/contracts/` (not `/mappings/`)
+- [ ] Migrate personal notes app to new API
+- [ ] Update getting-started documentation
+- [ ] Add integration tests for all 4 constructor variants
+- [ ] Execute complete annotation API cleanup per [022-annotation-api-cleanup.md](022-annotation-api-cleanup.md)
 
 ---
 
-## Part 10: `@LcrdSubResource` and `@RdfLocalResource` Handling
+## Recommendations
 
-### Sub-Resources (IRI-identified)
+1. **Default Constructor for Common Case**  
+   The `RootResource(AppVocab)` default constructor handles 90% of use cases (both generated).
 
+2. **`.externalVocab()` for Schema.org Integration**  
+   Second most common: use standard vocabularies but custom CRDT merge rules.
+
+3. **Configure `wellKnownProperties` in AppVocab**  
+   Map common field names (`title`, `description`, `created`) to standard vocabularies.
+
+4. **Merge Contract Versioning**  
+   Use `mergeContractVersion: 'v2'` when making breaking CRDT changes.
+
+5. **Lock File Must Be Committed**  
+   `.locorda_rdf_mapper.lock` prevents accidental breaking changes to RDF schema.
+
+6. **Migration Path for Existing Apps**  
+   - Keep manual `@RdfProperty(IriTerm(...))` initially (backwards compatible)
+   - Migrate to new API incrementally
+   - Plan data migration for contract URI changes
+
+---
+
+## Appendix: RDF Mapper Quick Reference
+
+The RDF mapper library provides automatic vocabulary generation. Key features:
+
+- **`AppVocab`** — Configure app vocabulary base URI and well-known properties
+- **`.define()` constructor** — Auto-generate vocabulary from class/field names
+- **Well-known properties** — Auto-match common fields to standard vocabularies (dc:title, etc.)
+- **TTL generation** — Build process creates `lib/vocab.g.ttl`
+- **Lock file** — `.locorda_rdf_mapper.lock` prevents breaking RDF schema changes
+
+**Resources:**
+- [RDF Mapper Annotations README](https://github.com/locorda/rdf/blob/main/packages/locorda_rdf_mapper_annotations/README.md)
+- [Vocabulary Generation Guide](https://github.com/locorda/rdf/blob/main/packages/locorda_rdf_mapper_annotations/doc/vocab_generating.md)
+
+**Minimal Example:**
 ```dart
-// Current:
-@LcrdSubResource(Schema.Comment, SubIriStrategy("comment-{id}"))
-class Comment { ... }
+const appVocab = AppVocab(appBaseUri: 'https://myapp.example.com');
 
-// Proposed (auto class IRI):
-@LcrdSubResource.withStrategy(SubIriStrategy("comment-{id}"))
-class Comment { ... }
-// → classIri = '{vocabBaseIri}Comment'
+@RdfGlobalResource.define(appVocab, IriStrategy('https://myapp.example.com/books/{id}'))
+class Book {
+  @RdfIriPart('id')
+  final String id;
+  
+  final String title;  // → dc:title (auto-matched)
+  final String isbn;   // → app:isbn (auto-generated)
+}
 ```
 
-### Local Resources (Blank-node-identified)
-
-```dart
-// Current:
-@RdfLocalResource(PersonalNotesVocab.Weblink)
-class Weblink { ... }
-
-// Proposed (auto class IRI):
-@RdfLocalResource()  // Already valid! classIri is already optional.
-class Weblink { ... }
-// → classIri = '{vocabBaseIri}Weblink' (only for vocab generation, blank node identity unchanged)
-```
-
-Note: `@RdfLocalResource()` without a class IRI already works for RDF mapping (produces typeless blank nodes). The vocab generator would still create an `owl:Class` entry for it if the class is reachable from a root resource.
-
----
-
-## Part 11: Migration Path
-
-### Phase 1: Core Infrastructure
-1. Add `LcrdVocab` annotation to `locorda_annotations`
-2. Implement vocab base IRI resolution in generators  
-3. Teach `CrdtMappingBuilder` to derive predicates from field names when `@RdfProperty` is absent
-4. Add `LcrdRootResource.withCrdt()` constructor
-
-### Phase 2: Vocabulary Generator
-5. Implement `VocabBuilder` that produces `.g.dart` and `.g.ttl`
-6. Integrate with builder pipeline (runs_before CRDT + RDF mapper)
-7. Update RDF mapper to support convention-derived predicates
-
-### Phase 3: Example Migration
-8. Migrate minimal example to zero-RDF style
-9. Migrate personal notes app (keeping schema.org where appropriate)
-10. Update documentation and getting-started guides
-
-### Phase 4: Optional Enrichment
-11. Add `@LcrdVocabClass` / `@LcrdVocabProperty` annotations for TTL enrichment
-12. Support `rdfs:subClassOf`, `rdfs:subPropertyOf` in enrichment annotations
-
----
-
-## Summary of Changes Required
-
-### `locorda_annotations` Package
-- New: `LcrdVocab` annotation class
-- New: `LcrdRootResource.withCrdt()` constructor (optional classIri)
-- New: `LcrdSubResource.withStrategy()` constructor (optional classIri)
-- Optional: `LcrdVocabClass`, `LcrdVocabProperty` enrichment annotations
-
-### `locorda_init_generator` Package  
-- New: `VocabBuilder` — generates `.g.dart` vocab class + `.g.ttl` vocabulary
-- Modified: `CrdtMappingBuilder` — resolve predicates from field names when `@RdfProperty` absent
-- Modified: `AnnotationScanner` — handle null `classIri` in `LcrdRootResource`
-- Modified: `ConfigCodeGenerator` — resolve auto-derived class IRIs
-
-### `locorda_rdf_mapper_annotations` Package (External, But Ours)
-- Modified: `RdfProperty` or mapper field scanner — support convention-derived predicates when CRDT annotation present but `@RdfProperty` absent
-
-### `locorda_rdf_mapper` Package (External, But Ours)
-- Modified: Field scanning — fallback to convention-derived predicates
-
----
-
-## Open Questions
-
-1. **Should `@RdfUnmappedTriples` also be auto-included?** For zero-RDF developers, the concept of unmapped triples is alien. Could this be a default on `@LcrdRootResource`?
-
-2. **Vocabulary naming convention:** should the generated vocab file name come from the `@LcrdVocab` annotation, the package name, or the base IRI?
-
-3. **Multi-module support:** in a monorepo, each package might have its own `@LcrdVocab`. The generator should scope to one package — is `pubspec.yaml` trigger sufficient?
-
-4. **Cross-package references:** if Package A references a class from Package B, whose vocab namespace should the class IRI use? Answer: the package that defines the class.
-
-5. **Versioning:** when the vocabulary changes between app versions, how does this interact with deployed CRDT mappings? The mapping IRI is versioned, but the vocabulary IRI is not. Is this a problem?
+Generated TTL includes `app:Book` class and `app:isbn` property definitions.
