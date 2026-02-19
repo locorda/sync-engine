@@ -1,11 +1,15 @@
 /// Category model for organizing notes with CRDT annotations.
 library;
 
-import 'package:locorda_rdf_core/core.dart';
-import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:locorda/annotations.dart';
-import '../vocabulary/personal_notes_vocab.dart';
-import '../consts.dart' show appBaseUrl;
+import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_terms_core/owl.dart';
+import 'package:locorda_rdf_terms_core/rdf.dart' show Rdf;
+import 'package:locorda_rdf_terms_core/rdfs.dart';
+import 'package:locorda_rdf_terms_core/xsd.dart';
+import 'package:locorda_rdf_terms_schema/schema.dart';
+
+import '../consts.dart' show appVocab;
 import 'category_display_settings.dart';
 
 /// A category for organizing personal notes.
@@ -17,14 +21,17 @@ import 'category_display_settings.dart';
 /// - LWW-Register for name and description (last writer wins)
 /// - Immutable for creation date
 ///
-@RootResource.externalVocab(
-  PersonalNotesVocab.NotesCategory,
-  appBaseUrl,
+@RootResource(
+  appVocab,
   mergeContract: MergeContract(
     label: 'Notes Category CRDT Document Mapping v1',
     comment:
         'Defines how note categories should merge when conflicts occur during sync.',
   ),
+  label: 'Notes Category',
+  comment:
+      'A category for organizing personal notes. Provides a more specific classification than schema:CreativeWork for note organization purposes.',
+  subClassOf: SchemaCreativeWork.classIri,
 )
 class Category {
   /// Unique identifier for this category
@@ -42,7 +49,12 @@ class Category {
   final String? description;
 
   /// Display settings for UI presentation (single-path-identified blank node)
-  @RdfProperty(PersonalNotesVocab.displaySettings)
+  @RdfProperty.define(
+    fragment: 'displaySettings',
+    metadata: [
+      (Rdf.type, Owl.ObjectProperty),
+    ],
+  )
   @CrdtLwwRegister()
   final CategoryDisplaySettings? settings;
 
@@ -57,7 +69,16 @@ class Category {
   final DateTime modifiedAt;
 
   /// Whether this category is archived (soft deleted)
-  @RdfProperty(PersonalNotesVocab.archived)
+  @RdfProperty.define(
+    fragment: 'archived',
+    label: 'archived',
+    comment:
+        'Indicates that a category is archived (soft deleted) but remains referenceable.',
+    metadata: [
+      (Rdfs.range, Xsd.boolean),
+      (Rdf.type, Owl.DatatypeProperty),
+    ],
+  )
   @CrdtLwwRegister()
   final bool archived;
 

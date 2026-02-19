@@ -1,9 +1,11 @@
 import 'package:locorda/annotations.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
+import 'package:personal_notes_app/consts.dart';
 
 import 'note.dart';
 
 @GroupKey(
+  appVocab,
   Note,
   groupingProperties: [
     GroupingProperty(
@@ -16,6 +18,7 @@ import 'note.dart';
       ],
     ),
   ],
+  subClassOf: SchemaNoteDigitalDocument.classIri,
 )
 class NoteGroupKey {
   @RdfProperty(SchemaNoteDigitalDocument.dateCreated)
@@ -26,9 +29,11 @@ class NoteGroupKey {
             createdMonth.year, createdMonth.month, 1, 0, 0, 0, 0, 0);
 
   /// Helper for current month group
+  @RdfIgnore()
   static NoteGroupKey get currentMonth => NoteGroupKey(DateTime.now());
 
   /// Helper for previous month group
+  @RdfIgnore()
   static NoteGroupKey get previousMonth {
     final now = DateTime.now();
     final prevMonth = DateTime.utc(now.year, now.month - 1, 1);
@@ -44,6 +49,7 @@ class NoteGroupKey {
   }
 
   /// Get a human-readable month name
+  @RdfIgnore()
   String get displayName {
     final formatted = _formatMonth(createdMonth);
     final parts = formatted.split('-');

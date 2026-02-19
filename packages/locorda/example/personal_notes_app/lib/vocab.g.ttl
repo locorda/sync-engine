@@ -1,0 +1,84 @@
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix pn: <https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <https://schema.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#> a owl:Ontology;
+    dcterms:created "2026-02-19"^^xsd:date;
+    dcterms:creator "Locorda Example Team";
+    rdfs:comment "A vocabulary for personal note-taking applications with categories and organization features.";
+    rdfs:label "Personal Notes App Vocabulary";
+    owl:versionInfo "1.0.0" .
+
+pn:Category a owl:Class;
+    rdfs:comment "A category for organizing personal notes. Provides a more specific classification than schema:CreativeWork for note organization purposes.";
+    rdfs:isDefinedBy pn:;
+    rdfs:label "Notes Category";
+    rdfs:subClassOf schema:CreativeWork .
+
+pn:CategoryDisplaySettings a owl:Class;
+    rdfs:isDefinedBy pn:;
+    rdfs:label "Category Display Settings";
+    rdfs:subClassOf owl:Thing .
+
+pn:Comment a owl:Class;
+    rdfs:isDefinedBy pn:;
+    rdfs:label "Comment";
+    rdfs:subClassOf schema:Comment .
+
+pn:Note a owl:Class;
+    rdfs:comment "A personal note or memo. Specializes schema:NoteDigitalDocument for personal note-taking use cases.";
+    rdfs:isDefinedBy pn:;
+    rdfs:label "Personal Note";
+    rdfs:subClassOf schema:NoteDigitalDocument .
+
+pn:NoteGroupKey a owl:Class;
+    rdfs:isDefinedBy pn:;
+    rdfs:label "Note Group Key";
+    rdfs:subClassOf schema:NoteDigitalDocument .
+
+pn:NoteIndexEntry a owl:Class;
+    rdfs:isDefinedBy pn:;
+    rdfs:label "Note Index Entry";
+    rdfs:subClassOf schema:NoteDigitalDocument .
+
+pn:Weblink a owl:Class;
+    rdfs:isDefinedBy pn:;
+    rdfs:label "Weblink";
+    rdfs:subClassOf schema:Thing .
+
+pn:archived a owl:DatatypeProperty;
+    rdfs:comment "Indicates that a category is archived (soft deleted) but remains referenceable.";
+    rdfs:domain pn:Category;
+    rdfs:isDefinedBy pn:;
+    rdfs:label "archived";
+    rdfs:range xsd:boolean .
+
+pn:belongsToCategory a owl:ObjectProperty;
+    rdfs:comment "Indicates that a note belongs to a specific notes category.";
+    rdfs:domain schema:NoteDigitalDocument;
+    rdfs:isDefinedBy pn:;
+    rdfs:label "belongs to category";
+    rdfs:range pn:Category;
+    rdfs:subPropertyOf dcterms:subject .
+
+pn:categoryColor a owl:DatatypeProperty;
+    rdfs:comment "A color code (hex, name, etc.) associated with a category for UI display purposes.";
+    rdfs:domain pn:CategoryDisplaySettings;
+    rdfs:isDefinedBy pn:;
+    rdfs:label "category color";
+    rdfs:range xsd:string .
+
+pn:categoryIcon a owl:DatatypeProperty;
+    rdfs:comment "An icon identifier or emoji associated with a category for UI display purposes.";
+    rdfs:domain pn:CategoryDisplaySettings;
+    rdfs:isDefinedBy pn:;
+    rdfs:label "category icon";
+    rdfs:range xsd:string .
+
+pn:displaySettings a owl:ObjectProperty;
+    rdfs:domain pn:Category;
+    rdfs:isDefinedBy pn:;
+    rdfs:label "Display Settings" .

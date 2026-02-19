@@ -14,7 +14,6 @@ import 'package:locorda_rdf_mapper/mapper.dart';
 
 // Other imports
 import 'package:personal_notes_app/models/category.dart' as category;
-import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:personal_notes_app/models/category_display_settings.dart';
 import 'package:locorda_core/locorda_core.dart' as locorda_core;
@@ -31,7 +30,9 @@ class CategoryMapper implements GlobalResourceMapper<category.Category> {
     : _iriMapper = iriMapper;
 
   @override
-  IriTerm? get typeIri => PersonalNotesVocab.NotesCategory;
+  IriTerm? get typeIri => const IriTerm(
+    'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#Category',
+  );
 
   @override
   category.Category fromRdfResource(
@@ -45,11 +46,17 @@ class CategoryMapper implements GlobalResourceMapper<category.Category> {
     final String name = reader.require(SchemaCreativeWork.name);
     final String? description = reader.optional(SchemaCreativeWork.description);
     final CategoryDisplaySettings? settings = reader.optional(
-      PersonalNotesVocab.displaySettings,
+      const IriTerm(
+        'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#displaySettings',
+      ),
     );
     final DateTime createdAt = reader.require(SchemaCreativeWork.dateCreated);
     final DateTime modifiedAt = reader.require(SchemaCreativeWork.dateModified);
-    final bool archived = reader.require(PersonalNotesVocab.archived);
+    final bool archived = reader.require(
+      const IriTerm(
+        'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#archived',
+      ),
+    );
 
     // Get unmapped triples as the last reader operation for lossless mapping
     final RdfGraph other = reader.getUnmapped<RdfGraph>(globalUnmapped: true);
@@ -84,12 +91,21 @@ class CategoryMapper implements GlobalResourceMapper<category.Category> {
         )
         .when(
           resource.settings != null,
-          (b) =>
-              b.addValue(PersonalNotesVocab.displaySettings, resource.settings),
+          (b) => b.addValue(
+            const IriTerm(
+              'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#displaySettings',
+            ),
+            resource.settings,
+          ),
         )
         .addValue(SchemaCreativeWork.dateCreated, resource.createdAt)
         .addValue(SchemaCreativeWork.dateModified, resource.modifiedAt)
-        .addValue(PersonalNotesVocab.archived, resource.archived)
+        .addValue(
+          const IriTerm(
+            'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#archived',
+          ),
+          resource.archived,
+        )
         .addUnmapped(resource.other)
         .build();
   }

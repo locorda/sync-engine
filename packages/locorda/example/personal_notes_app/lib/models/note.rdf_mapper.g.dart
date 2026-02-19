@@ -14,7 +14,6 @@ import 'package:locorda_rdf_mapper/mapper.dart';
 
 // Other imports
 import 'package:personal_notes_app/models/note.dart' as note;
-import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:personal_notes_app/models/weblink.dart';
 import 'package:personal_notes_app/models/comment.dart';
@@ -38,7 +37,9 @@ class NoteMapper implements GlobalResourceMapper<note.Note> {
        _iriMapper = iriMapper;
 
   @override
-  IriTerm? get typeIri => PersonalNotesVocab.PersonalNote;
+  IriTerm? get typeIri => const IriTerm(
+    'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#Note',
+  );
 
   @override
   note.Note fromRdfResource(IriTerm subject, DeserializationContext context) {
@@ -53,7 +54,9 @@ class NoteMapper implements GlobalResourceMapper<note.Note> {
       UnorderedItemsSetMapper.new,
     );
     final String? categoryId = reader.optional(
-      PersonalNotesVocab.belongsToCategory,
+      const IriTerm(
+        'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#belongsToCategory',
+      ),
       deserializer: _categoryIdMapper,
     );
     final DateTime createdAt = reader.require(
@@ -114,7 +117,9 @@ class NoteMapper implements GlobalResourceMapper<note.Note> {
         .when(
           resource.categoryId != null,
           (b) => b.addValue(
-            PersonalNotesVocab.belongsToCategory,
+            const IriTerm(
+              'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#belongsToCategory',
+            ),
             resource.categoryId,
             serializer: _categoryIdMapper,
           ),

@@ -2,7 +2,11 @@
 library;
 
 import 'package:locorda/annotations.dart';
-import '../vocabulary/personal_notes_vocab.dart';
+import 'package:personal_notes_app/consts.dart';
+import 'package:locorda_rdf_terms_core/xsd.dart';
+import 'package:locorda_rdf_terms_core/rdfs.dart';
+import 'package:locorda_rdf_terms_core/rdf.dart' show Rdf;
+import 'package:locorda_rdf_terms_core/owl.dart';
 
 /// Display settings for a category, demonstrating single-path-identified blank nodes.
 ///
@@ -12,15 +16,33 @@ import '../vocabulary/personal_notes_vocab.dart';
 /// Uses CRDT merge strategies:
 /// - LWW-Register for color and icon (last writer wins)
 ///
-@LocalResource()
+@LocalResource(appVocab)
 class CategoryDisplaySettings {
   /// Color for UI display (hex code, CSS color name, etc.)
-  @RdfProperty(PersonalNotesVocab.categoryColor)
+  @RdfProperty.define(
+    fragment: 'categoryColor',
+    label: 'category color',
+    comment:
+        'A color code (hex, name, etc.) associated with a category for UI display purposes.',
+    metadata: [
+      (Rdfs.range, Xsd.string),
+      (Rdf.type, Owl.DatatypeProperty),
+    ],
+  )
   @CrdtLwwRegister()
   final String? color;
 
   /// Icon for UI display (emoji, icon name, etc.)
-  @RdfProperty(PersonalNotesVocab.categoryIcon)
+  @RdfProperty.define(
+    fragment: 'categoryIcon',
+    label: 'category icon',
+    comment:
+        'An icon identifier or emoji associated with a category for UI display purposes.',
+    metadata: [
+      (Rdfs.range, Xsd.string),
+      (Rdf.type, Owl.DatatypeProperty),
+    ],
+  )
   @CrdtLwwRegister()
   final String? icon;
 

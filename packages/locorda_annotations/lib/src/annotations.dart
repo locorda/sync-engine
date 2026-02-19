@@ -128,6 +128,10 @@ class RootResource extends RdfGlobalResource implements LocordaAnnotation {
     MergeContract mergeContract = const MergeContract(),
     RootIriStrategy iriStrategy = const RootIriStrategy(),
     this.fullIndex = const FullIndex(),
+    super.comment,
+    super.label,
+    super.metadata,
+    super.subClassOf,
   })  : generatorVocab = vocab,
         explicitClassIri = null,
         contractAppBaseUri = null,
@@ -157,6 +161,10 @@ class RootResource extends RdfGlobalResource implements LocordaAnnotation {
     String mergeContractIri, {
     RootIriStrategy iriStrategy = const RootIriStrategy(),
     this.fullIndex = const FullIndex(),
+    super.comment,
+    super.label,
+    super.metadata,
+    super.subClassOf,
   })  : generatorVocab = vocab,
         explicitClassIri = null,
         contractAppBaseUri = null,
@@ -209,7 +217,15 @@ class RootResource extends RdfGlobalResource implements LocordaAnnotation {
 /// The [SubIriStrategy] automatically uses the parent resource's IRI as base,
 /// removing any existing fragment before appending the new one.
 class SubResource extends RdfGlobalResource implements LocordaAnnotation {
-  const SubResource(IriTerm? classIri, SubIriStrategy iriStrategy)
+  const SubResource(
+    AppVocab appVocab,
+    SubIriStrategy iriStrategy, {
+    super.comment,
+    super.label,
+    super.metadata,
+    super.subClassOf,
+  }) : super.define(appVocab, iriStrategy, registerGlobally: false);
+  const SubResource.externalVocab(IriTerm? classIri, SubIriStrategy iriStrategy)
       : super(classIri, iriStrategy, registerGlobally: false);
 }
 
@@ -283,7 +299,14 @@ class SubResource extends RdfGlobalResource implements LocordaAnnotation {
 /// - [SubResource] - Nested global resources with fragment IRIs
 /// - [@MergeIdentifying()] - Mark identifying properties for blank nodes
 class LocalResource extends RdfLocalResource implements LocordaAnnotation {
-  const LocalResource([IriTerm? classIri]) : super(classIri);
+  const LocalResource(
+    AppVocab appVocab, {
+    super.comment,
+    super.label,
+    super.metadata,
+    super.subClassOf,
+  }) : super.define(appVocab);
+  const LocalResource.externalVocab([IriTerm? classIri]) : super(classIri);
 }
 
 /// Annotation for index item (entry) classes.
@@ -299,12 +322,34 @@ class IndexItem extends RdfGlobalResource implements LocordaAnnotation {
   /// The [iriStrategy] links back to the root resource type.
   /// Due to Dart const-constructor limitations, `IndexItemIriStrategy`
   /// must be passed as a parameter rather than constructed inline.
-  const IndexItem.fullIndex(IndexItemIriStrategy iriStrategy)
+  const IndexItem.fullIndex(
+    AppVocab appVocab,
+    IndexItemIriStrategy iriStrategy, {
+    super.comment,
+    super.label,
+    super.metadata,
+    super.subClassOf,
+  })  : groupKeyType = null,
+        super.define(appVocab, iriStrategy,
+            direction: MapperDirection.deserializeOnly);
+
+  const IndexItem.fullIndexExternalVocab(IndexItemIriStrategy iriStrategy)
       : groupKeyType = null,
         super.deserializeOnly(null, iri: iriStrategy);
 
   /// Creates a GroupIndex item entry linked to a specific [groupKeyType].
   const IndexItem.groupIndex(
+    AppVocab appVocab,
+    this.groupKeyType,
+    IndexItemIriStrategy iriStrategy, {
+    super.comment,
+    super.label,
+    super.metadata,
+    super.subClassOf,
+  }) : super.define(appVocab, iriStrategy,
+            direction: MapperDirection.deserializeOnly);
+
+  const IndexItem.groupIndexExternalVocab(
     this.groupKeyType,
     IndexItemIriStrategy iriStrategy,
   ) : super.deserializeOnly(null, iri: iriStrategy);
@@ -325,6 +370,17 @@ class GroupKey extends RdfLocalResource implements LocordaAnnotation {
   final List<GroupingProperty> groupingProperties;
 
   const GroupKey(
+    AppVocab appVocab,
+    this.resourceType, {
+    this.localName,
+    this.groupingProperties = const [],
+    super.comment,
+    super.label,
+    super.metadata,
+    super.subClassOf,
+  }) : super.define(appVocab);
+
+  const GroupKey.externalVocab(
     this.resourceType, {
     this.localName,
     this.groupingProperties = const [],

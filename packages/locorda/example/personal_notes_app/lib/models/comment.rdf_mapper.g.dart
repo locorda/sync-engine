@@ -32,7 +32,9 @@ class CommentMapper implements GlobalResourceMapper<comment.Comment> {
     : _rootResourceIriProvider = rootResourceIriProvider;
 
   @override
-  IriTerm? get typeIri => Schema.Comment;
+  IriTerm? get typeIri => const IriTerm(
+    'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#Comment',
+  );
 
   @override
   comment.Comment fromRdfResource(

@@ -26,7 +26,6 @@ import 'package:personal_notes_app/init_rdf_mapper.g.dart';
 import 'package:personal_notes_app/models/category.dart';
 import 'package:personal_notes_app/models/comment.dart';
 import 'package:personal_notes_app/models/note.dart';
-import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
 
 /// Set to true to enable debug output during test development
 const _debug = false;
@@ -43,8 +42,10 @@ void main() {
 
     mapper = createTestMapper(
         resourceTypes: {
-          Note: PersonalNotesVocab.PersonalNote,
-          Category: PersonalNotesVocab.NotesCategory,
+          Note: const IriTerm(
+              'https://locorda.dev/example/personal_notes_app/vocab#Note'),
+          Category: const IriTerm(
+              'https://locorda.dev/example/personal_notes_app/vocab#Category'),
         },
         initRdfMapper: (rdfMapper, indexItemIriFactory, resourceIriFactory,
                 resourceRefFactory) =>

@@ -1,9 +1,9 @@
 /// Weblink model representing a web URL reference with optional metadata.
 library;
 
-import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
-import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:locorda/annotations.dart';
+import 'package:locorda_rdf_terms_schema/schema.dart';
+import 'package:personal_notes_app/consts.dart';
 
 /// A weblink with URL, title, and optional description.
 ///
@@ -14,21 +14,21 @@ import 'package:locorda/annotations.dart';
 /// - Immutable for url (identifying property, cannot change)
 /// - LWW-Register for title and description (last writer wins)
 ///
-@LocalResource(PersonalNotesVocab.Weblink)
+@LocalResource(appVocab, subClassOf: SchemaThing.classIri)
 class Weblink {
   /// The URL - this is the identifying property for this blank node
-  @RdfProperty(Schema.url)
+  @RdfProperty(SchemaThing.url)
   @MergeIdentifying()
   @CrdtImmutable()
   final String url;
 
   /// Optional title for the link
-  @RdfProperty(Schema.name)
+  @RdfProperty(SchemaThing.name)
   @CrdtLwwRegister()
   final String? title;
 
   /// Optional description
-  @RdfProperty(Schema.description)
+  @RdfProperty(SchemaThing.description)
   @CrdtLwwRegister()
   final String? description;
 

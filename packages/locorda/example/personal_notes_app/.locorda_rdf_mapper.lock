@@ -1,0 +1,148 @@
+{
+  "lockFileVersion": 1,
+  "types": {
+    "personal_notes_app/lib/models/category.dart#Category": {
+      "classIri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#Category",
+      "properties": {
+        "archived": {
+          "iri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#archived",
+          "source": "define"
+        },
+        "createdAt": {
+          "iri": "https://schema.org/dateCreated",
+          "source": "external"
+        },
+        "description": {
+          "iri": "https://schema.org/description",
+          "source": "external"
+        },
+        "modifiedAt": {
+          "iri": "https://schema.org/dateModified",
+          "source": "external"
+        },
+        "name": {
+          "iri": "https://schema.org/name",
+          "source": "external"
+        },
+        "settings": {
+          "iri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#displaySettings",
+          "source": "define"
+        }
+      }
+    },
+    "personal_notes_app/lib/models/category_display_settings.dart#CategoryDisplaySettings": {
+      "classIri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#CategoryDisplaySettings",
+      "properties": {
+        "color": {
+          "iri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#categoryColor",
+          "source": "define"
+        },
+        "icon": {
+          "iri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#categoryIcon",
+          "source": "define"
+        }
+      }
+    },
+    "personal_notes_app/lib/models/comment.dart#Comment": {
+      "classIri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#Comment",
+      "properties": {
+        "content": {
+          "iri": "https://schema.org/text",
+          "source": "external"
+        },
+        "createdAt": {
+          "iri": "https://schema.org/dateCreated",
+          "source": "external"
+        }
+      }
+    },
+    "personal_notes_app/lib/models/note.dart#Note": {
+      "classIri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#Note",
+      "properties": {
+        "categoryId": {
+          "iri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#belongsToCategory",
+          "source": "define"
+        },
+        "comments": {
+          "iri": "https://schema.org/comment",
+          "source": "external"
+        },
+        "content": {
+          "iri": "https://schema.org/text",
+          "source": "external"
+        },
+        "createdAt": {
+          "iri": "https://schema.org/dateCreated",
+          "source": "external"
+        },
+        "modifiedAt": {
+          "iri": "https://schema.org/dateModified",
+          "source": "external"
+        },
+        "tags": {
+          "iri": "https://schema.org/keywords",
+          "source": "external"
+        },
+        "title": {
+          "iri": "https://schema.org/name",
+          "source": "external"
+        },
+        "weblinks": {
+          "iri": "https://schema.org/relatedLink",
+          "source": "external"
+        }
+      }
+    },
+    "personal_notes_app/lib/models/note_group_key.dart#NoteGroupKey": {
+      "classIri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#NoteGroupKey",
+      "properties": {
+        "createdMonth": {
+          "iri": "https://schema.org/dateCreated",
+          "source": "external"
+        }
+      }
+    },
+    "personal_notes_app/lib/models/note_index_entry.dart#NoteIndexEntry": {
+      "classIri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#NoteIndexEntry",
+      "properties": {
+        "categoryId": {
+          "iri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#belongsToCategory",
+          "source": "define"
+        },
+        "dateCreated": {
+          "iri": "https://schema.org/dateCreated",
+          "source": "external"
+        },
+        "dateModified": {
+          "iri": "https://schema.org/dateModified",
+          "source": "external"
+        },
+        "keywords": {
+          "iri": "https://schema.org/keywords",
+          "source": "external"
+        },
+        "name": {
+          "iri": "https://schema.org/name",
+          "source": "external"
+        }
+      }
+    },
+    "personal_notes_app/lib/models/weblink.dart#Weblink": {
+      "classIri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#Weblink",
+      "properties": {
+        "description": {
+          "iri": "https://schema.org/description",
+          "source": "external"
+        },
+        "title": {
+          "iri": "https://schema.org/name",
+          "source": "external"
+        },
+        "url": {
+          "iri": "https://schema.org/url",
+          "source": "external"
+        }
+      }
+    }
+  }
+}

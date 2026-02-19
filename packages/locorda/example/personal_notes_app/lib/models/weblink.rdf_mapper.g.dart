@@ -14,7 +14,6 @@ import 'package:locorda_rdf_mapper/mapper.dart';
 
 // Other imports
 import 'package:personal_notes_app/models/weblink.dart' as weblink;
-import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
 
 /// Generated mapper for [weblink.Weblink] global resources.
@@ -26,7 +25,9 @@ class WeblinkMapper implements LocalResourceMapper<weblink.Weblink> {
   const WeblinkMapper();
 
   @override
-  IriTerm? get typeIri => PersonalNotesVocab.Weblink;
+  IriTerm? get typeIri => const IriTerm(
+    'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#Weblink',
+  );
 
   @override
   weblink.Weblink fromRdfResource(
@@ -35,9 +36,9 @@ class WeblinkMapper implements LocalResourceMapper<weblink.Weblink> {
   ) {
     final reader = context.reader(subject);
 
-    final String url = reader.require(Schema.url);
-    final String? title = reader.optional(Schema.name);
-    final String? description = reader.optional(Schema.description);
+    final String url = reader.require(SchemaThing.url);
+    final String? title = reader.optional(SchemaThing.name);
+    final String? description = reader.optional(SchemaThing.description);
 
     return weblink.Weblink(url: url, title: title, description: description);
   }
@@ -52,14 +53,14 @@ class WeblinkMapper implements LocalResourceMapper<weblink.Weblink> {
 
     return context
         .resourceBuilder(subject)
-        .addValue(Schema.url, resource.url)
+        .addValue(SchemaThing.url, resource.url)
         .when(
           resource.title != null,
-          (b) => b.addValue(Schema.name, resource.title),
+          (b) => b.addValue(SchemaThing.name, resource.title),
         )
         .when(
           resource.description != null,
-          (b) => b.addValue(Schema.description, resource.description),
+          (b) => b.addValue(SchemaThing.description, resource.description),
         )
         .build();
   }

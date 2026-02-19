@@ -25,7 +25,9 @@ class NoteGroupKeyMapper implements LocalResourceMapper<ngk.NoteGroupKey> {
   const NoteGroupKeyMapper();
 
   @override
-  IriTerm? get typeIri => null;
+  IriTerm? get typeIri => const IriTerm(
+    'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#NoteGroupKey',
+  );
 
   @override
   ngk.NoteGroupKey fromRdfResource(

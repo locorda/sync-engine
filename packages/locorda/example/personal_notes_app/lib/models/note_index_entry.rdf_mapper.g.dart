@@ -15,7 +15,6 @@ import 'package:locorda_rdf_mapper/mapper.dart';
 // Other imports
 import 'package:personal_notes_app/models/note_index_entry.dart' as nie;
 import 'package:locorda_rdf_terms_schema/schema.dart';
-import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart' as pnv;
 import 'package:personal_notes_app/models/category.dart' as category;
 import 'package:personal_notes_app/models/note.dart';
 
@@ -36,7 +35,9 @@ class NoteIndexEntryMapper
        _iriMapper = iriMapper;
 
   @override
-  IriTerm? get typeIri => null;
+  IriTerm? get typeIri => const IriTerm(
+    'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#NoteIndexEntry',
+  );
 
   @override
   nie.NoteIndexEntry fromRdfResource(
@@ -59,7 +60,9 @@ class NoteIndexEntryMapper
       UnorderedItemsSetMapper.new,
     );
     final String? categoryId = reader.optional(
-      pnv.PersonalNotesVocab.belongsToCategory,
+      const IriTerm(
+        'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#belongsToCategory',
+      ),
       deserializer: _categoryIdMapper,
     );
 

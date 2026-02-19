@@ -22,7 +22,7 @@ import 'services/notes_service.dart';
 import 'storage/database.dart' show AppDatabase;
 import 'storage/repositories.dart' show CategoryRepository, NoteRepository;
 import 'utils/logging_setup.dart';
-import 'consts.dart' show appBaseUrl;
+import 'consts.dart' show appVocab;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,10 +59,10 @@ Future<Locorda> initializeLocorda() async {
           // - appUrlScheme provides secure custom URI scheme for mobile/macOS
           // - frontendRedirectUrl provides secure HTTPS redirect for web
           // See spec/docs/SECURITY.md for detailed security considerations
-          oidcClientId: '$appBaseUrl/auth/client-config.json',
+          oidcClientId: '${appVocab.appBaseUri}/auth/client-config.json',
           appUrlScheme: 'dev.locorda.example.personalNotesApp',
           frontendRedirectUrl: Uri.parse(
-              '${kDebugMode ? 'http://localhost:3815' : appBaseUrl}/redirect.html'),
+              '${kDebugMode ? 'http://localhost:3815' : appVocab.appBaseUri}/redirect.html'),
           config: SolidConfig(useShardDatasets: false)),
       await GDriveMainIntegration.create(
           config: GDriveConfig(

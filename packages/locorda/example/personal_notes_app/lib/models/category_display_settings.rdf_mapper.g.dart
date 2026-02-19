@@ -15,7 +15,6 @@ import 'package:locorda_rdf_mapper/mapper.dart';
 // Other imports
 import 'package:personal_notes_app/models/category_display_settings.dart'
     as cds;
-import 'package:personal_notes_app/vocabulary/personal_notes_vocab.dart';
 
 /// Generated mapper for [cds.CategoryDisplaySettings] global resources.
 ///
@@ -27,7 +26,9 @@ class CategoryDisplaySettingsMapper
   const CategoryDisplaySettingsMapper();
 
   @override
-  IriTerm? get typeIri => null;
+  IriTerm? get typeIri => const IriTerm(
+    'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#CategoryDisplaySettings',
+  );
 
   @override
   cds.CategoryDisplaySettings fromRdfResource(
@@ -36,8 +37,16 @@ class CategoryDisplaySettingsMapper
   ) {
     final reader = context.reader(subject);
 
-    final String? color = reader.optional(PersonalNotesVocab.categoryColor);
-    final String? icon = reader.optional(PersonalNotesVocab.categoryIcon);
+    final String? color = reader.optional(
+      const IriTerm(
+        'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#categoryColor',
+      ),
+    );
+    final String? icon = reader.optional(
+      const IriTerm(
+        'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#categoryIcon',
+      ),
+    );
 
     return cds.CategoryDisplaySettings(color: color, icon: icon);
   }
@@ -54,11 +63,21 @@ class CategoryDisplaySettingsMapper
         .resourceBuilder(subject)
         .when(
           resource.color != null,
-          (b) => b.addValue(PersonalNotesVocab.categoryColor, resource.color),
+          (b) => b.addValue(
+            const IriTerm(
+              'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#categoryColor',
+            ),
+            resource.color,
+          ),
         )
         .when(
           resource.icon != null,
-          (b) => b.addValue(PersonalNotesVocab.categoryIcon, resource.icon),
+          (b) => b.addValue(
+            const IriTerm(
+              'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#categoryIcon',
+            ),
+            resource.icon,
+          ),
         )
         .build();
   }

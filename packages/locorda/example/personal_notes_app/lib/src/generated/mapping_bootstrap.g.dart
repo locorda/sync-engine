@@ -18,8 +18,9 @@ GRAPH <mappings/category-v1#> {
       mc:classMapping (
           [
               a mc:ClassMapping ;
-              mc:appliesToClass <vocabulary/personal-notes#NotesCategory> ;
-              mc:rule [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ],
+              mc:appliesToClass <vocabulary/personal-notes#Category> ;
+              mc:rule [ mc:predicate <vocabulary/personal-notes#id> ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ],
                   [ mc:predicate schema:description ; ca:mergeWith ca:LWW_Register ],
                   [
                       mc:predicate <vocabulary/personal-notes#displaySettings> ;
@@ -32,10 +33,9 @@ GRAPH <mappings/category-v1#> {
                       ca:mergeWith ca:LWW_Register
                   ]
           ]
-      );
-      mc:imports (mappings:core-v1);
-      mc:predicateMapping (
           [
+              a mc:ClassMapping ;
+              mc:appliesToClass <vocabulary/personal-notes#CategoryDisplaySettings> ;
               mc:rule [
                       mc:predicate <vocabulary/personal-notes#categoryColor> ;
                       ca:mergeWith ca:LWW_Register
@@ -43,10 +43,11 @@ GRAPH <mappings/category-v1#> {
                   [
                       mc:predicate <vocabulary/personal-notes#categoryIcon> ;
                       ca:mergeWith ca:LWW_Register
-                  ] ;
-              a mc:PredicateMapping
+                  ]
           ]
-      ) .
+      );
+      mc:imports (mappings:core-v1);
+      mc:predicateMapping () .
 }
 """,
 
@@ -66,14 +67,16 @@ GRAPH <mappings/note-v1#> {
       mc:classMapping (
           [
               a mc:ClassMapping ;
-              mc:appliesToClass schema:Comment ;
-              mc:rule [ mc:predicate schema:text ; ca:mergeWith ca:LWW_Register ],
+              mc:appliesToClass <vocabulary/personal-notes#Comment> ;
+              mc:rule [ mc:predicate <vocabulary/personal-notes#id> ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate schema:text ; ca:mergeWith ca:LWW_Register ],
                   [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ]
           ]
           [
               a mc:ClassMapping ;
-              mc:appliesToClass <vocabulary/personal-notes#PersonalNote> ;
-              mc:rule [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ],
+              mc:appliesToClass <vocabulary/personal-notes#Note> ;
+              mc:rule [ mc:predicate <vocabulary/personal-notes#id> ; ca:mergeWith ca:LWW_Register ],
+                  [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ],
                   [ mc:predicate schema:text ; ca:mergeWith ca:LWW_Register ],
                   [ mc:predicate schema:keywords ; ca:mergeWith ca:OR_Set ],
                   [

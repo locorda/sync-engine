@@ -3,20 +3,43 @@ library;
 
 import 'package:locorda/annotations.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_terms_common/dcterms.dart';
+import 'package:locorda_rdf_terms_core/owl.dart';
+import 'package:locorda_rdf_terms_core/rdf.dart' show Rdf;
+import 'package:locorda_rdf_terms_core/rdfs.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
 
-import '../consts.dart' show appBaseUrl;
+import '../consts.dart' show appVocab;
 import '../utils/optional.dart';
-import '../vocabulary/personal_notes_vocab.dart';
 import 'category.dart';
 import 'comment.dart';
 import 'weblink.dart';
 
 class NoteCategoryProperty extends RdfProperty {
   const NoteCategoryProperty()
-      : super(
-          PersonalNotesVocab.belongsToCategory,
+      : super.define(
           iri: const RootResourceRef(Category),
+          fragment: 'belongsToCategory',
+          label: 'belongs to category',
+          comment:
+              'Indicates that a note belongs to a specific notes category.',
+          metadata: const [
+            (Rdf.type, Owl.ObjectProperty),
+            (Rdfs.subPropertyOf, Dcterms.subject),
+            // TODO: this is a bit hacky, but
+            // both our :Note and our :NoteIndexEntry types
+            // are using this property - not sure what the correct
+            // way to handle this is. Should the NoteIndexEntry
+            // dart class rather use the rdf type of the Note class?
+            // How do we express that with generated vocabulary?
+            // For now we just put the property on the common super class...
+            (Rdfs.domain, SchemaNoteDigitalDocument.classIri),
+            (
+              Rdfs.range,
+              IriTerm(
+                  'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#Category')
+            ),
+          ],
         );
 }
 
@@ -29,18 +52,21 @@ class NoteCategoryProperty extends RdfProperty {
 /// - LWW-Register for title and content (last writer wins)
 /// - OR-Set for tags (additions and removals merge)
 ///
-@RootResource.externalVocab(
-  PersonalNotesVocab.PersonalNote,
-  appBaseUrl,
+@RootResource(
+  appVocab,
   mergeContract: MergeContract(
     label: 'Personal Note CRDT Document Mapping v1',
     comment:
         'Defines how personal notes should merge when conflicts occur during sync.',
   ),
+  comment:
+      'A personal note or memo. Specializes schema:NoteDigitalDocument for personal note-taking use cases.',
+  label: 'Personal Note',
   // we could also use the default iriStrategy, but we want to
   // use `note` instead of `it` for the fragment.
   iriStrategy: RootIriStrategy(RootIriConfig('note')),
   fullIndex: FullIndex.disabled(),
+  subClassOf: SchemaNoteDigitalDocument.classIri,
 )
 class Note {
   /// Unique identifier for this note

@@ -3,6 +3,7 @@ library;
 
 import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:locorda/annotations.dart';
+import 'package:personal_notes_app/consts.dart';
 
 /// A comment attached to a note, demonstrating IRI-identified sub-content.
 ///
@@ -13,7 +14,11 @@ import 'package:locorda/annotations.dart';
 /// - Immutable for createdAt (creation timestamp)
 /// - LWW-Register for content (last writer wins)
 ///
-@SubResource(Schema.Comment, SubIriStrategy("comment-{id}"))
+@SubResource(
+  appVocab,
+  SubIriStrategy("comment-{id}"),
+  subClassOf: SchemaComment.classIri,
+)
 class Comment {
   /// Unique identifier for this comment (IRI fragment)
   @RdfIriPart()
