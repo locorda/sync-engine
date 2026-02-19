@@ -39,7 +39,7 @@ UI Layer (Flutter)
 TaskRepository (sync-aware storage)
     ↓
 Locorda SyncEngine
-    ↓ ↓
+    ↓ 
  Worker Thread  ←→  Local Dir Remote (testing only)
 ```
 
