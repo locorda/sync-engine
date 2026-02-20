@@ -464,7 +464,11 @@ class CrdtDocumentManager {
             'No property changes detected for ${resourceIri.debug}, skipping save');
         return null;
       }
-      final createdAt = oldFrameworkGraph?.findSingleObject<LiteralTerm>(
+      // crdt:createdAt uses OR_Set semantics (core-v1.ttl): after merging multiple
+      // peers there may be multiple values. The effective createdAt is max() per the
+      // spec lifecycle rule: document deleted if max(deletedAt) > max(createdAt).
+      // We carry forward the maximum (most recent) creation timestamp.
+      final createdAt = oldFrameworkGraph?.findMaxDateTimeObject(
               documentIri, SyncManagedDocument.crdtCreatedAt) ??
           LiteralTermExtensions.dateTime(updatedAtTimestamp);
 

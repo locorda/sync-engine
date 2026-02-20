@@ -506,8 +506,11 @@ class IndexManager {
       if (reifiedStmt.subject is! IriTerm) continue;
       final stmtIri = reifiedStmt.subject as IriTerm;
 
-      // Check if it has crdt:deletedAt (tombstone marker)
-      final deletedAt = crdtDocument.findSingleObject<LiteralTerm>(
+      // Check if it has crdt:deletedAt (tombstone marker).
+      // crdt:deletedAt uses OR_Set semantics (core-v1.ttl): after merging peers,
+      // there can be multiple values (even identical duplicates).
+      // We only need to know if any deletedAt exists (presence = tombstoned).
+      final deletedAt = crdtDocument.findMaxDateTimeObject(
         stmtIri,
         Crdt.deletedAt,
       );

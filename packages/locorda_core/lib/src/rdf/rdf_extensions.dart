@@ -21,6 +21,32 @@ extension RdfGraphExtensions on RdfGraph {
           RdfSubject subject, RdfPredicate predicate) =>
       _findSingleObject(subject, predicate, expectSingle: false);
 
+  /// Returns the maximum datetime value from an OR_Set datetime property.
+  ///
+  /// Per spec (`core-v1.ttl`), lifecycle timestamps like `crdt:createdAt` and
+  /// `crdt:deletedAt` use OR_Set semantics: after merging multiple peers,
+  /// there can be multiple values. The correct effective value is the maximum:
+  ///   document is deleted if max(deletedAt) > max(createdAt)
+  ///
+  /// Returns null if no values are present.
+  LiteralTerm? findMaxDateTimeObject(
+      RdfSubject subject, RdfPredicate predicate) {
+    final triples = findTriples(subject: subject, predicate: predicate);
+    LiteralTerm? maxValue;
+    DateTime? maxDateTime;
+    for (final triple in triples) {
+      if (triple.object is! LiteralTerm) continue;
+      final literal = triple.object as LiteralTerm;
+      if (!literal.isDateTime) continue;
+      final dt = literal.dateTimeValue;
+      if (maxDateTime == null || dt.isAfter(maxDateTime)) {
+        maxDateTime = dt;
+        maxValue = literal;
+      }
+    }
+    return maxValue;
+  }
+
   /// Expects exactly one value, but returns null if absent/invalid.
   /// Use when the property SHOULD be present according to spec/schema,
   /// but you want to handle its absence gracefully.
