@@ -22,8 +22,10 @@ class DriftConfigSender implements MainHandler {
 
   @override
   Future<void> initialize() async {
-    _log.fine('Sending Drift web options to worker');
+    _log.info('Sending Drift web config to worker '
+        '(hasWebOptions: ${_options != null})');
     _workerHandle.send(DriftWebOptionsMessage(options: _options).toJson());
+    _log.fine('Drift web config sent');
   }
 
   @override

@@ -495,6 +495,7 @@ void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
   // 2. Create WorkerChannel for app-specific messages
   final channel = WorkerChannel((message) {
     // Send app-specific messages with special marker
+    _log.fine('Worker sending channel message: channel=${message.channel}');
     mainSendPort.send({'__channel': message.channel, 'data': message.data});
   });
 
@@ -510,24 +511,30 @@ void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
   String? activeStorageId;
   List<String>? activeRemoteIds;
 
+  _log.info('Worker: Listening on receivePort, sending sendPort to main...');
   receivePort.listen((message) async {
     // After config received, handle normal messages
     if (message is Map<String, dynamic>) {
       // Check if it's a channel message
       if (message['__channel'] is String) {
-        channel.deliver(message['__channel'] as String, message['data']);
+        final channelName = message['__channel'] as String;
+        _log.fine('Worker: Delivering channel message: channel=$channelName');
+        channel.deliver(channelName, message['data']);
         return;
       }
 
       // First non-channel message must be InitConfig
       if (config == null) {
         if (message['type'] == 'InitConfig') {
+          _log.info('Worker: Received InitConfig message');
           config = SyncEngineConfig.fromJson(
               message['config'] as Map<String, dynamic>);
           activeStorageId = message['activeStorageId'] as String?;
           final activeRemoteList = message['activeRemoteIds'] as List?;
           activeRemoteIds =
               activeRemoteList?.map((id) => id.toString()).toList();
+          _log.info('Worker: Config parsed - storageId=$activeStorageId, '
+              'remoteIds=$activeRemoteIds');
           configCompleter.complete(config);
           return;
         } else {
@@ -536,30 +543,44 @@ void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
           return;
         }
       } else {
+        _log.fine('Worker: Handling framework message type=${message['type']}');
         // Framework message - handle normally
         await context.handleMessage(message);
       }
+    } else {
+      _log.warning('Worker: Received unexpected non-map message: '
+          '${message.runtimeType}: $message');
     }
   });
 
   // VERY IMPORTANT: Send our SendPort to main isolate **after** we started listening
   // else we might miss messages
   mainSendPort.send(receivePort.sendPort);
+  _log.info('Worker: SendPort sent to main, waiting for InitConfig...');
 
   // Wait for config
   final receivedConfig = await configCompleter.future;
+  _log.info('Worker: InitConfig received, starting engine setup '
+      '(storageId=$activeStorageId, remoteIds=$activeRemoteIds)');
 
   // 5. Call app's setup function and initialize SyncEngine
   try {
+    _log.info('Worker: Step 5a - Calling workerSetup()...');
     final workerParams = await workerSetup();
-    final engineParams =
-      await toEngineParams(workerParams, context, receivedConfig,
-        activeStorageId: activeStorageId,
-        activeRemoteIds: activeRemoteIds);
+    _log.info('Worker: Step 5b - WorkerParams obtained '
+        '(${workerParams.storages.length} storages, '
+        '${workerParams.remotes.length} remotes), converting to EngineParams...');
+    final engineParams = await toEngineParams(
+        workerParams, context, receivedConfig,
+        activeStorageId: activeStorageId, activeRemoteIds: activeRemoteIds);
+    _log.info('Worker: Step 5c - EngineParams ready, creating SyncEngine...');
     final syncSystem = await SyncEngine.create(
         config: receivedConfig, engineParams: engineParams);
+    _log.info('Worker: Step 5d - SyncEngine created, setting sync system...');
     context.setSyncSystem(syncSystem);
+    _log.info('Worker: Step 5e - SyncSystem set up successfully');
   } catch (e, st) {
+    _log.severe('Worker: Engine initialization failed: $e\n$st');
     // Send error and abort worker
     mainSendPort.send({
       'error': 'Worker initialization failed: $e\n$st',
@@ -568,5 +589,7 @@ void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
   }
 
   // 6. Send 'ready' signal to main thread
+  _log.info('Worker: Step 6 - Sending \'ready\' signal to main thread...');
   mainSendPort.send('ready');
+  _log.info('Worker: Initialization complete, ready to handle messages');
 }

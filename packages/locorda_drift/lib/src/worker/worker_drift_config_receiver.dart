@@ -28,20 +28,28 @@ class WorkerDriftConfigReceiver {
     final type = message['type'] as String?;
     if (type == 'DriftWebOptionsMessage') {
       final configMsg = DriftWebOptionsMessage.fromJson(message);
-      _log.fine('Received Drift web options from main thread');
+      _log.info('Received Drift web options from main thread '
+          '(hasOptions: ${configMsg.options != null})');
       if (!_configCompleter.isCompleted) {
         _configCompleter.complete(configMsg.options);
       }
+    } else {
+      _log.fine('Received unrecognized message type: $type');
     }
   }
 
   Future<LocordaDriftWebOptions?> getConfig({
     Duration timeout = const Duration(seconds: 2),
   }) async {
+    _log.info('Waiting for Drift web options from main thread '
+        '(timeout: ${timeout.inSeconds}s)...');
     try {
-      return await _configCompleter.future.timeout(timeout);
+      final config = await _configCompleter.future.timeout(timeout);
+      _log.info('Drift web options received successfully');
+      return config;
     } on TimeoutException {
-      _log.warning('Timed out waiting for Drift web options from main thread.');
+      _log.warning('Timed out waiting for Drift web options from main thread. '
+          'Continuing without web options (native-only mode).');
       return null;
     }
   }

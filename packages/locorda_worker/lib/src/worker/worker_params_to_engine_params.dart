@@ -1,7 +1,11 @@
 import 'package:locorda_core/locorda_core.dart';
+import 'package:logging/logging.dart';
+
 import '../shared/worker_params.dart' show WorkerParams;
 import 'worker_entry_point.dart' show WorkerContext;
 import 'remote_worker_handler.dart' show RemoteMismatchException;
+
+final _log = Logger('WorkerParamsToEngineParams');
 
 Future<EngineParams> toEngineParams(
     WorkerParams wp, WorkerContext context, SyncEngineConfig config,
@@ -21,6 +25,7 @@ Future<EngineParams> toEngineParams(
   }
 
   final selectedStorageHandler = selectedStorageHandlers.single;
+  _log.info('Worker: Selected storage handler: ${selectedStorageHandler.id}');
 
   final selectedRemotes = activeRemoteIds == null
       ? wp.remotes
@@ -38,11 +43,22 @@ Future<EngineParams> toEngineParams(
       );
     }
   }
+  final remoteIds = selectedRemotes.map((r) => r.id).toList();
+  _log.info('Worker: Selected remote handlers: $remoteIds');
+
+  _log.info('Worker: Creating storage (${selectedStorageHandler.id})...');
+  final storage =
+      await selectedStorageHandler.create(workerHandlerContext, config);
+  _log.info('Worker: Storage created successfully');
+
+  _log.info('Worker: Creating ${selectedRemotes.length} remote backends...');
+  final backends = await Future.wait(selectedRemotes
+      .map((b) => b.createBackend(workerHandlerContext, config)));
+  _log.info('Worker: All remote backends created');
 
   return EngineParams(
-    storage: await selectedStorageHandler.create(workerHandlerContext, config),
-    backends: await Future.wait(selectedRemotes
-        .map((b) => b.createBackend(workerHandlerContext, config))),
+    storage: storage,
+    backends: backends,
     physicalTimestampFactory: wp.physicalTimestampFactory,
     installationIdFactory: wp.installationIdFactory,
     iriFactory: wp.iriFactory,

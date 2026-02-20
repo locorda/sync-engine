@@ -4,6 +4,7 @@ library;
 import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
+import 'package:logging/logging.dart';
 
 import '../shared/worker_params.dart';
 import 'locorda_worker.dart';
@@ -13,6 +14,8 @@ import 'remote_main_handler.dart';
 import 'storage_main_handler.dart';
 import 'proxy_sync_engine.dart';
 import 'main_handler.dart';
+
+final _log = Logger('SyncEngineWithWorker');
 
 class SyncEngineWithWorker {
   static Future<SyncEngine> create(
@@ -27,18 +30,25 @@ class SyncEngineWithWorker {
     final activeStorageId = storage.id;
     final activeRemoteIds = remotes.map((remote) => remote.id).toList();
 
+    _log.info('SyncEngineWithWorker: Creating worker with '
+        'storage=${activeStorageId}, remotes=${activeRemoteIds}, '
+        'plugins=${plugins.length} explicit');
+
     // Extract worker connectors from storage plugins and merge with other plugins
     final List<MainHandlerFactory> allPluginFactories = [
       ...remotes.expand((r) => r.workerConnectors),
       ...storage.create(),
       ...plugins,
     ];
+    _log.info(
+        'SyncEngineWithWorker: Total plugin factories: ${allPluginFactories.length}');
 
     // Create worker handle and initialize plugins in correct order:
     // 1. Spawn worker (creates handle + communication channel)
     // 2. Initialize plugins (sets up listeners before worker processes)
     // 3. Send config to worker (triggers engine initialization)
     // 4. Wait for ready (engine is now initialized)
+    _log.info('SyncEngineWithWorker: Creating worker with plugins...');
     final (workerHandle, closeFunctions) = await _createWorkerWithPlugins(
       workerSetup: workerSetup,
       config: syncEngineConfig,
@@ -49,12 +59,16 @@ class SyncEngineWithWorker {
       activeRemoteIds: activeRemoteIds,
       pluginFactories: allPluginFactories,
     );
+    _log.info(
+        'SyncEngineWithWorker: Worker ready, creating ProxySyncEngine...');
 
     // Create proxy that forwards operations to worker
     final syncEngine = await ProxySyncEngine.create(
       workerHandle: workerHandle,
       closeFunctions: closeFunctions,
     );
+    _log.info(
+        'SyncEngineWithWorker: ProxySyncEngine created, initialization complete');
     return syncEngine;
   }
 

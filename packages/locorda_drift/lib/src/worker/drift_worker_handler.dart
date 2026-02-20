@@ -1,12 +1,16 @@
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_worker/worker.dart';
+import 'package:logging/logging.dart';
 
 import '../drift_storage.dart' show DriftStorage;
 import '../shared/consts.dart';
 import 'drift_config_connector_worker.dart';
 import 'drift_native_options_connector_worker.dart';
 
+import '../drift_options.dart';
 export '../drift_options.dart' show LocordaDriftWebOptions;
+
+final _log = Logger('DriftWorkerHandler');
 
 class DriftWorkerHandler extends StorageWorkerHandler {
   @override
@@ -21,11 +25,30 @@ class DriftWorkerHandler extends StorageWorkerHandler {
   @override
   Future<Storage> create(
       WorkerHandlerContext context, SyncEngineConfig config) async {
-    return await DriftStorage.create(
-      web: _web ? await DriftConfigConnector.receiveConfig(context, id) : null,
-      native: _native
-          ? await DriftNativeOptionsConnector.receiver(context, id)
-          : null,
+    _log.info('DriftWorkerHandler[$id]: Creating DriftStorage...');
+
+    LocordaDriftWebOptions? webOpts;
+    if (_web) {
+      _log.info('DriftWorkerHandler[$id]: Waiting for web config from main...');
+      webOpts = await DriftConfigConnector.receiveConfig(context, id);
+      _log.info('DriftWorkerHandler[$id]: Web config received: $webOpts');
+    }
+
+    LocordaDriftNativeOptions? nativeOpts;
+    if (_native) {
+      _log.info(
+          'DriftWorkerHandler[$id]: Requesting native options from main...');
+      nativeOpts = await DriftNativeOptionsConnector.receiver(context, id);
+      _log.info('DriftWorkerHandler[$id]: Native options received');
+    }
+
+    _log.info(
+        'DriftWorkerHandler[$id]: All options received, creating DriftStorage...');
+    final storage = await DriftStorage.create(
+      web: webOpts,
+      native: nativeOpts,
     );
+    _log.info('DriftWorkerHandler[$id]: DriftStorage created successfully');
+    return storage;
   }
 }
