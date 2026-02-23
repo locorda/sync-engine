@@ -10,6 +10,7 @@ environment:
 
 dependencies:
   locorda_core: any
+  meta: ^1.16.0
   
   # RDF mapping
   locorda_rdf_core: ^0.11.8
