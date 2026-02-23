@@ -117,6 +117,27 @@
 - [x] Remove extraOidcScopes from notes_list_screen (and client profile jsonld) again and verify it still works correctly
 - [x] Example App Responsiveness: offload syncing from ui thread to web worker on web
 - [x] Implement basic GDrive Backend
+
+# Priority 5: DX Improvements
+- [x] generate as much plumbing as possible (initLocorda, config, crdt mappings etc.)
+- [x] Really simple minimal example app with in-memory storage and dir remote
+- [x] Documentation - set up locorda.dev/docs with getting started guide, API docs, etc. 
+- [ ] Improve Documentation - Group/Full Index, IndexItem, ItemFetchPolicy etc.
+- [ ]
+
+# Priority 6: Reality Check: make chat essence use sync engine
+- [ ] Port chat essence to sync engine
+- [ ] Activate gdrive backend for chat essence and measure performance - is this acceptable?
+- [ ] 
+
+# Priority 7: Improvements
+- [ ] Fix protocol to reduce writes caused by reader fields in shards - can we rather record shards in the installation documents?
+- [ ] Shard Dataset mode per type? Currently Shard Dataset mode is all-or-nothing per backend. Do we need more flexibility?
+
+# Priority 8: Backend Improvements
+- [ ] 
+
+# Priority 8.a: GDrive Backend improvements (review: still relevant?)
 - [ ] GDrive Backend: store resource data in shard files (rdf dataset)
 - [ ] Remote Sync: alow backends to declare whether or not they support partial fetch mode - for gdrive with dataset shard files for example, partial fetch mode makes no sense at all.
 - [ ] Remote Sync: move dataset shard file concept into the remote sync, collecting data fully from local db since the backend disabled partial fetch and we can thus expect data to be fully available (ATTENTION: this could cause bugs in combination with e.g. solid backends - we *have* to know in this case whether or not the data is potentially partial and we *have* to force completeness before syncing - this potential bug of course already exists in the gdrive-only solution we have currently). Actually, this means that controlling dataset shards from the framework is an essential must-have
@@ -139,14 +160,14 @@
 - [ ] Example App: I think that the synchronization takes a lot longer than I expected - why? Can I improve?
 - [ ] Rework "sender/receiver": provide a cleaner API to those classes (better encapsulation of the messaging)
 
-### Priority 4.b: Improve solid support
+### Priority 8.b: Improve solid support
 - [ ] Solid: use solid type registry
 - [ ] Solid: write solid type registry if user allows - maybe even allow user to edit settings?
 - [ ] Solid: do we need more dialogs to inform expert users?
 - [ ] Solid: find a robust way for mapping interal/external IRIs that cannot be broken by changes to the type registry
 - [ ] Solid: not really pure solid, but maybe allow the user to use app-specific storage location after all? 
 
-### Priority 5: Implement Delete
+### Priority 9: Implement Delete
 - [ ] Deletion support is part of the concept and the example app has deletion usecases, but it is not fully implemented yet
 - [ ] Implement proper index entry deletion tracking
   - **Problem:** When an entry is removed from a shard's `idx:containsEntry` OR-Set,
@@ -164,10 +185,10 @@
   - **Impact:** Applications currently need to handle missing entries gracefully,
     treating absence as implicit deletion. Explicit deletion events would improve UX.
 
-### Priority 6: Ensure full Offline-First Support
+### Priority 10: Ensure full Offline-First Support
 - [ ] merge-contract: Build-time asset bundling (essential for offline-first: bundle all referenced merge contracts as assets so apps work offline from first launch)
 
-### Priority 7: Performance & Efficiency Optimizations
+### Priority 11: Performance & Efficiency Optimizations
 - [ ] merge-contract: RdfGraphFetcher caching with etag support (HTTP best practices, benefits all RDF loading)
 - [ ] merge-contract: Local database caching (persistence across app restarts)
 - [ ] rdf_vocabulary_to_dart: failed to load RDF graph for graphs marked as skipped must not be an error, build must not be marked as "failed" due to this
