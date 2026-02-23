@@ -781,13 +781,21 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
     required String itemFetchPolicy,
     required int createdAt,
   }) async {
-    await into(db.groupIndexSubscriptions).insertOnConflictUpdate(
+    await into(db.groupIndexSubscriptions).insert(
       GroupIndexSubscriptionsCompanion.insert(
         groupIndexIriId: Value(groupIndexIriId),
         groupIndexTemplateIriId: groupIndexTemplateIriId,
         indexedTypeIriId: indexedTypeIriId,
         itemFetchPolicy: itemFetchPolicy,
         createdAt: createdAt,
+      ),
+      onConflict: DoUpdate(
+        (_) => GroupIndexSubscriptionsCompanion(
+          groupIndexTemplateIriId: Value(groupIndexTemplateIriId),
+          indexedTypeIriId: Value(indexedTypeIriId),
+          itemFetchPolicy: Value(itemFetchPolicy),
+        ),
+        target: [db.groupIndexSubscriptions.groupIndexIriId],
       ),
     );
   }

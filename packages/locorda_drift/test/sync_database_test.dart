@@ -583,5 +583,54 @@ void main() {
         expect(document, isNull);
       });
     });
+
+    group('IndexDao', () {
+      late IndexDao indexDao;
+
+      setUp(() {
+        indexDao = database.indexDao;
+      });
+
+      testWidgets(
+          'preserves createdAt when updating existing group subscription',
+          (tester) async {
+        const firstCreatedAt = 111111;
+        const secondCreatedAt = 222222;
+
+        final iriIds = await database.syncDocumentDao.getOrCreateIriIdsBatch({
+          'https://example.com/index/group/1',
+          'https://example.com/index/template/1',
+          'https://example.com/type/note',
+        });
+
+        final groupIndexIriId = iriIds['https://example.com/index/group/1']!;
+        final groupIndexTemplateIriId =
+            iriIds['https://example.com/index/template/1']!;
+        final indexedTypeIriId = iriIds['https://example.com/type/note']!;
+
+        await indexDao.saveGroupIndexSubscription(
+          groupIndexIriId: groupIndexIriId,
+          groupIndexTemplateIriId: groupIndexTemplateIriId,
+          indexedTypeIriId: indexedTypeIriId,
+          itemFetchPolicy: 'onRequest',
+          createdAt: firstCreatedAt,
+        );
+
+        await indexDao.saveGroupIndexSubscription(
+          groupIndexIriId: groupIndexIriId,
+          groupIndexTemplateIriId: groupIndexTemplateIriId,
+          indexedTypeIriId: indexedTypeIriId,
+          itemFetchPolicy: 'prefetch',
+          createdAt: secondCreatedAt,
+        );
+
+        final row = await (database.select(database.groupIndexSubscriptions)
+              ..where((t) => t.groupIndexIriId.equals(groupIndexIriId)))
+            .getSingle();
+
+        expect(row.createdAt, firstCreatedAt);
+        expect(row.itemFetchPolicy, 'prefetch');
+      });
+    });
   });
 }
