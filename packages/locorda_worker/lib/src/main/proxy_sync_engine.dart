@@ -169,6 +169,43 @@ class ProxySyncEngine implements SyncEngine {
   }
 
   @override
+  Stream<IndexInstanceSyncStateSnapshot> watchGroupIndexSyncState({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+  }) {
+    throw UnsupportedError(
+        'watchGroupIndexSyncState is not yet implemented for worker proxy.');
+  }
+
+  @override
+  Stream<IndexInstanceSyncStateSnapshot> watchTypeSyncState({
+    required IriTerm typeIri,
+    String localName = 'default',
+  }) {
+    throw UnsupportedError(
+        'watchTypeSyncState is not yet implemented for worker proxy.');
+  }
+
+  @override
+  void ensureGroupIndexSubscription({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+    bool triggerSync = true,
+  }) {
+    throw UnsupportedError(
+        'ensureGroupIndexSubscription is not yet implemented for worker proxy.');
+  }
+
+  @override
+  Future<void> ensureGroupIndexSynced({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+  }) {
+    throw UnsupportedError(
+        'ensureGroupIndexSynced is not yet implemented for worker proxy.');
+  }
+
+  @override
   Future<void> save(IriTerm type, RdfGraph appData) async {
     final request = SaveRequest(
       _nextRequestId(),

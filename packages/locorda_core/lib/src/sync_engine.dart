@@ -16,6 +16,8 @@ typedef HydrationBatch = ({
   String? cursor
 });
 
+const defaultIndexLocalName = 'default';
+
 class EngineParams {
   final Storage storage;
   final List<Backend> backends;
@@ -74,6 +76,33 @@ class EngineParams {
 /// and sync operations transparently.
 abstract interface class SyncEngine {
   SyncManager get syncManager;
+
+  /// Reactively observes sync state for one subscribed group index instance.
+  Stream<IndexInstanceSyncStateSnapshot> watchGroupIndexSyncState({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+  });
+
+  /// Reactively observes sync state for the full-index instance of [typeIri].
+  Stream<IndexInstanceSyncStateSnapshot> watchTypeSyncState({
+    required IriTerm typeIri,
+    String localName = defaultIndexLocalName,
+  });
+
+  /// Ensures a group index subscription exists and optionally triggers sync.
+  void ensureGroupIndexSubscription({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+    bool triggerSync = true,
+  });
+
+  /// Ensures a group index instance completed initial sync.
+  ///
+  /// Throws [IndexInstanceSyncFailedException] when initial sync fails.
+  Future<void> ensureGroupIndexSynced({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+  });
 
   /// Set up the CRDT sync system with resource-focused configuration.
   ///
@@ -284,4 +313,16 @@ abstract interface class SyncEngine {
 
   /// Close the sync system and free resources.
   Future<void> close();
+}
+
+/// Thrown when initial sync fails for at least one remote.
+class IndexInstanceSyncFailedException implements Exception {
+  final String message;
+  final IndexInstanceSyncStateSnapshot lastState;
+
+  const IndexInstanceSyncFailedException(this.message,
+      {required this.lastState});
+
+  @override
+  String toString() => 'IndexInstanceSyncFailedException: $message';
 }

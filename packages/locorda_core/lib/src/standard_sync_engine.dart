@@ -196,6 +196,196 @@ class StandardSyncEngine implements SyncEngine {
 
   SyncEngineConfig get _effectiveConfig => _configService.currentConfig;
 
+  IndexInstanceSyncStateSnapshot _normalizeSnapshotWithConfiguredRemotes(
+    IndexInstanceSyncStateSnapshot snapshot,
+    Set<RemoteId> configuredRemotes,
+  ) {
+    final perRemote = Map<RemoteId, RemoteIndexSyncStateSnapshot>.from(
+      snapshot.perRemote,
+    );
+
+    for (final remoteId in configuredRemotes) {
+      perRemote.putIfAbsent(
+        remoteId,
+        () => RemoteIndexSyncStateSnapshot(
+          remoteId: remoteId,
+          phase: IndexInstanceSyncPhase.notSynced,
+        ),
+      );
+    }
+
+    return IndexInstanceSyncStateSnapshot(
+      indexInstanceIri: snapshot.indexInstanceIri,
+      perRemote: perRemote,
+    );
+  }
+
+  bool _hasCompletedInitialSync(IndexInstanceSyncStateSnapshot snapshot) {
+    return snapshot.perRemote.values
+        .every((entry) => entry.lastSuccessfulSyncAt != null);
+  }
+
+  bool _hasInitialSyncError(IndexInstanceSyncStateSnapshot snapshot) {
+    return snapshot.perRemote.values.any(
+      (entry) =>
+          entry.phase == IndexInstanceSyncPhase.error &&
+          entry.lastSuccessfulSyncAt == null,
+    );
+  }
+
+  Future<IriTerm> _resolveSingleGroupIndexIri({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+  }) async {
+    final groupIdentifiers =
+        await _groupIndexManager.getGroupIdentifiers(indexName, groupKeyGraph);
+    final groupIdentifierList = groupIdentifiers.toList(growable: false);
+    if (groupIdentifierList.isEmpty) {
+      throw StateError(
+          'No group identifiers were generated for index "$indexName".');
+    }
+    if (groupIdentifierList.length > 1) {
+      throw StateError(
+          'Expected exactly one group identifier for index "$indexName", but got ${groupIdentifierList.length}.');
+    }
+
+    final (resourceConfig, indexConfig) =
+        _effectiveConfig.findGroupIndexConfig(indexName)!;
+    final groupIndexTemplateIri =
+        _indexRdfGenerator.generateGroupIndexTemplateIri(
+      indexConfig,
+      resourceConfig.typeIri,
+    );
+
+    return _indexRdfGenerator.generateGroupIndexIri(
+      groupIndexTemplateIri,
+      groupIdentifierList.single,
+    );
+  }
+
+  @override
+  Stream<IndexInstanceSyncStateSnapshot> watchGroupIndexSyncState({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+  }) {
+    return Rx.fromCallable(
+      () => _resolveSingleGroupIndexIri(
+        indexName: indexName,
+        groupKeyGraph: groupKeyGraph,
+      ),
+    ).switchMap((groupIndexIri) {
+      return Rx.combineLatest2<IndexInstanceSyncStateSnapshot, Set<RemoteId>,
+          IndexInstanceSyncStateSnapshot>(
+        _storage.watchIndexInstanceSyncState(groupIndexIri),
+        _storage.watchConfiguredRemoteIds(),
+        (snapshot, configuredRemotes) =>
+            _normalizeSnapshotWithConfiguredRemotes(
+                snapshot, configuredRemotes),
+      );
+    });
+  }
+
+  @override
+  Stream<IndexInstanceSyncStateSnapshot> watchTypeSyncState({
+    required IriTerm typeIri,
+    String localName = 'default',
+  }) {
+    final resourceConfig = _effectiveConfig.resources.firstWhere(
+      (resource) => resource.typeIri == typeIri,
+      orElse: () => throw StateError(
+          'No resource configuration found for type ${typeIri.debug}.'),
+    );
+
+    FullIndexData? fullIndex;
+    for (final index in resourceConfig.indices.whereType<FullIndexData>()) {
+      if (index.localName == localName) {
+        fullIndex = index;
+        break;
+      }
+    }
+
+    if (fullIndex == null) {
+      throw StateError(
+          'No full index configured for type ${typeIri.debug} and localName "$localName".');
+    }
+
+    final fullIndexIri = _indexRdfGenerator.generateFullIndexIri(
+      fullIndex,
+      typeIri,
+    );
+
+    return Rx.combineLatest2<IndexInstanceSyncStateSnapshot, Set<RemoteId>,
+        IndexInstanceSyncStateSnapshot>(
+      _storage.watchIndexInstanceSyncState(fullIndexIri),
+      _storage.watchConfiguredRemoteIds(),
+      (snapshot, configuredRemotes) =>
+          _normalizeSnapshotWithConfiguredRemotes(snapshot, configuredRemotes),
+    );
+  }
+
+  @override
+  void ensureGroupIndexSubscription({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+    bool triggerSync = true,
+  }) {
+    unawaited(() async {
+      try {
+        await configureGroupIndexSubscription(
+          indexName,
+          groupKeyGraph,
+          ItemFetchPolicy.prefetch,
+        );
+
+        if (!triggerSync) {
+          return;
+        }
+
+        final currentState = await watchGroupIndexSyncState(
+          indexName: indexName,
+          groupKeyGraph: groupKeyGraph,
+        ).first;
+
+        if (!_hasCompletedInitialSync(currentState)) {
+          unawaited(syncManager.sync(trigger: SyncTrigger.dataChange));
+        }
+      } catch (error, stackTrace) {
+        _log.severe(
+          'Failed to ensure group index subscription for "$indexName".',
+          error,
+          stackTrace,
+        );
+      }
+    }());
+  }
+
+  @override
+  Future<void> ensureGroupIndexSynced({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+  }) async {
+    ensureGroupIndexSubscription(
+      indexName: indexName,
+      groupKeyGraph: groupKeyGraph,
+      triggerSync: true,
+    );
+
+    final state = await watchGroupIndexSyncState(
+      indexName: indexName,
+      groupKeyGraph: groupKeyGraph,
+    ).firstWhere(
+      (snapshot) =>
+          _hasCompletedInitialSync(snapshot) || _hasInitialSyncError(snapshot),
+    );
+
+    if (_hasInitialSyncError(state)) {
+      throw IndexInstanceSyncFailedException(
+        'Initial sync failed for one or more remotes.',
+        lastState: state,
+      );
+    }
+  }
+
   /// Set up the CRDT sync system with resource-focused configuration.
   ///
   /// This is the main entry point for applications. Creates a fully

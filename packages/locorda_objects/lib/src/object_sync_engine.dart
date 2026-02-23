@@ -16,7 +16,9 @@ import 'config/locorda_config.dart';
 import 'config/locorda_config_converter.dart';
 import 'config/locorda_config_util.dart';
 import 'config/locorda_config_validator.dart';
+import 'index/group_index_sync_failed_exception.dart';
 import 'index/group_index_subscription_manager.dart';
+import 'index/index_instance_sync_state.dart';
 import 'mapping/local_resource_iri_service.dart';
 import 'mapping/solid_mapping_context.dart';
 
@@ -350,6 +352,87 @@ class ObjectSyncEngine {
             localName: localName);
     return _syncSystem.configureGroupIndexSubscription(
         indexName, groupKeyGraph, itemFetchPolicy);
+  }
+
+  RemoteSyncPhase _toObjectPhase(IndexInstanceSyncPhase phase) {
+    return switch (phase) {
+      IndexInstanceSyncPhase.notSynced => RemoteSyncPhase.notSynced,
+      IndexInstanceSyncPhase.syncPlanned => RemoteSyncPhase.syncPlanned,
+      IndexInstanceSyncPhase.syncing => RemoteSyncPhase.syncing,
+      IndexInstanceSyncPhase.ready => RemoteSyncPhase.ready,
+      IndexInstanceSyncPhase.error => RemoteSyncPhase.error,
+    };
+  }
+
+  IndexInstanceSyncState _toObjectSyncState(
+      IndexInstanceSyncStateSnapshot snapshot) {
+    return IndexInstanceSyncState(
+      perRemote: {
+        for (final entry in snapshot.perRemote.values)
+          '${entry.remoteId.backend}:${entry.remoteId.id}': RemoteSyncEntry(
+            remoteId: '${entry.remoteId.backend}:${entry.remoteId.id}',
+            phase: _toObjectPhase(entry.phase),
+            syncStartedAt: entry.lastAttemptStartedAt,
+            lastSyncedAt: entry.lastSuccessfulSyncAt,
+            errorMessage: entry.lastErrorMessage,
+          ),
+      },
+    );
+  }
+
+  /// Reactively observes the sync state of one group index instance.
+  Stream<IndexInstanceSyncState> watchGroupIndexSyncState<G>(G groupKey,
+      {String localName = defaultIndexLocalName}) {
+    final (indexName: indexName, groupKeyGraph: groupKeyGraph) =
+        _groupKeyConverter.convertGroupKey<G>(groupKey, localName: localName);
+
+    return _syncSystem
+        .watchGroupIndexSyncState(
+          indexName: indexName,
+          groupKeyGraph: groupKeyGraph,
+        )
+        .map(_toObjectSyncState);
+  }
+
+  /// Reactively observes the sync state of the full-index instance for [T].
+  Stream<IndexInstanceSyncState> watchTypeSyncState<T>(
+      {String localName = defaultIndexLocalName}) {
+    final typeIri = _getTypeIri(T);
+    return _syncSystem
+        .watchTypeSyncState(typeIri: typeIri, localName: localName)
+        .map(_toObjectSyncState);
+  }
+
+  /// Ensures a group index subscription exists and optionally triggers sync.
+  void ensureGroupIndexSubscription<G>(G groupKey,
+      {bool triggerSync = true, String localName = defaultIndexLocalName}) {
+    final (indexName: indexName, groupKeyGraph: groupKeyGraph) =
+        _groupKeyConverter.convertGroupKey<G>(groupKey, localName: localName);
+
+    _syncSystem.ensureGroupIndexSubscription(
+      indexName: indexName,
+      groupKeyGraph: groupKeyGraph,
+      triggerSync: triggerSync,
+    );
+  }
+
+  /// Ensures initial sync has completed for a group index instance.
+  Future<void> ensureGroupIndexSynced<G>(G groupKey,
+      {String localName = defaultIndexLocalName}) async {
+    final (indexName: indexName, groupKeyGraph: groupKeyGraph) =
+        _groupKeyConverter.convertGroupKey<G>(groupKey, localName: localName);
+
+    try {
+      await _syncSystem.ensureGroupIndexSynced(
+        indexName: indexName,
+        groupKeyGraph: groupKeyGraph,
+      );
+    } on IndexInstanceSyncFailedException catch (error) {
+      throw GroupIndexSyncFailedException(
+        error.message,
+        lastState: _toObjectSyncState(error.lastState),
+      );
+    }
   }
 
   /// Save an object with CRDT processing.
