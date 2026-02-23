@@ -60,6 +60,11 @@ class InMemoryStorage implements Storage {
   final Map<IriTerm, IriTerm> _documentTypes = {}; // documentIri -> typeIri
   final Map<IriTerm, List<PropertyChange>> _propertyChanges = {};
   final Map<String, String> _settings = {};
+  final Map<IriTerm, Map<RemoteId, RemoteIndexSyncStateSnapshot>>
+      _indexInstanceSyncStates = {};
+  final Set<RemoteId> _configuredRemotes = {};
+  final BehaviorSubject<Set<RemoteId>> _configuredRemotesController =
+      BehaviorSubject.seeded(const {});
 
   // Index entry storage
   final Map<String, _IndexEntry> _indexEntries =
@@ -104,6 +109,14 @@ class InMemoryStorage implements Storage {
     }
     _watchControllersByTrigger.clear();
     _watchControllers.clear();
+    await _configuredRemotesController.close();
+  }
+
+  void _registerRemote(RemoteId remoteId) {
+    final isNew = _configuredRemotes.add(remoteId);
+    if (isNew && !_configuredRemotesController.isClosed) {
+      _configuredRemotesController.add(_configuredRemotes.toSet());
+    }
   }
 
   @override
@@ -588,6 +601,7 @@ class InMemoryStorage implements Storage {
 
   @override
   Future<String?> getRemoteETag(RemoteId remoteId, IriTerm documentIri) async {
+    _registerRemote(remoteId);
     _logger.fine(
         'InMemoryStorage.getRemoteETag: remote=${remoteId}, document=${documentIri.debug}');
     return _settings[
@@ -597,6 +611,7 @@ class InMemoryStorage implements Storage {
   @override
   Future<void> setRemoteETag(
       RemoteId remoteId, IriTerm documentIri, String etag) async {
+    _registerRemote(remoteId);
     _logger.fine(
         'InMemoryStorage.setRemoteETag: remote=${remoteId}, document=${documentIri.debug}, etag=$etag');
     _settings[
@@ -606,12 +621,14 @@ class InMemoryStorage implements Storage {
 
   @override
   Future<void> clearRemoteETag(RemoteId remoteId, IriTerm documentIri) async {
+    _registerRemote(remoteId);
     _settings.remove(
         'remote.etag.${remoteId.backend}.${remoteId.id}.${documentIri.value}');
   }
 
   @override
   Future<int> getLastRemoteSyncTimestamp(RemoteId remoteId) async {
+    _registerRemote(remoteId);
     final lastSyncTimestamp =
         _settings['sync.lastRemote.${remoteId.backend}.${remoteId.id}'];
     return lastSyncTimestamp != null ? int.parse(lastSyncTimestamp) : 0;
@@ -620,9 +637,65 @@ class InMemoryStorage implements Storage {
   @override
   Future<void> updateLastRemoteSyncTimestamp(
       RemoteId remoteId, int timestamp) async {
+    _registerRemote(remoteId);
     _settings['sync.lastRemote.${remoteId.backend}.${remoteId.id}'] =
         timestamp.toString();
   }
+
+  @override
+  Future<void> upsertIndexInstanceSyncState({
+    required IriTerm indexInstanceIri,
+    required RemoteId remoteId,
+    required IndexInstanceSyncPhase phase,
+    DateTime? lastSuccessfulSyncAt,
+    DateTime? lastAttemptStartedAt,
+    DateTime? lastAttemptFinishedAt,
+    String? lastErrorMessage,
+  }) async {
+    _registerRemote(remoteId);
+
+    final existing = _indexInstanceSyncStates[indexInstanceIri]?[remoteId];
+    final next = RemoteIndexSyncStateSnapshot(
+      remoteId: remoteId,
+      phase: phase,
+      lastSuccessfulSyncAt:
+          lastSuccessfulSyncAt ?? existing?.lastSuccessfulSyncAt,
+      lastAttemptStartedAt: lastAttemptStartedAt,
+      lastAttemptFinishedAt: lastAttemptFinishedAt,
+      lastErrorMessage: lastErrorMessage,
+    );
+
+    _indexInstanceSyncStates.putIfAbsent(indexInstanceIri, () => {})[remoteId] =
+        next;
+    await _triggerWatchers([indexInstanceIri]);
+  }
+
+  @override
+  Future<IndexInstanceSyncStateSnapshot> getIndexInstanceSyncState(
+      IriTerm indexInstanceIri) async {
+    return IndexInstanceSyncStateSnapshot(
+      indexInstanceIri: indexInstanceIri,
+      perRemote: _indexInstanceSyncStates[indexInstanceIri] ?? const {},
+    );
+  }
+
+  @override
+  Stream<IndexInstanceSyncStateSnapshot> watchIndexInstanceSyncState(
+      IriTerm indexInstanceIri) {
+    return _startWatching(
+      _WatchController([indexInstanceIri],
+          () => getIndexInstanceSyncState(indexInstanceIri)),
+    );
+  }
+
+  @override
+  Future<List<RemoteId>> getConfiguredRemoteIds() async {
+    return _configuredRemotes.toList(growable: false);
+  }
+
+  @override
+  Stream<Set<RemoteId>> watchConfiguredRemoteIds() =>
+      _configuredRemotesController.stream;
 }
 
 /// Internal class to store index entries in memory.

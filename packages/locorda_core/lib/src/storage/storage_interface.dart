@@ -353,8 +353,116 @@ abstract interface class Storage {
   /// - [documentIri]: The document IRI
   Future<void> clearRemoteETag(RemoteId remoteId, IriTerm documentIri);
 
+  /// Upserts the sync lifecycle state for a specific index instance and remote.
+  ///
+  /// Implementations should treat this as the canonical state record for
+  /// per-index-instance sync tracking and preserve [lastSuccessfulSyncAt]
+  /// across subsequent error transitions.
+  Future<void> upsertIndexInstanceSyncState({
+    required IriTerm indexInstanceIri,
+    required RemoteId remoteId,
+    required IndexInstanceSyncPhase phase,
+    DateTime? lastSuccessfulSyncAt,
+    DateTime? lastAttemptStartedAt,
+    DateTime? lastAttemptFinishedAt,
+    String? lastErrorMessage,
+  });
+
+  /// Returns the current sync snapshot for a specific index instance.
+  ///
+  /// If no state has been persisted yet, this returns an empty snapshot for
+  /// the provided [indexInstanceIri].
+  Future<IndexInstanceSyncStateSnapshot> getIndexInstanceSyncState(
+      IriTerm indexInstanceIri);
+
+  /// Watches sync state updates for a specific index instance.
+  ///
+  /// The stream must emit the current snapshot immediately on subscription and
+  /// then every subsequent state transition.
+  Stream<IndexInstanceSyncStateSnapshot> watchIndexInstanceSyncState(
+      IriTerm indexInstanceIri);
+
+  /// Returns all configured remotes known to storage.
+  Future<List<RemoteId>> getConfiguredRemoteIds();
+
+  /// Watches the set of configured remotes.
+  ///
+  /// The stream must emit the current set immediately on subscription.
+  Stream<Set<RemoteId>> watchConfiguredRemoteIds();
+
   Future<int> getLastRemoteSyncTimestamp(RemoteId remoteId);
   Future<void> updateLastRemoteSyncTimestamp(RemoteId remoteId, int timestamp);
+}
+
+/// Sync phase for a single remote × index instance combination.
+enum IndexInstanceSyncPhase {
+  notSynced,
+  syncPlanned,
+  syncing,
+  ready,
+  error,
+}
+
+/// Per-remote sync snapshot for one index instance.
+class RemoteIndexSyncStateSnapshot {
+  final RemoteId remoteId;
+  final IndexInstanceSyncPhase phase;
+  final DateTime? lastSuccessfulSyncAt;
+  final DateTime? lastAttemptStartedAt;
+  final DateTime? lastAttemptFinishedAt;
+  final String? lastErrorMessage;
+
+  const RemoteIndexSyncStateSnapshot({
+    required this.remoteId,
+    required this.phase,
+    this.lastSuccessfulSyncAt,
+    this.lastAttemptStartedAt,
+    this.lastAttemptFinishedAt,
+    this.lastErrorMessage,
+  });
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+
+    return other is RemoteIndexSyncStateSnapshot &&
+        other.remoteId == remoteId &&
+        other.phase == phase &&
+        other.lastSuccessfulSyncAt == lastSuccessfulSyncAt &&
+        other.lastAttemptStartedAt == lastAttemptStartedAt &&
+        other.lastAttemptFinishedAt == lastAttemptFinishedAt &&
+        other.lastErrorMessage == lastErrorMessage;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        remoteId,
+        phase,
+        lastSuccessfulSyncAt,
+        lastAttemptStartedAt,
+        lastAttemptFinishedAt,
+        lastErrorMessage,
+      );
+}
+
+/// Aggregate snapshot for one index instance across remotes.
+class IndexInstanceSyncStateSnapshot {
+  final IriTerm indexInstanceIri;
+  final Map<RemoteId, RemoteIndexSyncStateSnapshot> perRemote;
+
+  IndexInstanceSyncStateSnapshot({
+    required this.indexInstanceIri,
+    required Map<RemoteId, RemoteIndexSyncStateSnapshot> perRemote,
+  }) : perRemote = Map.unmodifiable(perRemote);
+
+  factory IndexInstanceSyncStateSnapshot.empty(IriTerm indexInstanceIri) {
+    return IndexInstanceSyncStateSnapshot(
+      indexInstanceIri: indexInstanceIri,
+      perRemote: const {},
+    );
+  }
 }
 
 /// Index entry with resolved resource IRI.

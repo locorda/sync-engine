@@ -118,6 +118,9 @@ export 'src/storage/remote_storage.dart'
 export 'src/storage/storage_interface.dart'
     show
         Storage,
+        IndexInstanceSyncPhase,
+        IndexInstanceSyncStateSnapshot,
+        RemoteIndexSyncStateSnapshot,
         StoredDocument,
         DocumentMetadata,
         PropertyChange,

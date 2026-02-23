@@ -18,6 +18,8 @@ import 'sync_database_impl_flutter.dart'
 /// Provides cross-platform SQLite storage for RDF documents, CRDT metadata,
 /// and property-level change tracking using the Drift ORM.
 class DriftStorage implements Storage {
+  static const _indexSyncStateKeyPrefix = 'index.sync.state';
+
   final SyncDocumentDao documentDao;
   final SyncPropertyChangeDao propertyChangeDao;
   final IndexDao indexDao;
@@ -709,5 +711,149 @@ class DriftStorage implements Storage {
     // Convert IRI IDs back to IriTerms
     final idToIri = await _getIris(missingIriIds);
     return idToIri.values.map((iri) => _iriTermFactory(iri)).toList();
+  }
+
+  String _encodeIndexSyncKeyPart(String value) {
+    return base64Url.encode(utf8.encode(value));
+  }
+
+  String _decodeIndexSyncKeyPart(String value) {
+    return utf8.decode(base64Url.decode(value));
+  }
+
+  String _indexSyncStateKey(IriTerm indexInstanceIri, RemoteId remoteId) {
+    return [
+      _indexSyncStateKeyPrefix,
+      _encodeIndexSyncKeyPart(indexInstanceIri.value),
+      _encodeIndexSyncKeyPart(remoteId.backend),
+      _encodeIndexSyncKeyPart(remoteId.id),
+    ].join('.');
+  }
+
+  RemoteIndexSyncStateSnapshot _decodeIndexSyncState(String key, String value) {
+    final parts = key.split('.');
+    if (parts.length < 6) {
+      throw StateError('Invalid index sync state key format: $key');
+    }
+
+    final remoteId = RemoteId(
+      _decodeIndexSyncKeyPart(parts[4]),
+      _decodeIndexSyncKeyPart(parts[5]),
+    );
+
+    final payload = json.decode(value) as Map<String, dynamic>;
+    final phaseName = payload['phase'] as String?;
+    if (phaseName == null) {
+      throw StateError(
+          'Missing phase in index sync state payload for key: $key');
+    }
+
+    return RemoteIndexSyncStateSnapshot(
+      remoteId: remoteId,
+      phase: IndexInstanceSyncPhase.values.firstWhere(
+        (candidate) => candidate.name == phaseName,
+        orElse: () => IndexInstanceSyncPhase.notSynced,
+      ),
+      lastSuccessfulSyncAt: payload['lastSuccessfulSyncAt'] != null
+          ? DateTime.parse(payload['lastSuccessfulSyncAt'] as String)
+          : null,
+      lastAttemptStartedAt: payload['lastAttemptStartedAt'] != null
+          ? DateTime.parse(payload['lastAttemptStartedAt'] as String)
+          : null,
+      lastAttemptFinishedAt: payload['lastAttemptFinishedAt'] != null
+          ? DateTime.parse(payload['lastAttemptFinishedAt'] as String)
+          : null,
+      lastErrorMessage: payload['lastErrorMessage'] as String?,
+    );
+  }
+
+  @override
+  Future<void> upsertIndexInstanceSyncState({
+    required IriTerm indexInstanceIri,
+    required RemoteId remoteId,
+    required IndexInstanceSyncPhase phase,
+    DateTime? lastSuccessfulSyncAt,
+    DateTime? lastAttemptStartedAt,
+    DateTime? lastAttemptFinishedAt,
+    String? lastErrorMessage,
+  }) async {
+    final key = _indexSyncStateKey(indexInstanceIri, remoteId);
+    final existing = await (_database.select(_database.syncSettings)
+          ..where((row) => row.key.equals(key)))
+        .getSingleOrNull();
+
+    DateTime? preservedLastSuccessfulSyncAt;
+    if (existing != null) {
+      final existingState = _decodeIndexSyncState(existing.key, existing.value);
+      preservedLastSuccessfulSyncAt = existingState.lastSuccessfulSyncAt;
+    }
+
+    final payload = {
+      'phase': phase.name,
+      'lastSuccessfulSyncAt':
+          (lastSuccessfulSyncAt ?? preservedLastSuccessfulSyncAt)
+              ?.toIso8601String(),
+      'lastAttemptStartedAt': lastAttemptStartedAt?.toIso8601String(),
+      'lastAttemptFinishedAt': lastAttemptFinishedAt?.toIso8601String(),
+      'lastErrorMessage': lastErrorMessage,
+    };
+
+    await setSetting(key, json.encode(payload));
+  }
+
+  @override
+  Future<IndexInstanceSyncStateSnapshot> getIndexInstanceSyncState(
+      IriTerm indexInstanceIri) async {
+    final prefix =
+        '$_indexSyncStateKeyPrefix.${_encodeIndexSyncKeyPart(indexInstanceIri.value)}.';
+    final rows = (await _database.select(_database.syncSettings).get())
+        .where((row) => row.key.startsWith(prefix))
+        .toList(growable: false);
+
+    final perRemote = <RemoteId, RemoteIndexSyncStateSnapshot>{};
+    for (final row in rows) {
+      final snapshot = _decodeIndexSyncState(row.key, row.value);
+      perRemote[snapshot.remoteId] = snapshot;
+    }
+
+    return IndexInstanceSyncStateSnapshot(
+      indexInstanceIri: indexInstanceIri,
+      perRemote: perRemote,
+    );
+  }
+
+  @override
+  Stream<IndexInstanceSyncStateSnapshot> watchIndexInstanceSyncState(
+      IriTerm indexInstanceIri) {
+    final prefix =
+        '$_indexSyncStateKeyPrefix.${_encodeIndexSyncKeyPart(indexInstanceIri.value)}.';
+    return _database.select(_database.syncSettings).watch().map((rows) {
+      final perRemote = <RemoteId, RemoteIndexSyncStateSnapshot>{};
+      for (final row in rows.where((entry) => entry.key.startsWith(prefix))) {
+        final snapshot = _decodeIndexSyncState(row.key, row.value);
+        perRemote[snapshot.remoteId] = snapshot;
+      }
+
+      return IndexInstanceSyncStateSnapshot(
+        indexInstanceIri: indexInstanceIri,
+        perRemote: perRemote,
+      );
+    });
+  }
+
+  @override
+  Future<List<RemoteId>> getConfiguredRemoteIds() async {
+    final rows = await _database.select(_database.remoteSettings).get();
+    return rows
+        .map((row) => RemoteId(row.remoteType, row.remoteId))
+        .toList(growable: false);
+  }
+
+  @override
+  Stream<Set<RemoteId>> watchConfiguredRemoteIds() {
+    return _database.select(_database.remoteSettings).watch().map(
+          (rows) =>
+              rows.map((row) => RemoteId(row.remoteType, row.remoteId)).toSet(),
+        );
   }
 }
