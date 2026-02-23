@@ -5,7 +5,6 @@
 library;
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:isolate';
 
 import 'package:locorda_core/locorda_core.dart';
@@ -76,6 +75,10 @@ class WorkerContext {
   /// Active hydration streams keyed by request ID
   final Map<String, StreamSubscription<HydrationBatch>> _activeStreams = {};
 
+  /// Active index-state watch streams keyed by request ID
+  final Map<String, StreamSubscription<IndexInstanceSyncStateSnapshot>>
+      _activeIndexStateStreams = {};
+
   /// Subscription to sync status stream
   StreamSubscription<SyncState>? _syncStatusSubscription;
 
@@ -132,10 +135,14 @@ class WorkerContext {
         await _handleSave(workerMessage);
       } else if (workerMessage is DeleteDocumentRequest) {
         await _handleDelete(workerMessage);
-      } else if (workerMessage is ConfigureGroupIndexSubscriptionRequest) {
-        await _handleConfigureGroupIndex(workerMessage);
+      } else if (workerMessage is EnsureGroupIndexSubscriptionRequest) {
+        await _handleEnsureGroupIndexSubscription(workerMessage);
       } else if (workerMessage is HydrateStreamRequest) {
         await _handleHydrateStream(workerMessage);
+      } else if (workerMessage is WatchIndexInstanceSyncStateRequest) {
+        await _handleWatchIndexInstanceSyncState(workerMessage);
+      } else if (workerMessage is CancelWatchRequest) {
+        await _handleCancelWatch(workerMessage);
       } else if (workerMessage is SyncTriggerRequest) {
         await _handleSyncTrigger(workerMessage);
       } else if (workerMessage is EnableAutoSyncRequest) {
@@ -194,30 +201,27 @@ class WorkerContext {
     }
   }
 
-  Future<void> _handleConfigureGroupIndex(
-      ConfigureGroupIndexSubscriptionRequest request) async {
+  Future<void> _handleEnsureGroupIndexSubscription(
+      EnsureGroupIndexSubscriptionRequest request) async {
     try {
       if (_syncSystem == null) {
         throw StateError('Sync system not initialized');
       }
 
       final groupKeyGraph = _codec.decode(request.groupKeyGraphTurtle);
-      final policyMap =
-          jsonDecode(request.itemFetchPolicy) as Map<String, dynamic>;
-      final itemFetchPolicy = ItemFetchPolicy.fromMap(policyMap);
 
-      await _syncSystem!.configureGroupIndexSubscription(
-        request.indexName,
-        groupKeyGraph,
-        itemFetchPolicy,
+      _syncSystem!.ensureGroupIndexSubscription(
+        indexName: request.indexName,
+        groupKeyGraph: groupKeyGraph,
+        triggerSync: request.triggerSync,
       );
 
-      _sendMessage(ConfigureGroupIndexSubscriptionResponse(
+      _sendMessage(EnsureGroupIndexSubscriptionResponse(
         request.requestId,
         success: true,
       ));
     } catch (e, st) {
-      _sendMessage(ConfigureGroupIndexSubscriptionResponse(
+      _sendMessage(EnsureGroupIndexSubscriptionResponse(
         request.requestId,
         success: false,
         error: '$e\n$st',
@@ -290,6 +294,95 @@ class WorkerContext {
         updates: [],
         deletions: [],
         isComplete: true,
+      ));
+    }
+  }
+
+  Future<void> _handleWatchIndexInstanceSyncState(
+      WatchIndexInstanceSyncStateRequest request) async {
+    try {
+      if (_syncSystem == null) {
+        throw StateError('Sync system not initialized');
+      }
+
+      final stream = switch (request.watchKind) {
+        'group' => _syncSystem!.watchGroupIndexSyncState(
+            indexName: request.indexName!,
+            groupKeyGraph: _codec.decode(request.groupKeyGraphTurtle!)),
+        'type' => _syncSystem!.watchTypeSyncState(
+            typeIri: IriTerm(request.typeIri!), localName: request.localName),
+        _ => throw ArgumentError('Unknown watch kind: ${request.watchKind}'),
+      };
+
+      var isInitial = true;
+      final subscription = stream.listen(
+        (snapshot) {
+          _sendMessage(IndexInstanceSyncStateMessage(
+            request.requestId,
+            indexInstanceIri: snapshot.indexInstanceIri.value,
+            perRemote: snapshot.perRemote.values
+                .map((entry) => {
+                      'backend': entry.remoteId.backend,
+                      'id': entry.remoteId.id,
+                      'phase': entry.phase.name,
+                      'lastSuccessfulSyncAt':
+                          entry.lastSuccessfulSyncAt?.toIso8601String(),
+                      'lastAttemptStartedAt':
+                          entry.lastAttemptStartedAt?.toIso8601String(),
+                      'lastAttemptFinishedAt':
+                          entry.lastAttemptFinishedAt?.toIso8601String(),
+                      'lastErrorMessage': entry.lastErrorMessage,
+                    })
+                .toList(growable: false),
+            isInitial: isInitial,
+            isComplete: false,
+          ));
+          isInitial = false;
+        },
+        onError: (error, stackTrace) {
+          _sendMessage(IndexInstanceSyncStateMessage(
+            request.requestId,
+            indexInstanceIri: '',
+            perRemote: const [],
+            isInitial: false,
+            isComplete: true,
+          ));
+          _activeIndexStateStreams.remove(request.requestId);
+        },
+        onDone: () {
+          _sendMessage(IndexInstanceSyncStateMessage(
+            request.requestId,
+            indexInstanceIri: '',
+            perRemote: const [],
+            isInitial: false,
+            isComplete: true,
+          ));
+          _activeIndexStateStreams.remove(request.requestId);
+        },
+      );
+
+      _activeIndexStateStreams[request.requestId] = subscription;
+    } catch (error) {
+      _sendMessage(IndexInstanceSyncStateMessage(
+        request.requestId,
+        indexInstanceIri: '',
+        perRemote: const [],
+        isInitial: false,
+        isComplete: true,
+      ));
+    }
+  }
+
+  Future<void> _handleCancelWatch(CancelWatchRequest request) async {
+    try {
+      await _activeIndexStateStreams.remove(request.targetRequestId)?.cancel();
+      await _activeStreams.remove(request.targetRequestId)?.cancel();
+      _sendMessage(CancelWatchResponse(request.requestId, success: true));
+    } catch (error, stackTrace) {
+      _sendMessage(CancelWatchResponse(
+        request.requestId,
+        success: false,
+        error: '$error\n$stackTrace',
       ));
     }
   }
@@ -387,6 +480,11 @@ class WorkerContext {
       await subscription.cancel();
     }
     _activeStreams.clear();
+
+    for (final subscription in _activeIndexStateStreams.values) {
+      await subscription.cancel();
+    }
+    _activeIndexStateStreams.clear();
 
     // Close sync system
     await _syncSystem?.close();
