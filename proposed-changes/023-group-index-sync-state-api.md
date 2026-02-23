@@ -2,324 +2,273 @@
 
 ## Summary
 
-Add three APIs to `ObjectSyncEngine` and one behavioral change to `save()` that allow
-applications to observe per-index-instance sync state reactively and to subscribe to / await
-group index instances.
+Add a first-class, per-index-instance sync-state model to the core sync runtime and expose
+it through both `SyncEngine` and `ObjectSyncEngine` APIs.
 
-These four changes are required by `locorda/chat-essence` and formally specified in
-`docs/sync/group-index-subscription-lifecycle.md` and
-`docs/tmp-group-index-discussions.md` (section 4) in that repository.
+This proposal introduces:
+
+1. Core (`SyncEngine`) reactive and imperative APIs for index-instance sync state.
+2. Object (`ObjectSyncEngine`) typed facade APIs over the same core primitives.
+3. Auto-subscribe-on-write behavior for group-indexed resources.
+4. A dedicated persisted tracking model for index-instance sync lifecycle
+   (instead of inferring this indirectly from unrelated tables).
 
 ---
 
-## Background and Terminology
+## Why this revision
 
-**Index instance** — the unit of sync state. A full-index type has exactly one index
-instance. A group-index type has one index instance per subscribed group key (one per
-`(channelId, yearMonth)` combination, for example). `RemoteSyncState` tracks sync state
-per *document × remote*, so deriving per-index-instance state requires joining
-`GroupIndexSubscriptions` + `RemoteSyncState` + `RemoteSettings`.
+The previous draft mixed correct product requirements with brittle implementation guidance.
+In particular, deriving “initial sync completion” from
+`RemoteSyncState.lastSyncedAt > GroupIndexSubscriptions.createdAt` is not robust enough
+as a long-term contract.
 
-**Initial sync completion** — an index instance has completed its initial sync for a
-remote when at least one `RemoteSyncState` row for a document belonging to that index
-instance (and that remote) has `lastSyncedAt > groupIndexSubscriptions.createdAt`. More
-practically: after the first successful sync cycle that covers this index instance, a
-`lastSyncedAt` timestamp exists for that remote. The predicate
-`IndexInstanceSyncState.hasCompletedInitialSync` is vacuously true when `perRemote` is
-empty (no backends configured) — correct, because local data is authoritative in that
-case.
+This revised proposal defines explicit sync-state tracking in core, with storage-backed
+watch APIs and a clean `Storage` abstraction (no downcasts to Drift in higher layers).
 
-**Why this does not live in app code** — `ensureGroupIndexSubscription` must check
-`hasCompletedInitialSync` and trigger sync atomically without a race condition. Any app
-implementing this externally re-implements the same logic with the same race. Both
-`ensureGroupIndexSubscription` and `ensureGroupIndexSynced` belong inside the engine
-where the primitives live.
+---
+
+## Background and terminology
+
+**Index instance** — the unit of sync state.
+
+- Full-index type: exactly one index instance.
+- Group-index type: one index instance per subscribed group key.
+
+Examples:
+
+- Full index: one instance for all `Note` items.
+- Group index: one instance per `(channelId, yearMonth)`.
+
+**Initial sync completion (normative definition)**
+
+For a given `(indexInstanceId, remoteId)`, initial sync is complete once at least one
+successful sync cycle has finished for that pair and this success has been persisted in
+index-instance sync state.
+
+This is represented by a non-null `lastSuccessfulSyncAt`.
+
+`IndexInstanceSyncState.hasCompletedInitialSync` is true iff **every configured remote**
+for this index instance has completed initial sync at least once.
+
+If there are no configured remotes (`perRemote.isEmpty`),
+`hasCompletedInitialSync` is vacuously true.
 
 ---
 
 ## Scope
 
-All changes are in the `locorda_objects` package (`ObjectSyncEngine`), with supporting
-data-model classes either in `locorda_objects` or a new file in `locorda_core` (your
-choice — keep the dependency direction unchanged: `locorda_objects` may depend on
-`locorda_core`, not the other way around).
+### Package-level scope
 
-The existing low-level method `configureGroupIndexSubscription<G>(G, ItemFetchPolicy)`
-remains as an internal/deprecated method. Do **not** remove it — it may be called
-internally by the new APIs. Do **not** expose it in new public DartDoc as the primary
-API.
+- `locorda_core`
+  - Introduce index-instance sync state persistence + watcher primitives.
+  - Extend `Storage` API so higher layers can observe and query this state.
+  - Expose canonical sync-state APIs on `SyncEngine`.
+  - Update sync orchestration to emit lifecycle updates.
+  - Move auto-subscribe-on-write to `SyncEngine.save(...)` (core layer).
+- `locorda_objects`
+  - Add typed facade APIs and value objects.
+  - Delegate to core, no storage implementation assumptions.
 
----
+### Compatibility scope
 
-## Task 1 — Data Model
-
-Create the following classes in a new file, e.g.
-`locorda_objects/lib/src/index/index_instance_sync_state.dart`:
-
-```dart
-/// Sync phase for a single remote × index instance combination.
-enum RemoteSyncPhase {
-  /// Subscribed, but this remote has never synced this index instance.
-  /// Covers: (a) newly subscribed group while backend active, (b) new backend
-  /// connected after subscription existed, (c) full-index type on first sync.
-  notSynced,
-
-  /// Global sync cycle started; this index instance is queued but not yet processing.
-  syncPlanned,
-
-  /// Actively transferring this index instance for this remote right now.
-  syncing,
-
-  /// Last sync after subscription completed successfully.
-  ready,
-
-  /// Last sync attempt failed (network, auth, timeout).
-  /// Distinguish sub-cases via [RemoteSyncEntry.lastSyncedAt].
-  error,
-}
-
-/// Per-remote sync state snapshot for one index instance.
-@immutable
-class RemoteSyncEntry {
-  final String remoteId;
-  final RemoteSyncPhase phase;
-
-  /// Set when [phase] == [RemoteSyncPhase.syncing].
-  final DateTime? syncStartedAt;
-
-  /// Null: initial sync never completed for this remote (data may be absent).
-  /// Non-null: data is present but may be stale if [phase] == [RemoteSyncPhase.error].
-  final DateTime? lastSyncedAt;
-
-  /// Set when [phase] == [RemoteSyncPhase.error].
-  final String? errorMessage;
-
-  const RemoteSyncEntry({
-    required this.remoteId,
-    required this.phase,
-    this.syncStartedAt,
-    this.lastSyncedAt,
-    this.errorMessage,
-  });
-}
-
-/// Aggregate sync state for one index instance across all configured remotes.
-///
-/// An "index instance" is either a full-index type's single instance or one
-/// group key of a group-index type (e.g. one `(channelId, yearMonth)` shard).
-@immutable
-class IndexInstanceSyncState {
-  /// Keyed by remoteId. Empty when no backend is configured.
-  final Map<String, RemoteSyncEntry> perRemote;
-
-  const IndexInstanceSyncState({required this.perRemote});
-
-  /// Empty state — no backend configured; data is local-only.
-  const IndexInstanceSyncState.local() : perRemote = const {};
-
-  /// Any remote is actively transferring or queued.
-  bool get isSyncing => perRemote.values.any(
-        (e) =>
-            e.phase == RemoteSyncPhase.syncing ||
-            e.phase == RemoteSyncPhase.syncPlanned,
-      );
-
-  /// All remotes are in the `ready` phase — no errors, no pending work.
-  ///
-  /// Usually too strict as a display/analysis gate because a transient network
-  /// error reverts this to false even though data is still present.
-  /// Prefer [hasCompletedInitialSync] for display and analysis gates.
-  bool get isReady =>
-      perRemote.isNotEmpty &&
-      perRemote.values.every((e) => e.phase == RemoteSyncPhase.ready);
-
-  /// Practical gate for data completeness (Rules 1 and 2 in chat-essence):
-  /// every configured remote has [RemoteSyncEntry.lastSyncedAt] != null,
-  /// meaning the initial sync completed at least once.
-  ///
-  /// Data is present on this device, though it may be stale if [hasStaleError].
-  /// A subsequent sync error does **not** revert this to false — data is still
-  /// available, just potentially outdated.
-  ///
-  /// Vacuously true when [perRemote] is empty (no backend configured) — correct:
-  /// local data is authoritative; there is nothing to sync.
-  bool get hasCompletedInitialSync =>
-      perRemote.values.every((e) => e.lastSyncedAt != null);
-
-  bool get hasError =>
-      perRemote.values.any((e) => e.phase == RemoteSyncPhase.error);
-
-  /// Error on a remote that previously completed initial sync — data present but stale.
-  bool get hasStaleError => perRemote.values.any(
-        (e) => e.phase == RemoteSyncPhase.error && e.lastSyncedAt != null,
-      );
-
-  /// Error on a remote that never completed initial sync — data may be absent.
-  bool get hasInitialSyncError => perRemote.values.any(
-        (e) => e.phase == RemoteSyncPhase.error && e.lastSyncedAt == null,
-      );
-
-  /// True if any remote has never successfully synced (inverse of [hasCompletedInitialSync]).
-  bool get hasUnsyncedRemote =>
-      perRemote.values.any((e) => e.lastSyncedAt == null);
-}
-```
-
-### Requirements for Task 1
-
-- All classes are **immutable** (`@immutable`, `const` constructors where possible).
-- Override `==` and `hashCode` (or use `package:equatable` if already in the dep tree)
-  on both `RemoteSyncEntry` and `IndexInstanceSyncState`.
-- Export both classes and the enum from the `locorda_objects` public barrel.
-- Do **not** add `freezed` or `json_serializable` unless they are already used elsewhere
-  in `locorda_objects` — keep the dependency footprint minimal.
+- Keep `configureGroupIndexSubscription(...)` available.
+- It may be marked as deprecated in object-facing APIs:
+  `@Deprecated('Use ensureGroupIndexSubscription instead.')`.
 
 ---
 
-## Task 2 — `watchGroupIndexSyncState` and `watchTypeSyncState`
+## Task 0 — Correctness bug fix (required)
 
-Add two reactive methods to `ObjectSyncEngine` that expose `Stream<IndexInstanceSyncState>`.
+### 0a. Preserve original subscription creation timestamp
 
-### 2a. `watchGroupIndexSyncState<G>`
+`saveGroupIndexSubscription` currently uses `insertOnConflictUpdate`, which can overwrite
+`createdAt` for existing subscriptions.
+
+That is incorrect for lifecycle semantics and can break temporal reasoning.
+
+**Required behavior**:
+
+- On first insert: set `createdAt`.
+- On conflict update: update mutable fields (for example `itemFetchPolicy`) but **do not**
+  overwrite `createdAt`.
+
+Even after introducing explicit index-instance sync tracking, this remains the correct
+behavior for subscription metadata.
+
+---
+
+## Task 1 — Data model (object-facing)
+
+Create immutable value objects in `locorda_objects`, for example:
+
+- `RemoteSyncPhase`
+- `RemoteSyncEntry`
+- `IndexInstanceSyncState`
+
+The existing shape from the previous draft is valid and should be kept, including:
+
+- `hasCompletedInitialSync`
+- `hasStaleError`
+- `hasInitialSyncError`
+
+### Requirements
+
+- `@immutable`, `const` where possible.
+- Implement `==` and `hashCode`.
+- Export from public barrels.
+- Keep dependency footprint minimal.
+
+---
+
+## Task 2 — Core tracking model (new, required)
+
+Add explicit persisted sync-state tracking for `(indexInstanceId, remoteId)`.
+
+### 2a. Storage-level state shape
+
+Introduce a storage representation equivalent to:
+
+- `indexInstanceId` (stable identifier; e.g. index IRI)
+- `remoteId`
+- `phase` (`notSynced | syncPlanned | syncing | ready | error`)
+- `lastSuccessfulSyncAt` (nullable)
+- `lastAttemptStartedAt` (nullable)
+- `lastAttemptFinishedAt` (nullable)
+- `lastErrorMessage` (nullable)
+
+Optional but recommended:
+
+- `lastCycleId` for dedup/debugability.
+
+### 2b. Storage API additions (core abstraction)
+
+Add methods to `Storage` (or a dedicated sub-interface owned by core) so upper layers stay
+backend-agnostic:
+
+- `Future<void> upsertIndexInstanceSyncState(...)`
+- `Future<IndexInstanceSyncStateSnapshot?> getIndexInstanceSyncState(...)`
+- `Stream<IndexInstanceSyncStateSnapshot> watchIndexInstanceSyncState(...)`
+- `Future<List<String /*remoteId*/>> getConfiguredRemoteIds()`
+
+Also add a stream for configured remotes, if not already available via existing infra:
+
+- `Stream<Set<String>> watchConfiguredRemoteIds()`
+
+Implement in both Drift and in-memory storage.
+
+### 2c. Sync orchestration responsibilities
+
+During sync cycles, orchestration writes phase transitions explicitly:
+
+1. `syncPlanned` when instance is queued for a remote in the current cycle.
+2. `syncing` when active processing starts.
+3. `ready` with success timestamps on successful completion.
+4. `error` with message on failure.
+
+If a previously successful instance errors later, keep
+`lastSuccessfulSyncAt` intact.
+This preserves `hasCompletedInitialSync == true` while allowing `hasStaleError == true`.
+
+---
+
+## Task 3 — Public reactive APIs (`SyncEngine` + `ObjectSyncEngine`)
+
+Add core-level APIs first, then object-level facade APIs.
+
+### 3a. Core reactive APIs (`SyncEngine`)
+
+Add APIs that identify index instances without Dart object typing, for example:
 
 ```dart
-/// Reactively observes the sync state of the index instance for [groupKey].
-///
-/// Emits a new [IndexInstanceSyncState] whenever subscription status, remote
-/// sync state, or the running sync cycle changes for this index instance.
-///
-/// Returns [IndexInstanceSyncState.local()] immediately when no backend is
-/// configured (`perRemote` is empty → [hasCompletedInitialSync] is vacuously
-/// true). The stream may emit multiple times during a sync cycle as individual
-/// phases transition.
-///
-/// Useful as a driver for loading indicators and data completeness gates.
-/// Combine with repository streams via [StreamBuilder] — do not poll.
-Stream<IndexInstanceSyncState> watchGroupIndexSyncState<G>(G groupKey,
-    {String localName = defaultIndexLocalName});
+Stream<IndexInstanceSyncStateSnapshot> watchGroupIndexSyncState({
+  required String indexName,
+  required RdfGraph groupKeyGraph,
+});
+
+Stream<IndexInstanceSyncStateSnapshot> watchTypeSyncState({
+  required IriTerm typeIri,
+  String localName = defaultIndexLocalName,
+});
 ```
 
-### 2b. `watchTypeSyncState<T>`
+Exact parameter naming may differ, but the core API must be based on core identifiers
+(`typeIri`, `indexName`, `groupKeyGraph`, or a canonical `IndexInstanceId`).
+
+### 3b. Typed facade reactive APIs (`ObjectSyncEngine`)
+
+Add:
 
 ```dart
-/// Reactively observes the sync state of the index instance for the full-index
-/// type [T].
-///
-/// Semantics identical to [watchGroupIndexSyncState]; applicable to types that
-/// use a full index (i.e. do not use `FullIndex.disabled()`).
+Stream<IndexInstanceSyncState> watchGroupIndexSyncState<G>(
+  G groupKey, {
+  String localName = defaultIndexLocalName,
+});
+
 Stream<IndexInstanceSyncState> watchTypeSyncState<T>();
 ```
 
-### Implementation guidance for Task 2
+### Semantics (both layers)
 
-Derive `IndexInstanceSyncState` by combining:
+- Emits immediately with last known state.
+- Broadcast stream.
+- Emits on:
+  - subscription changes,
+  - configured-remote changes,
+  - index-instance lifecycle updates.
+- `watchTypeSyncState` applies only to full-index resources.
 
-1. **`watchSubscribedGroupIndexIris(templateIri)`** (already on `DriftStorage`) —
-   emits the set of shard IRIs belonging to this index instance whenever subscriptions
-   change. For a full-index type, derive the equivalent IRI set from the type IRI
-   without a subscription lookup.
+### Clarification for disabled full index
 
-2. **`RemoteSyncStateDao`** — join `RemoteSyncState` × `RemoteSettings` to get, per
-   remote: the set of documents that belong to the index instance's shard IRI(s), their
-   `lastSyncedAt`, and the `GroupIndexSubscriptions.createdAt` for the instance. A remote
-   has completed initial sync for this index instance if it has at least one
-   `RemoteSyncState` row with `lastSyncedAt > subscription.createdAt` for a shard
-   belonging to this instance. Alternatively, look only at the index shard document
-   itself (the `idx:Index` document for the instance) — prefer the simplest query that
-   gives a correct answer.
+For `watchTypeSyncState` where full index is disabled:
 
-3. **`SyncManager.statusStream`** — maps the global `SyncState` to a per-remote phase
-   (`syncPlanned` / `syncing`) for the current sync cycle. Merge with the Drift-derived
-   state: if the global sync is running **and** this index instance is in `notSynced` or
-   `ready`, elevate to `syncPlanned` / `syncing` as appropriate.
+- Throw a dedicated `StateError`/domain exception with actionable message.
+- Do not silently emit `local()`.
 
-Combine the three sources with `Rx.combineLatest` (from `package:rxdart`, already a
-dependency) or a manual `switchMap` chain. Ensure the stream:
-
-- Is a **broadcast** stream (multiple listeners, widget rebuilds).
-- Emits synchronously with the last known state on new subscription (use
-  `BehaviorSubject` or `startWith`).
-- Closes cleanly when `ObjectSyncEngine.close()` is called.
-
-> [!NOTE]
-> Rough edge — verify before shipping: the `switchMap` in `hydrateStream` for group
-> index types may drop previously loaded shards when a new subscription is added
-> mid-session. In `watchGroupIndexSyncState` use `combineLatest` or `mergeAll` rather
-> than `switchMap` over subscription changes, so existing shard state is not dropped
-> when a new shard is subscribed.
+This avoids masking configuration errors.
 
 ---
 
-## Task 3 — `ensureGroupIndexSubscription`
+## Task 4 — Imperative APIs (`SyncEngine` + `ObjectSyncEngine`)
 
-Add to `ObjectSyncEngine`:
+### 4a. Core imperative APIs (`SyncEngine`)
 
-```dart
-/// Subscribes [groupKey] if not already subscribed.
-///
-/// With [triggerSync] true (the default), also starts a sync cycle for all
-/// active remotes if [IndexInstanceSyncState.hasCompletedInitialSync] is false.
-/// Returns immediately — does not wait for sync to complete.
-///
-/// Observe [watchGroupIndexSyncState] for progress and completion; pair with a
-/// [StreamBuilder] in widget contexts to drive loading indicators.
-///
-/// No-op if the index instance is already fully synced. Safe to call on every
-/// widget mount or scroll event without debouncing.
-///
-/// Pass [triggerSync: false] to register a subscription without starting sync
-/// (e.g. background interest registration where sync timing is managed
-/// externally).
-void ensureGroupIndexSubscription<G>(G groupKey,
-    {bool triggerSync = true, String localName = defaultIndexLocalName});
-```
-
-### Implementation guidance for Task 3
-
-```
-1. Convert groupKey → (indexName, groupKeyGraph) via _groupKeyConverter.convertGroupKey.
-2. Call the existing configureGroupIndexSubscription(indexName, groupKeyGraph, ItemFetchPolicy.prefetch)
-   — this is idempotent (creates the DB row if absent, updates fetch policy otherwise).
-3. If triggerSync == true:
-   a. Read the current IndexInstanceSyncState (one-shot, not watching).
-   b. If !state.hasCompletedInitialSync, call syncManager.sync() unawaited
-      (fire-and-forget — the state stream drives the UI).
-```
-
-**Idempotency**: Step 2 is already idempotent per the existing `configureGroupIndexSubscription`
-contract. Step 3b must not trigger a redundant sync if `hasCompletedInitialSync` is
-already true — the check in step 3a guards this.
-
-**No `async`** on the method signature — it returns `void` synchronously. Internally
-schedule the subscription + conditional sync without awaiting them on the call path.
-Use `unawaited(Future<void>)` with appropriate error logging for any async steps.
-
----
-
-## Task 4 — `ensureGroupIndexSynced`
-
-Add to `ObjectSyncEngine`:
+Add APIs for canonical identifiers, for example:
 
 ```dart
-/// Calls [ensureGroupIndexSubscription], then waits until
-/// [IndexInstanceSyncState.hasCompletedInitialSync] is true or
-/// [IndexInstanceSyncState.hasInitialSyncError] is true.
-///
-/// Throws [GroupIndexSyncFailedException] if any remote fails an initial sync
-/// (offline, timeout, auth error). The caller must catch and handle this.
-///
-/// Prefer [ensureGroupIndexSubscription] + stream observation in widget contexts
-/// (no `await` in `build`). Use this method in button handlers, tests, and
-/// sequential setup code where a simple `Future<void>` is cleaner.
-Future<void> ensureGroupIndexSynced<G>(G groupKey,
-    {String localName = defaultIndexLocalName});
+void ensureGroupIndexSubscription({
+  required String indexName,
+  required RdfGraph groupKeyGraph,
+  bool triggerSync = true,
+});
+
+Future<void> ensureGroupIndexSynced({
+  required String indexName,
+  required RdfGraph groupKeyGraph,
+});
 ```
 
-Create the exception class:
+The concrete shape may also use a single `IndexInstanceId` value object.
+
+### 4b. Typed facade APIs (`ObjectSyncEngine`)
+
+Add:
 
 ```dart
-/// Thrown by [ObjectSyncEngine.ensureGroupIndexSynced] when the initial sync
-/// fails for at least one remote before [hasCompletedInitialSync] is satisfied.
+void ensureGroupIndexSubscription<G>(
+  G groupKey, {
+  bool triggerSync = true,
+  String localName = defaultIndexLocalName,
+});
+
+Future<void> ensureGroupIndexSynced<G>(
+  G groupKey, {
+  String localName = defaultIndexLocalName,
+});
+```
+
+Plus exception:
+
+```dart
 class GroupIndexSyncFailedException implements Exception {
   final String message;
   final IndexInstanceSyncState lastState;
@@ -329,191 +278,157 @@ class GroupIndexSyncFailedException implements Exception {
 }
 ```
 
-### Implementation guidance for Task 4
+### Behavior
 
-```dart
-Future<void> ensureGroupIndexSynced<G>(G groupKey,
-    {String localName = defaultIndexLocalName}) async {
-  ensureGroupIndexSubscription(groupKey,
-      triggerSync: true, localName: localName);
-  await watchGroupIndexSyncState<G>(groupKey, localName: localName)
-      .firstWhere((state) =>
-          state.hasCompletedInitialSync || state.hasInitialSyncError)
-      .then((state) {
-    if (state.hasInitialSyncError) {
-      throw GroupIndexSyncFailedException(
-        'Initial sync failed for one or more remotes.',
-        lastState: state,
-      );
-    }
-  });
-}
-```
+- `ensureGroupIndexSubscription` is idempotent and returns immediately.
+- If `triggerSync == true`, it triggers a sync cycle only if initial sync is not complete.
+- `ensureGroupIndexSynced` subscribes and awaits first state satisfying:
+  - `hasCompletedInitialSync == true`, or
+  - `hasInitialSyncError == true` (then throws `GroupIndexSyncFailedException`).
+
+`ObjectSyncEngine` must implement these by mapping typed inputs to core identifiers and
+delegating to `SyncEngine`, not by reimplementing lifecycle logic.
 
 ---
 
-## Task 5 — Auto-subscribe-on-write in `save()`
+## Task 5 — Auto-subscribe-on-write (moved to core)
 
-Modify the existing `save<T>(T object)` method in `ObjectSyncEngine`:
+Implement in `SyncEngine.save(...)` / `StandardSyncEngine.save(...)`, not in
+`ObjectSyncEngine.save(...)`.
 
-**Before returning**, check whether `T` is a group-indexed resource. If it is, derive
-the group key from the object being saved and call
-`ensureGroupIndexSubscription(groupKey, triggerSync: false)` imperatively before (or
-immediately after) delegating to `_syncSystem.save(typeIri, graph)`.
+### Required behavior
 
-### Implementation guidance for Task 5
+When saving a resource with one or more configured `GroupIndex` definitions:
 
-1. After encoding `object` to `graph`, check if the resource config for `T` has a
-   `GroupIndex` configured (via `_config.getResourceConfig(T)?.indices` — filter for
-   `GroupIndex` entries).
-2. If yes, decode the group key value from the object using `_groupKeyConverter` or
-   directly via the mapper (the group key properties are declared in `GroupIndex`).
-3. Call `ensureGroupIndexSubscription(derivedGroupKey, triggerSync: false)`.
-4. Proceed with `_syncSystem.save(typeIri, graph)` as before.
+1. Determine all matching group-index instances for the saved object.
+2. Ensure subscription exists for **all** matching group-index instances.
+3. Do this with `triggerSync = false` semantics (register interest only).
+4. Continue with normal save.
 
-**Important**: use `triggerSync: false` — the `save()` call itself is not the right
-place to trigger sync; the caller controls that. Auto-subscribe-on-write only ensures
-the subscription DB row exists so that the saved record will be included in the next
-sync cycle, whenever that happens.
-
-> [!NOTE]
-> If deriving the group key from the object proves complex (multiple group index
-> configs, polymorphic group key types), it is acceptable to fall back to calling
-> `configureGroupIndexSubscription` at the lower level with the index name and RDF
-> graph directly. The key invariant is: after `save()` returns, the index instance for
-> the saved object's group key is subscribed.
+This must be done in core so all entry points (object and lower-level graph flows) share
+consistent behavior.
 
 ---
 
-## Task 6 — Exports and Barrel Updates
+## Task 6 — Implementation guidance (architecture-safe)
+
+### 6a. No backend downcasts
+
+`locorda_objects` must not downcast to Drift DAOs.
+All required operations must be available through core abstractions.
+
+### 6b. State composition strategy
+
+`ObjectSyncEngine` composes from core watchers; it does not infer lifecycle from unrelated
+ETag tables.
+
+Preferred architecture:
+
+- Core emits canonical index-instance state into storage.
+- Object layer maps core snapshot to `IndexInstanceSyncState` value objects.
+
+### 6c. Lifecycle ownership
+
+`SyncManager.statusStream` remains global progress signal and is **not** sufficient for
+per-index-instance lifecycle.
+
+Per-index-instance status comes from the new tracking model.
+
+---
+
+## Task 7 — Exports and barrels
 
 - Export `IndexInstanceSyncState`, `RemoteSyncEntry`, `RemoteSyncPhase`,
-  `GroupIndexSyncFailedException` from `locorda_objects/lib/locorda_objects.dart` (or
-  whatever the package barrel is).
-- Update `locorda/lib/locorda.dart` (the top-level package) to re-export the new types
-  if it re-exports from `locorda_objects`.
-- Do **not** remove `configureGroupIndexSubscription` from the public barrel yet — it
-  may stay as a lower-level escape hatch for advanced callers. Mark it
-  `@Deprecated('Use ensureGroupIndexSubscription instead.')` if you prefer to signal
-  the migration direction.
+  `GroupIndexSyncFailedException` from `locorda_objects` barrel.
+- Re-export from top-level `locorda` barrel where appropriate.
+- Keep `configureGroupIndexSubscription` available (optionally deprecated).
 
 ---
 
-## Task 7 — Unit Tests
+## Task 8 — Tests
 
-Write tests in `locorda_objects/test/`. All tests must follow the DI pattern used by
-the rest of the package: create dependencies manually, never use `setUp`/global
-singletons that leak between tests, and call `dispose()`/`close()` in `tearDown`.
+### 8a. Pure value-object tests
 
-### 7a. `IndexInstanceSyncState` unit tests (pure Dart, no DB)
+Keep the previous matrix for getters (`hasCompletedInitialSync`, `isReady`, errors, etc.).
 
-Test all computed getters with known `perRemote` maps:
+### 8b. Integration tests (core + object)
 
-| Scenario | `hasCompletedInitialSync` | `isSyncing` | `isReady` | `hasStaleError` | `hasInitialSyncError` |
-|---|---|---|---|---|---|
-| Empty map (no backend) | true | false | false | false | false |
-| One remote, `ready`, `lastSyncedAt` set | true | false | true | false | false |
-| One remote, `syncing`, no `lastSyncedAt` | false | true | false | false | false |
-| One remote, `error`, `lastSyncedAt` set | true | false | false | true | false |
-| One remote, `error`, no `lastSyncedAt` | false | false | false | false | true |
-| Two remotes: one `ready` (synced), one `notSynced` (not synced) | false | false | false | false | false |
-| Two remotes: both `ready`, both synced | true | false | true | false | false |
+Cover:
 
-### 7b. `watchGroupIndexSyncState` integration tests (with fake SyncEngine)
+1. No backend configured ⇒ immediate `local()` semantics.
+2. New subscription with trigger sync ⇒ phase progression emits expected states.
+3. Initial success ⇒ `hasCompletedInitialSync == true`.
+4. Initial failure ⇒ `hasInitialSyncError == true`, `ensureGroupIndexSynced` throws.
+5. Failure after success ⇒ `hasStaleError == true`, completion remains true.
+6. Idempotent repeated ensure on already-synced instance.
 
-Use a fake or in-memory `SyncEngine` (check whether `locorda_core/test/` already has a
-`FakeSyncEngine` or `InMemorySyncEngine` — use whatever pattern the existing tests use
-for integration tests).
+### 8c. `createdAt` regression test
 
-Scenarios to cover:
+- Updating fetch policy for existing group subscription does not change `createdAt`.
 
-1. **No backend configured**: stream immediately emits `IndexInstanceSyncState.local()`
-   with `hasCompletedInitialSync == true`.
-2. **Backend configured, group not yet subscribed**: calling
-   `ensureGroupIndexSubscription(groupKey)` causes the stream to emit a state with
-   `hasCompletedInitialSync == false` and `isSyncing == true` (sync triggered).
-3. **Subscription + sync completes**: after the fake sync cycle completes, stream emits
-   `hasCompletedInitialSync == true`.
-4. **Sync error on first attempt (no `lastSyncedAt`)**: stream emits
-   `hasInitialSyncError == true`; `ensureGroupIndexSynced` throws
-   `GroupIndexSyncFailedException`.
-5. **Sync error after initial success (`lastSyncedAt` set)**: stream emits
-   `hasStaleError == true` but `hasCompletedInitialSync` remains `true`.
-6. **Second subscription on already-complete instance**: `ensureGroupIndexSynced` returns
-   without triggering another sync.
+### 8d. Auto-subscribe-on-write tests (core)
 
-### 7c. `ensureGroupIndexSubscription` tests
+- Saving group-indexed object subscribes all matching group instances.
+- Saving full-index-only object creates no group subscriptions.
+- Repeated saves do not duplicate subscriptions.
 
-- Verify that calling it twice with the same group key does not create duplicate
-  subscriptions in the DB.
-- Verify that `triggerSync: false` does not call `syncManager.sync()`.
-- Verify that `triggerSync: true` (default) calls `syncManager.sync()` exactly once when
-  `!hasCompletedInitialSync`, and zero times when already synced.
+### 8e. Storage abstraction tests
 
-### 7d. `ensureGroupIndexSynced` tests
-
-- Happy path: resolves when `hasCompletedInitialSync` becomes true.
-- Error path: throws `GroupIndexSyncFailedException` when `hasInitialSyncError` is true.
-- Timeout: if the sync engine hangs indefinitely (all remotes stuck in `syncing`),
-  `ensureGroupIndexSynced` must not hang the test — inject a timeout or document that
-  callers are responsible for wrapping with `Future.timeout`.
-
-### 7e. Auto-subscribe-on-write tests
-
-- Saving a group-indexed object via `save()` creates the subscription in the DB even
-  though `ensureGroupIndexSubscription` was never called explicitly.
-- Saving a full-index object via `save()` does **not** create a spurious group
-  subscription.
-- Two saves for the same group key do not create duplicate subscriptions.
+- Drift and in-memory implementations both satisfy new `Storage` sync-state APIs.
 
 ---
 
-## Code Quality Requirements
+## Code quality requirements
 
-- **Zero tolerance for code duplication**: if `watchGroupIndexSyncState` and
-  `watchTypeSyncState` share more than trivially similar logic, extract the shared
-  stream-building logic into a private method `_watchIndexInstanceSyncState(...)`.
-- **No `print` statements** — use `package:logging` with a named logger
-  (`Logger('Locorda.groupIndex')`).
-- **DartDoc on all public symbols** — explain *why*, not *what*. Target audience: expert
-  Dart/Flutter developers who understand CRDT sync.
-- **Immutable value objects** — `IndexInstanceSyncState` and `RemoteSyncEntry` must be
-  `@immutable`. No mutable state; derive everything from DB queries.
-- **File size**: if `object_sync_engine.dart` grows beyond ~900 lines, extract the
-  group-index stream logic into a separate mixin or helper class.
-- Run `dart analyze` and `dart test` before considering the implementation complete.
-  Zero warnings, zero failing tests.
+- Extract shared watch logic into private helper(s), avoid duplication.
+- No `print`, use structured logging.
+- Public APIs fully documented for expert audience.
+- Keep object layer thin; orchestration logic belongs in core.
+- Run `dart analyze` and `dart test` with zero failures.
 
 ---
 
-## Acceptance Criteria
+## Acceptance criteria
 
-1. `ObjectSyncEngine` exposes `watchGroupIndexSyncState<G>`, `watchTypeSyncState<T>`,
-   `ensureGroupIndexSubscription<G>`, and `ensureGroupIndexSynced<G>` with the exact
-   signatures specified above.
-2. `IndexInstanceSyncState.hasCompletedInitialSync` returns `true` immediately when no
-   backend is configured.
-3. `ensureGroupIndexSynced` throws `GroupIndexSyncFailedException` (not a generic
-   `Exception`) on initial sync failure.
-4. Calling `save<T>(obj)` on a group-indexed object implicitly subscribes the group
-   index instance (with `triggerSync: false`).
-5. All tests in Task 7 pass.
-6. `dart analyze` reports zero issues.
-7. The existing `configureGroupIndexSubscription` method continues to work and existing
-   tests continue to pass (no regression).
+1. `SyncEngine` exposes core index-instance sync APIs (reactive + imperative)
+  using core identifiers.
+2. `ObjectSyncEngine` exposes typed facade APIs:
+   - `watchGroupIndexSyncState<G>`
+   - `watchTypeSyncState<T>`
+   - `ensureGroupIndexSubscription<G>`
+   - `ensureGroupIndexSynced<G>`
+3. Per-index-instance lifecycle is tracked explicitly in core/storage
+   (not inferred from ETag tables).
+4. `SyncManager.statusStream` is not used as the canonical source for per-index-instance
+   phase.
+5. `save(...)` auto-subscribes all matching group-index instances in core (`SyncEngine`),
+   with no implicit sync trigger.
+6. Existing `configureGroupIndexSubscription(...)` remains functional.
+7. Group subscription `createdAt` is stable across updates.
+8. Tests and analysis pass without regressions.
 
 ---
 
-## Files to Create or Modify
+## Files to create or modify
 
 | File | Change |
 |---|---|
-| `locorda_objects/lib/src/index/index_instance_sync_state.dart` | **Create** — data model (Task 1) |
-| `locorda_objects/lib/src/index/group_index_sync_failed_exception.dart` | **Create** — exception (Task 4) |
-| `locorda_objects/lib/src/object_sync_engine.dart` | **Modify** — add Tasks 2–5 |
-| `locorda_objects/lib/locorda_objects.dart` | **Modify** — export new types (Task 6) |
-| `locorda_objects/test/index/index_instance_sync_state_test.dart` | **Create** — Task 7a |
-| `locorda_objects/test/index/watch_group_index_sync_state_test.dart` | **Create** — Tasks 7b–7d |
-| `locorda_objects/test/index/auto_subscribe_on_write_test.dart` | **Create** — Task 7e |
+| `packages/locorda_core/lib/src/storage/storage_interface.dart` | **Modify** — add index-instance sync-state API |
+| `packages/locorda_core/lib/src/sync_engine.dart` | **Modify** — add core watch/ensure index-instance APIs |
+| `packages/locorda_core/lib/src/standard_sync_engine.dart` | **Modify** — implement core watch/ensure APIs + auto-subscribe-on-write in save path |
+| `packages/locorda_core/lib/src/storage/in_memory_storage.dart` | **Modify** — implement new storage API |
+| `packages/locorda_drift/lib/src/sync_database.dart` | **Modify** — add persistence schema + preserve subscription `createdAt` |
+| `packages/locorda_drift/lib/src/drift_storage.dart` | **Modify** — implement new storage API |
+| `packages/locorda_core/lib/src/sync/remote_sync_orchestrator.dart` | **Modify** — write lifecycle transitions |
+| `packages/locorda_objects/lib/src/index/index_instance_sync_state.dart` | **Create** — object-facing value model |
+| `packages/locorda_objects/lib/src/index/group_index_sync_failed_exception.dart` | **Create** — exception |
+| `packages/locorda_objects/lib/src/object_sync_engine.dart` | **Modify** — add object-facing watch/ensure APIs |
+| `packages/locorda_objects/lib/locorda_objects.dart` | **Modify** — exports |
+| `packages/locorda/lib/locorda.dart` | **Modify** — optional re-export |
+| `packages/locorda_objects/test/index/index_instance_sync_state_test.dart` | **Create** |
+| `packages/locorda_objects/test/index/watch_group_index_sync_state_test.dart` | **Create** |
+| `packages/locorda_objects/test/index/ensure_group_index_subscription_test.dart` | **Create** |
+| `packages/locorda_core/test/...` | **Modify/Create** — core lifecycle + save auto-subscribe tests |
+| `packages/locorda_drift/test/...` | **Modify/Create** — drift storage/state + createdAt regression tests |
 
-If `locorda/lib/locorda.dart` re-exports `locorda_objects` types, update it accordingly.
+If test placement differs by current package conventions, adapt paths but keep coverage scope.
