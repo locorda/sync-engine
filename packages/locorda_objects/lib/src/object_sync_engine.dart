@@ -291,69 +291,6 @@ class ObjectSyncEngine {
     );
   }
 
-  /// Configure subscription to a group index with the given group key.
-  ///
-  /// ## Group Index Subscription Overview
-  ///
-  /// Group subscriptions determine how items within a group are fetched and synced:
-  ///
-  /// **Default State**: Groups are not subscribed by default. Items can still be
-  /// accessed on-demand, but no automatic sync or prefetching occurs.
-  ///
-  /// **Implicit Subscriptions**: When individual items are fetched, groups they
-  /// belong to (via their `idx:belongsToIndexShard` properties) are automatically subscribed
-  /// with `ItemFetchPolicy.onRequest`. This ensures basic sync functionality.
-  ///
-  /// **Explicit Configuration**: This method allows you to explicitly configure
-  /// a group's subscription with a specific fetch policy:
-  /// - `ItemFetchPolicy.onRequest`: Fetch items only when specifically requested
-  /// - `ItemFetchPolicy.prefetch`: Eagerly fetch all items in the group
-  ///
-  /// ## Subscription Lifecycle
-  ///
-  /// - **Create**: First call creates subscription with specified policy
-  /// - **Update**: Subsequent calls update the fetch policy
-  /// - **Persistence**: Subscriptions persist across app restarts
-  /// - **No Unsubscribe**: Once subscribed, groups cannot be unsubscribed as
-  ///   the subscription is required for proper sync management of items
-  ///
-  /// ## Technical Details
-  ///
-  /// Validates that G is a valid group type for the specified localName,
-  /// converts the group key to RDF triples, and generates group identifiers
-  /// using the configured GroupKeyGenerator.
-  ///
-  /// ## Example
-  /// ```dart
-  /// // Configure current month for eager fetching
-  /// await syncSystem.configureGroupIndexSubscription(
-  ///   NoteGroupKey.currentMonth,
-  ///   ItemFetchPolicy.prefetch
-  /// );
-  ///
-  /// // Later, change to on-demand fetching
-  /// await syncSystem.configureGroupIndexSubscription(
-  ///   NoteGroupKey.currentMonth,
-  ///   ItemFetchPolicy.onRequest
-  /// );
-  /// ```
-  ///
-  /// Throws [GroupIndexGraphSubscriptionException] if:
-  /// - No GroupIndex is configured for type G with the given localName
-  /// - The group key cannot be serialized to RDF
-  /// - No group identifiers can be generated from the group key
-  ///
-  Future<void> configureGroupIndexSubscription<G>(
-      G groupKey, ItemFetchPolicy itemFetchPolicy,
-      {String localName = defaultIndexLocalName}) async {
-    // Use the GroupIndexSubscriptionManager to handle validation and processing
-    final (indexName: indexName, groupKeyGraph: groupKeyGraph) =
-        await _groupKeyConverter.convertGroupKey<G>(groupKey,
-            localName: localName);
-    return _syncSystem.configureGroupIndexSubscription(
-        indexName, groupKeyGraph, itemFetchPolicy);
-  }
-
   RemoteSyncPhase _toObjectPhase(IndexInstanceSyncPhase phase) {
     return switch (phase) {
       IndexInstanceSyncPhase.notSynced => RemoteSyncPhase.notSynced,

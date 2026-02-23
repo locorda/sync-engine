@@ -375,7 +375,12 @@ class NoteRepository {
   /// Configure subscription to a specific month group for note index entries
   Future<void> configureMonthGroupSubscription(
       NoteGroupKey monthKey, ItemFetchPolicy fetchPolicy) async {
-    await _syncSystem.configureGroupIndexSubscription(monthKey, fetchPolicy);
+    if (fetchPolicy == ItemFetchPolicy.prefetch) {
+      _syncSystem.ensureGroupIndexSubscription(
+        monthKey,
+        triggerSync: true,
+      );
+    }
   }
 
   /// Dispose resources when repository is no longer needed
