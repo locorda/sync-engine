@@ -69,11 +69,12 @@ If there are no configured remotes (`perRemote.isEmpty`),
   - Add typed facade APIs and value objects.
   - Delegate to core, no storage implementation assumptions.
 
-### Compatibility scope
+### Migration scope (no compatibility layer)
 
-- Keep `configureGroupIndexSubscription(...)` available.
-- It may be marked as deprecated in object-facing APIs:
-  `@Deprecated('Use ensureGroupIndexSubscription instead.')`.
+- Remove the old low-level `configureGroupIndexSubscription(...)` API from public
+  `SyncEngine` and `ObjectSyncEngine` surfaces.
+- Migrate all in-repo call sites to the new `ensure*` API set.
+- Update tests/docs/examples to use only the new APIs.
 
 ---
 
@@ -334,6 +335,105 @@ per-index-instance lifecycle.
 
 Per-index-instance status comes from the new tracking model.
 
+### 6d. Worker/proxy stream lifecycle (required)
+
+`SyncEngine` may run in a worker (`StandardSyncEngine`) while the app uses
+`ProxySyncEngine` on the main thread. Therefore `watch**State` must be fully supported
+across the worker boundary.
+
+Required protocol/behavior:
+
+1. **Explicit subscribe + explicit unsubscribe**
+  - Add worker messages for watch registration and cancellation.
+  - Main-thread stream cancellation must propagate to worker and cancel the worker-side
+    subscription.
+2. **Initial state delivery without race**
+  - `watch**State` must deliver a current snapshot immediately after subscription.
+  - Subscription establishment and initial snapshot must be atomic from API perspective
+    (no lost transition between subscribe and first event).
+3. **Broadcast semantics on main thread**
+  - Proxy-exposed streams must support multiple listeners safely.
+  - Re-listeners should receive the latest known state synchronously (or via a documented
+    immediate first async event) without requiring a new worker subscription per listener.
+4. **Deterministic cleanup**
+  - Worker must cancel all active watch subscriptions on engine close/dispose.
+  - Proxy must clear controllers/subscriptions and complete pending listeners with close,
+    not leaks.
+5. **Request correlation and isolation**
+  - Stream update messages must be correlated by watch/request ID.
+  - Updates for unknown/cancelled request IDs must be ignored safely.
+
+This is mandatory to avoid stale listeners, memory leaks, and hidden worker load in
+long-running Flutter sessions.
+
+### 6e. Worker protocol mini-spec (normative)
+
+Define and document explicit worker protocol messages for index-instance watch streams.
+Exact names may differ, but semantics are mandatory.
+
+#### Required message families
+
+1. **Subscribe request (Main → Worker)**
+  - Fields:
+    - `requestId` (unique per active watch)
+    - `watchKind` (`groupIndex` | `typeIndex`)
+    - watch parameters (canonical core identifiers)
+2. **State update event (Worker → Main)**
+  - Fields:
+    - `requestId`
+    - serialized index-instance sync state snapshot
+    - `isInitial` flag (true for first event after subscription)
+3. **Unsubscribe request (Main → Worker)**
+  - Fields:
+    - `requestId`
+4. **Optional unsubscribe ack/error (Worker → Main)**
+  - Recommended for diagnostics and deterministic tests.
+
+#### Required behavioral guarantees
+
+1. **Atomic subscribe+initial snapshot**
+  - After subscribe is accepted, worker must emit one initial snapshot (`isInitial=true`)
+    representing current known state.
+  - No state transition between registration and first emission may be lost.
+2. **Monotonic per-request ordering**
+  - Worker must send updates in source order for a given `requestId`.
+3. **Idempotent unsubscribe**
+  - Unsubscribe for unknown/already-closed `requestId` is a no-op.
+4. **No post-cancel deliveries**
+  - After unsubscribe processing, worker stops emitting for that `requestId`.
+  - Main ignores late in-flight events safely.
+5. **Error delivery contract**
+  - Watch errors are delivered as terminal stream error (or explicit error event followed
+    by completion), never silently dropped.
+
+#### Multiplexing and deduplication rules
+
+- Proxy may deduplicate equivalent watch keys across multiple local listeners.
+- If deduplicated:
+  - maintain exactly one worker subscription per canonical watch key,
+  - fan out updates to all local listeners,
+  - send unsubscribe to worker only when the last local listener cancels.
+- If no deduplication is implemented, behavior must still be correct and leak-free.
+
+#### Close/dispose contract
+
+- On `ProxySyncEngine.close()`:
+  - cancel all local watch controllers,
+  - send unsubscribe for all active worker watches (best effort),
+  - clear watch registries.
+- On worker context dispose:
+  - cancel all active watch subscriptions before closing `SyncEngine`.
+
+#### Testability requirements
+
+Add protocol-level tests that validate:
+
+- initial snapshot emission,
+- no lost first update under rapid subscribe/sync transitions,
+- unsubscribe propagation,
+- no events after cancel,
+- dedup correctness (if enabled).
+
 ---
 
 ## Task 7 — Exports and barrels
@@ -341,7 +441,7 @@ Per-index-instance status comes from the new tracking model.
 - Export `IndexInstanceSyncState`, `RemoteSyncEntry`, `RemoteSyncPhase`,
   `GroupIndexSyncFailedException` from `locorda_objects` barrel.
 - Re-export from top-level `locorda` barrel where appropriate.
-- Keep `configureGroupIndexSubscription` available (optionally deprecated).
+- Do not export `configureGroupIndexSubscription` as part of the public API.
 
 ---
 
@@ -376,6 +476,15 @@ Cover:
 
 - Drift and in-memory implementations both satisfy new `Storage` sync-state APIs.
 
+### 8f. Worker/proxy stream lifecycle tests
+
+- Cancelling a main-thread `watch**State` subscription sends unsubscribe to worker and
+  stops worker-side updates.
+- New subscription receives current state immediately (no missing initial emission).
+- Multiple UI listeners on proxy stream do not create duplicate worker subscriptions.
+- Closing `ProxySyncEngine`/worker context cancels all active watch subscriptions cleanly.
+- Late events for cancelled watch IDs are ignored without exceptions.
+
 ---
 
 ## Code quality requirements
@@ -403,9 +512,12 @@ Cover:
    phase.
 5. `save(...)` auto-subscribes all matching group-index instances in core (`SyncEngine`),
    with no implicit sync trigger.
-6. Existing `configureGroupIndexSubscription(...)` remains functional.
+6. Old `configureGroupIndexSubscription(...)` public API is removed and all usages are
+  migrated to new APIs.
 7. Group subscription `createdAt` is stable across updates.
 8. Tests and analysis pass without regressions.
+9. Worker/proxy execution path supports `watch**State` with explicit unsubscribe and no
+  subscription leaks.
 
 ---
 
@@ -420,6 +532,9 @@ Cover:
 | `packages/locorda_drift/lib/src/sync_database.dart` | **Modify** — add persistence schema + preserve subscription `createdAt` |
 | `packages/locorda_drift/lib/src/drift_storage.dart` | **Modify** — implement new storage API |
 | `packages/locorda_core/lib/src/sync/remote_sync_orchestrator.dart` | **Modify** — write lifecycle transitions |
+| `packages/locorda_worker/lib/src/shared/worker_messages.dart` | **Modify** — add watch/subscribe/unsubscribe message types |
+| `packages/locorda_worker/lib/src/worker/worker_entry_point.dart` | **Modify** — manage worker-side watch subscriptions and cleanup |
+| `packages/locorda_worker/lib/src/main/proxy_sync_engine.dart` | **Modify** — bridge watch streams with broadcast + cancellation |
 | `packages/locorda_objects/lib/src/index/index_instance_sync_state.dart` | **Create** — object-facing value model |
 | `packages/locorda_objects/lib/src/index/group_index_sync_failed_exception.dart` | **Create** — exception |
 | `packages/locorda_objects/lib/src/object_sync_engine.dart` | **Modify** — add object-facing watch/ensure APIs |
