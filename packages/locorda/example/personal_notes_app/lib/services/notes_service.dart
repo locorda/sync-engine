@@ -3,7 +3,6 @@ library;
 
 import 'dart:math';
 
-import 'package:locorda/locorda.dart';
 import 'package:personal_notes_app/models/note_group_key.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -75,15 +74,7 @@ class NotesService {
   /// Set month filter and ensure subscription to the month group
   Future<void> setMonthFilter(NoteGroupKey? monthFilter) async {
     if (monthFilter != null) {
-      // Determine fetch policy based on month
-      final isPrefetchNeeded = monthFilter == NoteGroupKey.currentMonth ||
-          monthFilter == NoteGroupKey.previousMonth;
-
-      await _noteRepository.configureMonthGroupSubscription(
-          monthFilter,
-          isPrefetchNeeded
-              ? ItemFetchPolicy.prefetch
-              : ItemFetchPolicy.onRequest);
+      _noteRepository.ensureMonthGroupSubscription(monthFilter);
     }
     _monthFilterController.add(monthFilter);
   }
@@ -91,11 +82,9 @@ class NotesService {
   /// Initialize default subscriptions for current and previous month
   /// Returns the month that was set as the initial filter
   Future<NoteGroupKey> initializeDefaultSubscriptions() async {
-    // Configure subscriptions to current and previous month with prefetch (business logic)
-    await _noteRepository.configureMonthGroupSubscription(
-        NoteGroupKey.currentMonth, ItemFetchPolicy.prefetch);
-    await _noteRepository.configureMonthGroupSubscription(
-        NoteGroupKey.previousMonth, ItemFetchPolicy.prefetch);
+    // Subscribe to current and previous month
+    _noteRepository.ensureMonthGroupSubscription(NoteGroupKey.currentMonth);
+    _noteRepository.ensureMonthGroupSubscription(NoteGroupKey.previousMonth);
 
     // Set initial month filter to current month
     final initialMonth = NoteGroupKey.currentMonth;

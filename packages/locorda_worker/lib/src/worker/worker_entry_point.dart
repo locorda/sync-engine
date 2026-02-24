@@ -320,7 +320,7 @@ class WorkerContext {
           _sendMessage(IndexInstanceSyncStateMessage(
             request.requestId,
             indexInstanceIri: snapshot.indexInstanceIri.value,
-            perRemote: snapshot.perRemote.values
+            perRemote: snapshot.remoteStates
                 .map((entry) => {
                       'backend': entry.remoteId.backend,
                       'id': entry.remoteId.id,

@@ -39,7 +39,7 @@ void main() {
 
       final snapshot =
           await storage.getIndexInstanceSyncState(indexInstanceIri);
-      final entry = snapshot.perRemote[remote];
+      final entry = snapshot.stateForRemote(remote);
 
       expect(entry, isNotNull);
       expect(entry!.phase, IndexInstanceSyncPhase.error);

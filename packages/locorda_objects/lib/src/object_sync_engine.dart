@@ -305,7 +305,7 @@ class ObjectSyncEngine {
       IndexInstanceSyncStateSnapshot snapshot) {
     return IndexInstanceSyncState(
       perRemote: {
-        for (final entry in snapshot.perRemote.values)
+        for (final entry in snapshot.remoteStates)
           '${entry.remoteId.backend}:${entry.remoteId.id}': RemoteSyncEntry(
             remoteId: '${entry.remoteId.backend}:${entry.remoteId.id}',
             phase: _toObjectPhase(entry.phase),

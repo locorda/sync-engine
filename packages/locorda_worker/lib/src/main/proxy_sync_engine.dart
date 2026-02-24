@@ -307,9 +307,9 @@ class ProxySyncEngine implements SyncEngine {
       indexName: indexName,
       groupKeyGraph: groupKeyGraph,
     ).firstWhere((snapshot) {
-      final hasCompletedInitialSync = snapshot.perRemote.values
+      final hasCompletedInitialSync = snapshot.remoteStates
           .every((entry) => entry.lastSuccessfulSyncAt != null);
-      final hasInitialSyncError = snapshot.perRemote.values.any((entry) =>
+      final hasInitialSyncError = snapshot.remoteStates.any((entry) =>
           entry.phase == IndexInstanceSyncPhase.error &&
           entry.lastSuccessfulSyncAt == null);
       if (hasInitialSyncError) {

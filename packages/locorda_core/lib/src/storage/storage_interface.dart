@@ -450,17 +450,47 @@ class RemoteIndexSyncStateSnapshot {
 /// Aggregate snapshot for one index instance across remotes.
 class IndexInstanceSyncStateSnapshot {
   final IriTerm indexInstanceIri;
-  final Map<RemoteId, RemoteIndexSyncStateSnapshot> perRemote;
+  final Map<RemoteId, RemoteIndexSyncStateSnapshot> _perRemote;
 
   IndexInstanceSyncStateSnapshot({
     required this.indexInstanceIri,
     required Map<RemoteId, RemoteIndexSyncStateSnapshot> perRemote,
-  }) : perRemote = Map.unmodifiable(perRemote);
+  }) : _perRemote = Map.unmodifiable(perRemote);
 
   factory IndexInstanceSyncStateSnapshot.empty(IriTerm indexInstanceIri) {
     return IndexInstanceSyncStateSnapshot(
       indexInstanceIri: indexInstanceIri,
       perRemote: const {},
+    );
+  }
+
+  /// Returns the sync state for a specific remote, or null if not yet tracked.
+  RemoteIndexSyncStateSnapshot? stateForRemote(RemoteId remoteId) =>
+      _perRemote[remoteId];
+
+  /// All remote sync state snapshots.
+  Iterable<RemoteIndexSyncStateSnapshot> get remoteStates => _perRemote.values;
+
+  /// The number of configured remotes in this snapshot.
+  int get remoteCount => _perRemote.length;
+
+  /// Returns a new snapshot with default [IndexInstanceSyncPhase.notSynced]
+  /// entries added for any [configuredRemotes] not already present.
+  IndexInstanceSyncStateSnapshot withDefaultsForRemotes(
+      Set<RemoteId> configuredRemotes) {
+    final merged = Map<RemoteId, RemoteIndexSyncStateSnapshot>.from(_perRemote);
+    for (final remoteId in configuredRemotes) {
+      merged.putIfAbsent(
+        remoteId,
+        () => RemoteIndexSyncStateSnapshot(
+          remoteId: remoteId,
+          phase: IndexInstanceSyncPhase.notSynced,
+        ),
+      );
+    }
+    return IndexInstanceSyncStateSnapshot(
+      indexInstanceIri: indexInstanceIri,
+      perRemote: merged,
     );
   }
 }

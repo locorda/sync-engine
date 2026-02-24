@@ -200,33 +200,16 @@ class StandardSyncEngine implements SyncEngine {
     IndexInstanceSyncStateSnapshot snapshot,
     Set<RemoteId> configuredRemotes,
   ) {
-    final perRemote = Map<RemoteId, RemoteIndexSyncStateSnapshot>.from(
-      snapshot.perRemote,
-    );
-
-    for (final remoteId in configuredRemotes) {
-      perRemote.putIfAbsent(
-        remoteId,
-        () => RemoteIndexSyncStateSnapshot(
-          remoteId: remoteId,
-          phase: IndexInstanceSyncPhase.notSynced,
-        ),
-      );
-    }
-
-    return IndexInstanceSyncStateSnapshot(
-      indexInstanceIri: snapshot.indexInstanceIri,
-      perRemote: perRemote,
-    );
+    return snapshot.withDefaultsForRemotes(configuredRemotes);
   }
 
   bool _hasCompletedInitialSync(IndexInstanceSyncStateSnapshot snapshot) {
-    return snapshot.perRemote.values
+    return snapshot.remoteStates
         .every((entry) => entry.lastSuccessfulSyncAt != null);
   }
 
   bool _hasInitialSyncError(IndexInstanceSyncStateSnapshot snapshot) {
-    return snapshot.perRemote.values.any(
+    return snapshot.remoteStates.any(
       (entry) =>
           entry.phase == IndexInstanceSyncPhase.error &&
           entry.lastSuccessfulSyncAt == null,

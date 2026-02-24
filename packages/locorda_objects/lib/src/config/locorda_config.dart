@@ -1,9 +1,7 @@
 import 'package:locorda_core/locorda_core.dart';
 
 export 'package:locorda_core/locorda_core.dart'
-    show GroupingPropertyData, RegexTransformData, ItemFetchPolicy;
-
-const defaultIndexLocalName = "default";
+    show GroupingPropertyData, RegexTransformData, ItemFetchPolicy, defaultIndexLocalName;
 
 class IndexItemConfig extends IndexItemConfigBase {
   final Type itemType;

@@ -211,6 +211,38 @@ class IndexIriIdSetVersions extends Table {
       ];
 }
 
+/// Per-remote sync lifecycle state for a specific index instance.
+///
+/// Tracks the sync phase and timing information for each combination of
+/// (index instance IRI, remote) so that the UI and sync logic can observe
+/// progress independently per remote.
+class IndexInstanceSyncStates extends Table {
+  /// Foreign key to SyncIris for the index instance IRI (e.g., the group shard IRI).
+  IntColumn get indexInstanceIriId => integer().references(SyncIris, #id)();
+
+  /// Foreign key to RemoteSettings for the remote.
+  IntColumn get remoteId => integer().references(RemoteSettings, #id)();
+
+  /// Current sync phase name (e.g., 'notSynced', 'syncing', 'ready', 'error').
+  TextColumn get phase => text()();
+
+  /// Timestamp of the last completed successful sync (milliseconds since epoch).
+  /// Null until at least one sync cycle has succeeded.
+  IntColumn get lastSuccessfulSyncAt => integer().nullable()();
+
+  /// Timestamp when the last sync attempt started (milliseconds since epoch).
+  IntColumn get lastAttemptStartedAt => integer().nullable()();
+
+  /// Timestamp when the last sync attempt finished (milliseconds since epoch).
+  IntColumn get lastAttemptFinishedAt => integer().nullable()();
+
+  /// Human-readable error message from the last failed attempt, if any.
+  TextColumn get lastErrorMessage => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {indexInstanceIriId, remoteId};
+}
+
 /// Mixin for efficient IRI batch loading and creation
 ///
 /// TODO: can we optimize this further by caching recently used IRIs in memory?
@@ -1361,6 +1393,7 @@ class DocumentWithIri {
     IndexIriIdSetVersions,
     RemoteSettings,
     RemoteSyncState,
+    IndexInstanceSyncStates,
   ],
   daos: [SyncDocumentDao, SyncPropertyChangeDao, IndexDao, RemoteSyncStateDao],
 )
@@ -1372,7 +1405,7 @@ class SyncDatabase extends _$SyncDatabase {
   SyncDatabase.forExecutor(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1511,6 +1544,15 @@ class SyncDatabase extends _$SyncDatabase {
             await m.database.customStatement('''
               CREATE INDEX IF NOT EXISTS idx_index_entries_resource_type
               ON index_entries(resource_type_iri_id);
+            ''');
+          }
+          if (from < 7) {
+            // Create dedicated table for per-remote index instance sync state
+            await m.createTable(indexInstanceSyncStates);
+
+            await m.database.customStatement('''
+              CREATE INDEX IF NOT EXISTS idx_index_instance_sync_states_remote
+              ON index_instance_sync_states(remote_id);
             ''');
           }
         },

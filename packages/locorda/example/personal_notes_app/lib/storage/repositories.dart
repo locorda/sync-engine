@@ -372,15 +372,9 @@ class NoteRepository {
         (driftEntries) => driftEntries.map(_noteIndexEntryFromDrift).toList());
   }
 
-  /// Configure subscription to a specific month group for note index entries
-  Future<void> configureMonthGroupSubscription(
-      NoteGroupKey monthKey, ItemFetchPolicy fetchPolicy) async {
-    if (fetchPolicy == ItemFetchPolicy.prefetch) {
-      _syncSystem.ensureGroupIndexSubscription(
-        monthKey,
-        triggerSync: true,
-      );
-    }
+  /// Ensure a subscription to a specific month group for note index entries.
+  void ensureMonthGroupSubscription(NoteGroupKey monthKey) {
+    _syncSystem.ensureGroupIndexSubscription(monthKey);
   }
 
   /// Dispose resources when repository is no longer needed

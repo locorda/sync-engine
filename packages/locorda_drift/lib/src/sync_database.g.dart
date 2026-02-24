@@ -2934,6 +2934,463 @@ class RemoteSyncStateCompanion extends UpdateCompanion<RemoteSyncStateData> {
   }
 }
 
+class $IndexInstanceSyncStatesTable extends IndexInstanceSyncStates
+    with TableInfo<$IndexInstanceSyncStatesTable, IndexInstanceSyncState> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $IndexInstanceSyncStatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _indexInstanceIriIdMeta =
+      const VerificationMeta('indexInstanceIriId');
+  @override
+  late final GeneratedColumn<int> indexInstanceIriId = GeneratedColumn<int>(
+      'index_instance_iri_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES sync_iris (id)'));
+  static const VerificationMeta _remoteIdMeta =
+      const VerificationMeta('remoteId');
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+      'remote_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES remote_settings (id)'));
+  static const VerificationMeta _phaseMeta =
+      const VerificationMeta('phase');
+  @override
+  late final GeneratedColumn<String> phase = GeneratedColumn<String>(
+      'phase', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _lastSuccessfulSyncAtMeta =
+      const VerificationMeta('lastSuccessfulSyncAt');
+  @override
+  late final GeneratedColumn<int> lastSuccessfulSyncAt = GeneratedColumn<int>(
+      'last_successful_sync_at', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _lastAttemptStartedAtMeta =
+      const VerificationMeta('lastAttemptStartedAt');
+  @override
+  late final GeneratedColumn<int> lastAttemptStartedAt = GeneratedColumn<int>(
+      'last_attempt_started_at', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _lastAttemptFinishedAtMeta =
+      const VerificationMeta('lastAttemptFinishedAt');
+  @override
+  late final GeneratedColumn<int> lastAttemptFinishedAt = GeneratedColumn<int>(
+      'last_attempt_finished_at', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _lastErrorMessageMeta =
+      const VerificationMeta('lastErrorMessage');
+  @override
+  late final GeneratedColumn<String> lastErrorMessage =
+      GeneratedColumn<String>('last_error_message', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        indexInstanceIriId,
+        remoteId,
+        phase,
+        lastSuccessfulSyncAt,
+        lastAttemptStartedAt,
+        lastAttemptFinishedAt,
+        lastErrorMessage
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'index_instance_sync_states';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<IndexInstanceSyncState> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('index_instance_iri_id')) {
+      context.handle(
+          _indexInstanceIriIdMeta,
+          indexInstanceIriId.isAcceptableOrUnknown(
+              data['index_instance_iri_id']!, _indexInstanceIriIdMeta));
+    } else if (isInserting) {
+      context.missing(_indexInstanceIriIdMeta);
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(_remoteIdMeta,
+          remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta));
+    } else if (isInserting) {
+      context.missing(_remoteIdMeta);
+    }
+    if (data.containsKey('phase')) {
+      context.handle(
+          _phaseMeta, phase.isAcceptableOrUnknown(data['phase']!, _phaseMeta));
+    } else if (isInserting) {
+      context.missing(_phaseMeta);
+    }
+    if (data.containsKey('last_successful_sync_at')) {
+      context.handle(
+          _lastSuccessfulSyncAtMeta,
+          lastSuccessfulSyncAt.isAcceptableOrUnknown(
+              data['last_successful_sync_at']!, _lastSuccessfulSyncAtMeta));
+    }
+    if (data.containsKey('last_attempt_started_at')) {
+      context.handle(
+          _lastAttemptStartedAtMeta,
+          lastAttemptStartedAt.isAcceptableOrUnknown(
+              data['last_attempt_started_at']!, _lastAttemptStartedAtMeta));
+    }
+    if (data.containsKey('last_attempt_finished_at')) {
+      context.handle(
+          _lastAttemptFinishedAtMeta,
+          lastAttemptFinishedAt.isAcceptableOrUnknown(
+              data['last_attempt_finished_at']!, _lastAttemptFinishedAtMeta));
+    }
+    if (data.containsKey('last_error_message')) {
+      context.handle(
+          _lastErrorMessageMeta,
+          lastErrorMessage.isAcceptableOrUnknown(
+              data['last_error_message']!, _lastErrorMessageMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {indexInstanceIriId, remoteId};
+  @override
+  IndexInstanceSyncState map(Map<String, dynamic> data,
+      {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return IndexInstanceSyncState(
+      indexInstanceIriId: attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}index_instance_iri_id'])!,
+      remoteId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}remote_id'])!,
+      phase: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}phase'])!,
+      lastSuccessfulSyncAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}last_successful_sync_at']),
+      lastAttemptStartedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}last_attempt_started_at']),
+      lastAttemptFinishedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}last_attempt_finished_at']),
+      lastErrorMessage: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}last_error_message']),
+    );
+  }
+
+  @override
+  $IndexInstanceSyncStatesTable createAlias(String alias) {
+    return $IndexInstanceSyncStatesTable(attachedDatabase, alias);
+  }
+}
+
+class IndexInstanceSyncState extends DataClass
+    implements Insertable<IndexInstanceSyncState> {
+  final int indexInstanceIriId;
+  final int remoteId;
+  final String phase;
+  final int? lastSuccessfulSyncAt;
+  final int? lastAttemptStartedAt;
+  final int? lastAttemptFinishedAt;
+  final String? lastErrorMessage;
+  const IndexInstanceSyncState(
+      {required this.indexInstanceIriId,
+      required this.remoteId,
+      required this.phase,
+      this.lastSuccessfulSyncAt,
+      this.lastAttemptStartedAt,
+      this.lastAttemptFinishedAt,
+      this.lastErrorMessage});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['index_instance_iri_id'] = Variable<int>(indexInstanceIriId);
+    map['remote_id'] = Variable<int>(remoteId);
+    map['phase'] = Variable<String>(phase);
+    if (!nullToAbsent || lastSuccessfulSyncAt != null) {
+      map['last_successful_sync_at'] = Variable<int>(lastSuccessfulSyncAt);
+    }
+    if (!nullToAbsent || lastAttemptStartedAt != null) {
+      map['last_attempt_started_at'] = Variable<int>(lastAttemptStartedAt);
+    }
+    if (!nullToAbsent || lastAttemptFinishedAt != null) {
+      map['last_attempt_finished_at'] = Variable<int>(lastAttemptFinishedAt);
+    }
+    if (!nullToAbsent || lastErrorMessage != null) {
+      map['last_error_message'] = Variable<String>(lastErrorMessage);
+    }
+    return map;
+  }
+
+  IndexInstanceSyncStatesCompanion toCompanion(bool nullToAbsent) {
+    return IndexInstanceSyncStatesCompanion(
+      indexInstanceIriId: Value(indexInstanceIriId),
+      remoteId: Value(remoteId),
+      phase: Value(phase),
+      lastSuccessfulSyncAt: lastSuccessfulSyncAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSuccessfulSyncAt),
+      lastAttemptStartedAt: lastAttemptStartedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptStartedAt),
+      lastAttemptFinishedAt: lastAttemptFinishedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptFinishedAt),
+      lastErrorMessage: lastErrorMessage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastErrorMessage),
+    );
+  }
+
+  factory IndexInstanceSyncState.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return IndexInstanceSyncState(
+      indexInstanceIriId: serializer.fromJson<int>(json['indexInstanceIriId']),
+      remoteId: serializer.fromJson<int>(json['remoteId']),
+      phase: serializer.fromJson<String>(json['phase']),
+      lastSuccessfulSyncAt:
+          serializer.fromJson<int?>(json['lastSuccessfulSyncAt']),
+      lastAttemptStartedAt:
+          serializer.fromJson<int?>(json['lastAttemptStartedAt']),
+      lastAttemptFinishedAt:
+          serializer.fromJson<int?>(json['lastAttemptFinishedAt']),
+      lastErrorMessage:
+          serializer.fromJson<String?>(json['lastErrorMessage']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'indexInstanceIriId': serializer.toJson<int>(indexInstanceIriId),
+      'remoteId': serializer.toJson<int>(remoteId),
+      'phase': serializer.toJson<String>(phase),
+      'lastSuccessfulSyncAt': serializer.toJson<int?>(lastSuccessfulSyncAt),
+      'lastAttemptStartedAt': serializer.toJson<int?>(lastAttemptStartedAt),
+      'lastAttemptFinishedAt': serializer.toJson<int?>(lastAttemptFinishedAt),
+      'lastErrorMessage': serializer.toJson<String?>(lastErrorMessage),
+    };
+  }
+
+  IndexInstanceSyncState copyWith(
+          {int? indexInstanceIriId,
+          int? remoteId,
+          String? phase,
+          Value<int?> lastSuccessfulSyncAt = const Value.absent(),
+          Value<int?> lastAttemptStartedAt = const Value.absent(),
+          Value<int?> lastAttemptFinishedAt = const Value.absent(),
+          Value<String?> lastErrorMessage = const Value.absent()}) =>
+      IndexInstanceSyncState(
+        indexInstanceIriId:
+            indexInstanceIriId ?? this.indexInstanceIriId,
+        remoteId: remoteId ?? this.remoteId,
+        phase: phase ?? this.phase,
+        lastSuccessfulSyncAt: lastSuccessfulSyncAt.present
+            ? lastSuccessfulSyncAt.value
+            : this.lastSuccessfulSyncAt,
+        lastAttemptStartedAt: lastAttemptStartedAt.present
+            ? lastAttemptStartedAt.value
+            : this.lastAttemptStartedAt,
+        lastAttemptFinishedAt: lastAttemptFinishedAt.present
+            ? lastAttemptFinishedAt.value
+            : this.lastAttemptFinishedAt,
+        lastErrorMessage: lastErrorMessage.present
+            ? lastErrorMessage.value
+            : this.lastErrorMessage,
+      );
+  IndexInstanceSyncState copyWithCompanion(
+      IndexInstanceSyncStatesCompanion data) {
+    return IndexInstanceSyncState(
+      indexInstanceIriId: data.indexInstanceIriId.present
+          ? data.indexInstanceIriId.value
+          : this.indexInstanceIriId,
+      remoteId:
+          data.remoteId.present ? data.remoteId.value : this.remoteId,
+      phase: data.phase.present ? data.phase.value : this.phase,
+      lastSuccessfulSyncAt: data.lastSuccessfulSyncAt.present
+          ? data.lastSuccessfulSyncAt.value
+          : this.lastSuccessfulSyncAt,
+      lastAttemptStartedAt: data.lastAttemptStartedAt.present
+          ? data.lastAttemptStartedAt.value
+          : this.lastAttemptStartedAt,
+      lastAttemptFinishedAt: data.lastAttemptFinishedAt.present
+          ? data.lastAttemptFinishedAt.value
+          : this.lastAttemptFinishedAt,
+      lastErrorMessage: data.lastErrorMessage.present
+          ? data.lastErrorMessage.value
+          : this.lastErrorMessage,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IndexInstanceSyncState(')
+          ..write('indexInstanceIriId: $indexInstanceIriId, ')
+          ..write('remoteId: $remoteId, ')
+          ..write('phase: $phase, ')
+          ..write('lastSuccessfulSyncAt: $lastSuccessfulSyncAt, ')
+          ..write('lastAttemptStartedAt: $lastAttemptStartedAt, ')
+          ..write('lastAttemptFinishedAt: $lastAttemptFinishedAt, ')
+          ..write('lastErrorMessage: $lastErrorMessage')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(indexInstanceIriId, remoteId, phase,
+      lastSuccessfulSyncAt, lastAttemptStartedAt, lastAttemptFinishedAt,
+      lastErrorMessage);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is IndexInstanceSyncState &&
+          other.indexInstanceIriId == this.indexInstanceIriId &&
+          other.remoteId == this.remoteId &&
+          other.phase == this.phase &&
+          other.lastSuccessfulSyncAt == this.lastSuccessfulSyncAt &&
+          other.lastAttemptStartedAt == this.lastAttemptStartedAt &&
+          other.lastAttemptFinishedAt == this.lastAttemptFinishedAt &&
+          other.lastErrorMessage == this.lastErrorMessage);
+}
+
+class IndexInstanceSyncStatesCompanion
+    extends UpdateCompanion<IndexInstanceSyncState> {
+  final Value<int> indexInstanceIriId;
+  final Value<int> remoteId;
+  final Value<String> phase;
+  final Value<int?> lastSuccessfulSyncAt;
+  final Value<int?> lastAttemptStartedAt;
+  final Value<int?> lastAttemptFinishedAt;
+  final Value<String?> lastErrorMessage;
+  final Value<int> rowid;
+  const IndexInstanceSyncStatesCompanion({
+    this.indexInstanceIriId = const Value.absent(),
+    this.remoteId = const Value.absent(),
+    this.phase = const Value.absent(),
+    this.lastSuccessfulSyncAt = const Value.absent(),
+    this.lastAttemptStartedAt = const Value.absent(),
+    this.lastAttemptFinishedAt = const Value.absent(),
+    this.lastErrorMessage = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  IndexInstanceSyncStatesCompanion.insert({
+    required int indexInstanceIriId,
+    required int remoteId,
+    required String phase,
+    this.lastSuccessfulSyncAt = const Value.absent(),
+    this.lastAttemptStartedAt = const Value.absent(),
+    this.lastAttemptFinishedAt = const Value.absent(),
+    this.lastErrorMessage = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : indexInstanceIriId = Value(indexInstanceIriId),
+        remoteId = Value(remoteId),
+        phase = Value(phase);
+  static Insertable<IndexInstanceSyncState> custom({
+    Expression<int>? indexInstanceIriId,
+    Expression<int>? remoteId,
+    Expression<String>? phase,
+    Expression<int>? lastSuccessfulSyncAt,
+    Expression<int>? lastAttemptStartedAt,
+    Expression<int>? lastAttemptFinishedAt,
+    Expression<String>? lastErrorMessage,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (indexInstanceIriId != null)
+        'index_instance_iri_id': indexInstanceIriId,
+      if (remoteId != null) 'remote_id': remoteId,
+      if (phase != null) 'phase': phase,
+      if (lastSuccessfulSyncAt != null)
+        'last_successful_sync_at': lastSuccessfulSyncAt,
+      if (lastAttemptStartedAt != null)
+        'last_attempt_started_at': lastAttemptStartedAt,
+      if (lastAttemptFinishedAt != null)
+        'last_attempt_finished_at': lastAttemptFinishedAt,
+      if (lastErrorMessage != null) 'last_error_message': lastErrorMessage,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  IndexInstanceSyncStatesCompanion copyWith(
+      {Value<int>? indexInstanceIriId,
+      Value<int>? remoteId,
+      Value<String>? phase,
+      Value<int?>? lastSuccessfulSyncAt,
+      Value<int?>? lastAttemptStartedAt,
+      Value<int?>? lastAttemptFinishedAt,
+      Value<String?>? lastErrorMessage,
+      Value<int>? rowid}) {
+    return IndexInstanceSyncStatesCompanion(
+      indexInstanceIriId: indexInstanceIriId ?? this.indexInstanceIriId,
+      remoteId: remoteId ?? this.remoteId,
+      phase: phase ?? this.phase,
+      lastSuccessfulSyncAt: lastSuccessfulSyncAt ?? this.lastSuccessfulSyncAt,
+      lastAttemptStartedAt:
+          lastAttemptStartedAt ?? this.lastAttemptStartedAt,
+      lastAttemptFinishedAt:
+          lastAttemptFinishedAt ?? this.lastAttemptFinishedAt,
+      lastErrorMessage: lastErrorMessage ?? this.lastErrorMessage,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (indexInstanceIriId.present) {
+      map['index_instance_iri_id'] = Variable<int>(indexInstanceIriId.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
+    }
+    if (phase.present) {
+      map['phase'] = Variable<String>(phase.value);
+    }
+    if (lastSuccessfulSyncAt.present) {
+      map['last_successful_sync_at'] =
+          Variable<int>(lastSuccessfulSyncAt.value);
+    }
+    if (lastAttemptStartedAt.present) {
+      map['last_attempt_started_at'] =
+          Variable<int>(lastAttemptStartedAt.value);
+    }
+    if (lastAttemptFinishedAt.present) {
+      map['last_attempt_finished_at'] =
+          Variable<int>(lastAttemptFinishedAt.value);
+    }
+    if (lastErrorMessage.present) {
+      map['last_error_message'] = Variable<String>(lastErrorMessage.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IndexInstanceSyncStatesCompanion(')
+          ..write('indexInstanceIriId: $indexInstanceIriId, ')
+          ..write('remoteId: $remoteId, ')
+          ..write('phase: $phase, ')
+          ..write('lastSuccessfulSyncAt: $lastSuccessfulSyncAt, ')
+          ..write('lastAttemptStartedAt: $lastAttemptStartedAt, ')
+          ..write('lastAttemptFinishedAt: $lastAttemptFinishedAt, ')
+          ..write('lastErrorMessage: $lastErrorMessage, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$SyncDatabase extends GeneratedDatabase {
   _$SyncDatabase(QueryExecutor e) : super(e);
   $SyncDatabaseManager get managers => $SyncDatabaseManager(this);
@@ -2950,6 +3407,8 @@ abstract class _$SyncDatabase extends GeneratedDatabase {
   late final $RemoteSettingsTable remoteSettings = $RemoteSettingsTable(this);
   late final $RemoteSyncStateTable remoteSyncState =
       $RemoteSyncStateTable(this);
+  late final $IndexInstanceSyncStatesTable indexInstanceSyncStates =
+      $IndexInstanceSyncStatesTable(this);
   late final SyncDocumentDao syncDocumentDao =
       SyncDocumentDao(this as SyncDatabase);
   late final SyncPropertyChangeDao syncPropertyChangeDao =
@@ -2970,7 +3429,8 @@ abstract class _$SyncDatabase extends GeneratedDatabase {
         groupIndexSubscriptions,
         indexIriIdSetVersions,
         remoteSettings,
-        remoteSyncState
+        remoteSyncState,
+        indexInstanceSyncStates
       ];
 }
 

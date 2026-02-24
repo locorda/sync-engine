@@ -3,6 +3,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show QueryRow, Value, Variable;
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart' as storage;
 import 'rdf/rdf_extensions.dart';
@@ -18,8 +19,6 @@ import 'sync_database_impl_flutter.dart'
 /// Provides cross-platform SQLite storage for RDF documents, CRDT metadata,
 /// and property-level change tracking using the Drift ORM.
 class DriftStorage implements Storage {
-  static const _indexSyncStateKeyPrefix = 'index.sync.state';
-
   final SyncDocumentDao documentDao;
   final SyncPropertyChangeDao propertyChangeDao;
   final IndexDao indexDao;
@@ -713,60 +712,6 @@ class DriftStorage implements Storage {
     return idToIri.values.map((iri) => _iriTermFactory(iri)).toList();
   }
 
-  String _encodeIndexSyncKeyPart(String value) {
-    return base64Url.encode(utf8.encode(value));
-  }
-
-  String _decodeIndexSyncKeyPart(String value) {
-    return utf8.decode(base64Url.decode(value));
-  }
-
-  String _indexSyncStateKey(IriTerm indexInstanceIri, RemoteId remoteId) {
-    return [
-      _indexSyncStateKeyPrefix,
-      _encodeIndexSyncKeyPart(indexInstanceIri.value),
-      _encodeIndexSyncKeyPart(remoteId.backend),
-      _encodeIndexSyncKeyPart(remoteId.id),
-    ].join('.');
-  }
-
-  RemoteIndexSyncStateSnapshot _decodeIndexSyncState(String key, String value) {
-    final parts = key.split('.');
-    if (parts.length < 6) {
-      throw StateError('Invalid index sync state key format: $key');
-    }
-
-    final remoteId = RemoteId(
-      _decodeIndexSyncKeyPart(parts[4]),
-      _decodeIndexSyncKeyPart(parts[5]),
-    );
-
-    final payload = json.decode(value) as Map<String, dynamic>;
-    final phaseName = payload['phase'] as String?;
-    if (phaseName == null) {
-      throw StateError(
-          'Missing phase in index sync state payload for key: $key');
-    }
-
-    return RemoteIndexSyncStateSnapshot(
-      remoteId: remoteId,
-      phase: IndexInstanceSyncPhase.values.firstWhere(
-        (candidate) => candidate.name == phaseName,
-        orElse: () => IndexInstanceSyncPhase.notSynced,
-      ),
-      lastSuccessfulSyncAt: payload['lastSuccessfulSyncAt'] != null
-          ? DateTime.parse(payload['lastSuccessfulSyncAt'] as String)
-          : null,
-      lastAttemptStartedAt: payload['lastAttemptStartedAt'] != null
-          ? DateTime.parse(payload['lastAttemptStartedAt'] as String)
-          : null,
-      lastAttemptFinishedAt: payload['lastAttemptFinishedAt'] != null
-          ? DateTime.parse(payload['lastAttemptFinishedAt'] as String)
-          : null,
-      lastErrorMessage: payload['lastErrorMessage'] as String?,
-    );
-  }
-
   @override
   Future<void> upsertIndexInstanceSyncState({
     required IriTerm indexInstanceIri,
@@ -777,68 +722,116 @@ class DriftStorage implements Storage {
     DateTime? lastAttemptFinishedAt,
     String? lastErrorMessage,
   }) async {
-    final key = _indexSyncStateKey(indexInstanceIri, remoteId);
-    final existing = await (_database.select(_database.syncSettings)
-          ..where((row) => row.key.equals(key)))
-        .getSingleOrNull();
+    final indexInstanceIriId =
+        await _getOrCreateIriId(indexInstanceIri.value);
+    final remoteIdInt = await remoteSyncStateDao.getOrCreateRemoteId(
+        remoteId.backend, remoteId.id);
 
+    // Preserve lastSuccessfulSyncAt from existing row unless explicitly provided.
     DateTime? preservedLastSuccessfulSyncAt;
-    if (existing != null) {
-      final existingState = _decodeIndexSyncState(existing.key, existing.value);
-      preservedLastSuccessfulSyncAt = existingState.lastSuccessfulSyncAt;
+    if (lastSuccessfulSyncAt == null) {
+      final existing = await (_database.select(_database.indexInstanceSyncStates)
+            ..where((row) =>
+                row.indexInstanceIriId.equals(indexInstanceIriId) &
+                row.remoteId.equals(remoteIdInt)))
+          .getSingleOrNull();
+      if (existing?.lastSuccessfulSyncAt != null) {
+        preservedLastSuccessfulSyncAt = DateTime.fromMillisecondsSinceEpoch(
+            existing!.lastSuccessfulSyncAt!);
+      }
     }
 
-    final payload = {
-      'phase': phase.name,
-      'lastSuccessfulSyncAt':
-          (lastSuccessfulSyncAt ?? preservedLastSuccessfulSyncAt)
-              ?.toIso8601String(),
-      'lastAttemptStartedAt': lastAttemptStartedAt?.toIso8601String(),
-      'lastAttemptFinishedAt': lastAttemptFinishedAt?.toIso8601String(),
-      'lastErrorMessage': lastErrorMessage,
-    };
+    final effectiveLastSuccessfulSyncAt =
+        lastSuccessfulSyncAt ?? preservedLastSuccessfulSyncAt;
 
-    await setSetting(key, json.encode(payload));
+    await _database
+        .into(_database.indexInstanceSyncStates)
+        .insertOnConflictUpdate(
+          IndexInstanceSyncStatesCompanion.insert(
+            indexInstanceIriId: indexInstanceIriId,
+            remoteId: remoteIdInt,
+            phase: phase.name,
+            lastSuccessfulSyncAt: Value(
+                effectiveLastSuccessfulSyncAt?.millisecondsSinceEpoch),
+            lastAttemptStartedAt:
+                Value(lastAttemptStartedAt?.millisecondsSinceEpoch),
+            lastAttemptFinishedAt:
+                Value(lastAttemptFinishedAt?.millisecondsSinceEpoch),
+            lastErrorMessage: Value(lastErrorMessage),
+          ),
+        );
   }
+
+  static const _indexSyncStateQuery = '''
+    SELECT rs.remote_type, rs.remote_id as remote_id_str,
+           iss.phase, iss.last_successful_sync_at,
+           iss.last_attempt_started_at, iss.last_attempt_finished_at,
+           iss.last_error_message
+    FROM index_instance_sync_states iss
+    JOIN remote_settings rs ON rs.id = iss.remote_id
+    WHERE iss.index_instance_iri_id = ?
+  ''';
 
   @override
   Future<IndexInstanceSyncStateSnapshot> getIndexInstanceSyncState(
       IriTerm indexInstanceIri) async {
-    final prefix =
-        '$_indexSyncStateKeyPrefix.${_encodeIndexSyncKeyPart(indexInstanceIri.value)}.';
-    final rows = (await _database.select(_database.syncSettings).get())
-        .where((row) => row.key.startsWith(prefix))
-        .toList(growable: false);
-
-    final perRemote = <RemoteId, RemoteIndexSyncStateSnapshot>{};
-    for (final row in rows) {
-      final snapshot = _decodeIndexSyncState(row.key, row.value);
-      perRemote[snapshot.remoteId] = snapshot;
-    }
-
-    return IndexInstanceSyncStateSnapshot(
-      indexInstanceIri: indexInstanceIri,
-      perRemote: perRemote,
-    );
+    final indexInstanceIriId =
+        await _getOrCreateIriId(indexInstanceIri.value);
+    final rows = await _database.customSelect(
+      _indexSyncStateQuery,
+      variables: [Variable.withInt(indexInstanceIriId)],
+      readsFrom: {_database.indexInstanceSyncStates, _database.remoteSettings},
+    ).get();
+    return _buildSnapshot(indexInstanceIri, rows);
   }
 
   @override
   Stream<IndexInstanceSyncStateSnapshot> watchIndexInstanceSyncState(
-      IriTerm indexInstanceIri) {
-    final prefix =
-        '$_indexSyncStateKeyPrefix.${_encodeIndexSyncKeyPart(indexInstanceIri.value)}.';
-    return _database.select(_database.syncSettings).watch().map((rows) {
-      final perRemote = <RemoteId, RemoteIndexSyncStateSnapshot>{};
-      for (final row in rows.where((entry) => entry.key.startsWith(prefix))) {
-        final snapshot = _decodeIndexSyncState(row.key, row.value);
-        perRemote[snapshot.remoteId] = snapshot;
-      }
+      IriTerm indexInstanceIri) async* {
+    final indexInstanceIriId =
+        await _getOrCreateIriId(indexInstanceIri.value);
 
-      return IndexInstanceSyncStateSnapshot(
-        indexInstanceIri: indexInstanceIri,
-        perRemote: perRemote,
+    yield* _database.customSelect(
+      _indexSyncStateQuery,
+      variables: [Variable.withInt(indexInstanceIriId)],
+      readsFrom: {_database.indexInstanceSyncStates, _database.remoteSettings},
+    ).watch().map((rows) => _buildSnapshot(indexInstanceIri, rows));
+  }
+
+  IndexInstanceSyncStateSnapshot _buildSnapshot(
+    IriTerm indexInstanceIri,
+    List<QueryRow> rows,
+  ) {
+    final perRemote = <RemoteId, RemoteIndexSyncStateSnapshot>{};
+    for (final row in rows) {
+      final remote = RemoteId(
+          row.read<String>('remote_type'), row.read<String>('remote_id_str'));
+      final phaseName = row.read<String>('phase');
+      final lastSuccessfulMs = row.readNullable<int>('last_successful_sync_at');
+      final lastStartedMs = row.readNullable<int>('last_attempt_started_at');
+      final lastFinishedMs = row.readNullable<int>('last_attempt_finished_at');
+      perRemote[remote] = RemoteIndexSyncStateSnapshot(
+        remoteId: remote,
+        phase: IndexInstanceSyncPhase.values.firstWhere(
+          (p) => p.name == phaseName,
+          orElse: () => IndexInstanceSyncPhase.notSynced,
+        ),
+        lastSuccessfulSyncAt: lastSuccessfulMs != null
+            ? DateTime.fromMillisecondsSinceEpoch(lastSuccessfulMs)
+            : null,
+        lastAttemptStartedAt: lastStartedMs != null
+            ? DateTime.fromMillisecondsSinceEpoch(lastStartedMs)
+            : null,
+        lastAttemptFinishedAt: lastFinishedMs != null
+            ? DateTime.fromMillisecondsSinceEpoch(lastFinishedMs)
+            : null,
+        lastErrorMessage: row.readNullable<String>('last_error_message'),
       );
-    });
+    }
+    return IndexInstanceSyncStateSnapshot(
+      indexInstanceIri: indexInstanceIri,
+      perRemote: perRemote,
+    );
   }
 
   @override

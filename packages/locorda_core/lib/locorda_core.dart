@@ -81,7 +81,7 @@ export 'src/vocab/generated/_index.dart'
         SyncUniversalProperties;
 export 'src/hydration_result.dart' show HydrationSubscription;
 export 'src/sync_engine.dart'
-    show HydrationBatch, IdentifiedGraph, IndexInstanceSyncFailedException;
+    show HydrationBatch, IdentifiedGraph, IndexInstanceSyncFailedException, defaultIndexLocalName;
 // Index configuration
 export 'src/index/index_config_base.dart'
     show
