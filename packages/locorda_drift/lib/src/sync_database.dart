@@ -110,6 +110,8 @@ class GroupIndexSubscriptions extends Table {
   IntColumn get indexedTypeIriId => integer().references(SyncIris, #id)();
 
   /// Fetch policy: 'onRequest' or 'prefetch'
+  /// TODO: could be renamed to rootResourceFetchPolicy to be more explicit, but
+  /// this column is older that that name and we did not want to change it yet
   TextColumn get itemFetchPolicy => text()();
 
   /// Timestamp when this subscription was created (milliseconds since epoch)
@@ -117,6 +119,36 @@ class GroupIndexSubscriptions extends Table {
 
   @override
   Set<Column> get primaryKey => {groupIndexIriId};
+}
+
+/// Per-index-instance sync state by remote.
+///
+/// Stores the latest synchronization phase and timestamps for a specific
+/// index instance (`index_instance_iri_id`) and remote (`remote_setting_id`).
+class IndexInstanceSyncStates extends Table {
+  @ReferenceName('indexInstanceIri')
+  IntColumn get indexInstanceIriId => integer().references(SyncIris, #id)();
+
+  @ReferenceName('remoteSetting')
+  IntColumn get remoteSettingId => integer().references(RemoteSettings, #id)();
+
+  /// Phase name from [RemoteSyncPhase].
+  TextColumn get phase => text()();
+
+  /// Last successful sync completion timestamp (UTC milliseconds since epoch).
+  IntColumn get lastSuccessfulSyncAtMs => integer().nullable()();
+
+  /// Last sync attempt start timestamp (UTC milliseconds since epoch).
+  IntColumn get lastAttemptStartedAtMs => integer().nullable()();
+
+  /// Last sync attempt finish timestamp (UTC milliseconds since epoch).
+  IntColumn get lastAttemptFinishedAtMs => integer().nullable()();
+
+  /// Last sync error message for this index-instance/remote pair.
+  TextColumn get lastErrorMessage => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {indexInstanceIriId, remoteSettingId};
 }
 
 /// Sync metadata for tracking last sync timestamps
@@ -778,16 +810,24 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
     required int groupIndexIriId,
     required int groupIndexTemplateIriId,
     required int indexedTypeIriId,
-    required String itemFetchPolicy,
+    required String rootResourceFetchPolicy,
     required int createdAt,
   }) async {
-    await into(db.groupIndexSubscriptions).insertOnConflictUpdate(
+    await into(db.groupIndexSubscriptions).insert(
       GroupIndexSubscriptionsCompanion.insert(
         groupIndexIriId: Value(groupIndexIriId),
         groupIndexTemplateIriId: groupIndexTemplateIriId,
         indexedTypeIriId: indexedTypeIriId,
-        itemFetchPolicy: itemFetchPolicy,
+        itemFetchPolicy: rootResourceFetchPolicy,
         createdAt: createdAt,
+      ),
+      onConflict: DoUpdate(
+        (_) => GroupIndexSubscriptionsCompanion(
+          groupIndexTemplateIriId: Value(groupIndexTemplateIriId),
+          indexedTypeIriId: Value(indexedTypeIriId),
+          itemFetchPolicy: Value(rootResourceFetchPolicy),
+        ),
+        target: [db.groupIndexSubscriptions.groupIndexIriId],
       ),
     );
   }
@@ -844,7 +884,7 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
       return SubscribedGroupIndexData(
         groupIndexIri: groupIndexIri.iri,
         indexedTypeIri: indexedTypeIri, // We filtered by this
-        itemFetchPolicy: subscription.itemFetchPolicy,
+        rootResourceFetchPolicy: subscription.itemFetchPolicy,
       );
     }).toList();
   }
@@ -1308,12 +1348,12 @@ class DriftIndexEntry {
 class SubscribedGroupIndexData {
   final String groupIndexIri;
   final String indexedTypeIri;
-  final String itemFetchPolicy;
+  final String rootResourceFetchPolicy;
 
   SubscribedGroupIndexData({
     required this.groupIndexIri,
     required this.indexedTypeIri,
-    required this.itemFetchPolicy,
+    required this.rootResourceFetchPolicy,
   });
 }
 
@@ -1350,6 +1390,7 @@ class DocumentWithIri {
     SyncSettings,
     IndexEntries,
     GroupIndexSubscriptions,
+    IndexInstanceSyncStates,
     IndexIriIdSetVersions,
     RemoteSettings,
     RemoteSyncState,
@@ -1364,7 +1405,7 @@ class SyncDatabase extends _$SyncDatabase {
   SyncDatabase.forExecutor(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1423,6 +1464,11 @@ class SyncDatabase extends _$SyncDatabase {
         CREATE INDEX IF NOT EXISTS idx_index_entries_index_updated
         ON index_entries(index_iri_id, updated_at) 
         WHERE is_deleted = 0;
+      ''');
+
+          await m.database.customStatement('''
+        CREATE INDEX IF NOT EXISTS idx_index_instance_sync_states_remote
+        ON index_instance_sync_states(remote_setting_id);
       ''');
         },
         onUpgrade: (Migrator m, int from, int to) async {
@@ -1503,6 +1549,14 @@ class SyncDatabase extends _$SyncDatabase {
             await m.database.customStatement('''
               CREATE INDEX IF NOT EXISTS idx_index_entries_resource_type
               ON index_entries(resource_type_iri_id);
+            ''');
+          }
+          if (from < 7) {
+            await m.createTable(indexInstanceSyncStates);
+
+            await m.database.customStatement('''
+              CREATE INDEX IF NOT EXISTS idx_index_instance_sync_states_remote
+              ON index_instance_sync_states(remote_setting_id);
             ''');
           }
         },

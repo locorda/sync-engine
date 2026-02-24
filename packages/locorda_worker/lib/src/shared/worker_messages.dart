@@ -175,60 +175,188 @@ class EnsureResponse extends WorkerResponse {
   }
 }
 
-/// Configure group index subscription request
-class ConfigureGroupIndexSubscriptionRequest extends WorkerRequest {
+/// Ensure group index subscription request.
+class EnsureGroupIndexSubscriptionRequest extends WorkerRequest {
   final String indexName;
   final String groupKeyGraphTurtle;
-  final String itemFetchPolicy; // 'prefetch' or 'onRequest'
 
-  ConfigureGroupIndexSubscriptionRequest(
+  /// `null` means: use the policy configured on the GroupIndexData in the engine.
+  final Map<String, dynamic>? rootResourceFetchPolicyMap;
+  final bool triggerSync;
+
+  EnsureGroupIndexSubscriptionRequest(
     super.requestId,
     this.indexName,
     this.groupKeyGraphTurtle,
-    this.itemFetchPolicy,
+    this.rootResourceFetchPolicyMap,
+    this.triggerSync,
   );
 
   @override
   Map<String, dynamic> toJson() => {
-        'type': 'ConfigureGroupIndexSubscriptionRequest',
+        'type': 'EnsureGroupIndexSubscriptionRequest',
         'requestId': requestId,
         'indexName': indexName,
         'groupKeyGraphTurtle': groupKeyGraphTurtle,
-        'itemFetchPolicy': itemFetchPolicy,
+        if (rootResourceFetchPolicyMap != null)
+          'rootResourceFetchPolicyMap': rootResourceFetchPolicyMap,
+        'triggerSync': triggerSync,
       };
 
-  factory ConfigureGroupIndexSubscriptionRequest.fromJson(
+  factory EnsureGroupIndexSubscriptionRequest.fromJson(
       Map<String, dynamic> json) {
-    return ConfigureGroupIndexSubscriptionRequest(
+    final policyMap = json['rootResourceFetchPolicyMap'];
+    return EnsureGroupIndexSubscriptionRequest(
       json['requestId'] as String,
       json['indexName'] as String,
       json['groupKeyGraphTurtle'] as String,
-      json['itemFetchPolicy'] as String,
+      policyMap != null ? (policyMap as Map).cast<String, dynamic>() : null,
+      json['triggerSync'] as bool? ?? true,
     );
   }
 }
 
-class ConfigureGroupIndexSubscriptionResponse extends WorkerResponse {
+class EnsureGroupIndexSubscriptionResponse extends WorkerResponse {
   final bool success;
   final String? error;
 
-  ConfigureGroupIndexSubscriptionResponse(super.requestId,
+  EnsureGroupIndexSubscriptionResponse(super.requestId,
       {required this.success, this.error});
 
   @override
   Map<String, dynamic> toJson() => {
-        'type': 'ConfigureGroupIndexSubscriptionResponse',
+        'type': 'EnsureGroupIndexSubscriptionResponse',
         'requestId': requestId,
         'success': success,
         if (error != null) 'error': error,
       };
 
-  factory ConfigureGroupIndexSubscriptionResponse.fromJson(
+  factory EnsureGroupIndexSubscriptionResponse.fromJson(
       Map<String, dynamic> json) {
-    return ConfigureGroupIndexSubscriptionResponse(
+    return EnsureGroupIndexSubscriptionResponse(
       json['requestId'] as String,
       success: json['success'] as bool,
       error: json['error'] as String?,
+    );
+  }
+}
+
+/// Watch index-instance sync state request (streaming).
+class WatchIndexInstanceSyncStateRequest extends WorkerRequest {
+  final String watchKind; // 'group' | 'type'
+  final String? indexName;
+  final String? groupKeyGraphTurtle;
+  final String? typeIri;
+
+  WatchIndexInstanceSyncStateRequest(
+    super.requestId, {
+    required this.watchKind,
+    this.indexName,
+    this.groupKeyGraphTurtle,
+    this.typeIri,
+  });
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': 'WatchIndexInstanceSyncStateRequest',
+        'requestId': requestId,
+        'watchKind': watchKind,
+        if (indexName != null) 'indexName': indexName,
+        if (groupKeyGraphTurtle != null)
+          'groupKeyGraphTurtle': groupKeyGraphTurtle,
+        if (typeIri != null) 'typeIri': typeIri,
+      };
+
+  factory WatchIndexInstanceSyncStateRequest.fromJson(
+      Map<String, dynamic> json) {
+    return WatchIndexInstanceSyncStateRequest(
+      json['requestId'] as String,
+      watchKind: json['watchKind'] as String,
+      indexName: json['indexName'] as String?,
+      groupKeyGraphTurtle: json['groupKeyGraphTurtle'] as String?,
+      typeIri: json['typeIri'] as String?,
+    );
+  }
+}
+
+/// Cancel watch request for a previously registered stream.
+class CancelWatchRequest extends WorkerRequest {
+  final String targetRequestId;
+
+  CancelWatchRequest(super.requestId, {required this.targetRequestId});
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': 'CancelWatchRequest',
+        'requestId': requestId,
+        'targetRequestId': targetRequestId,
+      };
+
+  factory CancelWatchRequest.fromJson(Map<String, dynamic> json) {
+    return CancelWatchRequest(
+      json['requestId'] as String,
+      targetRequestId: json['targetRequestId'] as String,
+    );
+  }
+}
+
+class CancelWatchResponse extends WorkerResponse {
+  final bool success;
+  final String? error;
+
+  CancelWatchResponse(super.requestId, {required this.success, this.error});
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': 'CancelWatchResponse',
+        'requestId': requestId,
+        'success': success,
+        if (error != null) 'error': error,
+      };
+
+  factory CancelWatchResponse.fromJson(Map<String, dynamic> json) {
+    return CancelWatchResponse(
+      json['requestId'] as String,
+      success: json['success'] as bool,
+      error: json['error'] as String?,
+    );
+  }
+}
+
+/// Streaming message carrying index-instance sync state snapshots.
+class IndexInstanceSyncStateMessage extends WorkerResponse {
+  final String indexInstanceIri;
+  final List<Map<String, dynamic>> perRemote;
+  final bool isInitial;
+  final bool isComplete;
+
+  IndexInstanceSyncStateMessage(
+    super.requestId, {
+    required this.indexInstanceIri,
+    required this.perRemote,
+    required this.isInitial,
+    required this.isComplete,
+  });
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': 'IndexInstanceSyncStateMessage',
+        'requestId': requestId,
+        'indexInstanceIri': indexInstanceIri,
+        'perRemote': perRemote,
+        'isInitial': isInitial,
+        'isComplete': isComplete,
+      };
+
+  factory IndexInstanceSyncStateMessage.fromJson(Map<String, dynamic> json) {
+    return IndexInstanceSyncStateMessage(
+      json['requestId'] as String,
+      indexInstanceIri: json['indexInstanceIri'] as String,
+      perRemote: (json['perRemote'] as List<dynamic>)
+          .map((entry) => (entry as Map).cast<String, dynamic>())
+          .toList(),
+      isInitial: json['isInitial'] as bool,
+      isComplete: json['isComplete'] as bool,
     );
   }
 }
@@ -551,10 +679,16 @@ WorkerMessage deserializeMessage(Map<String, dynamic> json) {
     'SaveResponse' => SaveResponse.fromJson(json),
     'DeleteDocumentRequest' => DeleteDocumentRequest.fromJson(json),
     'DeleteDocumentResponse' => DeleteDocumentResponse.fromJson(json),
-    'ConfigureGroupIndexSubscriptionRequest' =>
-      ConfigureGroupIndexSubscriptionRequest.fromJson(json),
-    'ConfigureGroupIndexSubscriptionResponse' =>
-      ConfigureGroupIndexSubscriptionResponse.fromJson(json),
+    'EnsureGroupIndexSubscriptionRequest' =>
+      EnsureGroupIndexSubscriptionRequest.fromJson(json),
+    'EnsureGroupIndexSubscriptionResponse' =>
+      EnsureGroupIndexSubscriptionResponse.fromJson(json),
+    'WatchIndexInstanceSyncStateRequest' =>
+      WatchIndexInstanceSyncStateRequest.fromJson(json),
+    'CancelWatchRequest' => CancelWatchRequest.fromJson(json),
+    'CancelWatchResponse' => CancelWatchResponse.fromJson(json),
+    'IndexInstanceSyncStateMessage' =>
+      IndexInstanceSyncStateMessage.fromJson(json),
     'HydrateStreamRequest' => HydrateStreamRequest.fromJson(json),
     'HydrationBatchMessage' => HydrationBatchMessage.fromJson(json),
     'SyncTriggerRequest' => SyncTriggerRequest.fromJson(json),

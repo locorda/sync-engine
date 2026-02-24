@@ -70,7 +70,7 @@ Before calling `replace_string_in_file`, `create_file`, or any edit tool, you MU
 1. **Data Resource Layer**: Clean RDF using standard vocabularies (schema.org)
 2. **Merge Contract Layer**: Property-level CRDT rules via `sync:` and `algo:` vocabularies
 3. **Indexing Layer**: Performance via sharded indices (`idx:` vocab) - supports FullIndex (monolithic) and GroupIndex (partitioned)
-4. **Sync Strategy Layer**: App-controlled sync patterns with ItemFetchPolicy (onRequest/prefetch)
+4. **Sync Strategy Layer**: App-controlled sync patterns with RootResourceFetchPolicy (onRequest/prefetch)
 
 **Key Innovation**: Hybrid Logical Clocks combine causality tracking (logical time) with intuitive tie-breaking (physical timestamps).
 

@@ -51,7 +51,7 @@ void main() {
     test('FullIndexGraphConfig serialization', () {
       final original = FullIndexData(
         localName: 'allNotes',
-        itemFetchPolicy: ItemFetchPolicy.prefetch,
+        rootResourceFetchPolicy: RootResourceFetchPolicy.prefetch,
         item: IndexItemData({
           IriTerm('http://schema.org/name'),
         }),
@@ -61,7 +61,8 @@ void main() {
       final deserialized = FullIndexData.fromJson(json);
 
       expect(deserialized.localName, equals(original.localName));
-      expect(deserialized.itemFetchPolicy, equals(ItemFetchPolicy.prefetch));
+      expect(deserialized.rootResourceFetchPolicy,
+          equals(RootResourceFetchPolicy.prefetch));
       expect(deserialized.item?.properties, equals(original.item?.properties));
     });
 
@@ -123,7 +124,7 @@ void main() {
         indices: [
           FullIndexData(
             localName: 'allNotes',
-            itemFetchPolicy: ItemFetchPolicy.prefetch,
+            rootResourceFetchPolicy: RootResourceFetchPolicy.prefetch,
           ),
           GroupIndexData(
             localName: 'byMonth',
@@ -159,7 +160,7 @@ void main() {
             indices: [
               FullIndexData(
                 localName: 'allNotes',
-                itemFetchPolicy: ItemFetchPolicy.onRequest,
+                rootResourceFetchPolicy: RootResourceFetchPolicy.onRequest,
                 item: IndexItemData({
                   IriTerm('http://schema.org/name'),
                   IriTerm('http://schema.org/description'),

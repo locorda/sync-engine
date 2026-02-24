@@ -87,7 +87,7 @@ final config = LocordaConfig(
       indices: [
         FullIndexConfig(
           localName: 'default',
-          itemFetchPolicy: ItemFetchPolicy.prefetch,
+          rootResourceFetchPolicy: RootResourceFetchPolicy.prefetch,
         ),
       ],
     ),
@@ -209,7 +209,7 @@ class Recipe { }
 ```dart
 @RootResource(
   appVocab,
-  fullIndex: FullIndex(itemFetchPolicy: ItemFetchPolicy.onRequest),
+  fullIndex: FullIndex(rootResourceFetchPolicy: RootResourceFetchPolicy.onRequest),
   mergeContractVersion: 'v2',
 )
 class Note { }
@@ -241,10 +241,10 @@ class Note { }
    // src/parameters/full_index.dart
    class FullIndex {
      final String localName;
-     final ItemFetchPolicy itemFetchPolicy;
+     final RootResourceFetchPolicy rootResourceFetchPolicy;
      const FullIndex({
        this.localName = 'default',
-       this.itemFetchPolicy = ItemFetchPolicy.prefetch,
+       this.rootResourceFetchPolicy = RootResourceFetchPolicy.prefetch,
      });
    }
    ```
@@ -319,7 +319,7 @@ class GroupIndexConfig extends GroupIndexConfigBase { ... } // was: GroupIndex
 
 ### Current Issues
 
-1. **Inconsistency:** Some classes have `Lcrd` prefix, some don't (e.g., `AppVocab`, `ItemFetchPolicy`)
+1. **Inconsistency:** Some classes have `Lcrd` prefix, some don't (e.g., `AppVocab`, `RootResourceFetchPolicy`)
 2. **Verbosity:** Writing `@LcrdRootResource` repeatedly gets tedious
 3. **Unclear purpose:** "Lcrd" doesn't communicate meaning to new users
 4. **Generic enough:** In `locorda_annotations` package, context is clear without prefix

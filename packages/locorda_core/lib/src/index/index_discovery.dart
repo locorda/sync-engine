@@ -21,8 +21,6 @@ import 'package:locorda_core/src/index/shard_determiner.dart'
     show ShardDeterminationMode;
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/standard_sync_engine.dart';
-import 'package:locorda_core/src/storage/storage_interface.dart'
-    show IndexEntryWithIri;
 import 'package:locorda_core/src/util/build_effective_config.dart';
 import 'package:locorda_core/src/util/lru_cache.dart';
 import 'package:locorda_rdf_core/core.dart';

@@ -42,12 +42,12 @@ class FullIndex {
   final String localName;
 
   /// Item fetch policy for the FullIndex.
-  final ItemFetchPolicy policy;
+  final RootResourceFetchPolicy policy;
 
   /// Creates a FullIndex configuration with defaults.
   const FullIndex({
     this.localName = 'default',
-    this.policy = ItemFetchPolicy.prefetch,
+    this.policy = RootResourceFetchPolicy.prefetch,
   }) : isEnabled = true;
 
   /// Disables FullIndex generation for this resource.
@@ -55,11 +55,11 @@ class FullIndex {
   const FullIndex.disabled()
       : isEnabled = false,
         localName = '',
-        policy = ItemFetchPolicy.prefetch;
+        policy = RootResourceFetchPolicy.prefetch;
 }
 ```
 
-Note: `ItemFetchPolicy` is imported from `locorda_core` which is already a dependency. The sealed class `ItemFetchPolicy` has static const members `prefetch` and `onRequest`, so use those as default values. Verify the import path works via `package:locorda_core/locorda_core.dart`.
+Note: `RootResourceFetchPolicy` is imported from `locorda_core` which is already a dependency. The sealed class `RootResourceFetchPolicy` has static const members `prefetch` and `onRequest`, so use those as default values. Verify the import path works via `package:locorda_core/locorda_core.dart`.
 
 #### 1b. Add `GroupingProperty` and `RegexTransform` (new, add before or after `GroupKey`)
 
@@ -704,7 +704,7 @@ _writeFunction(buffer)
 **Import collection:**
 Collect unique `sourceImport` values from all data objects. Always import:
 - `package:locorda_objects/locorda_objects.dart` (for `LocordaConfig`, `ResourceConfig`, etc.)
-- `package:locorda_core/locorda_core.dart` (for `ItemFetchPolicy`, `GroupingProperty`, `RegexTransform`)
+- `package:locorda_core/locorda_core.dart` (for `RootResourceFetchPolicy`, `GroupingProperty`, `RegexTransform`)
 
 **The `crdtMapping` URI generation:**
 The `crdtMapping` annotation value is a full absolute IRI, stored as a raw Dart source expression (may contain const interpolation like `'$appBaseUrl/mappings/note-v1.ttl'`). The generator emits `Uri.parse(<source expression>)` directly, preserving the original const expression.

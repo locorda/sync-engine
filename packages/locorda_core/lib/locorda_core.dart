@@ -80,11 +80,12 @@ export 'src/vocab/generated/_index.dart'
         SyncResourceStatement,
         SyncUniversalProperties;
 export 'src/hydration_result.dart' show HydrationSubscription;
-export 'src/sync_engine.dart' show HydrationBatch, IdentifiedGraph;
+export 'src/sync_engine.dart'
+    show HydrationBatch, IdentifiedGraph, IndexInstanceSyncFailedException;
 // Index configuration
 export 'src/index/index_config_base.dart'
     show
-        ItemFetchPolicy,
+        RootResourceFetchPolicy,
         IndexItemConfigBase,
         CrdtIndexConfigBase,
         GroupIndexConfigBase,
@@ -118,11 +119,16 @@ export 'src/storage/remote_storage.dart'
 export 'src/storage/storage_interface.dart'
     show
         Storage,
+        RemoteSyncPhase,
+        IndexInstanceSyncState,
+        RemoteSyncEntry,
         StoredDocument,
         DocumentMetadata,
         PropertyChange,
         SaveDocumentResult,
-        DocumentsResult;
+        DocumentsResult,
+        IndexEntriesPage,
+        IndexEntryWithIri;
 export 'src/storage/concurrent_update_exception.dart'
     show ConcurrentUpdateException;
 export 'src/storage/in_memory_storage.dart' show InMemoryStorage;

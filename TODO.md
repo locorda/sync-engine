@@ -122,7 +122,7 @@
 - [x] generate as much plumbing as possible (initLocorda, config, crdt mappings etc.)
 - [x] Really simple minimal example app with in-memory storage and dir remote
 - [x] Documentation - set up locorda.dev/docs with getting started guide, API docs, etc. 
-- [ ] Improve Documentation - Group/Full Index, IndexItem, ItemFetchPolicy etc.
+- [ ] Improve Documentation - Group/Full Index, IndexItem, RootResourceFetchPolicy etc.
 - [ ]
 
 # Priority 6: Reality Check: make chat essence use sync engine
@@ -203,6 +203,8 @@
 - [ ] Final check if the spec in ARCHITECTURE.md is fully implemented
 - [ ] do not check generated *.js files in for example apps, rather make sure we run the build_runner before deployment
 - [ ] BUGFIX: generated crdt merge mapping files like packages/locorda/example/minimal/lib/src/generated/mapping_bootstrap.g.dart contain a rule for `mc:predicate <vocab#id> ; ca:mergeWith ca:LWW_Register` - but where does this id thing come from? Why is it not excluded like other excluded fields are? Are we missing some more exclusions here, which are done in the RDF mapper vocabulary generator?
+- [ ] GroupIndexData.rootResourceFetchPolicy currently cannot be filled via annotation - in generated code it is always the default. We should be able to control this via @GroupKey
+- [ ] URGENT FIXME: `test_cases/dataset/02_foreign_shard_discovery/04_default_installation_sync/Shard` zeigt, dass das recipe in allen 3 shard datasets ist - allerdings mit 3 verschiedenen states !?!? das darf eigentlich nicht sein, wir hätten da auf einen State konvergieren müssen!
 
 ## Future Feature Ideas
 

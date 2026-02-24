@@ -194,7 +194,7 @@ abstract interface class RemoteStorage {
   /// Whether this remote storage uses shard datasets (all resources in one file per shard).
   ///
   /// **Important Implications:**
-  /// - When true: All ItemFetchPolicy must be Prefetch() (lazy loading impossible)
+  /// - When true: All RootResourceFetchPolicy must be Prefetch() (lazy loading impossible)
   /// - When true: All index entries must have corresponding documents in storage
   /// - Backend switch: Can only switch to dataset mode if storage is complete
   ///

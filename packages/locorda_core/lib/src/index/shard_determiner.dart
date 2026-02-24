@@ -103,12 +103,14 @@ class MissingGroupIndex {
   final IriTerm templateIri;
   final String groupKey;
   final IriTerm groupIndexIri;
+  final RootResourceFetchPolicy rootResourceFetchPolicy;
 
   const MissingGroupIndex({
     required this.typeIri,
     required this.templateIri,
     required this.groupKey,
     required this.groupIndexIri,
+    required this.rootResourceFetchPolicy,
   });
 
   @override
@@ -119,18 +121,63 @@ class MissingGroupIndex {
           typeIri == other.typeIri &&
           templateIri == other.templateIri &&
           groupKey == other.groupKey &&
-          groupIndexIri == other.groupIndexIri;
+          groupIndexIri == other.groupIndexIri &&
+          rootResourceFetchPolicy == other.rootResourceFetchPolicy;
 
   @override
   int get hashCode =>
       typeIri.hashCode ^
       templateIri.hashCode ^
       groupKey.hashCode ^
-      groupIndexIri.hashCode;
+      groupIndexIri.hashCode ^
+      rootResourceFetchPolicy.hashCode;
 
   @override
   String toString() =>
       'MissingGroupIndex(groupKey: $groupKey, groupIndexIri: $groupIndexIri)';
+}
+
+/// Information about a GroupIndex resolved from grouping rules.
+///
+/// Unlike [MissingGroupIndex], this represents all relevant GroupIndex
+/// instances for a resource (both existing and missing).
+class ResolvedGroupIndex {
+  final IriTerm typeIri;
+  final IriTerm templateIri;
+  final String groupKey;
+  final IriTerm groupIndexIri;
+  final RootResourceFetchPolicy rootResourceFetchPolicy;
+
+  const ResolvedGroupIndex({
+    required this.typeIri,
+    required this.templateIri,
+    required this.groupKey,
+    required this.groupIndexIri,
+    required this.rootResourceFetchPolicy,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ResolvedGroupIndex &&
+          runtimeType == other.runtimeType &&
+          typeIri == other.typeIri &&
+          templateIri == other.templateIri &&
+          groupKey == other.groupKey &&
+          groupIndexIri == other.groupIndexIri &&
+          rootResourceFetchPolicy == other.rootResourceFetchPolicy;
+
+  @override
+  int get hashCode =>
+      typeIri.hashCode ^
+      templateIri.hashCode ^
+      groupKey.hashCode ^
+      groupIndexIri.hashCode ^
+      rootResourceFetchPolicy.hashCode;
+
+  @override
+  String toString() =>
+      'ResolvedGroupIndex(groupKey: $groupKey, groupIndexIri: $groupIndexIri)';
 }
 
 /// Result of shard determination including shards and missing components.
@@ -141,11 +188,13 @@ class MissingGroupIndex {
 /// - Successfully determined shards
 class ShardDeterminationResult {
   final Set<IriTerm> shards;
+  final List<ResolvedGroupIndex> resolvedGroupIndices;
   final List<MissingGroupIndex> missingGroupIndices;
   final List<MissingIndexDocument> missingIndexDocuments;
 
   const ShardDeterminationResult({
     required this.shards,
+    required this.resolvedGroupIndices,
     required this.missingGroupIndices,
     required this.missingIndexDocuments,
   });
@@ -209,6 +258,7 @@ class ShardDeterminer {
       (
         Set<IriTerm> all,
         Set<IriTerm> removed,
+        List<ResolvedGroupIndex> resolvedGroupIndices,
         List<MissingGroupIndex> missingGroupIndices,
         List<MissingIndexDocument> missingIndexDocuments
       )> calculateShards(
@@ -240,6 +290,7 @@ class ShardDeterminer {
           )
         : const ShardDeterminationResult(
             shards: <IriTerm>{},
+            resolvedGroupIndices: <ResolvedGroupIndex>[],
             missingGroupIndices: <MissingGroupIndex>[],
             missingIndexDocuments: <MissingIndexDocument>[],
           );
@@ -301,6 +352,10 @@ class ShardDeterminer {
       ...newShardResult.missingGroupIndices,
       ...oldShardResult.missingGroupIndices,
     }.toList();
+    final allResolvedGroupIndices = {
+      ...newShardResult.resolvedGroupIndices,
+      ...oldShardResult.resolvedGroupIndices,
+    }.toList();
     final allMissingIndexDocuments = {
       ...newShardResult.missingIndexDocuments,
       ...oldShardResult.missingIndexDocuments,
@@ -309,6 +364,7 @@ class ShardDeterminer {
     return (
       allShards,
       removed,
+      allResolvedGroupIndices,
       allMissingGroupIndices,
       allMissingIndexDocuments
     );
@@ -344,6 +400,7 @@ class ShardDeterminer {
     required ShardDeterminationMode mode,
   }) async {
     final shards = <IriTerm>{};
+    final resolvedGroupIndices = <ResolvedGroupIndex>[];
     final missingGroupIndices = <MissingGroupIndex>[];
     final missingIndexDocuments = <MissingIndexDocument>[];
 
@@ -356,6 +413,7 @@ class ShardDeterminer {
       }
       return ShardDeterminationResult(
         shards: shards,
+        resolvedGroupIndices: resolvedGroupIndices,
         missingGroupIndices: missingGroupIndices,
         missingIndexDocuments: missingIndexDocuments,
       );
@@ -372,6 +430,7 @@ class ShardDeterminer {
             mode: mode,
           );
           shards.addAll(result.shards);
+          resolvedGroupIndices.addAll(result.resolvedGroupIndices);
           missingIndexDocuments.addAll(result.missingIndexDocuments);
 
         case GroupIndexData _:
@@ -383,6 +442,7 @@ class ShardDeterminer {
             mode: mode,
           );
           shards.addAll(result.shards);
+          resolvedGroupIndices.addAll(result.resolvedGroupIndices);
           missingGroupIndices.addAll(result.missingGroupIndices);
           missingIndexDocuments.addAll(result.missingIndexDocuments);
       }
@@ -390,6 +450,7 @@ class ShardDeterminer {
 
     return ShardDeterminationResult(
       shards: shards,
+      resolvedGroupIndices: resolvedGroupIndices,
       missingGroupIndices: missingGroupIndices,
       missingIndexDocuments: missingIndexDocuments,
     );
@@ -452,6 +513,7 @@ class ShardDeterminer {
       }
       return ShardDeterminationResult(
         shards: shards.toSet(),
+        resolvedGroupIndices: const [],
         missingGroupIndices: const [],
         missingIndexDocuments: missingIndexDocuments,
       );
@@ -465,6 +527,7 @@ class ShardDeterminer {
           'Could not parse sharding config from index: ${indexResourceIri.debug}');
       return ShardDeterminationResult(
         shards: shards.toSet(),
+        resolvedGroupIndices: const [],
         missingGroupIndices: const [],
         missingIndexDocuments: missingIndexDocuments,
       );
@@ -489,6 +552,7 @@ class ShardDeterminer {
 
     return ShardDeterminationResult(
       shards: shards.toSet(),
+      resolvedGroupIndices: const [],
       missingGroupIndices: const [],
       missingIndexDocuments: missingIndexDocuments,
     );
@@ -518,6 +582,7 @@ class ShardDeterminer {
     required ShardDeterminationMode mode,
   }) async {
     final shards = <IriTerm>[];
+    final resolvedGroupIndices = <ResolvedGroupIndex>[];
     final missingGroupIndices = <MissingGroupIndex>[];
     final missingIndexDocuments = <MissingIndexDocument>[];
 
@@ -536,6 +601,7 @@ class ShardDeterminer {
           'Resource $resourceIri has no group keys for template $templateIri');
       return ShardDeterminationResult(
         shards: shards.toSet(),
+        resolvedGroupIndices: resolvedGroupIndices,
         missingGroupIndices: missingGroupIndices,
         missingIndexDocuments: missingIndexDocuments,
       );
@@ -563,6 +629,7 @@ class ShardDeterminer {
           'GroupIndexTemplate document not found (${mode.name} mode): $templateDocumentIri');
       return ShardDeterminationResult(
         shards: shards.toSet(),
+        resolvedGroupIndices: resolvedGroupIndices,
         missingGroupIndices: missingGroupIndices,
         missingIndexDocuments: missingIndexDocuments,
       );
@@ -575,6 +642,7 @@ class ShardDeterminer {
           'Could not parse sharding config from GroupIndexTemplate: $templateIri');
       return ShardDeterminationResult(
         shards: shards.toSet(),
+        resolvedGroupIndices: resolvedGroupIndices,
         missingGroupIndices: missingGroupIndices,
         missingIndexDocuments: missingIndexDocuments,
       );
@@ -586,6 +654,16 @@ class ShardDeterminer {
       final groupIndexIri =
           _rdfGenerator.generateGroupIndexIri(templateIri, groupKey);
       final groupIndexDocumentIri = groupIndexIri.getDocumentIri();
+
+      resolvedGroupIndices.add(
+        ResolvedGroupIndex(
+          typeIri: typeIri,
+          templateIri: templateIri,
+          groupKey: groupKey,
+          groupIndexIri: groupIndexIri,
+          rootResourceFetchPolicy: config.rootResourceFetchPolicy,
+        ),
+      );
 
       // Check if GroupIndex exists
       final groupIndexDoc = await _storage.getDocument(groupIndexDocumentIri);
@@ -600,6 +678,7 @@ class ShardDeterminer {
           templateIri: templateIri,
           groupKey: groupKey,
           groupIndexIri: groupIndexIri,
+          rootResourceFetchPolicy: config.rootResourceFetchPolicy,
         ));
         // Still calculate the shard IRI so caller knows which shard to use
         // once the GroupIndex is created
@@ -625,6 +704,7 @@ class ShardDeterminer {
 
     return ShardDeterminationResult(
       shards: shards.toSet(),
+      resolvedGroupIndices: resolvedGroupIndices,
       missingGroupIndices: missingGroupIndices,
       missingIndexDocuments: missingIndexDocuments,
     );

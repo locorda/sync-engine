@@ -2,13 +2,13 @@
   "resources": [
     {
       "typeIri": "https://example.org/vocab/personal-notes#NotesCategory",
-      "documentIriTemplate":"https://example.com/categories/{id}",
+      "documentIriTemplate": "https://example.com/categories/{id}",
       "crdtMapping": "https://example.org/test/mappings/category-v1",
       "indices": [
         {
           "type": "FullIndex",
           "localName": "category-index",
-          "itemFetchPolicy": "prefetch"
+          "rootResourceFetchPolicy": "prefetch"
         }
       ]
     }

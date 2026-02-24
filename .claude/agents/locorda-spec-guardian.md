@@ -37,7 +37,7 @@ Your primary responsibilities are:
 
 - **4-Layer Architecture**: Data Resource → Merge Contract → Indexing → Sync Strategy layers and their interactions
 - **CRDT Algorithms**: LWW-Register, FWW-Register, OR-Set, 2P-Set, Immutable with Hybrid Logical Clock mechanics
-- **Index Types**: FullIndex vs GroupIndex, ItemFetchPolicy (onRequest/prefetch), sharding strategies
+- **Index Types**: FullIndex vs GroupIndex, RootResourceFetchPolicy (onRequest/prefetch), sharding strategies
 - **RDF Integration**: Fragment identifiers, reification for tombstones, blank node handling, vocabulary usage
 - **Deletion Semantics**: Property-level vs document-level, tombstones, soft deletion vs framework deletion
 - **Sync Strategies**: Repository-based hydration, cursor management, change detection

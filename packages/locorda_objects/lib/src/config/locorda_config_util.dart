@@ -88,6 +88,25 @@ String? getGroupIndexName<G>(LocordaConfig config, String localName) {
   return null;
 }
 
+/// For the combination of resource type and localName, find the corresponding
+/// full-index name used by the core configuration.
+String? getFullIndexNameForResourceType(
+    LocordaConfig config, Type resourceType, String localName) {
+  for (final resource in config.resources) {
+    if (resource.type != resourceType) {
+      continue;
+    }
+
+    for (final index in resource.indices) {
+      if (index is FullIndexConfig && index.localName == localName) {
+        return getIndexName(resource, index);
+      }
+    }
+  }
+
+  return null;
+}
+
 String getIndexName(ResourceConfig resource, CrdtIndexConfig index) =>
     switch (index) {
       FullIndexConfig _ =>

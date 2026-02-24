@@ -9,19 +9,43 @@ import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/rdf/xsd.dart';
 import 'package:locorda_rdf_core/core.dart';
 
-sealed class ItemFetchPolicy {
-  /// Proactive item fetching - all items referenced in the index are automatically
-  /// downloaded from the pod to local when they are updated remotely or not already present locally.
+/// Controls whether root resources referenced by an index are proactively
+/// fetched from remotes during sync, or only when explicitly requested.
+///
+/// A *root resource* is a domain object annotated with `@RootResource` (e.g.
+/// `Note`, `Category`). It includes all its nested sub-resources and local
+/// resources. This policy does **not** govern fetching of index documents
+/// themselves — those are always synced.
+///
+/// ## Choosing a policy
+///
+/// - Use [prefetch] when the app should have all data locally available at all
+///   times (e.g. a notes app where every note must be readable offline).
+/// - Use [onRequest] when the index may reference many resources but the app
+///   only needs a subset locally (e.g. a large shared library where individual
+///   items are loaded on demand).
+/// - Use [prefetchFiltered] for a middle ground: proactively fetch only
+///   resources matching a specific predicate/value filter.
+sealed class RootResourceFetchPolicy {
+  /// Proactively fetches all root resources referenced by the index.
+  ///
+  /// During each sync cycle, every resource listed in the index is downloaded
+  /// from the remote if not already up-to-date locally. Guarantees full offline
+  /// availability at the cost of higher bandwidth and storage usage.
   static const prefetch = Prefetch._();
 
-  /// Lazy item fetching - items are only downloaded from the pod to local
-  /// when explicitly requested by the application. Once downloaded, items are
-  /// automatically updated when remote changes occur.
+  /// Fetches root resources only when explicitly requested by the application.
+  ///
+  /// During sync, index entries are updated (so the app knows *what* exists)
+  /// but the referenced resources themselves are **not** downloaded unless the
+  /// app calls `ensure()` or an equivalent on-demand fetch. Once a resource has
+  /// been fetched, subsequent remote updates to it are applied automatically.
   static const onRequest = OnRequest._();
 
-  const ItemFetchPolicy._();
+  const RootResourceFetchPolicy._();
 
-  /// Prefetch not all items, but only those that have a given predicate with one of the given object values
+  /// Proactively fetches only root resources that have [predicate] set to one
+  /// of [acceptedObjectValues]; all others follow [onRequest] semantics.
   static PrefetchFiltered prefetchFiltered(
           IriTerm predicate, Set<RdfObject> acceptedObjectValues) =>
       PrefetchFiltered._(predicate, acceptedObjectValues);
@@ -30,13 +54,13 @@ sealed class ItemFetchPolicy {
   Map<String, dynamic> toMap();
 
   /// Deserialize from a JSON-compatible map
-  static ItemFetchPolicy fromMap(Map<String, dynamic> map) {
+  static RootResourceFetchPolicy fromMap(Map<String, dynamic> map) {
     final type = map['type'] as String;
     switch (type) {
       case 'prefetch':
-        return ItemFetchPolicy.prefetch;
+        return RootResourceFetchPolicy.prefetch;
       case 'onRequest':
-        return ItemFetchPolicy.onRequest;
+        return RootResourceFetchPolicy.onRequest;
       case 'prefetchFiltered':
         return PrefetchFiltered._(
           IriTerm(map['predicate'] as String),
@@ -45,7 +69,7 @@ sealed class ItemFetchPolicy {
               .toSet(),
         );
       default:
-        throw ArgumentError('Unknown ItemFetchPolicy type: $type');
+        throw ArgumentError('Unknown RootResourceFetchPolicy type: $type');
     }
   }
 
@@ -64,7 +88,7 @@ sealed class ItemFetchPolicy {
         );
       case 'blank':
         throw UnsupportedError(
-            'Blank nodes are not supported in ItemFetchPolicy serialization');
+            'Blank nodes are not supported in RootResourceFetchPolicy serialization');
       default:
         throw ArgumentError('Unknown RdfObject type: $objType');
     }
@@ -83,27 +107,30 @@ sealed class ItemFetchPolicy {
       };
     } else if (obj is BlankNodeTerm) {
       throw UnsupportedError(
-          'Blank nodes are not supported in ItemFetchPolicy serialization');
+          'Blank nodes are not supported in RootResourceFetchPolicy serialization');
     }
     throw ArgumentError('Unsupported RdfObject type: ${obj.runtimeType}');
   }
 }
 
-class Prefetch extends ItemFetchPolicy {
+/// See [RootResourceFetchPolicy.prefetch].
+class Prefetch extends RootResourceFetchPolicy {
   const Prefetch._() : super._();
 
   @override
   Map<String, dynamic> toMap() => {'type': 'prefetch'};
 }
 
-class OnRequest extends ItemFetchPolicy {
+/// See [RootResourceFetchPolicy.onRequest].
+class OnRequest extends RootResourceFetchPolicy {
   const OnRequest._() : super._();
 
   @override
   Map<String, dynamic> toMap() => {'type': 'onRequest'};
 }
 
-class PrefetchFiltered extends ItemFetchPolicy {
+/// See [RootResourceFetchPolicy.prefetchFiltered].
+class PrefetchFiltered extends RootResourceFetchPolicy {
   final IriTerm filterPredicate;
   final Set<RdfObject> acceptedObjectValues;
 
@@ -115,7 +142,7 @@ class PrefetchFiltered extends ItemFetchPolicy {
         'type': 'prefetchFiltered',
         'predicate': filterPredicate.value,
         'acceptedObjectValues': acceptedObjectValues
-            .map((obj) => ItemFetchPolicy._serializeRdfObject(obj))
+            .map((obj) => RootResourceFetchPolicy._serializeRdfObject(obj))
             .toList(),
       };
 }
@@ -169,11 +196,28 @@ abstract class GroupIndexConfigBase extends CrdtIndexConfigBase {
   /// Properties used for grouping resources, must be in sync with the groupKeyType
   final List<GroupingPropertyData> groupingProperties;
 
+  /// Policy for fetching root resources referenced by this group index.
+  ///
+  /// When `prefetch`: all resources referenced in a group instance are
+  /// eagerly fetched during sync.
+  ///
+  /// When `onRequest`: resources are only fetched when explicitly requested
+  /// (e.g., via ensure() or related APIs). Index entries are still synced,
+  /// but the referenced resource documents are not automatically downloaded.
+  ///
+  /// Note that this is just a default setting - when you subscribe to a specific
+  /// group instance (e.g. notes from 2025-08), you can override this policy
+  /// for that group instance by passing a fetch policy to the subscription method.
+  final RootResourceFetchPolicy rootResourceFetchPolicy;
+
   const GroupIndexConfigBase({
     required this.localName,
     this.item,
     required this.groupingProperties,
-  }) : assert(groupingProperties.length > 0,
+    RootResourceFetchPolicy? rootResourceFetchPolicy,
+  })  : rootResourceFetchPolicy =
+            rootResourceFetchPolicy ?? RootResourceFetchPolicy.prefetch,
+        assert(groupingProperties.length > 0,
             'GroupIndex requires at least one grouping property');
 }
 
@@ -196,19 +240,20 @@ abstract class FullIndexConfigBase extends CrdtIndexConfigBase {
   /// **IMPORTANT:** Some backends (e.g. Google Drive) store all resources
   /// embedded in the shards document and thus do not support lazy fetching
   /// of individual resources. In such cases,
-  /// the itemFetchPolicy will be automatically overridden here to `prefetch`
+  /// the rootResourceFetchPolicy will be automatically overridden here to `prefetch`
   /// regardless of the originally specified configuration.
   ///
   /// So, an application that originally specified `onRequest` fetching might
   /// actually get `prefetch` here when using such backends.
   ///
-  final ItemFetchPolicy itemFetchPolicy;
+  final RootResourceFetchPolicy rootResourceFetchPolicy;
 
   const FullIndexConfigBase({
     required this.localName,
     this.item,
-    ItemFetchPolicy? itemFetchPolicy,
-  }) : itemFetchPolicy = itemFetchPolicy ?? ItemFetchPolicy.prefetch;
+    RootResourceFetchPolicy? rootResourceFetchPolicy,
+  }) : rootResourceFetchPolicy =
+            rootResourceFetchPolicy ?? RootResourceFetchPolicy.prefetch;
 }
 
 /// Defines how a property should be used for grouping in a GroupIndex.

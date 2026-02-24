@@ -137,15 +137,15 @@ Locorda fetch behavior is defined by two orthogonal choices:
 
 ### When to fetch (timing)
 
-- `ItemFetchPolicy.prefetch`: fetch automatically
-- `ItemFetchPolicy.onRequest`: fetch only when requested (see section 9 for required app patterns)
+- `RootResourceFetchPolicy.prefetch`: fetch automatically
+- `RootResourceFetchPolicy.onRequest`: fetch only when requested (see section 9 for required app patterns)
 
 In this example:
 
 - Notes use a `GroupIndex` grouped by month
-- Categories use a `FullIndex` with `ItemFetchPolicy.prefetch`
+- Categories use a `FullIndex` with `RootResourceFetchPolicy.prefetch`
 
-Repository method `configureMonthGroupSubscription()` changes the timing policy based on UI filters.
+Repository method `ensureMonthGroupSubscription()` applies the timing policy based on UI filters.
 
 ---
 
@@ -155,7 +155,7 @@ This is optional and only needed when your backend stores **each item as its own
 
 ### On‑request fetch requires `ensure()`
 
-If a resource (or group) is configured with `ItemFetchPolicy.onRequest`, you must **not** read it directly from local storage. Wrap the read in `syncEngine.ensure<T>()` so Locorda can fetch missing data on demand.
+If a resource (or group) is configured with `RootResourceFetchPolicy.onRequest`, you must **not** read it directly from local storage. Wrap the read in `syncEngine.ensure<T>()` so Locorda can fetch missing data on demand.
 
 Example pattern (see `NoteRepository.getNote`):
 

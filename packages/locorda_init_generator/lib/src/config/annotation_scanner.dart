@@ -352,7 +352,7 @@ class AnnotationScanner {
     final policyField = getField(fullIndexField, 'policy');
     String policyStr = 'prefetch';
     if (policyField != null) {
-      // The policy field is an ItemFetchPolicy enum, extract its name
+      // The policy field is an RootResourceFetchPolicy enum, extract its name
       final policyType = policyField.type;
       if (policyType is InterfaceType) {
         final policyTypeName = policyType.element.name;

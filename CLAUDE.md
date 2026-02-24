@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Architecture**: 4-layer (Data Resource → Merge Contract → Indexing → Sync Strategy)
 **CRDT Types**: LWW-Register, FWW-Register, OR-Set, 2P-Set, Immutable
-**Index Types**: FullIndex (monolithic) vs GroupIndex (partitioned), with ItemFetchPolicy (onRequest/prefetch)
+**Index Types**: FullIndex (monolithic) vs GroupIndex (partitioned), with RootResourceFetchPolicy (onRequest/prefetch)
 **Scale**: 2-100 installations (optimal: 2-20)
 **Key Commands**: `melos bootstrap`, `melos test`, `melos format`, `dart tool/run_tests.dart`
 **Critical Rule**: Ask before ANY code edit (bug fixes, features, refactoring)
@@ -85,7 +85,7 @@ The project is built around a **4-layer architecture** that enables offline-firs
 
 4. **Sync Strategy Layer**: Application-controlled synchronization patterns
    - **Index Types**: FullIndex (single index for all items) vs GroupIndex (partitioned by groups)
-   - **ItemFetchPolicy**: onRequest (on-demand) vs prefetch (eager loading)
+   - **RootResourceFetchPolicy**: onRequest (on-demand) vs prefetch (eager loading)
    - **Sharding**: Indices split into multiple shards for performance
 
 ### Core Design Principles
@@ -286,7 +286,7 @@ When working on this codebase:
 
 **Developer Control**: App controls local storage/querying via repositories, library handles CRDT merging
 **Sync Operations**: `syncSystem.save<T>(object)` and `syncSystem.deleteDocument<T>(object)` for changes
-**Index Configuration**: Configure per-resource via FullIndexConfig or GroupIndexConfig with ItemFetchPolicy
+**Index Configuration**: Configure per-resource via FullIndexConfig or GroupIndexConfig with RootResourceFetchPolicy
 
 ### Deletion Handling
 - Framework deletion is for system-level cleanup (storage optimization, retention policies)

@@ -64,7 +64,7 @@ class SyncFunction {
   /// Validate that configuration and data support the given backend's dataset mode.
   ///
   /// When backend uses `useShardDatasets = true`, we must ensure:
-  /// 1. **Config constraint**: All ItemFetchPolicy must be Prefetch()
+  /// 1. **Config constraint**: All RootResourceFetchPolicy must be Prefetch()
   ///    - OnRequest/PrefetchFiltered lazy loading is incompatible with dataset shards
   ///    - Cannot fetch individual resources from a dataset file
   /// 2. **Data constraint**: No missing documents for index entries
@@ -82,7 +82,7 @@ class SyncFunction {
     // 1. Validate config: Check that all fetch policies are Prefetch()
     final nonPrefetchResources = config.resources.where((resource) {
       return resource.indices.whereType<FullIndexData>().any((index) {
-        final policy = index.itemFetchPolicy;
+        final policy = index.rootResourceFetchPolicy;
         return policy is! Prefetch;
       });
     }).toList();
@@ -91,11 +91,11 @@ class SyncFunction {
       final resourceNames =
           nonPrefetchResources.map((r) => r.typeIri.value).join(', ');
       throw StateError(
-          'Cannot use shard datasets with non-Prefetch ItemFetchPolicy. '
+          'Cannot use shard datasets with non-Prefetch RootResourceFetchPolicy. '
           'Lazy loading (OnRequest/PrefetchFiltered) is incompatible with dataset shards '
           'because individual resources cannot be fetched from a dataset file. '
           'Resources with non-Prefetch policies: $resourceNames. '
-          'Please change all ItemFetchPolicy to Prefetch() for dataset shard backends.');
+          'Please change all RootResourceFetchPolicy to Prefetch() for dataset shard backends.');
     }
 
     // 2. Validate data: Check for missing documents

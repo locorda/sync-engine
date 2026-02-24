@@ -46,8 +46,8 @@ class MockNoteRepository implements NoteRepository {
   }
 
   @override
-  Future<void> configureMonthGroupSubscription(
-      NoteGroupKey monthKey, ItemFetchPolicy fetchPolicy) async {
+  Future<void> ensureMonthGroupSubscription(
+      NoteGroupKey monthKey, RootResourceFetchPolicy fetchPolicy) async {
     // Mock implementation - do nothing for tests
   }
 

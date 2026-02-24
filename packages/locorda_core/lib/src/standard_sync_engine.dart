@@ -97,7 +97,7 @@ class ConfigService {
       final SyncEngineConfig _effectiveConfig;
       if (_needsPrefetchAll) {
         _log.info(
-            'Dataset-based remote detected - adjusting ItemFetchPolicy to Prefetch() for all indices');
+            'Dataset-based remote detected - adjusting RootResourceFetchPolicy to Prefetch() for all indices');
         _effectiveConfig = _adjustConfigForDatasets(_initialConfig);
       } else {
         _log.info('No dataset-based remotes - using original configuration');
@@ -113,16 +113,16 @@ class ConfigService {
   static SyncEngineConfig _adjustConfigForDatasets(SyncEngineConfig config) {
     final adjustedResources = config.resources.map((resource) {
       final adjustedIndices = resource.indices.map((index) {
-        // Only FullIndex has itemFetchPolicy that needs adjustment
+        // Only FullIndex has rootResourceFetchPolicy that needs adjustment
         return switch (index) {
-          FullIndexData(itemFetchPolicy: final policy)
+          FullIndexData(rootResourceFetchPolicy: final policy)
               when policy is! Prefetch =>
             () {
               _log.warning(
-                  'Overriding ItemFetchPolicy for index ${index.localName} to Prefetch() for dataset compatibility');
+                  'Overriding RootResourceFetchPolicy for index ${index.localName} to Prefetch() for dataset compatibility');
 
               return index.copyWith(
-                itemFetchPolicy: ItemFetchPolicy.prefetch,
+                rootResourceFetchPolicy: RootResourceFetchPolicy.prefetch,
               );
             }(),
           _ => index, // GroupIndexData or already Prefetch - no change needed
@@ -163,6 +163,7 @@ class StandardSyncEngine implements SyncEngine {
   final PhysicalTimestampFactory _physicalTimestampFactory;
   final IndexRdfGenerator _indexRdfGenerator;
   final List<Future<void> Function()> _closeFunctions;
+  final Map<IriTerm, String> _groupIndexSubscriptionFingerprints = {};
 
   /// Access the sync manager for manual sync triggering and status monitoring.
   SyncManager get syncManager => _syncManager;
@@ -195,6 +196,305 @@ class StandardSyncEngine implements SyncEngine {
         _closeFunctions = closeFunctions;
 
   SyncEngineConfig get _effectiveConfig => _configService.currentConfig;
+
+  IndexInstanceSyncState _normalizeSnapshotWithConfiguredRemotes(
+    IndexInstanceSyncState snapshot,
+    Set<RemoteId> configuredRemotes,
+  ) {
+    final perRemote = Map<RemoteId, RemoteSyncEntry>.from(
+      snapshot.perRemote,
+    );
+
+    for (final remoteId in configuredRemotes) {
+      perRemote.putIfAbsent(
+        remoteId,
+        () => RemoteSyncEntry(
+          remoteId: remoteId,
+          phase: RemoteSyncPhase.notSynced,
+        ),
+      );
+    }
+
+    return IndexInstanceSyncState(
+      indexInstanceIri: snapshot.indexInstanceIri,
+      perRemote: perRemote,
+    );
+  }
+
+  Future<void> _autoSubscribeGroupIndicesOnSave(
+      List<ResolvedGroupIndex> resolvedGroupIndices) async {
+    if (resolvedGroupIndices.isEmpty) {
+      return;
+    }
+
+    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+    final uniqueByIndexIri = <IriTerm, ResolvedGroupIndex>{
+      for (final resolved in resolvedGroupIndices)
+        resolved.groupIndexIri: resolved,
+    };
+
+    for (final resolved in uniqueByIndexIri.values) {
+      await _saveGroupIndexSubscriptionIfNeeded(
+        groupIndexIri: resolved.groupIndexIri,
+        groupIndexTemplateIri: resolved.templateIri,
+        indexedType: resolved.typeIri,
+        rootResourceFetchPolicy: resolved.rootResourceFetchPolicy,
+        createdAtMs: now,
+      );
+    }
+  }
+
+  Future<void> _saveGroupIndexSubscription({
+    required IriTerm groupIndexIri,
+    required IriTerm groupIndexTemplateIri,
+    required IriTerm indexedType,
+    required RootResourceFetchPolicy rootResourceFetchPolicy,
+    required int createdAtMs,
+  }) {
+    return _storage.saveGroupIndexSubscription(
+      groupIndexIri: groupIndexIri,
+      groupIndexTemplateIri: groupIndexTemplateIri,
+      indexedType: indexedType,
+      rootResourceFetchPolicy: rootResourceFetchPolicy,
+      createdAt: createdAtMs,
+    );
+  }
+
+  String _groupIndexSubscriptionFingerprint({
+    required IriTerm groupIndexTemplateIri,
+    required IriTerm indexedType,
+    required RootResourceFetchPolicy rootResourceFetchPolicy,
+  }) {
+    final policyFingerprint = switch (rootResourceFetchPolicy) {
+      Prefetch() => 'prefetch',
+      OnRequest() => 'onRequest',
+      PrefetchFiltered(:final filterPredicate, :final acceptedObjectValues) =>
+        () {
+          final values = acceptedObjectValues
+              .map((obj) => switch (obj) {
+                    IriTerm(:final value) => 'iri:$value',
+                    LiteralTerm(
+                      :final value,
+                      :final datatype,
+                      :final language
+                    ) =>
+                      'lit:$value|${datatype.value}|${language ?? ''}',
+                    _ => throw UnsupportedError(
+                        'Unsupported RdfObject in PrefetchFiltered fingerprint: ${obj.runtimeType}')
+                  })
+              .toList()
+            ..sort();
+          return 'prefetchFiltered:${filterPredicate.value}:${values.join(',')}';
+        }(),
+    };
+
+    return '${groupIndexTemplateIri.value}|${indexedType.value}|$policyFingerprint';
+  }
+
+  Future<void> _saveGroupIndexSubscriptionIfNeeded({
+    required IriTerm groupIndexIri,
+    required IriTerm groupIndexTemplateIri,
+    required IriTerm indexedType,
+    required RootResourceFetchPolicy rootResourceFetchPolicy,
+    required int createdAtMs,
+  }) async {
+    final fingerprint = _groupIndexSubscriptionFingerprint(
+      groupIndexTemplateIri: groupIndexTemplateIri,
+      indexedType: indexedType,
+      rootResourceFetchPolicy: rootResourceFetchPolicy,
+    );
+
+    if (_groupIndexSubscriptionFingerprints[groupIndexIri] == fingerprint) {
+      return;
+    }
+
+    await _saveGroupIndexSubscription(
+      groupIndexIri: groupIndexIri,
+      groupIndexTemplateIri: groupIndexTemplateIri,
+      indexedType: indexedType,
+      rootResourceFetchPolicy: rootResourceFetchPolicy,
+      createdAtMs: createdAtMs,
+    );
+
+    _groupIndexSubscriptionFingerprints[groupIndexIri] = fingerprint;
+  }
+
+  Future<void> _configureGroupIndexSubscription({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+    RootResourceFetchPolicy? rootResourceFetchPolicy,
+  }) async {
+    final (resourceConfig, groupIndexTemplateIri, iris, indexConfig) =
+        await _resolveGroupIndexIris(
+            groupKeyGraph: groupKeyGraph, indexName: indexName);
+
+    // Resolve policy: explicit parameter overrides config, which overrides default
+    final effectivePolicy =
+        rootResourceFetchPolicy ?? indexConfig.rootResourceFetchPolicy;
+
+    for (final iri in iris) {
+      await _saveGroupIndexSubscriptionIfNeeded(
+        groupIndexIri: iri,
+        groupIndexTemplateIri: groupIndexTemplateIri,
+        indexedType: resourceConfig.typeIri,
+        rootResourceFetchPolicy: effectivePolicy,
+        createdAtMs: _physicalTimestampFactory().millisecondsSinceEpoch,
+      );
+    }
+  }
+
+  Future<(ResourceConfigData, IriTerm, Iterable<IriTerm>, GroupIndexData)>
+      _resolveGroupIndexIris({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+  }) async {
+    final (resourceConfig, indexConfig) =
+        _effectiveConfig.findGroupIndexConfig(indexName)!;
+    final groupIndexTemplateIri =
+        _indexRdfGenerator.generateGroupIndexTemplateIri(
+      indexConfig,
+      resourceConfig.typeIri,
+    );
+    final groupIdentifiers =
+        await _groupIndexManager.getGroupIdentifiers(indexName, groupKeyGraph);
+
+    final iris = groupIdentifiers
+        .map((g) => _indexRdfGenerator.generateGroupIndexIri(
+              groupIndexTemplateIri,
+              g,
+            ))
+        .toList(growable: false);
+    return (resourceConfig, groupIndexTemplateIri, iris, indexConfig);
+  }
+
+  Future<IriTerm> _resolveSingleGroupIndexIri({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+  }) async {
+    final (_, _, iris, _) = await _resolveGroupIndexIris(
+        indexName: indexName, groupKeyGraph: groupKeyGraph);
+    final groupIdentifierList = iris.toList(growable: false);
+    if (groupIdentifierList.isEmpty) {
+      throw StateError(
+          'No group identifiers were generated for index "$indexName".');
+    }
+    if (groupIdentifierList.length > 1) {
+      throw StateError('''
+watchGroupIndexSyncState watches exactly one group instance, but the provided \
+groupKeyGraph yielded ${groupIdentifierList.length} group identifiers for index "$indexName".
+
+This happens when a grouping property is multi-valued (e.g. multiple tags on a document). \
+Pass a groupKeyGraph with a single value per grouping property.
+
+To observe multiple groups, call watchGroupIndexSyncState once per group and combine \
+the streams yourself.''');
+    }
+    return groupIdentifierList.single;
+  }
+
+  @override
+  Stream<IndexInstanceSyncState> watchGroupIndexSyncState({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+  }) {
+    return Rx.fromCallable(
+      () => _resolveSingleGroupIndexIri(
+        indexName: indexName,
+        groupKeyGraph: groupKeyGraph,
+      ),
+    ).switchMap((groupIndexIri) {
+      return Rx.combineLatest2<IndexInstanceSyncState, Set<RemoteId>,
+          IndexInstanceSyncState>(
+        _storage.watchIndexInstanceSyncState(groupIndexIri),
+        _storage.watchConfiguredRemoteIds(),
+        (snapshot, configuredRemotes) =>
+            _normalizeSnapshotWithConfiguredRemotes(
+                snapshot, configuredRemotes),
+      );
+    });
+  }
+
+  @override
+  Stream<IndexInstanceSyncState> watchSyncState({
+    required IriTerm typeIri,
+    String? indexName,
+  }) {
+    final resourceConfig = _effectiveConfig
+        .getResourceConfig(typeIri); // Validate typeIri and throw if not found
+    final fullIndex = indexName == null
+        ? resourceConfig.indices.whereType<FullIndexData>().single
+        : resourceConfig.getIndexByName(indexName) as FullIndexData;
+
+    final fullIndexIri = _indexRdfGenerator.generateFullIndexIri(
+      fullIndex,
+      typeIri,
+    );
+
+    return Rx.combineLatest2<IndexInstanceSyncState, Set<RemoteId>,
+        IndexInstanceSyncState>(
+      _storage.watchIndexInstanceSyncState(fullIndexIri),
+      _storage.watchConfiguredRemoteIds(),
+      (snapshot, configuredRemotes) =>
+          _normalizeSnapshotWithConfiguredRemotes(snapshot, configuredRemotes),
+    );
+  }
+
+  @override
+  @override
+  Future<void> ensureGroupIndexSubscription({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+    RootResourceFetchPolicy? rootResourceFetchPolicy,
+    bool triggerSync = true,
+  }) async {
+    await _configureGroupIndexSubscription(
+      indexName: indexName,
+      groupKeyGraph: groupKeyGraph,
+      rootResourceFetchPolicy: rootResourceFetchPolicy,
+    );
+
+    if (!triggerSync) {
+      return;
+    }
+
+    final currentState = await watchGroupIndexSyncState(
+      indexName: indexName,
+      groupKeyGraph: groupKeyGraph,
+    ).first;
+
+    if (!currentState.hasCompletedInitialSync) {
+      unawaited(syncManager.sync(trigger: SyncTrigger.dataChange));
+    }
+  }
+
+  @override
+  Future<void> ensureGroupIndexSynced({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+    RootResourceFetchPolicy? rootResourceFetchPolicy,
+  }) async {
+    await ensureGroupIndexSubscription(
+      indexName: indexName,
+      groupKeyGraph: groupKeyGraph,
+      rootResourceFetchPolicy: rootResourceFetchPolicy,
+      triggerSync: true,
+    );
+
+    final state = await watchGroupIndexSyncState(
+      indexName: indexName,
+      groupKeyGraph: groupKeyGraph,
+    ).firstWhere(
+      (snapshot) =>
+          snapshot.hasCompletedInitialSync || snapshot.hasInitialSyncError,
+    );
+
+    if (state.hasInitialSyncError) {
+      throw IndexInstanceSyncFailedException(
+        'Initial sync failed for one or more remotes.',
+        lastState: state,
+      );
+    }
+  }
 
   /// Set up the CRDT sync system with resource-focused configuration.
   ///
@@ -397,81 +697,6 @@ class StandardSyncEngine implements SyncEngine {
     return sync;
   }
 
-  /// Configure subscription to a group index with the given group key.
-  ///
-  /// ## Group Index Subscription Overview
-  ///
-  /// Group subscriptions determine how items within a group are fetched and synced:
-  ///
-  /// **Default State**: Groups are not subscribed by default. Items can still be
-  /// accessed on-demand, but no automatic sync or prefetching occurs.
-  ///
-  /// **Implicit Subscriptions**: When individual items are fetched, groups they
-  /// belong to (via their `idx:belongsToIndexShard` properties) are automatically subscribed
-  /// with `ItemFetchPolicy.onRequest`. This ensures basic sync functionality.
-  ///
-  /// **Explicit Configuration**: This method allows you to explicitly configure
-  /// a group's subscription with a specific fetch policy:
-  /// - `ItemFetchPolicy.onRequest`: Fetch items only when specifically requested
-  /// - `ItemFetchPolicy.prefetch`: Eagerly fetch all items in the group
-  ///
-  /// ## Subscription Lifecycle
-  ///
-  /// - **Create**: First call creates subscription with specified policy
-  /// - **Update**: Subsequent calls update the fetch policy
-  /// - **Persistence**: Subscriptions persist across app restarts
-  /// - **No Unsubscribe**: Once subscribed, groups cannot be unsubscribed as
-  ///   the subscription is required for proper sync management of items
-  ///
-  /// ## Technical Details
-  ///
-  /// Validates that G is a valid group type for the specified localName,
-  /// converts the group key to RDF triples, and generates group identifiers
-  /// using the configured GroupKeyGenerator.
-  ///
-  /// ## Example
-  /// ```dart
-  /// // Configure current month for eager fetching
-  /// await syncSystem.configureGroupIndexSubscription(
-  ///   NoteGroupKey.currentMonth,
-  ///   ItemFetchPolicy.prefetch
-  /// );
-  ///
-  /// // Later, change to on-demand fetching
-  /// await syncSystem.configureGroupIndexSubscription(
-  ///   NoteGroupKey.currentMonth,
-  ///   ItemFetchPolicy.onRequest
-  /// );
-  /// ```
-  ///
-  /// Throws [GroupIndexGraphSubscriptionException] if:
-  /// - No GroupIndex is configured for type G with the given localName
-  /// - The group key cannot be serialized to RDF
-  /// - No group identifiers can be generated from the group key
-  ///
-  Future<void> configureGroupIndexSubscription(String indexName,
-      RdfGraph groupKeyGraph, ItemFetchPolicy itemFetchPolicy) async {
-    // Use the GroupIndexSubscriptionManager to handle validation and processing
-    final groupIdentifiers =
-        await _groupIndexManager.getGroupIdentifiers(indexName, groupKeyGraph);
-    final (resourceConfig, indexConfig) =
-        _effectiveConfig.findGroupIndexConfig(indexName)!;
-    _log.info(
-        'configure called for index: $indexName and group key: $groupKeyGraph, resolved to group identifiers: $groupIdentifiers');
-    for (final id in groupIdentifiers) {
-      final groupIndexTemplateIri = _indexRdfGenerator
-          .generateGroupIndexTemplateIri(indexConfig, resourceConfig.typeIri);
-      final groupIndexIri =
-          _indexRdfGenerator.generateGroupIndexIri(groupIndexTemplateIri, id);
-      await _storage.saveGroupIndexSubscription(
-          groupIndexIri: groupIndexIri,
-          groupIndexTemplateIri: groupIndexTemplateIri,
-          indexedType: resourceConfig.typeIri,
-          itemFetchPolicy: itemFetchPolicy,
-          createdAt: _physicalTimestampFactory().millisecondsSinceEpoch);
-    }
-  }
-
   /// Save an object with CRDT processing.
   ///
   /// Stores the object locally and triggers sync if connected to Solid Pod.
@@ -505,6 +730,8 @@ Use the 'documentIriTemplate' property of the resource configuration to configur
       // nothing changed, nothing to do
       return;
     }
+
+    await _autoSubscribeGroupIndicesOnSave(saved.resolvedGroupIndices);
 
     // 5. Update indices
     await _indexManager.updateIndices(

@@ -5,7 +5,6 @@
 library;
 
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
@@ -38,6 +37,8 @@ class ProxySyncEngine implements SyncEngine {
 
   /// Stream controllers for active hydration streams
   final Map<String, StreamController<HydrationBatch>> _activeStreams = {};
+  final Map<String, StreamController<IndexInstanceSyncState>>
+      _activeIndexStateStreams = {};
 
   late final StreamSubscription<Object?> _messageSubscription;
 
@@ -113,6 +114,10 @@ class ProxySyncEngine implements SyncEngine {
         _handleHydrationBatch(workerMessage);
         return;
       }
+      if (workerMessage is IndexInstanceSyncStateMessage) {
+        _handleIndexInstanceSyncState(workerMessage);
+        return;
+      }
 
       // Regular request-response
       final completer = _pendingRequests[workerMessage.requestId];
@@ -163,9 +168,156 @@ class ProxySyncEngine implements SyncEngine {
     }
   }
 
+  void _handleIndexInstanceSyncState(IndexInstanceSyncStateMessage message) {
+    final controller = _activeIndexStateStreams[message.requestId];
+    if (controller == null) {
+      return;
+    }
+
+    if (message.isComplete) {
+      controller.close();
+      _activeIndexStateStreams.remove(message.requestId);
+      return;
+    }
+
+    final perRemote = <RemoteId, RemoteSyncEntry>{
+      for (final entry in message.perRemote)
+        RemoteId(entry['backend'] as String, entry['id'] as String):
+            RemoteSyncEntry(
+          remoteId: RemoteId(entry['backend'] as String, entry['id'] as String),
+          phase: RemoteSyncPhase.values.firstWhere(
+            (phase) => phase.name == entry['phase'],
+            orElse: () => RemoteSyncPhase.notSynced,
+          ),
+          lastSuccessfulSyncAt: entry['lastSuccessfulSyncAt'] != null
+              ? DateTime.parse(entry['lastSuccessfulSyncAt'] as String)
+              : null,
+          lastAttemptStartedAt: entry['lastAttemptStartedAt'] != null
+              ? DateTime.parse(entry['lastAttemptStartedAt'] as String)
+              : null,
+          lastAttemptFinishedAt: entry['lastAttemptFinishedAt'] != null
+              ? DateTime.parse(entry['lastAttemptFinishedAt'] as String)
+              : null,
+          lastErrorMessage: entry['lastErrorMessage'] as String?,
+        ),
+    };
+
+    controller.add(IndexInstanceSyncState(
+      indexInstanceIri: IriTerm(message.indexInstanceIri),
+      perRemote: perRemote,
+    ));
+  }
+
   /// Serialize RDF graph to Turtle format for transmission
   String _serializeGraph(RdfGraph graph) {
     return _codec.encode(graph);
+  }
+
+  @override
+  Stream<IndexInstanceSyncState> watchGroupIndexSyncState({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+  }) {
+    final requestId = _nextRequestId();
+    final controller = StreamController<IndexInstanceSyncState>.broadcast();
+    _activeIndexStateStreams[requestId] = controller;
+
+    final request = WatchIndexInstanceSyncStateRequest(
+      requestId,
+      watchKind: 'group',
+      indexName: indexName,
+      groupKeyGraphTurtle: _serializeGraph(groupKeyGraph),
+    );
+    _workerHandle.sendMessage(request.toJson());
+
+    controller.onCancel = () {
+      _activeIndexStateStreams.remove(requestId);
+      final cancel =
+          CancelWatchRequest(_nextRequestId(), targetRequestId: requestId);
+      _workerHandle.sendMessage(cancel.toJson());
+    };
+
+    return controller.stream;
+  }
+
+  @override
+  Stream<IndexInstanceSyncState> watchSyncState({
+    required IriTerm typeIri,
+    String? indexName,
+  }) {
+    final requestId = _nextRequestId();
+    final controller = StreamController<IndexInstanceSyncState>.broadcast();
+    _activeIndexStateStreams[requestId] = controller;
+
+    final request = WatchIndexInstanceSyncStateRequest(
+      requestId,
+      watchKind: 'type',
+      typeIri: typeIri.value,
+      indexName: indexName,
+    );
+    _workerHandle.sendMessage(request.toJson());
+
+    controller.onCancel = () {
+      _activeIndexStateStreams.remove(requestId);
+      final cancel =
+          CancelWatchRequest(_nextRequestId(), targetRequestId: requestId);
+      _workerHandle.sendMessage(cancel.toJson());
+    };
+
+    return controller.stream;
+  }
+
+  @override
+  Future<void> ensureGroupIndexSubscription({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+    RootResourceFetchPolicy? rootResourceFetchPolicy,
+    bool triggerSync = true,
+  }) async {
+    final request = EnsureGroupIndexSubscriptionRequest(
+      _nextRequestId(),
+      indexName,
+      _serializeGraph(groupKeyGraph),
+      rootResourceFetchPolicy?.toMap(),
+      triggerSync,
+    );
+
+    final response =
+        await _sendAndAwait<EnsureGroupIndexSubscriptionResponse>(request);
+    if (!response.success) {
+      throw Exception(
+          'Ensure group index subscription failed: ${response.error}');
+    }
+  }
+
+  @override
+  Future<void> ensureGroupIndexSynced({
+    required String indexName,
+    required RdfGraph groupKeyGraph,
+    RootResourceFetchPolicy? rootResourceFetchPolicy,
+  }) {
+    return ensureGroupIndexSubscription(
+      indexName: indexName,
+      groupKeyGraph: groupKeyGraph,
+      rootResourceFetchPolicy: rootResourceFetchPolicy,
+      triggerSync: true,
+    ).then((_) => watchGroupIndexSyncState(
+          indexName: indexName,
+          groupKeyGraph: groupKeyGraph,
+        ).firstWhere((snapshot) {
+          final hasCompletedInitialSync = snapshot.perRemote.values
+              .every((entry) => entry.lastSuccessfulSyncAt != null);
+          final hasInitialSyncError = snapshot.perRemote.values.any((entry) =>
+              entry.phase == RemoteSyncPhase.error &&
+              entry.lastSuccessfulSyncAt == null);
+          if (hasInitialSyncError) {
+            throw IndexInstanceSyncFailedException(
+              'Initial sync failed for one or more remotes.',
+              lastState: snapshot,
+            );
+          }
+          return hasCompletedInitialSync;
+        }).then((_) => null));
   }
 
   @override
@@ -246,28 +398,6 @@ class ProxySyncEngine implements SyncEngine {
   }
 
   @override
-  Future<void> configureGroupIndexSubscription(
-    String indexName,
-    RdfGraph groupKeyGraph,
-    ItemFetchPolicy itemFetchPolicy,
-  ) async {
-    final request = ConfigureGroupIndexSubscriptionRequest(
-      _nextRequestId(),
-      indexName,
-      _serializeGraph(groupKeyGraph),
-      jsonEncode(itemFetchPolicy.toMap()), // Serialize policy as JSON
-    );
-
-    final response =
-        await _sendAndAwait<ConfigureGroupIndexSubscriptionResponse>(request);
-
-    if (!response.success) {
-      throw Exception(
-          'Configure group index subscription failed: ${response.error}');
-    }
-  }
-
-  @override
   SyncManager get syncManager => _syncManager;
 
   @override
@@ -285,6 +415,11 @@ class ProxySyncEngine implements SyncEngine {
       await controller.close();
     }
     _activeStreams.clear();
+
+    for (final controller in _activeIndexStateStreams.values) {
+      await controller.close();
+    }
+    _activeIndexStateStreams.clear();
 
     // Cancel pending requests
     for (final completer in _pendingRequests.values) {

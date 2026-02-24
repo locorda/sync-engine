@@ -29,42 +29,48 @@ class FullIndexData extends FullIndexConfigBase implements CrdtIndexData {
   final IndexItemData? item;
 
   const FullIndexData(
-      {required super.localName, this.item, super.itemFetchPolicy})
+      {required super.localName, this.item, super.rootResourceFetchPolicy})
       : super(item: item);
 
   FullIndexData copyWith(
       {String? localName,
       IndexItemData? item,
-      ItemFetchPolicy? itemFetchPolicy}) {
+      RootResourceFetchPolicy? rootResourceFetchPolicy}) {
     return FullIndexData(
       localName: localName ?? this.localName,
       item: item ?? this.item,
-      itemFetchPolicy: itemFetchPolicy ?? this.itemFetchPolicy,
+      rootResourceFetchPolicy:
+          rootResourceFetchPolicy ?? this.rootResourceFetchPolicy,
     );
   }
 
   factory FullIndexData.fromJson(Map<String, dynamic> json) {
     final localName = json['localName'] as String;
-    final itemFetchPolicyStr = json['itemFetchPolicy'] as String?;
-    final itemFetchPolicy = switch (itemFetchPolicyStr) {
-      'prefetch' => ItemFetchPolicy.prefetch,
-      'onRequest' => ItemFetchPolicy.onRequest,
+    final rootResourceFetchPolicyStr =
+        json['rootResourceFetchPolicy'] as String?;
+    final rootResourceFetchPolicy = switch (rootResourceFetchPolicyStr) {
+      'prefetch' => RootResourceFetchPolicy.prefetch,
+      'onRequest' => RootResourceFetchPolicy.onRequest,
       null => null,
-      _ => throw ArgumentError('Unknown itemFetchPolicy: $itemFetchPolicyStr')
+      _ => throw ArgumentError(
+          'Unknown rootResourceFetchPolicy: $rootResourceFetchPolicyStr')
     };
     final itemJson = json['item'] as Map<String, dynamic>?;
     final item = itemJson != null ? IndexItemData.fromJson(itemJson) : null;
 
     return FullIndexData(
-        localName: localName, itemFetchPolicy: itemFetchPolicy, item: item);
+        localName: localName,
+        rootResourceFetchPolicy: rootResourceFetchPolicy,
+        item: item);
   }
 
   Map<String, dynamic> toJson() {
     return {
       'localName': localName,
-      'itemFetchPolicy': itemFetchPolicy == ItemFetchPolicy.prefetch
-          ? 'prefetch'
-          : 'onRequest',
+      'rootResourceFetchPolicy':
+          rootResourceFetchPolicy == RootResourceFetchPolicy.prefetch
+              ? 'prefetch'
+              : 'onRequest',
       if (item != null) 'item': item!.toJson(),
     };
   }
@@ -77,10 +83,20 @@ class GroupIndexData extends GroupIndexConfigBase implements CrdtIndexData {
     required super.localName,
     this.item,
     super.groupingProperties = const [],
+    super.rootResourceFetchPolicy,
   }) : super(item: item);
 
   factory GroupIndexData.fromJson(Map<String, dynamic> json) {
     final localName = json['localName'] as String;
+    final rootResourceFetchPolicyStr =
+        json['rootResourceFetchPolicy'] as String?;
+    final rootResourceFetchPolicy = switch (rootResourceFetchPolicyStr) {
+      'prefetch' => RootResourceFetchPolicy.prefetch,
+      'onRequest' => RootResourceFetchPolicy.onRequest,
+      null => null,
+      _ => throw ArgumentError(
+          'Unknown rootResourceFetchPolicy: $rootResourceFetchPolicyStr')
+    };
     final itemJson = json['item'] as Map<String, dynamic>?;
     final item = itemJson != null ? IndexItemData.fromJson(itemJson) : null;
     final groupingPropertiesJson =
@@ -92,12 +108,17 @@ class GroupIndexData extends GroupIndexConfigBase implements CrdtIndexData {
     return GroupIndexData(
         localName: localName,
         groupingProperties: groupingProperties,
-        item: item);
+        item: item,
+        rootResourceFetchPolicy: rootResourceFetchPolicy);
   }
 
   Map<String, dynamic> toJson() {
     return {
       'localName': localName,
+      'rootResourceFetchPolicy':
+          rootResourceFetchPolicy == RootResourceFetchPolicy.prefetch
+              ? 'prefetch'
+              : 'onRequest',
       if (item != null) 'item': item!.toJson(),
       'groupingProperties':
           groupingProperties.map((gp) => gp.toJson()).toList(),

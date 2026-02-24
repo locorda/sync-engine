@@ -18,7 +18,7 @@
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
-ns1:entry-c93b50159754d7a665032fc90e56af1d cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
+ns1:entry-c93b50159754d7a665032fc90e56af1d cm:clockHash "23c446546a1f047533ce590194fc25e3";
     idx:resource ns3:it .
 
 ns1:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;

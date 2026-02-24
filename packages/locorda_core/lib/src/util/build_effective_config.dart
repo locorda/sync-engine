@@ -19,7 +19,7 @@ SyncEngineConfig buildEffectiveConfig(SyncEngineConfig config) {
       indices: [
         FullIndexData(
             localName: IndexNames.installations,
-            itemFetchPolicy: ItemFetchPolicy.onRequest)
+            rootResourceFetchPolicy: RootResourceFetchPolicy.onRequest)
       ],
     ),
     ResourceConfigData(
@@ -53,7 +53,7 @@ SyncEngineConfig buildEffectiveConfig(SyncEngineConfig config) {
               item: indexIndexItemConfig,
               // We want to sync all indices of all resource types we handle,
               // but not the others which we do not know anything about
-              itemFetchPolicy: ItemFetchPolicy.prefetchFiltered(
+              rootResourceFetchPolicy: RootResourceFetchPolicy.prefetchFiltered(
                 IdxFullIndex.indexesClass,
                 allResourceIris,
               ))
@@ -69,7 +69,7 @@ SyncEngineConfig buildEffectiveConfig(SyncEngineConfig config) {
               item: indexIndexItemConfig,
               // We want to sync all indices of all resource types we handle,
               // but not the others which we do not know anything about
-              itemFetchPolicy: ItemFetchPolicy.prefetchFiltered(
+              rootResourceFetchPolicy: RootResourceFetchPolicy.prefetchFiltered(
                 IdxGroupIndexTemplate.indexesClass,
                 allResourceIris,
               ))

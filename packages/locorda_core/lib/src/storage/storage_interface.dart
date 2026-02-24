@@ -197,7 +197,7 @@ abstract interface class Storage {
     required IriTerm groupIndexIri,
     required IriTerm groupIndexTemplateIri,
     required IriTerm indexedType,
-    required ItemFetchPolicy itemFetchPolicy,
+    required RootResourceFetchPolicy rootResourceFetchPolicy,
     required int createdAt,
   });
 
@@ -211,8 +211,13 @@ abstract interface class Storage {
   /// Returns a list of tuples containing the group index IRI, indexed type IRI,
   /// and item fetch policy for all group indices that index the given type.
   /// Used during remote sync to determine which indices need synchronization.
-  Future<List<(IriTerm groupIndexIri, IriTerm indexedType, ItemFetchPolicy)>>
-      getSubscribedGroupIndices(IriTerm indexedType);
+  Future<
+      List<
+          (
+            IriTerm groupIndexIri,
+            IriTerm indexedType,
+            RootResourceFetchPolicy
+          )>> getSubscribedGroupIndices(IriTerm indexedType);
 
   /// Get or create an index set version for cursor tracking.
   ///
@@ -353,8 +358,206 @@ abstract interface class Storage {
   /// - [documentIri]: The document IRI
   Future<void> clearRemoteETag(RemoteId remoteId, IriTerm documentIri);
 
+  /// Upserts the sync lifecycle state for a specific index instance and remote.
+  ///
+  /// Implementations should treat this as the canonical state record for
+  /// per-index-instance sync tracking and preserve [lastSuccessfulSyncAt]
+  /// across subsequent error transitions.
+  Future<void> upsertIndexInstanceSyncState({
+    required IriTerm indexInstanceIri,
+    required RemoteId remoteId,
+    required RemoteSyncPhase phase,
+    DateTime? lastSuccessfulSyncAt,
+    DateTime? lastAttemptStartedAt,
+    DateTime? lastAttemptFinishedAt,
+    String? lastErrorMessage,
+  });
+
+  /// Returns the current sync snapshot for a specific index instance.
+  ///
+  /// If no state has been persisted yet, this returns an empty snapshot for
+  /// the provided [indexInstanceIri].
+  Future<IndexInstanceSyncState> getIndexInstanceSyncState(
+      IriTerm indexInstanceIri);
+
+  /// Watches sync state updates for a specific index instance.
+  ///
+  /// **Contract**: Implementations must provide replay semantics — the current
+  /// snapshot is emitted synchronously as the first event upon subscription,
+  /// before any `await` point in the subscriber. This guarantees that callers
+  /// using `.first` or `.firstWhere` will never miss a state that was already
+  /// current at the time of subscription, regardless of async scheduling.
+  ///
+  /// Subsequent emissions occur on every state transition. The stream is
+  /// infinite; it completes only when the underlying storage is closed.
+  Stream<IndexInstanceSyncState> watchIndexInstanceSyncState(
+      IriTerm indexInstanceIri);
+
+  /// Returns all configured remotes known to storage.
+  Future<List<RemoteId>> getConfiguredRemoteIds();
+
+  /// Watches the set of configured remotes.
+  ///
+  /// **Contract**: Same replay semantics as [watchIndexInstanceSyncState] —
+  /// the current set is emitted synchronously as the first event upon
+  /// subscription. Subsequent emissions occur whenever a remote is added or
+  /// removed.
+  Stream<Set<RemoteId>> watchConfiguredRemoteIds();
+
   Future<int> getLastRemoteSyncTimestamp(RemoteId remoteId);
   Future<void> updateLastRemoteSyncTimestamp(RemoteId remoteId, int timestamp);
+}
+
+/// Sync phase for a single remote × index instance combination.
+enum RemoteSyncPhase {
+  notSynced,
+  syncPlanned,
+  syncing,
+  ready,
+  error,
+}
+
+/// Per-remote sync snapshot for one index instance.
+class RemoteSyncEntry {
+  final RemoteId remoteId;
+  final RemoteSyncPhase phase;
+  final DateTime? lastSuccessfulSyncAt;
+  final DateTime? lastAttemptStartedAt;
+  final DateTime? lastAttemptFinishedAt;
+  final String? lastErrorMessage;
+
+  const RemoteSyncEntry({
+    required this.remoteId,
+    required this.phase,
+    this.lastSuccessfulSyncAt,
+    this.lastAttemptStartedAt,
+    this.lastAttemptFinishedAt,
+    this.lastErrorMessage,
+  });
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+
+    return other is RemoteSyncEntry &&
+        other.remoteId == remoteId &&
+        other.phase == phase &&
+        other.lastSuccessfulSyncAt == lastSuccessfulSyncAt &&
+        other.lastAttemptStartedAt == lastAttemptStartedAt &&
+        other.lastAttemptFinishedAt == lastAttemptFinishedAt &&
+        other.lastErrorMessage == lastErrorMessage;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        remoteId,
+        phase,
+        lastSuccessfulSyncAt,
+        lastAttemptStartedAt,
+        lastAttemptFinishedAt,
+        lastErrorMessage,
+      );
+}
+
+/// Aggregate snapshot for one index instance across remotes.
+class IndexInstanceSyncState {
+  final IriTerm indexInstanceIri;
+  final Map<RemoteId, RemoteSyncEntry> perRemote;
+
+  IndexInstanceSyncState({
+    required this.indexInstanceIri,
+    required Map<RemoteId, RemoteSyncEntry> perRemote,
+  }) : perRemote = Map.unmodifiable(perRemote);
+
+  factory IndexInstanceSyncState.empty(IriTerm indexInstanceIri) {
+    return IndexInstanceSyncState(
+      indexInstanceIri: indexInstanceIri,
+      perRemote: const {},
+    );
+  }
+
+  /// Any remote is actively transferring or queued.
+  bool get isSyncing => perRemote.values.any(
+        (entry) =>
+            entry.phase == RemoteSyncPhase.syncing ||
+            entry.phase == RemoteSyncPhase.syncPlanned,
+      );
+
+  /// All remotes are in the `ready` phase — no errors and no pending work.
+  bool get isReady =>
+      perRemote.isNotEmpty &&
+      perRemote.values.every((entry) => entry.phase == RemoteSyncPhase.ready);
+
+  /// True if every configured remote has synced at least once.
+  ///
+  /// Vacuously true when no backend is configured.
+  bool get hasCompletedInitialSync =>
+      perRemote.values.every((entry) => entry.lastSuccessfulSyncAt != null);
+
+  /// True if any remote is currently in error state.
+  bool get hasError =>
+      perRemote.values.any((entry) => entry.phase == RemoteSyncPhase.error);
+
+  /// True if any remote has an error after a previous successful sync.
+  bool get hasStaleError => perRemote.values.any(
+        (entry) =>
+            entry.phase == RemoteSyncPhase.error &&
+            entry.lastSuccessfulSyncAt != null,
+      );
+
+  /// True if any remote errored before initial sync completion.
+  bool get hasInitialSyncError => perRemote.values.any(
+        (entry) =>
+            entry.phase == RemoteSyncPhase.error &&
+            entry.lastSuccessfulSyncAt == null,
+      );
+
+  /// True if at least one configured remote has never synced successfully.
+  bool get hasUnsyncedRemote =>
+      perRemote.values.any((entry) => entry.lastSuccessfulSyncAt == null);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    if (other is! IndexInstanceSyncState) {
+      return false;
+    }
+    if (indexInstanceIri != other.indexInstanceIri ||
+        perRemote.length != other.perRemote.length) {
+      return false;
+    }
+
+    for (final entry in perRemote.entries) {
+      if (other.perRemote[entry.key] != entry.value) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  @override
+  int get hashCode {
+    final sortedEntries = perRemote.entries.toList()
+      ..sort((left, right) {
+        final backendCompare = left.key.backend.compareTo(right.key.backend);
+        if (backendCompare != 0) {
+          return backendCompare;
+        }
+        return left.key.id.compareTo(right.key.id);
+      });
+
+    return Object.hash(
+      indexInstanceIri,
+      Object.hashAll(
+        sortedEntries.map((entry) => Object.hash(entry.key, entry.value)),
+      ),
+    );
+  }
 }
 
 /// Index entry with resolved resource IRI.

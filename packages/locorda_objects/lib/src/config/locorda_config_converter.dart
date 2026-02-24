@@ -13,7 +13,7 @@ FullIndexData _toFullIndexGraphConfig(
     FullIndexData(
       localName: getIndexName(parentConfig, index),
       item: _toIndexItemGraphConfig(index.item),
-      itemFetchPolicy: index.itemFetchPolicy,
+      rootResourceFetchPolicy: index.rootResourceFetchPolicy,
     );
 
 GroupIndexData _toGroupIndexGraphConfig(
@@ -22,6 +22,7 @@ GroupIndexData _toGroupIndexGraphConfig(
       localName: getIndexName(parentConfig, index),
       item: _toIndexItemGraphConfig(index.item),
       groupingProperties: index.groupingProperties,
+      rootResourceFetchPolicy: index.rootResourceFetchPolicy,
     );
 
 CrdtIndexData _toCrdtIndexGraphConfig(

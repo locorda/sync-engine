@@ -50,7 +50,7 @@ class IndexRdfGenerator {
   /// ```
   /// final config = FullIndexGraphConfig(
   ///   localName: 'notes',
-  ///   itemFetchPolicy: ItemFetchPolicy.prefetch,
+  ///   rootResourceFetchPolicy: RootResourceFetchPolicy.prefetch,
   /// );
   /// final resourceType = SchemaNote.classIri;
   /// final installationIri = IriTerm('...');

@@ -7,7 +7,7 @@
         {
           "type": "FullIndex",
           "localName": "recipe-index",
-          "itemFetchPolicy": "prefetch"
+          "rootResourceFetchPolicy": "prefetch"
         }
       ]
     }

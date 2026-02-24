@@ -209,17 +209,17 @@ class MergeContracts {
 class FullIndex {
   final bool isEnabled;
   final String localName;
-  final ItemFetchPolicy policy;
+  final RootResourceFetchPolicy policy;
 
   const FullIndex({
     this.localName = 'default',
-    this.policy = ItemFetchPolicy.prefetch,
+    this.policy = RootResourceFetchPolicy.prefetch,
   }) : isEnabled = true;
 
   const FullIndex.disabled()
       : isEnabled = false,
         localName = '',
-        policy = ItemFetchPolicy.prefetch;
+        policy = RootResourceFetchPolicy.prefetch;
 }
 ```
 

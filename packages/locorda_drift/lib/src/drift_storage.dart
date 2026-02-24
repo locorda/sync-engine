@@ -3,8 +3,9 @@ library;
 
 import 'dart:convert';
 
-import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_core/src/storage/storage_interface.dart' as storage;
+import 'package:drift/drift.dart';
+import 'package:locorda_core/locorda_core.dart' as core;
+//import 'package:locorda_core/src/storage/storage_interface.dart' as storage;
 import 'rdf/rdf_extensions.dart';
 import 'package:locorda_rdf_core/core.dart';
 
@@ -17,7 +18,7 @@ import 'sync_database_impl_flutter.dart'
 ///
 /// Provides cross-platform SQLite storage for RDF documents, CRDT metadata,
 /// and property-level change tracking using the Drift ORM.
-class DriftStorage implements Storage {
+class DriftStorage implements core.Storage {
   final SyncDocumentDao documentDao;
   final SyncPropertyChangeDao propertyChangeDao;
   final IndexDao indexDao;
@@ -101,12 +102,12 @@ class DriftStorage implements Storage {
 
   /// Throws [ConcurrentUpdateException] on optimistic lock failure.
   @override
-  Future<SaveDocumentResult> saveDocument(
+  Future<core.SaveDocumentResult> saveDocument(
       IriTerm documentIri,
       IriTerm typeIri,
       RdfGraph document,
-      DocumentMetadata metadata,
-      List<PropertyChange> changes,
+      core.DocumentMetadata metadata,
+      List<core.PropertyChange> changes,
       {int? ifMatchUpdatedAt}) async {
     return await _database.transaction(() async {
       // Get previous cursor for this type
@@ -143,7 +144,7 @@ class DriftStorage implements Storage {
         );
       }
 
-      return SaveDocumentResult(
+      return core.SaveDocumentResult(
         previousCursor: previousCursor,
         currentCursor: metadata.updatedAt.toString(),
       );
@@ -151,7 +152,7 @@ class DriftStorage implements Storage {
   }
 
   @override
-  Future<StoredDocument?> getDocument(
+  Future<core.StoredDocument?> getDocument(
     IriTerm documentIri, {
     int? ifChangedSincePhysicalClock,
   }) async {
@@ -165,10 +166,10 @@ class DriftStorage implements Storage {
     final graph =
         _codec.decode(document.documentContent, documentUrl: documentIri.value);
 
-    return StoredDocument(
+    return core.StoredDocument(
       documentIri: documentIri,
       document: graph,
-      metadata: DocumentMetadata(
+      metadata: core.DocumentMetadata(
         ourPhysicalClock: document.ourPhysicalClock,
         updatedAt: document.updatedAt,
       ),
@@ -176,7 +177,7 @@ class DriftStorage implements Storage {
   }
 
   @override
-  Future<List<PropertyChange>> getPropertyChanges(IriTerm documentIri,
+  Future<List<core.PropertyChange>> getPropertyChanges(IriTerm documentIri,
       {int? sinceLogicalClock}) async {
     final documentId = await documentDao.getDocumentId(documentIri.value);
     if (documentId == null) return [];
@@ -187,7 +188,7 @@ class DriftStorage implements Storage {
     );
 
     return changes
-        .map((change) => PropertyChange(
+        .map((change) => core.PropertyChange(
               resourceIri: _iriTermFactory(change.resourceIri),
               propertyIri: _iriTermFactory(change.propertyIri),
               changedAtMs: change.changedAtMs,
@@ -198,7 +199,7 @@ class DriftStorage implements Storage {
   }
 
   @override
-  Future<DocumentsResult> getDocumentsModifiedSince(
+  Future<core.DocumentsResult> getDocumentsModifiedSince(
       IriTerm typeIri, String? minCursor,
       {required int limit}) async {
     final documents = await documentDao
@@ -214,7 +215,7 @@ class DriftStorage implements Storage {
     // hasNext: true if we got a full batch (might be more data available)
     final hasNext = documents.length >= limit;
 
-    return DocumentsResult(
+    return core.DocumentsResult(
       documents: storedDocuments,
       currentCursor: currentCursor,
       hasNext: hasNext,
@@ -222,7 +223,7 @@ class DriftStorage implements Storage {
   }
 
   @override
-  Future<DocumentsResult> getDocumentsChangedByUsSince(
+  Future<core.DocumentsResult> getDocumentsChangedByUsSince(
       IriTerm typeIri, String? minCursor,
       {required int limit}) async {
     final documents = await documentDao
@@ -238,7 +239,7 @@ class DriftStorage implements Storage {
     // hasNext: true if we got a full batch (might be more data available)
     final hasNext = documents.length >= limit;
 
-    return DocumentsResult(
+    return core.DocumentsResult(
       documents: storedDocuments,
       currentCursor: currentCursor,
       hasNext: hasNext,
@@ -246,7 +247,7 @@ class DriftStorage implements Storage {
   }
 
   @override
-  Stream<DocumentsResult> watchDocumentsModifiedSince(
+  Stream<core.DocumentsResult> watchDocumentsModifiedSince(
       IriTerm typeIri, String? minCursor) {
     return documentDao
         .watchDocumentsModifiedSince(typeIri.value, minCursor)
@@ -259,7 +260,7 @@ class DriftStorage implements Storage {
           ? storedDocuments.last.metadata.updatedAt.toString()
           : minCursor;
 
-      return DocumentsResult(
+      return core.DocumentsResult(
         documents: storedDocuments,
         currentCursor: cursor,
         hasNext: false,
@@ -268,7 +269,7 @@ class DriftStorage implements Storage {
   }
 
   @override
-  Stream<DocumentsResult> watchDocumentsChangedByUsSince(
+  Stream<core.DocumentsResult> watchDocumentsChangedByUsSince(
       IriTerm typeIri, String? minCursor) async* {
     await for (final documents in documentDao.watchDocumentsChangedByUsSince(
         typeIri.value, minCursor)) {
@@ -280,7 +281,7 @@ class DriftStorage implements Storage {
           ? storedDocuments.last.metadata.ourPhysicalClock.toString()
           : minCursor;
 
-      yield DocumentsResult(
+      yield core.DocumentsResult(
         documents: storedDocuments,
         currentCursor: cursor,
         hasNext: false,
@@ -335,7 +336,7 @@ class DriftStorage implements Storage {
   }
 
   @override
-  Future<storage.IndexEntriesPage> getIndexEntries({
+  Future<core.IndexEntriesPage> getIndexEntries({
     required Iterable<IriTerm> indexIris,
     int? cursorTimestamp,
     int limit = 100,
@@ -352,9 +353,9 @@ class DriftStorage implements Storage {
       limit: limit,
     );
 
-    return storage.IndexEntriesPage(
+    return core.IndexEntriesPage(
       entries: page.entries
-          .map((e) => storage.IndexEntryWithIri(
+          .map((e) => core.IndexEntryWithIri(
                 resourceIri: _iriTermFactory(e.resourceIri),
                 clockHash: e.entry.clockHash,
                 headerProperties: e.entry.headerProperties,
@@ -369,7 +370,7 @@ class DriftStorage implements Storage {
   }
 
   @override
-  Stream<List<storage.IndexEntryWithIri>> watchIndexEntries({
+  Stream<List<core.IndexEntryWithIri>> watchIndexEntries({
     required Iterable<IriTerm> indexIris,
     int? cursorTimestamp,
   }) async* {
@@ -385,7 +386,7 @@ class DriftStorage implements Storage {
           cursorTimestamp: cursorTimestamp,
         )
         .map((entries) => entries
-            .map((e) => storage.IndexEntryWithIri(
+            .map((e) => core.IndexEntryWithIri(
                   resourceIri: _iriTermFactory(e.resourceIri),
                   clockHash: e.entry.clockHash,
                   headerProperties: e.entry.headerProperties,
@@ -401,7 +402,7 @@ class DriftStorage implements Storage {
     required IriTerm groupIndexIri,
     required IriTerm groupIndexTemplateIri,
     required IriTerm indexedType,
-    required ItemFetchPolicy itemFetchPolicy,
+    required core.RootResourceFetchPolicy rootResourceFetchPolicy,
     required int createdAt,
   }) async {
     // Translate IRIs to IDs internally
@@ -415,22 +416,22 @@ class DriftStorage implements Storage {
       groupIndexIriId: groupIndexIriId,
       groupIndexTemplateIriId: groupIndexTemplateIriId,
       indexedTypeIriId: indexedTypeIriId,
-      itemFetchPolicy: json.encode(itemFetchPolicy.toMap()),
+      rootResourceFetchPolicy: json.encode(rootResourceFetchPolicy.toMap()),
       createdAt: createdAt,
     );
   }
 
   @override
-  Future<List<(IriTerm, IriTerm, ItemFetchPolicy)>> getSubscribedGroupIndices(
-      IriTerm indexedType) async {
+  Future<List<(IriTerm, IriTerm, core.RootResourceFetchPolicy)>>
+      getSubscribedGroupIndices(IriTerm indexedType) async {
     final subscriptions =
         await indexDao.getSubscribedGroupIndices(indexedType.value);
 
     return subscriptions.map((subscription) {
       final groupIndexIri = _iriTermFactory(subscription.groupIndexIri);
       final indexedTypeIri = _iriTermFactory(subscription.indexedTypeIri);
-      final fetchPolicy = ItemFetchPolicy.fromMap(
-        json.decode(subscription.itemFetchPolicy),
+      final fetchPolicy = core.RootResourceFetchPolicy.fromMap(
+        json.decode(subscription.rootResourceFetchPolicy),
       );
       return (groupIndexIri, indexedTypeIri, fetchPolicy);
     }).toList();
@@ -524,7 +525,7 @@ class DriftStorage implements Storage {
   }
 
   @override
-  Future<List<storage.IndexEntryWithIri>> getActiveIndexEntriesForShard(
+  Future<List<core.IndexEntryWithIri>> getActiveIndexEntriesForShard(
       IriTerm shardIri) async {
     // Translate shard IRI to ID
     final iriIds = await _getOrCreateIriIdsMap([shardIri.value]);
@@ -536,7 +537,7 @@ class DriftStorage implements Storage {
 
     // Convert to Storage interface type
     return driftEntries
-        .map((driftEntry) => storage.IndexEntryWithIri(
+        .map((driftEntry) => core.IndexEntryWithIri(
               resourceIri: _iriTermFactory(driftEntry.resourceIri),
               clockHash: driftEntry.entry.clockHash,
               headerProperties: driftEntry.entry.headerProperties,
@@ -621,7 +622,8 @@ class DriftStorage implements Storage {
   // multiple remote endpoints simultaneously.
 
   @override
-  Future<String?> getRemoteETag(RemoteId remoteId, IriTerm documentIri) async {
+  Future<String?> getRemoteETag(
+      core.RemoteId remoteId, IriTerm documentIri) async {
     final documentIriId = await _getOrCreateIriId(documentIri.value);
     final remoteIdInt = await remoteSyncStateDao.getOrCreateRemoteId(
         remoteId.backend, remoteId.id);
@@ -634,7 +636,7 @@ class DriftStorage implements Storage {
 
   @override
   Future<void> setRemoteETag(
-      RemoteId remoteId, IriTerm documentIri, String etag) async {
+      core.RemoteId remoteId, IriTerm documentIri, String etag) async {
     final documentIriId = await _getOrCreateIriId(documentIri.value);
     final remoteIdInt = await remoteSyncStateDao.getOrCreateRemoteId(
         remoteId.backend, remoteId.id);
@@ -647,7 +649,8 @@ class DriftStorage implements Storage {
   }
 
   @override
-  Future<void> clearRemoteETag(RemoteId remoteId, IriTerm documentIri) async {
+  Future<void> clearRemoteETag(
+      core.RemoteId remoteId, IriTerm documentIri) async {
     final documentIriId = await _getOrCreateIriId(documentIri.value);
     final remoteIdInt = await remoteSyncStateDao.getOrCreateRemoteId(
         remoteId.backend, remoteId.id);
@@ -658,16 +661,16 @@ class DriftStorage implements Storage {
     );
   }
 
-  List<StoredDocument> _convertToStoredDocuments(
+  List<core.StoredDocument> _convertToStoredDocuments(
       List<DocumentWithIri> documents) {
     return documents.map((doc) {
       final graph =
           _codec.decode(doc.document.documentContent, documentUrl: doc.iri);
 
-      return StoredDocument(
+      return core.StoredDocument(
         documentIri: _iriTermFactory(doc.iri),
         document: graph,
-        metadata: DocumentMetadata(
+        metadata: core.DocumentMetadata(
           ourPhysicalClock: doc.document.ourPhysicalClock,
           updatedAt: doc.document.updatedAt,
         ),
@@ -676,7 +679,7 @@ class DriftStorage implements Storage {
   }
 
   @override
-  Future<int> getLastRemoteSyncTimestamp(RemoteId remoteId) async {
+  Future<int> getLastRemoteSyncTimestamp(core.RemoteId remoteId) async {
     final id = await remoteSyncStateDao.getOrCreateRemoteId(
         remoteId.backend, remoteId.id);
     return remoteSyncStateDao.getRemoteLastSyncTimestamp(id);
@@ -684,7 +687,7 @@ class DriftStorage implements Storage {
 
   @override
   Future<void> updateLastRemoteSyncTimestamp(
-      RemoteId remoteId, int timestamp) async {
+      core.RemoteId remoteId, int timestamp) async {
     final id = await remoteSyncStateDao.getOrCreateRemoteId(
         remoteId.backend, remoteId.id);
     await remoteSyncStateDao.updateRemoteLastSyncTimestamp(id, timestamp);
@@ -709,5 +712,154 @@ class DriftStorage implements Storage {
     // Convert IRI IDs back to IriTerms
     final idToIri = await _getIris(missingIriIds);
     return idToIri.values.map((iri) => _iriTermFactory(iri)).toList();
+  }
+
+  DateTime? _fromUtcMs(int? value) {
+    if (value == null) {
+      return null;
+    }
+    return DateTime.fromMillisecondsSinceEpoch(value, isUtc: true);
+  }
+
+  core.RemoteSyncEntry _toRemoteIndexSyncStateSnapshot(
+    IndexInstanceSyncState state,
+    RemoteSetting remote,
+  ) {
+    return core.RemoteSyncEntry(
+      remoteId: core.RemoteId(remote.remoteType, remote.remoteId),
+      phase: core.RemoteSyncPhase.values.firstWhere(
+        (candidate) => candidate.name == state.phase,
+        orElse: () => core.RemoteSyncPhase.notSynced,
+      ),
+      lastSuccessfulSyncAt: _fromUtcMs(state.lastSuccessfulSyncAtMs),
+      lastAttemptStartedAt: _fromUtcMs(state.lastAttemptStartedAtMs),
+      lastAttemptFinishedAt: _fromUtcMs(state.lastAttemptFinishedAtMs),
+      lastErrorMessage: state.lastErrorMessage,
+    );
+  }
+
+  @override
+  Future<void> upsertIndexInstanceSyncState({
+    required IriTerm indexInstanceIri,
+    required core.RemoteId remoteId,
+    required core.RemoteSyncPhase phase,
+    DateTime? lastSuccessfulSyncAt,
+    DateTime? lastAttemptStartedAt,
+    DateTime? lastAttemptFinishedAt,
+    String? lastErrorMessage,
+  }) async {
+    final indexInstanceIriId = await _getOrCreateIriId(indexInstanceIri.value);
+    final remoteSettingId = await remoteSyncStateDao.getOrCreateRemoteId(
+      remoteId.backend,
+      remoteId.id,
+    );
+
+    final lastSuccessfulSyncAtMs =
+        lastSuccessfulSyncAt?.toUtc().millisecondsSinceEpoch;
+
+    await _database.into(_database.indexInstanceSyncStates).insert(
+          IndexInstanceSyncStatesCompanion.insert(
+            indexInstanceIriId: indexInstanceIriId,
+            remoteSettingId: remoteSettingId,
+            phase: phase.name,
+            lastSuccessfulSyncAtMs: Value(lastSuccessfulSyncAtMs),
+            lastAttemptStartedAtMs:
+                Value(lastAttemptStartedAt?.toUtc().millisecondsSinceEpoch),
+            lastAttemptFinishedAtMs:
+                Value(lastAttemptFinishedAt?.toUtc().millisecondsSinceEpoch),
+            lastErrorMessage: Value(lastErrorMessage),
+          ),
+          onConflict: DoUpdate(
+            (_) => IndexInstanceSyncStatesCompanion(
+              phase: Value(phase.name),
+              lastSuccessfulSyncAtMs: lastSuccessfulSyncAtMs != null
+                  ? Value(lastSuccessfulSyncAtMs)
+                  : const Value.absent(),
+              lastAttemptStartedAtMs:
+                  Value(lastAttemptStartedAt?.toUtc().millisecondsSinceEpoch),
+              lastAttemptFinishedAtMs:
+                  Value(lastAttemptFinishedAt?.toUtc().millisecondsSinceEpoch),
+              lastErrorMessage: Value(lastErrorMessage),
+            ),
+            target: [
+              _database.indexInstanceSyncStates.indexInstanceIriId,
+              _database.indexInstanceSyncStates.remoteSettingId,
+            ],
+          ),
+        );
+  }
+
+  @override
+  Future<core.IndexInstanceSyncState> getIndexInstanceSyncState(
+      IriTerm indexInstanceIri) async {
+    final query = _buildIndexSyncStateQuery(indexInstanceIri);
+    final rows = await query.get();
+
+    return _rowsToIndexSyncState(rows, indexInstanceIri);
+  }
+
+  core.IndexInstanceSyncState _rowsToIndexSyncState(
+      List<TypedResult> rows, IriTerm indexInstanceIri) {
+    final perRemote = <core.RemoteId, core.RemoteSyncEntry>{};
+    for (final row in rows) {
+      final snapshot = _toRemoteIndexSyncStateSnapshot(
+        row.readTable(_database.indexInstanceSyncStates),
+        row.readTable(_database.remoteSettings),
+      );
+      assert(
+        !perRemote.containsKey(snapshot.remoteId),
+        'Duplicate sync-state rows for indexInstanceIri=${indexInstanceIri.value} and remote=${snapshot.remoteId}.',
+      );
+      perRemote[snapshot.remoteId] = snapshot;
+    }
+
+    return core.IndexInstanceSyncState(
+      indexInstanceIri: indexInstanceIri,
+      perRemote: perRemote,
+    );
+  }
+
+  Selectable<TypedResult> _buildIndexSyncStateQuery(IriTerm indexInstanceIri) {
+    final indexIriTable = _database.syncIris.createAlias('index_iri');
+    final query = _database.select(_database.indexInstanceSyncStates).join([
+      innerJoin(
+        indexIriTable,
+        indexIriTable.id
+            .equalsExp(_database.indexInstanceSyncStates.indexInstanceIriId),
+      ),
+      innerJoin(
+        _database.remoteSettings,
+        _database.remoteSettings.id
+            .equalsExp(_database.indexInstanceSyncStates.remoteSettingId),
+      ),
+    ])
+      ..where(indexIriTable.iri.equals(indexInstanceIri.value));
+    return query;
+  }
+
+  @override
+  Stream<core.IndexInstanceSyncState> watchIndexInstanceSyncState(
+      IriTerm indexInstanceIri) {
+    final query = _buildIndexSyncStateQuery(indexInstanceIri);
+    return query
+        .watch()
+        .map((rows) => _rowsToIndexSyncState(rows, indexInstanceIri));
+  }
+
+  @override
+  Future<List<core.RemoteId>> getConfiguredRemoteIds() async {
+    final rows = await _database.select(_database.remoteSettings).get();
+    return rows
+        .map((row) => core.RemoteId(row.remoteType, row.remoteId))
+        .toList(growable: false);
+  }
+
+  @override
+  Stream<Set<core.RemoteId>> watchConfiguredRemoteIds() {
+    return _database.select(_database.remoteSettings).watch().map(
+          (rows) => rows
+              .map((row) => core.RemoteId(row.remoteType, row.remoteId))
+              .toSet(),
+        );
   }
 }

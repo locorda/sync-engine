@@ -8,7 +8,7 @@
         {
           "type": "GroupIndex",
           "localName": "recipes-by-date",
-          "itemFetchPolicy": "prefetch",
+          "rootResourceFetchPolicy": "prefetch",
           "groupingProperties": [
             {
               "predicate": "https://schema.org/dateCreated",

@@ -87,7 +87,7 @@ const resourceIriVar = r'rootResourceIri';
 /// @RootResource(
 ///   IriTerm('https://schema.org/Note'),
 ///   MergeContract('https://myapp.example.com/mappings/note-v1#'),
-///   fullIndex: FullIndex(policy: ItemFetchPolicy.onRequest),
+///   fullIndex: FullIndex(policy: RootResourceFetchPolicy.onRequest),
 /// )
 /// ```
 ///

@@ -105,7 +105,7 @@ class ConfigCodeGenerator {
             fullIndexItem.properties.map((prop) => prop.code).toSet(),
           ]),
         if (resource.fullIndex.policy != 'prefetch')
-          'itemFetchPolicy': locordaCore('ItemPrefetchPolicy')
+          'rootResourceFetchPolicy': locordaCore('ItemPrefetchPolicy')
               .field(resource.fullIndex.policy),
       },
     );

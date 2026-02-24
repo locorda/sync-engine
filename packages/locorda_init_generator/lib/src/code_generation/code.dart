@@ -332,11 +332,11 @@ class Code {
   ///
   /// Example usage (actual patterns from config_code_generator.dart):
   /// ```dart
-  /// // ItemFetchPolicy.prefetch
-  /// Code.type('ItemFetchPolicy', importUri: locordaCorePkg).field('prefetch')
+  /// // RootResourceFetchPolicy.prefetch
+  /// Code.type('RootResourceFetchPolicy', importUri: locordaCorePkg).field('prefetch')
   ///
-  /// // ItemFetchPolicy.onRequest
-  /// Code.type('ItemFetchPolicy', importUri: locordaCorePkg).field('onRequest')
+  /// // RootResourceFetchPolicy.onRequest
+  /// Code.type('RootResourceFetchPolicy', importUri: locordaCorePkg).field('onRequest')
   /// ```
   Code field(String fieldName) => this + Code.literal('.' + fieldName);
 

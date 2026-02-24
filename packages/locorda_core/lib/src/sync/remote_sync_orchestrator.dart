@@ -10,7 +10,6 @@ import 'package:locorda_core/src/mapping/merge_contract.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/remote_storage.dart';
-import 'package:locorda_core/src/storage/storage_interface.dart';
 import 'package:locorda_core/src/sync/dataset_based_graph_sync_storage.dart';
 import 'package:locorda_core/src/sync/remote_document_merger.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
@@ -32,7 +31,7 @@ sealed class IndexSyncSpec {
 /// Full index sync: Download all shards and apply fetch policy for new items
 final class FullIndexSync extends IndexSyncSpec {
   /// Policy determining which items to download from remote
-  final ItemFetchPolicy fetchPolicy;
+  final RootResourceFetchPolicy fetchPolicy;
 
   const FullIndexSync(
     IriTerm indexIri,
@@ -69,7 +68,7 @@ sealed class ShardSyncSpec {
 }
 
 final class FullShardSync extends ShardSyncSpec {
-  final ItemFetchPolicy fetchPolicy;
+  final RootResourceFetchPolicy fetchPolicy;
   const FullShardSync({required super.shardIri, required this.fetchPolicy});
 }
 
@@ -262,7 +261,7 @@ class RemoteSyncOrchestrator {
     final fullIndices =
         resourceConfig.indices.whereType<FullIndexData>().map((index) {
       final iri = _indexRdfGenerator.generateFullIndexIri(index, resourceType);
-      return FullIndexSync(iri, index.itemFetchPolicy);
+      return FullIndexSync(iri, index.rootResourceFetchPolicy);
     }).toList();
 
     // Collect subscribed GroupIndex IRIs for this type
@@ -275,7 +274,7 @@ class RemoteSyncOrchestrator {
             tuple.$1,
             _useShardDatasets
                 // in shard dataset mode, we must use prefetch to ensure all items are present
-                ? ItemFetchPolicy.prefetch
+                ? RootResourceFetchPolicy.prefetch
                 : tuple.$3)) // (indexIri, fetchPolicy)
         .toList();
     final groupIndexIris =

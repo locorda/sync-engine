@@ -13,7 +13,7 @@ export 'package:locorda_objects/locorda_objects.dart'
         GroupIndexConfig,
         GroupingPropertyData,
         IndexItemConfig,
-        ItemFetchPolicy,
+        RootResourceFetchPolicy,
         LocordaConfig,
         ObjectSyncEngine,
         RegexTransformData,
@@ -24,7 +24,7 @@ export 'package:locorda_objects/locorda_objects.dart'
 export 'package:locorda_core/locorda_core.dart'
     show
         SyncManager,
-        ItemFetchPolicy,
+        RootResourceFetchPolicy,
         SyncEngine,
         SyncEngineConfig,
         StandardSyncManager,

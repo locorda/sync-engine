@@ -79,11 +79,11 @@ class NotesService {
       final isPrefetchNeeded = monthFilter == NoteGroupKey.currentMonth ||
           monthFilter == NoteGroupKey.previousMonth;
 
-      await _noteRepository.configureMonthGroupSubscription(
+      await _noteRepository.ensureMonthGroupSubscription(
           monthFilter,
           isPrefetchNeeded
-              ? ItemFetchPolicy.prefetch
-              : ItemFetchPolicy.onRequest);
+              ? RootResourceFetchPolicy.prefetch
+              : RootResourceFetchPolicy.onRequest);
     }
     _monthFilterController.add(monthFilter);
   }
@@ -92,10 +92,10 @@ class NotesService {
   /// Returns the month that was set as the initial filter
   Future<NoteGroupKey> initializeDefaultSubscriptions() async {
     // Configure subscriptions to current and previous month with prefetch (business logic)
-    await _noteRepository.configureMonthGroupSubscription(
-        NoteGroupKey.currentMonth, ItemFetchPolicy.prefetch);
-    await _noteRepository.configureMonthGroupSubscription(
-        NoteGroupKey.previousMonth, ItemFetchPolicy.prefetch);
+    await _noteRepository.ensureMonthGroupSubscription(
+        NoteGroupKey.currentMonth, RootResourceFetchPolicy.prefetch);
+    await _noteRepository.ensureMonthGroupSubscription(
+        NoteGroupKey.previousMonth, RootResourceFetchPolicy.prefetch);
 
     // Set initial month filter to current month
     final initialMonth = NoteGroupKey.currentMonth;

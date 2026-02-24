@@ -232,4 +232,60 @@ void main() {
       expect(contentResult!.$2, equals(noteIndex2));
     });
   });
+
+  group('SyncConfig.getFullIndexNameForResourceType', () {
+    late LocordaConfig config;
+
+    setUp(() {
+      final titleIndex = FullIndexConfig(
+        localName: 'title',
+        item: IndexItemConfig(
+          TestNoteIndex,
+          {const IriTerm('http://example.org/title')},
+        ),
+      );
+
+      final contentIndex = FullIndexConfig(
+        localName: 'content',
+        item: IndexItemConfig(
+          TestNoteIndex,
+          {const IriTerm('http://example.org/content')},
+        ),
+      );
+
+      config = LocordaConfig(
+        resources: [
+          ResourceConfig(
+            type: TestNote,
+            crdtMapping: Uri.parse('http://example.org/note-mapping'),
+            indices: [titleIndex, contentIndex],
+          ),
+        ],
+      );
+    });
+
+    test('returns canonical full-index name for resource type + localName', () {
+      final resolved =
+          getFullIndexNameForResourceType(config, TestNote, 'title');
+
+      expect(
+        resolved,
+        equals('${TestNote}_${TestNoteIndex}_title'),
+      );
+    });
+
+    test('returns null when localName does not exist for resource type', () {
+      final resolved =
+          getFullIndexNameForResourceType(config, TestNote, 'missing');
+
+      expect(resolved, isNull);
+    });
+
+    test('returns null when resource type does not exist', () {
+      final resolved =
+          getFullIndexNameForResourceType(config, TestContact, 'title');
+
+      expect(resolved, isNull);
+    });
+  });
 }

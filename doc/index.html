@@ -499,7 +499,7 @@
       ResourceConfig(
         type: Note,
         crdtMapping: Uri.parse(<span class="code-string">'$appBaseUrl/mappings/note-v1.ttl'</span>),
-        indices: [FullIndex(itemFetchPolicy: ItemFetchPolicy.prefetch)],
+        indices: [FullIndex(itemFetchPolicy: RootResourceFetchPolicy.prefetch)],
       ),
     ],
   ),

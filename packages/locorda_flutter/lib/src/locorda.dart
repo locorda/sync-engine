@@ -104,7 +104,7 @@ class Locorda {
   ///       ResourceConfig(
   ///         type: Category,
   ///         crdtMapping: Uri.parse('$appBaseUrl/mappings/category-v1.ttl'),
-  ///         indices: [FullIndexConfig(itemFetchPolicy: ItemFetchPolicy.prefetch)],
+  ///         indices: [FullIndexConfig(rootResourceFetchPolicy: RootResourceFetchPolicy.prefetch)],
   ///       ),
   ///     ],
   ///   ),

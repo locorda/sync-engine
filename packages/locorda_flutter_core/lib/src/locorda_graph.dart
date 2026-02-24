@@ -106,7 +106,7 @@ class LocordaGraph {
   ///           IndexConfig(
   ///             name: 'notes_by_month',
   ///             type: IndexType.group,
-  ///             itemFetchPolicy: ItemFetchPolicy.prefetch,
+  ///             rootResourceFetchPolicy: RootResourceFetchPolicy.prefetch,
   ///           ),
   ///         ],
   ///       ),

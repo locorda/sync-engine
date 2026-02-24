@@ -18,7 +18,7 @@ abstract interface class Backend {
   /// Note that it does not fire when remote's availability status changes.
   ///
   /// Consumers (e.g., StandardSyncEngine) listen to this to dynamically
-  /// adjust ItemFetchPolicy when useShardDatasets remotes become available.
+  /// adjust RootResourceFetchPolicy when useShardDatasets remotes become available.
   ///
   /// Uses BehaviorSubject to provide current state on subscription and
   /// enable synchronous access to last emitted value.

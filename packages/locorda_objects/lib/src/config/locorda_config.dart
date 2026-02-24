@@ -1,7 +1,7 @@
 import 'package:locorda_core/locorda_core.dart';
 
 export 'package:locorda_core/locorda_core.dart'
-    show GroupingPropertyData, RegexTransformData, ItemFetchPolicy;
+    show GroupingPropertyData, RegexTransformData, RootResourceFetchPolicy;
 
 const defaultIndexLocalName = "default";
 
@@ -22,7 +22,7 @@ class FullIndexConfig extends FullIndexConfigBase implements CrdtIndexConfig {
   const FullIndexConfig({
     super.localName = defaultIndexLocalName,
     this.item,
-    super.itemFetchPolicy = ItemFetchPolicy.prefetch,
+    super.rootResourceFetchPolicy = RootResourceFetchPolicy.prefetch,
   }) : super(item: item);
 }
 

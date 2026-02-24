@@ -249,7 +249,7 @@ void main() {
             indices: [
               const FullIndexData(
                 localName: 'all-notes',
-                itemFetchPolicy: ItemFetchPolicy.onRequest,
+                rootResourceFetchPolicy: RootResourceFetchPolicy.onRequest,
               ),
             ],
           ),
@@ -286,7 +286,7 @@ void main() {
             indices: [
               const FullIndexData(
                 localName: 'all-notes',
-                itemFetchPolicy: ItemFetchPolicy.onRequest,
+                rootResourceFetchPolicy: RootResourceFetchPolicy.onRequest,
               ),
             ],
           ),
@@ -330,7 +330,7 @@ void main() {
             indices: [
               const FullIndexData(
                 localName: 'all-notes',
-                itemFetchPolicy: ItemFetchPolicy.onRequest,
+                rootResourceFetchPolicy: RootResourceFetchPolicy.onRequest,
               ),
             ],
           ),
@@ -340,7 +340,7 @@ void main() {
             indices: [
               const FullIndexData(
                 localName: 'all-tasks',
-                itemFetchPolicy: ItemFetchPolicy.onRequest,
+                rootResourceFetchPolicy: RootResourceFetchPolicy.onRequest,
               ),
             ],
           ),
@@ -369,7 +369,8 @@ void main() {
   });
 
   group('RemoteSyncOrchestrator - Configuration', () {
-    test('should accept prefetch ItemFetchPolicy configuration', () async {
+    test('should accept prefetch RootResourceFetchPolicy configuration',
+        () async {
       // Arrange
       final noteType = const IriTerm('http://example.org/Note');
       final config = SyncEngineConfig(
@@ -380,7 +381,7 @@ void main() {
             indices: [
               const FullIndexData(
                 localName: 'all-notes',
-                itemFetchPolicy: ItemFetchPolicy.prefetch,
+                rootResourceFetchPolicy: RootResourceFetchPolicy.prefetch,
               ),
             ],
           ),
@@ -401,7 +402,8 @@ void main() {
       );
     });
 
-    test('should accept onRequest ItemFetchPolicy configuration', () async {
+    test('should accept onRequest RootResourceFetchPolicy configuration',
+        () async {
       // Arrange
       final noteType = const IriTerm('http://example.org/Note');
       final config = SyncEngineConfig(
@@ -412,7 +414,7 @@ void main() {
             indices: [
               const FullIndexData(
                 localName: 'all-notes',
-                itemFetchPolicy: ItemFetchPolicy.onRequest,
+                rootResourceFetchPolicy: RootResourceFetchPolicy.onRequest,
               ),
             ],
           ),

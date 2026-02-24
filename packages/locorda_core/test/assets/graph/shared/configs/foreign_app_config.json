@@ -8,12 +8,12 @@
         {
           "type": "FullIndex",
           "localName": "recipes-full",
-          "itemFetchPolicy": "prefetch"
+          "rootResourceFetchPolicy": "prefetch"
         },
         {
           "type": "GroupIndex",
           "localName": "recipes-by-month",
-          "itemFetchPolicy": "prefetch",
+          "rootResourceFetchPolicy": "prefetch",
           "groupingProperties": [
             {
               "predicate": "https://schema.org/dateCreated",

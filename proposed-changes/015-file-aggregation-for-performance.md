@@ -28,14 +28,14 @@ It is up to the backend to choose which mode of operation it wants. There will n
 #### 1. One File per resource
 In this mode, every root resource (@RootResource) as modelled by the application (e.g. every note, every category etc.) will be stored in a file in the remote storage. This mode of operation has the following characteristics:
 
-* `ItemFetchPolicy.onRequest` is fully supported, e.g. the application only fetches those root resources it actually wants/needs
+* `RootResourceFetchPolicy.onRequest` is fully supported, e.g. the application only fetches those root resources it actually wants/needs
 * Might be slower than expected due to latency - if every single http request takes appr. 300ms or more, this does not work well
 * Most natural for backends like solid which support linked data - other applications would at least be able to find  and read this data then.
 
 #### 2. One File per shard (RDF Dataset)
 In contrast to the other mode, now the backend will store **all** data of a shard including all data of the root resources of the resources it references in one RDF Dataset. The shard metadata (which would be its own file in the other mode) will be the default graph, all root resources of this shard will be named graphs in this dataset. The complete RDF Dataset is stored as a single file by the backend.
 
-* Does not support `ItemFetchPolicy.onRequest`. 
+* Does not support `RootResourceFetchPolicy.onRequest`. 
   * The application can still use that mode, but it will always get all data of a shard pushed from the backend
   * This also affects all other backends (if multiple backends are configured): before sync the framework has to check if there are unfetched items and has to fetch them - if it can't, then it cannot sync, effectively disabling onRequest for all active backends.
 * Should be faster since there are a lot fewer http requests - at the expense of potentially bandwidth though

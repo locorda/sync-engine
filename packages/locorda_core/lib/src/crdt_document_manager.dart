@@ -30,6 +30,7 @@ typedef DocumentSaveResult = ({
   RdfGraph appData,
   int physicalTime,
   int updatedAt,
+  List<ResolvedGroupIndex> resolvedGroupIndices,
   List<
       MissingGroupIndex> missingGroupIndices // GroupIndices that need to be created
 });
@@ -475,8 +476,13 @@ class CrdtDocumentManager {
       // Calculate new shards based on current appData
       // Use lenient mode for user-initiated saves - we proceed even if indices
       // haven't been synced yet. Missing shards will be self-healing on next sync.
-      final (allShards, removed, missingGroupIndices, missingIndexDocuments) =
-          await _shardDeterminer.calculateShards(
+      final (
+        allShards,
+        removed,
+        resolvedGroupIndices,
+        missingGroupIndices,
+        missingIndexDocuments
+      ) = await _shardDeterminer.calculateShards(
         type,
         resourceIri,
         documentIri,
@@ -570,6 +576,7 @@ class CrdtDocumentManager {
         appData: appData,
         previousCursor: saveResult.previousCursor,
         currentCursor: saveResult.currentCursor,
+        resolvedGroupIndices: resolvedGroupIndices,
         missingGroupIndices: missingGroupIndices,
         physicalTime: clock.physicalTime,
         updatedAt: updatedAtTimestamp.millisecondsSinceEpoch,

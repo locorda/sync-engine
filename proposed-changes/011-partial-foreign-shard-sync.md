@@ -40,8 +40,8 @@ Query index items table for all referenced shards (not just configured indices)
 ### b) Sync Modes
 Distinguish sync modes per index:
 
-- **Full sync:** All shards, with `ItemFetchPolicy` (download new remote items)
-- **Partial sync:** Selected shards only, no `ItemFetchPolicy` (upload-only for known items)
+- **Full sync:** All shards, with `RootResourceFetchPolicy` (download new remote items)
+- **Partial sync:** Selected shards only, no `RootResourceFetchPolicy` (upload-only for known items)
 
 ### c) Coverage Tracking
 Track which items are already covered by synced shards to avoid redundant syncs
@@ -50,7 +50,7 @@ Track which items are already covered by synced shards to avoid redundant syncs
 
 **Current representation:**
 ```dart
-(IriTerm indexIri, ItemFetchPolicy fetchPolicy)
+(IriTerm indexIri, RootResourceFetchPolicy fetchPolicy)
 ```
 This implies full shard sync.
 
@@ -67,7 +67,7 @@ sealed class IndexSyncMode {
 /// Full index sync: Download all shards and apply fetch policy for new items
 final class FullIndexSync extends IndexSyncMode {
   /// Policy determining which items to download from remote
-  final ItemFetchPolicy fetchPolicy;
+  final RootResourceFetchPolicy fetchPolicy;
   
   const FullIndexSync({
     required super.indexIri,

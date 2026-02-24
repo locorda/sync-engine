@@ -358,5 +358,102 @@ void main() {
         await storage.close();
       });
     });
+
+    group('Index Instance Sync State', () {
+      testWidgets('upserts and reads per-remote index state', (tester) async {
+        const indexInstanceIri = IriTerm('https://example.com/index/instance1');
+        final remote = RemoteId('solid', 'https://alice.example/');
+
+        await storage.upsertIndexInstanceSyncState(
+          indexInstanceIri: indexInstanceIri,
+          remoteId: remote,
+          phase: RemoteSyncPhase.ready,
+          lastSuccessfulSyncAt: DateTime.utc(2026, 2, 1, 10),
+          lastAttemptStartedAt: DateTime.utc(2026, 2, 1, 9, 59),
+          lastAttemptFinishedAt: DateTime.utc(2026, 2, 1, 10),
+        );
+
+        final snapshot =
+            await storage.getIndexInstanceSyncState(indexInstanceIri);
+        final entry = snapshot.perRemote[remote];
+
+        expect(entry, isNotNull);
+        expect(entry!.phase, RemoteSyncPhase.ready);
+        expect(entry.lastSuccessfulSyncAt, DateTime.utc(2026, 2, 1, 10));
+      });
+
+      testWidgets('preserves lastSuccessfulSyncAt on later error',
+          (tester) async {
+        const indexInstanceIri = IriTerm('https://example.com/index/instance2');
+        final remote = RemoteId('solid', 'https://bob.example/');
+        final successAt = DateTime.utc(2026, 2, 2, 12);
+
+        await storage.upsertIndexInstanceSyncState(
+          indexInstanceIri: indexInstanceIri,
+          remoteId: remote,
+          phase: RemoteSyncPhase.ready,
+          lastSuccessfulSyncAt: successAt,
+        );
+
+        await storage.upsertIndexInstanceSyncState(
+          indexInstanceIri: indexInstanceIri,
+          remoteId: remote,
+          phase: RemoteSyncPhase.error,
+          lastErrorMessage: 'network timeout',
+        );
+
+        final snapshot =
+            await storage.getIndexInstanceSyncState(indexInstanceIri);
+        final entry = snapshot.perRemote[remote];
+
+        expect(entry, isNotNull);
+        expect(entry!.phase, RemoteSyncPhase.error);
+        expect(entry.lastSuccessfulSyncAt, successAt);
+        expect(entry.lastErrorMessage, 'network timeout');
+      });
+
+      testWidgets('keeps lastSuccessfulSyncAt when explicitly null',
+          (tester) async {
+        const indexInstanceIri = IriTerm('https://example.com/index/instance3');
+        final remote = RemoteId('solid', 'https://dave.example/');
+        final successAt = DateTime.utc(2026, 2, 3, 14);
+
+        await storage.upsertIndexInstanceSyncState(
+          indexInstanceIri: indexInstanceIri,
+          remoteId: remote,
+          phase: RemoteSyncPhase.ready,
+          lastSuccessfulSyncAt: successAt,
+        );
+
+        await storage.upsertIndexInstanceSyncState(
+          indexInstanceIri: indexInstanceIri,
+          remoteId: remote,
+          phase: RemoteSyncPhase.error,
+          lastSuccessfulSyncAt: null,
+          lastErrorMessage: 'timeout',
+        );
+
+        final snapshot =
+            await storage.getIndexInstanceSyncState(indexInstanceIri);
+        final entry = snapshot.perRemote[remote];
+
+        expect(entry, isNotNull);
+        expect(entry!.phase, RemoteSyncPhase.error);
+        expect(entry.lastSuccessfulSyncAt, successAt);
+        expect(entry.lastErrorMessage, 'timeout');
+      });
+
+      testWidgets('watches configured remotes', (tester) async {
+        final expectedRemote = RemoteId('solid', 'https://carol.example/');
+
+        await storage.updateLastRemoteSyncTimestamp(
+          expectedRemote,
+          100,
+        );
+
+        final remotes = await storage.getConfiguredRemoteIds();
+        expect(remotes, contains(expectedRemote));
+      });
+    });
   });
 }

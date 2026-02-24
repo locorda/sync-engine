@@ -41,7 +41,7 @@ LocordaConfig(
     ResourceConfig(
       type: Category,
       crdtMapping: Uri.parse('$appBaseUrl/mappings/category-v1.ttl'),
-      indices: [FullIndex(itemFetchPolicy: ItemFetchPolicy.prefetch)],
+      indices: [FullIndex(rootResourceFetchPolicy: RootResourceFetchPolicy.prefetch)],
     ),
   ],
 )
@@ -82,14 +82,14 @@ class NoteGroupKey {
 class FullIndex {
   final bool isEnabled;
   final String localName;
-  final ItemFetchPolicy policy;
+  final RootResourceFetchPolicy policy;
   
   /// Creates a FullIndex configuration with defaults.
   /// Default localName: 'default'
-  /// Default policy: ItemFetchPolicy.prefetch
+  /// Default policy: RootResourceFetchPolicy.prefetch
   const FullIndex({
     this.localName = 'default',
-    this.policy = ItemFetchPolicy.prefetch,
+    this.policy = RootResourceFetchPolicy.prefetch,
   }) : isEnabled = true;
   
   /// Disables FullIndex generation for this resource.
@@ -97,7 +97,7 @@ class FullIndex {
   const FullIndex.disabled()
       : isEnabled = false,
         localName = '',
-        policy = ItemFetchPolicy.prefetch;
+        policy = RootResourceFetchPolicy.prefetch;
 }
 ```
 
@@ -267,7 +267,7 @@ class CategoryIndexEntry {
   'https://app.example.com/mappings/document-v1.ttl',
   fullIndex: FullIndex(
     localName: 'all_documents',
-    policy: ItemFetchPolicy.onRequest,
+    policy: RootResourceFetchPolicy.onRequest,
   ),
 )
 class Document { /* ... */ }
@@ -300,7 +300,7 @@ class DocumentGroupKey { /* ... */ }
   'https://app.example.com/mappings/dataset-v1.ttl',
   fullIndex: FullIndex(
     localName: 'all_datasets',
-    policy: ItemFetchPolicy.onRequest,  // Lazy loading for large datasets
+    policy: RootResourceFetchPolicy.onRequest,  // Lazy loading for large datasets
   ),
 )
 class LargeDataset { /* ... */ }
@@ -332,7 +332,7 @@ For each class C with @RootResource:
   3. If fullIndex.isEnabled == true:
      - Create FullIndex with:
        - localName: fullIndex.localName
-       - itemFetchPolicy: fullIndex.policy
+       - rootResourceFetchPolicy: fullIndex.policy
      - Find associated @IndexItem.fullIndex(IndexItemIriStrategy(C)) for IndexItemConfig (optional)
   
   4. For each IndexItemConfig (full or group):
@@ -430,7 +430,7 @@ LocordaConfig generateLocordaConfig() {
         indices: [
           FullIndex(
             localName: 'default',
-            itemFetchPolicy: ItemFetchPolicy.prefetch,
+            rootResourceFetchPolicy: RootResourceFetchPolicy.prefetch,
             item: IndexItemConfig(CategoryIndexEntry, {
               SchemaCreativeWork.name,
             }),

@@ -122,12 +122,12 @@ class FullIndex {
   final String localName;
 
   /// Item fetch policy for the FullIndex.
-  final ItemFetchPolicy policy;
+  final RootResourceFetchPolicy policy;
 
   /// Creates a FullIndex configuration with defaults.
   const FullIndex({
     this.localName = 'default',
-    this.policy = ItemFetchPolicy.prefetch,
+    this.policy = RootResourceFetchPolicy.prefetch,
   }) : isEnabled = true;
 
   /// Disables FullIndex generation for this resource.
@@ -135,7 +135,7 @@ class FullIndex {
   const FullIndex.disabled()
       : isEnabled = false,
         localName = '',
-        policy = ItemFetchPolicy.prefetch;
+        policy = RootResourceFetchPolicy.prefetch;
 }
 
 /// Defines a regex transformation applied to a grouping property value.

@@ -1875,6 +1875,8 @@ class GroupIndexSubscription extends DataClass
   final int indexedTypeIriId;
 
   /// Fetch policy: 'onRequest' or 'prefetch'
+  /// TODO: could be renamed to rootResourceFetchPolicy to be more explicit, but
+  /// this column is older that that name and we did not want to change it yet
   final String itemFetchPolicy;
 
   /// Timestamp when this subscription was created (milliseconds since epoch)
@@ -2076,239 +2078,6 @@ class GroupIndexSubscriptionsCompanion
           ..write('groupIndexTemplateIriId: $groupIndexTemplateIriId, ')
           ..write('indexedTypeIriId: $indexedTypeIriId, ')
           ..write('itemFetchPolicy: $itemFetchPolicy, ')
-          ..write('createdAt: $createdAt')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $IndexIriIdSetVersionsTable extends IndexIriIdSetVersions
-    with TableInfo<$IndexIriIdSetVersionsTable, IndexIriIdSetVersion> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $IndexIriIdSetVersionsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
-      'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
-  static const VerificationMeta _indexIriIdsMeta =
-      const VerificationMeta('indexIriIds');
-  @override
-  late final GeneratedColumn<String> indexIriIds = GeneratedColumn<String>(
-      'index_iri_ids', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _createdAtMeta =
-      const VerificationMeta('createdAt');
-  @override
-  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
-      'created_at', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  @override
-  List<GeneratedColumn> get $columns => [id, indexIriIds, createdAt];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'index_iri_id_set_versions';
-  @override
-  VerificationContext validateIntegrity(
-      Insertable<IndexIriIdSetVersion> instance,
-      {bool isInserting = false}) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('index_iri_ids')) {
-      context.handle(
-          _indexIriIdsMeta,
-          indexIriIds.isAcceptableOrUnknown(
-              data['index_iri_ids']!, _indexIriIdsMeta));
-    } else if (isInserting) {
-      context.missing(_indexIriIdsMeta);
-    }
-    if (data.containsKey('created_at')) {
-      context.handle(_createdAtMeta,
-          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
-    } else if (isInserting) {
-      context.missing(_createdAtMeta);
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  List<Set<GeneratedColumn>> get uniqueKeys => [
-        {indexIriIds},
-      ];
-  @override
-  IndexIriIdSetVersion map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return IndexIriIdSetVersion(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
-      indexIriIds: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}index_iri_ids'])!,
-      createdAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
-    );
-  }
-
-  @override
-  $IndexIriIdSetVersionsTable createAlias(String alias) {
-    return $IndexIriIdSetVersionsTable(attachedDatabase, alias);
-  }
-}
-
-class IndexIriIdSetVersion extends DataClass
-    implements Insertable<IndexIriIdSetVersion> {
-  final int id;
-
-  /// Comma-separated, sorted list of index IRI IDs (e.g., "5,7,9")
-  /// Always sorted ascending to ensure consistent hashing
-  final String indexIriIds;
-
-  /// When this version was created (milliseconds since epoch)
-  final int createdAt;
-  const IndexIriIdSetVersion(
-      {required this.id, required this.indexIriIds, required this.createdAt});
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['index_iri_ids'] = Variable<String>(indexIriIds);
-    map['created_at'] = Variable<int>(createdAt);
-    return map;
-  }
-
-  IndexIriIdSetVersionsCompanion toCompanion(bool nullToAbsent) {
-    return IndexIriIdSetVersionsCompanion(
-      id: Value(id),
-      indexIriIds: Value(indexIriIds),
-      createdAt: Value(createdAt),
-    );
-  }
-
-  factory IndexIriIdSetVersion.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return IndexIriIdSetVersion(
-      id: serializer.fromJson<int>(json['id']),
-      indexIriIds: serializer.fromJson<String>(json['indexIriIds']),
-      createdAt: serializer.fromJson<int>(json['createdAt']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'indexIriIds': serializer.toJson<String>(indexIriIds),
-      'createdAt': serializer.toJson<int>(createdAt),
-    };
-  }
-
-  IndexIriIdSetVersion copyWith(
-          {int? id, String? indexIriIds, int? createdAt}) =>
-      IndexIriIdSetVersion(
-        id: id ?? this.id,
-        indexIriIds: indexIriIds ?? this.indexIriIds,
-        createdAt: createdAt ?? this.createdAt,
-      );
-  IndexIriIdSetVersion copyWithCompanion(IndexIriIdSetVersionsCompanion data) {
-    return IndexIriIdSetVersion(
-      id: data.id.present ? data.id.value : this.id,
-      indexIriIds:
-          data.indexIriIds.present ? data.indexIriIds.value : this.indexIriIds,
-      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('IndexIriIdSetVersion(')
-          ..write('id: $id, ')
-          ..write('indexIriIds: $indexIriIds, ')
-          ..write('createdAt: $createdAt')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(id, indexIriIds, createdAt);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is IndexIriIdSetVersion &&
-          other.id == this.id &&
-          other.indexIriIds == this.indexIriIds &&
-          other.createdAt == this.createdAt);
-}
-
-class IndexIriIdSetVersionsCompanion
-    extends UpdateCompanion<IndexIriIdSetVersion> {
-  final Value<int> id;
-  final Value<String> indexIriIds;
-  final Value<int> createdAt;
-  const IndexIriIdSetVersionsCompanion({
-    this.id = const Value.absent(),
-    this.indexIriIds = const Value.absent(),
-    this.createdAt = const Value.absent(),
-  });
-  IndexIriIdSetVersionsCompanion.insert({
-    this.id = const Value.absent(),
-    required String indexIriIds,
-    required int createdAt,
-  })  : indexIriIds = Value(indexIriIds),
-        createdAt = Value(createdAt);
-  static Insertable<IndexIriIdSetVersion> custom({
-    Expression<int>? id,
-    Expression<String>? indexIriIds,
-    Expression<int>? createdAt,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (indexIriIds != null) 'index_iri_ids': indexIriIds,
-      if (createdAt != null) 'created_at': createdAt,
-    });
-  }
-
-  IndexIriIdSetVersionsCompanion copyWith(
-      {Value<int>? id, Value<String>? indexIriIds, Value<int>? createdAt}) {
-    return IndexIriIdSetVersionsCompanion(
-      id: id ?? this.id,
-      indexIriIds: indexIriIds ?? this.indexIriIds,
-      createdAt: createdAt ?? this.createdAt,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<int>(id.value);
-    }
-    if (indexIriIds.present) {
-      map['index_iri_ids'] = Variable<String>(indexIriIds.value);
-    }
-    if (createdAt.present) {
-      map['created_at'] = Variable<int>(createdAt.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('IndexIriIdSetVersionsCompanion(')
-          ..write('id: $id, ')
-          ..write('indexIriIds: $indexIriIds, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -2637,6 +2406,714 @@ class RemoteSettingsCompanion extends UpdateCompanion<RemoteSetting> {
   }
 }
 
+class $IndexInstanceSyncStatesTable extends IndexInstanceSyncStates
+    with TableInfo<$IndexInstanceSyncStatesTable, IndexInstanceSyncState> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $IndexInstanceSyncStatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _indexInstanceIriIdMeta =
+      const VerificationMeta('indexInstanceIriId');
+  @override
+  late final GeneratedColumn<int> indexInstanceIriId = GeneratedColumn<int>(
+      'index_instance_iri_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES sync_iris (id)'));
+  static const VerificationMeta _remoteSettingIdMeta =
+      const VerificationMeta('remoteSettingId');
+  @override
+  late final GeneratedColumn<int> remoteSettingId = GeneratedColumn<int>(
+      'remote_setting_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES remote_settings (id)'));
+  static const VerificationMeta _phaseMeta = const VerificationMeta('phase');
+  @override
+  late final GeneratedColumn<String> phase = GeneratedColumn<String>(
+      'phase', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _lastSuccessfulSyncAtMsMeta =
+      const VerificationMeta('lastSuccessfulSyncAtMs');
+  @override
+  late final GeneratedColumn<int> lastSuccessfulSyncAtMs = GeneratedColumn<int>(
+      'last_successful_sync_at_ms', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _lastAttemptStartedAtMsMeta =
+      const VerificationMeta('lastAttemptStartedAtMs');
+  @override
+  late final GeneratedColumn<int> lastAttemptStartedAtMs = GeneratedColumn<int>(
+      'last_attempt_started_at_ms', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _lastAttemptFinishedAtMsMeta =
+      const VerificationMeta('lastAttemptFinishedAtMs');
+  @override
+  late final GeneratedColumn<int> lastAttemptFinishedAtMs =
+      GeneratedColumn<int>('last_attempt_finished_at_ms', aliasedName, true,
+          type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _lastErrorMessageMeta =
+      const VerificationMeta('lastErrorMessage');
+  @override
+  late final GeneratedColumn<String> lastErrorMessage = GeneratedColumn<String>(
+      'last_error_message', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        indexInstanceIriId,
+        remoteSettingId,
+        phase,
+        lastSuccessfulSyncAtMs,
+        lastAttemptStartedAtMs,
+        lastAttemptFinishedAtMs,
+        lastErrorMessage
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'index_instance_sync_states';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<IndexInstanceSyncState> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('index_instance_iri_id')) {
+      context.handle(
+          _indexInstanceIriIdMeta,
+          indexInstanceIriId.isAcceptableOrUnknown(
+              data['index_instance_iri_id']!, _indexInstanceIriIdMeta));
+    } else if (isInserting) {
+      context.missing(_indexInstanceIriIdMeta);
+    }
+    if (data.containsKey('remote_setting_id')) {
+      context.handle(
+          _remoteSettingIdMeta,
+          remoteSettingId.isAcceptableOrUnknown(
+              data['remote_setting_id']!, _remoteSettingIdMeta));
+    } else if (isInserting) {
+      context.missing(_remoteSettingIdMeta);
+    }
+    if (data.containsKey('phase')) {
+      context.handle(
+          _phaseMeta, phase.isAcceptableOrUnknown(data['phase']!, _phaseMeta));
+    } else if (isInserting) {
+      context.missing(_phaseMeta);
+    }
+    if (data.containsKey('last_successful_sync_at_ms')) {
+      context.handle(
+          _lastSuccessfulSyncAtMsMeta,
+          lastSuccessfulSyncAtMs.isAcceptableOrUnknown(
+              data['last_successful_sync_at_ms']!,
+              _lastSuccessfulSyncAtMsMeta));
+    }
+    if (data.containsKey('last_attempt_started_at_ms')) {
+      context.handle(
+          _lastAttemptStartedAtMsMeta,
+          lastAttemptStartedAtMs.isAcceptableOrUnknown(
+              data['last_attempt_started_at_ms']!,
+              _lastAttemptStartedAtMsMeta));
+    }
+    if (data.containsKey('last_attempt_finished_at_ms')) {
+      context.handle(
+          _lastAttemptFinishedAtMsMeta,
+          lastAttemptFinishedAtMs.isAcceptableOrUnknown(
+              data['last_attempt_finished_at_ms']!,
+              _lastAttemptFinishedAtMsMeta));
+    }
+    if (data.containsKey('last_error_message')) {
+      context.handle(
+          _lastErrorMessageMeta,
+          lastErrorMessage.isAcceptableOrUnknown(
+              data['last_error_message']!, _lastErrorMessageMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {indexInstanceIriId, remoteSettingId};
+  @override
+  IndexInstanceSyncState map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return IndexInstanceSyncState(
+      indexInstanceIriId: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}index_instance_iri_id'])!,
+      remoteSettingId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}remote_setting_id'])!,
+      phase: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}phase'])!,
+      lastSuccessfulSyncAtMs: attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}last_successful_sync_at_ms']),
+      lastAttemptStartedAtMs: attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}last_attempt_started_at_ms']),
+      lastAttemptFinishedAtMs: attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}last_attempt_finished_at_ms']),
+      lastErrorMessage: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}last_error_message']),
+    );
+  }
+
+  @override
+  $IndexInstanceSyncStatesTable createAlias(String alias) {
+    return $IndexInstanceSyncStatesTable(attachedDatabase, alias);
+  }
+}
+
+class IndexInstanceSyncState extends DataClass
+    implements Insertable<IndexInstanceSyncState> {
+  final int indexInstanceIriId;
+  final int remoteSettingId;
+
+  /// Phase name from [RemoteSyncPhase].
+  final String phase;
+
+  /// Last successful sync completion timestamp (UTC milliseconds since epoch).
+  final int? lastSuccessfulSyncAtMs;
+
+  /// Last sync attempt start timestamp (UTC milliseconds since epoch).
+  final int? lastAttemptStartedAtMs;
+
+  /// Last sync attempt finish timestamp (UTC milliseconds since epoch).
+  final int? lastAttemptFinishedAtMs;
+
+  /// Last sync error message for this index-instance/remote pair.
+  final String? lastErrorMessage;
+  const IndexInstanceSyncState(
+      {required this.indexInstanceIriId,
+      required this.remoteSettingId,
+      required this.phase,
+      this.lastSuccessfulSyncAtMs,
+      this.lastAttemptStartedAtMs,
+      this.lastAttemptFinishedAtMs,
+      this.lastErrorMessage});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['index_instance_iri_id'] = Variable<int>(indexInstanceIriId);
+    map['remote_setting_id'] = Variable<int>(remoteSettingId);
+    map['phase'] = Variable<String>(phase);
+    if (!nullToAbsent || lastSuccessfulSyncAtMs != null) {
+      map['last_successful_sync_at_ms'] = Variable<int>(lastSuccessfulSyncAtMs);
+    }
+    if (!nullToAbsent || lastAttemptStartedAtMs != null) {
+      map['last_attempt_started_at_ms'] = Variable<int>(lastAttemptStartedAtMs);
+    }
+    if (!nullToAbsent || lastAttemptFinishedAtMs != null) {
+      map['last_attempt_finished_at_ms'] =
+          Variable<int>(lastAttemptFinishedAtMs);
+    }
+    if (!nullToAbsent || lastErrorMessage != null) {
+      map['last_error_message'] = Variable<String>(lastErrorMessage);
+    }
+    return map;
+  }
+
+  IndexInstanceSyncStatesCompanion toCompanion(bool nullToAbsent) {
+    return IndexInstanceSyncStatesCompanion(
+      indexInstanceIriId: Value(indexInstanceIriId),
+      remoteSettingId: Value(remoteSettingId),
+      phase: Value(phase),
+      lastSuccessfulSyncAtMs: lastSuccessfulSyncAtMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSuccessfulSyncAtMs),
+      lastAttemptStartedAtMs: lastAttemptStartedAtMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptStartedAtMs),
+      lastAttemptFinishedAtMs: lastAttemptFinishedAtMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptFinishedAtMs),
+      lastErrorMessage: lastErrorMessage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastErrorMessage),
+    );
+  }
+
+  factory IndexInstanceSyncState.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return IndexInstanceSyncState(
+      indexInstanceIriId: serializer.fromJson<int>(json['indexInstanceIriId']),
+      remoteSettingId: serializer.fromJson<int>(json['remoteSettingId']),
+      phase: serializer.fromJson<String>(json['phase']),
+      lastSuccessfulSyncAtMs:
+          serializer.fromJson<int?>(json['lastSuccessfulSyncAtMs']),
+      lastAttemptStartedAtMs:
+          serializer.fromJson<int?>(json['lastAttemptStartedAtMs']),
+      lastAttemptFinishedAtMs:
+          serializer.fromJson<int?>(json['lastAttemptFinishedAtMs']),
+      lastErrorMessage: serializer.fromJson<String?>(json['lastErrorMessage']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'indexInstanceIriId': serializer.toJson<int>(indexInstanceIriId),
+      'remoteSettingId': serializer.toJson<int>(remoteSettingId),
+      'phase': serializer.toJson<String>(phase),
+      'lastSuccessfulSyncAtMs': serializer.toJson<int?>(lastSuccessfulSyncAtMs),
+      'lastAttemptStartedAtMs': serializer.toJson<int?>(lastAttemptStartedAtMs),
+      'lastAttemptFinishedAtMs':
+          serializer.toJson<int?>(lastAttemptFinishedAtMs),
+      'lastErrorMessage': serializer.toJson<String?>(lastErrorMessage),
+    };
+  }
+
+  IndexInstanceSyncState copyWith(
+          {int? indexInstanceIriId,
+          int? remoteSettingId,
+          String? phase,
+          Value<int?> lastSuccessfulSyncAtMs = const Value.absent(),
+          Value<int?> lastAttemptStartedAtMs = const Value.absent(),
+          Value<int?> lastAttemptFinishedAtMs = const Value.absent(),
+          Value<String?> lastErrorMessage = const Value.absent()}) =>
+      IndexInstanceSyncState(
+        indexInstanceIriId: indexInstanceIriId ?? this.indexInstanceIriId,
+        remoteSettingId: remoteSettingId ?? this.remoteSettingId,
+        phase: phase ?? this.phase,
+        lastSuccessfulSyncAtMs: lastSuccessfulSyncAtMs.present
+            ? lastSuccessfulSyncAtMs.value
+            : this.lastSuccessfulSyncAtMs,
+        lastAttemptStartedAtMs: lastAttemptStartedAtMs.present
+            ? lastAttemptStartedAtMs.value
+            : this.lastAttemptStartedAtMs,
+        lastAttemptFinishedAtMs: lastAttemptFinishedAtMs.present
+            ? lastAttemptFinishedAtMs.value
+            : this.lastAttemptFinishedAtMs,
+        lastErrorMessage: lastErrorMessage.present
+            ? lastErrorMessage.value
+            : this.lastErrorMessage,
+      );
+  IndexInstanceSyncState copyWithCompanion(
+      IndexInstanceSyncStatesCompanion data) {
+    return IndexInstanceSyncState(
+      indexInstanceIriId: data.indexInstanceIriId.present
+          ? data.indexInstanceIriId.value
+          : this.indexInstanceIriId,
+      remoteSettingId: data.remoteSettingId.present
+          ? data.remoteSettingId.value
+          : this.remoteSettingId,
+      phase: data.phase.present ? data.phase.value : this.phase,
+      lastSuccessfulSyncAtMs: data.lastSuccessfulSyncAtMs.present
+          ? data.lastSuccessfulSyncAtMs.value
+          : this.lastSuccessfulSyncAtMs,
+      lastAttemptStartedAtMs: data.lastAttemptStartedAtMs.present
+          ? data.lastAttemptStartedAtMs.value
+          : this.lastAttemptStartedAtMs,
+      lastAttemptFinishedAtMs: data.lastAttemptFinishedAtMs.present
+          ? data.lastAttemptFinishedAtMs.value
+          : this.lastAttemptFinishedAtMs,
+      lastErrorMessage: data.lastErrorMessage.present
+          ? data.lastErrorMessage.value
+          : this.lastErrorMessage,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IndexInstanceSyncState(')
+          ..write('indexInstanceIriId: $indexInstanceIriId, ')
+          ..write('remoteSettingId: $remoteSettingId, ')
+          ..write('phase: $phase, ')
+          ..write('lastSuccessfulSyncAtMs: $lastSuccessfulSyncAtMs, ')
+          ..write('lastAttemptStartedAtMs: $lastAttemptStartedAtMs, ')
+          ..write('lastAttemptFinishedAtMs: $lastAttemptFinishedAtMs, ')
+          ..write('lastErrorMessage: $lastErrorMessage')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      indexInstanceIriId,
+      remoteSettingId,
+      phase,
+      lastSuccessfulSyncAtMs,
+      lastAttemptStartedAtMs,
+      lastAttemptFinishedAtMs,
+      lastErrorMessage);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is IndexInstanceSyncState &&
+          other.indexInstanceIriId == this.indexInstanceIriId &&
+          other.remoteSettingId == this.remoteSettingId &&
+          other.phase == this.phase &&
+          other.lastSuccessfulSyncAtMs == this.lastSuccessfulSyncAtMs &&
+          other.lastAttemptStartedAtMs == this.lastAttemptStartedAtMs &&
+          other.lastAttemptFinishedAtMs == this.lastAttemptFinishedAtMs &&
+          other.lastErrorMessage == this.lastErrorMessage);
+}
+
+class IndexInstanceSyncStatesCompanion
+    extends UpdateCompanion<IndexInstanceSyncState> {
+  final Value<int> indexInstanceIriId;
+  final Value<int> remoteSettingId;
+  final Value<String> phase;
+  final Value<int?> lastSuccessfulSyncAtMs;
+  final Value<int?> lastAttemptStartedAtMs;
+  final Value<int?> lastAttemptFinishedAtMs;
+  final Value<String?> lastErrorMessage;
+  final Value<int> rowid;
+  const IndexInstanceSyncStatesCompanion({
+    this.indexInstanceIriId = const Value.absent(),
+    this.remoteSettingId = const Value.absent(),
+    this.phase = const Value.absent(),
+    this.lastSuccessfulSyncAtMs = const Value.absent(),
+    this.lastAttemptStartedAtMs = const Value.absent(),
+    this.lastAttemptFinishedAtMs = const Value.absent(),
+    this.lastErrorMessage = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  IndexInstanceSyncStatesCompanion.insert({
+    required int indexInstanceIriId,
+    required int remoteSettingId,
+    required String phase,
+    this.lastSuccessfulSyncAtMs = const Value.absent(),
+    this.lastAttemptStartedAtMs = const Value.absent(),
+    this.lastAttemptFinishedAtMs = const Value.absent(),
+    this.lastErrorMessage = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : indexInstanceIriId = Value(indexInstanceIriId),
+        remoteSettingId = Value(remoteSettingId),
+        phase = Value(phase);
+  static Insertable<IndexInstanceSyncState> custom({
+    Expression<int>? indexInstanceIriId,
+    Expression<int>? remoteSettingId,
+    Expression<String>? phase,
+    Expression<int>? lastSuccessfulSyncAtMs,
+    Expression<int>? lastAttemptStartedAtMs,
+    Expression<int>? lastAttemptFinishedAtMs,
+    Expression<String>? lastErrorMessage,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (indexInstanceIriId != null)
+        'index_instance_iri_id': indexInstanceIriId,
+      if (remoteSettingId != null) 'remote_setting_id': remoteSettingId,
+      if (phase != null) 'phase': phase,
+      if (lastSuccessfulSyncAtMs != null)
+        'last_successful_sync_at_ms': lastSuccessfulSyncAtMs,
+      if (lastAttemptStartedAtMs != null)
+        'last_attempt_started_at_ms': lastAttemptStartedAtMs,
+      if (lastAttemptFinishedAtMs != null)
+        'last_attempt_finished_at_ms': lastAttemptFinishedAtMs,
+      if (lastErrorMessage != null) 'last_error_message': lastErrorMessage,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  IndexInstanceSyncStatesCompanion copyWith(
+      {Value<int>? indexInstanceIriId,
+      Value<int>? remoteSettingId,
+      Value<String>? phase,
+      Value<int?>? lastSuccessfulSyncAtMs,
+      Value<int?>? lastAttemptStartedAtMs,
+      Value<int?>? lastAttemptFinishedAtMs,
+      Value<String?>? lastErrorMessage,
+      Value<int>? rowid}) {
+    return IndexInstanceSyncStatesCompanion(
+      indexInstanceIriId: indexInstanceIriId ?? this.indexInstanceIriId,
+      remoteSettingId: remoteSettingId ?? this.remoteSettingId,
+      phase: phase ?? this.phase,
+      lastSuccessfulSyncAtMs:
+          lastSuccessfulSyncAtMs ?? this.lastSuccessfulSyncAtMs,
+      lastAttemptStartedAtMs:
+          lastAttemptStartedAtMs ?? this.lastAttemptStartedAtMs,
+      lastAttemptFinishedAtMs:
+          lastAttemptFinishedAtMs ?? this.lastAttemptFinishedAtMs,
+      lastErrorMessage: lastErrorMessage ?? this.lastErrorMessage,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (indexInstanceIriId.present) {
+      map['index_instance_iri_id'] = Variable<int>(indexInstanceIriId.value);
+    }
+    if (remoteSettingId.present) {
+      map['remote_setting_id'] = Variable<int>(remoteSettingId.value);
+    }
+    if (phase.present) {
+      map['phase'] = Variable<String>(phase.value);
+    }
+    if (lastSuccessfulSyncAtMs.present) {
+      map['last_successful_sync_at_ms'] =
+          Variable<int>(lastSuccessfulSyncAtMs.value);
+    }
+    if (lastAttemptStartedAtMs.present) {
+      map['last_attempt_started_at_ms'] =
+          Variable<int>(lastAttemptStartedAtMs.value);
+    }
+    if (lastAttemptFinishedAtMs.present) {
+      map['last_attempt_finished_at_ms'] =
+          Variable<int>(lastAttemptFinishedAtMs.value);
+    }
+    if (lastErrorMessage.present) {
+      map['last_error_message'] = Variable<String>(lastErrorMessage.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IndexInstanceSyncStatesCompanion(')
+          ..write('indexInstanceIriId: $indexInstanceIriId, ')
+          ..write('remoteSettingId: $remoteSettingId, ')
+          ..write('phase: $phase, ')
+          ..write('lastSuccessfulSyncAtMs: $lastSuccessfulSyncAtMs, ')
+          ..write('lastAttemptStartedAtMs: $lastAttemptStartedAtMs, ')
+          ..write('lastAttemptFinishedAtMs: $lastAttemptFinishedAtMs, ')
+          ..write('lastErrorMessage: $lastErrorMessage, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $IndexIriIdSetVersionsTable extends IndexIriIdSetVersions
+    with TableInfo<$IndexIriIdSetVersionsTable, IndexIriIdSetVersion> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $IndexIriIdSetVersionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _indexIriIdsMeta =
+      const VerificationMeta('indexIriIds');
+  @override
+  late final GeneratedColumn<String> indexIriIds = GeneratedColumn<String>(
+      'index_iri_ids', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [id, indexIriIds, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'index_iri_id_set_versions';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<IndexIriIdSetVersion> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('index_iri_ids')) {
+      context.handle(
+          _indexIriIdsMeta,
+          indexIriIds.isAcceptableOrUnknown(
+              data['index_iri_ids']!, _indexIriIdsMeta));
+    } else if (isInserting) {
+      context.missing(_indexIriIdsMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {indexIriIds},
+      ];
+  @override
+  IndexIriIdSetVersion map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return IndexIriIdSetVersion(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      indexIriIds: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}index_iri_ids'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $IndexIriIdSetVersionsTable createAlias(String alias) {
+    return $IndexIriIdSetVersionsTable(attachedDatabase, alias);
+  }
+}
+
+class IndexIriIdSetVersion extends DataClass
+    implements Insertable<IndexIriIdSetVersion> {
+  final int id;
+
+  /// Comma-separated, sorted list of index IRI IDs (e.g., "5,7,9")
+  /// Always sorted ascending to ensure consistent hashing
+  final String indexIriIds;
+
+  /// When this version was created (milliseconds since epoch)
+  final int createdAt;
+  const IndexIriIdSetVersion(
+      {required this.id, required this.indexIriIds, required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['index_iri_ids'] = Variable<String>(indexIriIds);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  IndexIriIdSetVersionsCompanion toCompanion(bool nullToAbsent) {
+    return IndexIriIdSetVersionsCompanion(
+      id: Value(id),
+      indexIriIds: Value(indexIriIds),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory IndexIriIdSetVersion.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return IndexIriIdSetVersion(
+      id: serializer.fromJson<int>(json['id']),
+      indexIriIds: serializer.fromJson<String>(json['indexIriIds']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'indexIriIds': serializer.toJson<String>(indexIriIds),
+      'createdAt': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  IndexIriIdSetVersion copyWith(
+          {int? id, String? indexIriIds, int? createdAt}) =>
+      IndexIriIdSetVersion(
+        id: id ?? this.id,
+        indexIriIds: indexIriIds ?? this.indexIriIds,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  IndexIriIdSetVersion copyWithCompanion(IndexIriIdSetVersionsCompanion data) {
+    return IndexIriIdSetVersion(
+      id: data.id.present ? data.id.value : this.id,
+      indexIriIds:
+          data.indexIriIds.present ? data.indexIriIds.value : this.indexIriIds,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IndexIriIdSetVersion(')
+          ..write('id: $id, ')
+          ..write('indexIriIds: $indexIriIds, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, indexIriIds, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is IndexIriIdSetVersion &&
+          other.id == this.id &&
+          other.indexIriIds == this.indexIriIds &&
+          other.createdAt == this.createdAt);
+}
+
+class IndexIriIdSetVersionsCompanion
+    extends UpdateCompanion<IndexIriIdSetVersion> {
+  final Value<int> id;
+  final Value<String> indexIriIds;
+  final Value<int> createdAt;
+  const IndexIriIdSetVersionsCompanion({
+    this.id = const Value.absent(),
+    this.indexIriIds = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  IndexIriIdSetVersionsCompanion.insert({
+    this.id = const Value.absent(),
+    required String indexIriIds,
+    required int createdAt,
+  })  : indexIriIds = Value(indexIriIds),
+        createdAt = Value(createdAt);
+  static Insertable<IndexIriIdSetVersion> custom({
+    Expression<int>? id,
+    Expression<String>? indexIriIds,
+    Expression<int>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (indexIriIds != null) 'index_iri_ids': indexIriIds,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  IndexIriIdSetVersionsCompanion copyWith(
+      {Value<int>? id, Value<String>? indexIriIds, Value<int>? createdAt}) {
+    return IndexIriIdSetVersionsCompanion(
+      id: id ?? this.id,
+      indexIriIds: indexIriIds ?? this.indexIriIds,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (indexIriIds.present) {
+      map['index_iri_ids'] = Variable<String>(indexIriIds.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IndexIriIdSetVersionsCompanion(')
+          ..write('id: $id, ')
+          ..write('indexIriIds: $indexIriIds, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $RemoteSyncStateTable extends RemoteSyncState
     with TableInfo<$RemoteSyncStateTable, RemoteSyncStateData> {
   @override
@@ -2945,9 +3422,11 @@ abstract class _$SyncDatabase extends GeneratedDatabase {
   late final $IndexEntriesTable indexEntries = $IndexEntriesTable(this);
   late final $GroupIndexSubscriptionsTable groupIndexSubscriptions =
       $GroupIndexSubscriptionsTable(this);
+  late final $RemoteSettingsTable remoteSettings = $RemoteSettingsTable(this);
+  late final $IndexInstanceSyncStatesTable indexInstanceSyncStates =
+      $IndexInstanceSyncStatesTable(this);
   late final $IndexIriIdSetVersionsTable indexIriIdSetVersions =
       $IndexIriIdSetVersionsTable(this);
-  late final $RemoteSettingsTable remoteSettings = $RemoteSettingsTable(this);
   late final $RemoteSyncStateTable remoteSyncState =
       $RemoteSyncStateTable(this);
   late final SyncDocumentDao syncDocumentDao =
@@ -2968,8 +3447,9 @@ abstract class _$SyncDatabase extends GeneratedDatabase {
         syncSettings,
         indexEntries,
         groupIndexSubscriptions,
-        indexIriIdSetVersions,
         remoteSettings,
+        indexInstanceSyncStates,
+        indexIriIdSetVersions,
         remoteSyncState
       ];
 }
@@ -3166,6 +3646,24 @@ final class $$SyncIrisTableReferences
             (f) => f.indexedTypeIriId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_indexedTypeIriIdTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$IndexInstanceSyncStatesTable,
+      List<IndexInstanceSyncState>> _indexInstanceIriTable(
+          _$SyncDatabase db) =>
+      MultiTypedResultKey.fromTable(db.indexInstanceSyncStates,
+          aliasName: $_aliasNameGenerator(
+              db.syncIris.id, db.indexInstanceSyncStates.indexInstanceIriId));
+
+  $$IndexInstanceSyncStatesTableProcessedTableManager get indexInstanceIri {
+    final manager = $$IndexInstanceSyncStatesTableTableManager(
+            $_db, $_db.indexInstanceSyncStates)
+        .filter(
+            (f) => f.indexInstanceIriId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_indexInstanceIriTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -3432,6 +3930,29 @@ class $$SyncIrisTableFilterComposer
                 $$GroupIndexSubscriptionsTableFilterComposer(
                   $db: $db,
                   $table: $db.groupIndexSubscriptions,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
+
+  Expression<bool> indexInstanceIri(
+      Expression<bool> Function($$IndexInstanceSyncStatesTableFilterComposer f)
+          f) {
+    final $$IndexInstanceSyncStatesTableFilterComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.indexInstanceSyncStates,
+            getReferencedColumn: (t) => t.indexInstanceIriId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$IndexInstanceSyncStatesTableFilterComposer(
+                  $db: $db,
+                  $table: $db.indexInstanceSyncStates,
                   $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                   joinBuilder: joinBuilder,
                   $removeJoinBuilderFromRootComposer:
@@ -3734,6 +4255,29 @@ class $$SyncIrisTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> indexInstanceIri<T extends Object>(
+      Expression<T> Function($$IndexInstanceSyncStatesTableAnnotationComposer a)
+          f) {
+    final $$IndexInstanceSyncStatesTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.indexInstanceSyncStates,
+            getReferencedColumn: (t) => t.indexInstanceIriId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$IndexInstanceSyncStatesTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.indexInstanceSyncStates,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
+
   Expression<T> remoteSyncStateRefs<T extends Object>(
       Expression<T> Function($$RemoteSyncStateTableAnnotationComposer a) f) {
     final $$RemoteSyncStateTableAnnotationComposer composer = $composerBuilder(
@@ -3779,6 +4323,7 @@ class $$SyncIrisTableTableManager extends RootTableManager<
         bool groupIndexSubscriptionsRefs,
         bool groupIndexTemplateIriId,
         bool indexedTypeIriId,
+        bool indexInstanceIri,
         bool remoteSyncStateRefs})> {
   $$SyncIrisTableTableManager(_$SyncDatabase db, $SyncIrisTable table)
       : super(TableManagerState(
@@ -3822,6 +4367,7 @@ class $$SyncIrisTableTableManager extends RootTableManager<
               groupIndexSubscriptionsRefs = false,
               groupIndexTemplateIriId = false,
               indexedTypeIriId = false,
+              indexInstanceIri = false,
               remoteSyncStateRefs = false}) {
             return PrefetchHooks(
               db: db,
@@ -3837,6 +4383,7 @@ class $$SyncIrisTableTableManager extends RootTableManager<
                 if (groupIndexSubscriptionsRefs) db.groupIndexSubscriptions,
                 if (groupIndexTemplateIriId) db.groupIndexSubscriptions,
                 if (indexedTypeIriId) db.groupIndexSubscriptions,
+                if (indexInstanceIri) db.indexInstanceSyncStates,
                 if (remoteSyncStateRefs) db.remoteSyncState
               ],
               addJoins: null,
@@ -3982,6 +4529,19 @@ class $$SyncIrisTableTableManager extends RootTableManager<
                             (item, referencedItems) => referencedItems
                                 .where((e) => e.indexedTypeIriId == item.id),
                         typedResults: items),
+                  if (indexInstanceIri)
+                    await $_getPrefetchedData<SyncIri, $SyncIrisTable,
+                            IndexInstanceSyncState>(
+                        currentTable: table,
+                        referencedTable: $$SyncIrisTableReferences
+                            ._indexInstanceIriTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$SyncIrisTableReferences(db, table, p0)
+                                .indexInstanceIri,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.indexInstanceIriId == item.id),
+                        typedResults: items),
                   if (remoteSyncStateRefs)
                     await $_getPrefetchedData<SyncIri, $SyncIrisTable,
                             RemoteSyncStateData>(
@@ -4025,6 +4585,7 @@ typedef $$SyncIrisTableProcessedTableManager = ProcessedTableManager<
         bool groupIndexSubscriptionsRefs,
         bool groupIndexTemplateIriId,
         bool indexedTypeIriId,
+        bool indexInstanceIri,
         bool remoteSyncStateRefs})>;
 typedef $$SyncDocumentsTableCreateCompanionBuilder = SyncDocumentsCompanion
     Function({
@@ -6084,6 +6645,741 @@ typedef $$GroupIndexSubscriptionsTableProcessedTableManager
             {bool groupIndexIriId,
             bool groupIndexTemplateIriId,
             bool indexedTypeIriId})>;
+typedef $$RemoteSettingsTableCreateCompanionBuilder = RemoteSettingsCompanion
+    Function({
+  Value<int> id,
+  required String remoteId,
+  required String remoteType,
+  Value<int> lastSyncTimestamp,
+  required int createdAt,
+});
+typedef $$RemoteSettingsTableUpdateCompanionBuilder = RemoteSettingsCompanion
+    Function({
+  Value<int> id,
+  Value<String> remoteId,
+  Value<String> remoteType,
+  Value<int> lastSyncTimestamp,
+  Value<int> createdAt,
+});
+
+final class $$RemoteSettingsTableReferences extends BaseReferences<
+    _$SyncDatabase, $RemoteSettingsTable, RemoteSetting> {
+  $$RemoteSettingsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$IndexInstanceSyncStatesTable,
+      List<IndexInstanceSyncState>> _remoteSettingTable(
+          _$SyncDatabase db) =>
+      MultiTypedResultKey.fromTable(db.indexInstanceSyncStates,
+          aliasName: $_aliasNameGenerator(db.remoteSettings.id,
+              db.indexInstanceSyncStates.remoteSettingId));
+
+  $$IndexInstanceSyncStatesTableProcessedTableManager get remoteSetting {
+    final manager = $$IndexInstanceSyncStatesTableTableManager(
+            $_db, $_db.indexInstanceSyncStates)
+        .filter(
+            (f) => f.remoteSettingId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_remoteSettingTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$RemoteSyncStateTable, List<RemoteSyncStateData>>
+      _remoteSyncStateRefsTable(_$SyncDatabase db) =>
+          MultiTypedResultKey.fromTable(db.remoteSyncState,
+              aliasName: $_aliasNameGenerator(
+                  db.remoteSettings.id, db.remoteSyncState.remoteId));
+
+  $$RemoteSyncStateTableProcessedTableManager get remoteSyncStateRefs {
+    final manager =
+        $$RemoteSyncStateTableTableManager($_db, $_db.remoteSyncState)
+            .filter((f) => f.remoteId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_remoteSyncStateRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$RemoteSettingsTableFilterComposer
+    extends Composer<_$SyncDatabase, $RemoteSettingsTable> {
+  $$RemoteSettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get remoteId => $composableBuilder(
+      column: $table.remoteId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get remoteType => $composableBuilder(
+      column: $table.remoteType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get lastSyncTimestamp => $composableBuilder(
+      column: $table.lastSyncTimestamp,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> remoteSetting(
+      Expression<bool> Function($$IndexInstanceSyncStatesTableFilterComposer f)
+          f) {
+    final $$IndexInstanceSyncStatesTableFilterComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.indexInstanceSyncStates,
+            getReferencedColumn: (t) => t.remoteSettingId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$IndexInstanceSyncStatesTableFilterComposer(
+                  $db: $db,
+                  $table: $db.indexInstanceSyncStates,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
+
+  Expression<bool> remoteSyncStateRefs(
+      Expression<bool> Function($$RemoteSyncStateTableFilterComposer f) f) {
+    final $$RemoteSyncStateTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.remoteSyncState,
+        getReferencedColumn: (t) => t.remoteId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$RemoteSyncStateTableFilterComposer(
+              $db: $db,
+              $table: $db.remoteSyncState,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$RemoteSettingsTableOrderingComposer
+    extends Composer<_$SyncDatabase, $RemoteSettingsTable> {
+  $$RemoteSettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get remoteId => $composableBuilder(
+      column: $table.remoteId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get remoteType => $composableBuilder(
+      column: $table.remoteType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get lastSyncTimestamp => $composableBuilder(
+      column: $table.lastSyncTimestamp,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$RemoteSettingsTableAnnotationComposer
+    extends Composer<_$SyncDatabase, $RemoteSettingsTable> {
+  $$RemoteSettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
+
+  GeneratedColumn<String> get remoteType => $composableBuilder(
+      column: $table.remoteType, builder: (column) => column);
+
+  GeneratedColumn<int> get lastSyncTimestamp => $composableBuilder(
+      column: $table.lastSyncTimestamp, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> remoteSetting<T extends Object>(
+      Expression<T> Function($$IndexInstanceSyncStatesTableAnnotationComposer a)
+          f) {
+    final $$IndexInstanceSyncStatesTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.indexInstanceSyncStates,
+            getReferencedColumn: (t) => t.remoteSettingId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$IndexInstanceSyncStatesTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.indexInstanceSyncStates,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
+
+  Expression<T> remoteSyncStateRefs<T extends Object>(
+      Expression<T> Function($$RemoteSyncStateTableAnnotationComposer a) f) {
+    final $$RemoteSyncStateTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.remoteSyncState,
+        getReferencedColumn: (t) => t.remoteId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$RemoteSyncStateTableAnnotationComposer(
+              $db: $db,
+              $table: $db.remoteSyncState,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$RemoteSettingsTableTableManager extends RootTableManager<
+    _$SyncDatabase,
+    $RemoteSettingsTable,
+    RemoteSetting,
+    $$RemoteSettingsTableFilterComposer,
+    $$RemoteSettingsTableOrderingComposer,
+    $$RemoteSettingsTableAnnotationComposer,
+    $$RemoteSettingsTableCreateCompanionBuilder,
+    $$RemoteSettingsTableUpdateCompanionBuilder,
+    (RemoteSetting, $$RemoteSettingsTableReferences),
+    RemoteSetting,
+    PrefetchHooks Function({bool remoteSetting, bool remoteSyncStateRefs})> {
+  $$RemoteSettingsTableTableManager(
+      _$SyncDatabase db, $RemoteSettingsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RemoteSettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RemoteSettingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RemoteSettingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> remoteId = const Value.absent(),
+            Value<String> remoteType = const Value.absent(),
+            Value<int> lastSyncTimestamp = const Value.absent(),
+            Value<int> createdAt = const Value.absent(),
+          }) =>
+              RemoteSettingsCompanion(
+            id: id,
+            remoteId: remoteId,
+            remoteType: remoteType,
+            lastSyncTimestamp: lastSyncTimestamp,
+            createdAt: createdAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String remoteId,
+            required String remoteType,
+            Value<int> lastSyncTimestamp = const Value.absent(),
+            required int createdAt,
+          }) =>
+              RemoteSettingsCompanion.insert(
+            id: id,
+            remoteId: remoteId,
+            remoteType: remoteType,
+            lastSyncTimestamp: lastSyncTimestamp,
+            createdAt: createdAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$RemoteSettingsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: (
+              {remoteSetting = false, remoteSyncStateRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (remoteSetting) db.indexInstanceSyncStates,
+                if (remoteSyncStateRefs) db.remoteSyncState
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (remoteSetting)
+                    await $_getPrefetchedData<RemoteSetting,
+                            $RemoteSettingsTable, IndexInstanceSyncState>(
+                        currentTable: table,
+                        referencedTable: $$RemoteSettingsTableReferences
+                            ._remoteSettingTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$RemoteSettingsTableReferences(db, table, p0)
+                                .remoteSetting,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.remoteSettingId == item.id),
+                        typedResults: items),
+                  if (remoteSyncStateRefs)
+                    await $_getPrefetchedData<RemoteSetting,
+                            $RemoteSettingsTable, RemoteSyncStateData>(
+                        currentTable: table,
+                        referencedTable: $$RemoteSettingsTableReferences
+                            ._remoteSyncStateRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$RemoteSettingsTableReferences(db, table, p0)
+                                .remoteSyncStateRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.remoteId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$RemoteSettingsTableProcessedTableManager = ProcessedTableManager<
+    _$SyncDatabase,
+    $RemoteSettingsTable,
+    RemoteSetting,
+    $$RemoteSettingsTableFilterComposer,
+    $$RemoteSettingsTableOrderingComposer,
+    $$RemoteSettingsTableAnnotationComposer,
+    $$RemoteSettingsTableCreateCompanionBuilder,
+    $$RemoteSettingsTableUpdateCompanionBuilder,
+    (RemoteSetting, $$RemoteSettingsTableReferences),
+    RemoteSetting,
+    PrefetchHooks Function({bool remoteSetting, bool remoteSyncStateRefs})>;
+typedef $$IndexInstanceSyncStatesTableCreateCompanionBuilder
+    = IndexInstanceSyncStatesCompanion Function({
+  required int indexInstanceIriId,
+  required int remoteSettingId,
+  required String phase,
+  Value<int?> lastSuccessfulSyncAtMs,
+  Value<int?> lastAttemptStartedAtMs,
+  Value<int?> lastAttemptFinishedAtMs,
+  Value<String?> lastErrorMessage,
+  Value<int> rowid,
+});
+typedef $$IndexInstanceSyncStatesTableUpdateCompanionBuilder
+    = IndexInstanceSyncStatesCompanion Function({
+  Value<int> indexInstanceIriId,
+  Value<int> remoteSettingId,
+  Value<String> phase,
+  Value<int?> lastSuccessfulSyncAtMs,
+  Value<int?> lastAttemptStartedAtMs,
+  Value<int?> lastAttemptFinishedAtMs,
+  Value<String?> lastErrorMessage,
+  Value<int> rowid,
+});
+
+final class $$IndexInstanceSyncStatesTableReferences extends BaseReferences<
+    _$SyncDatabase, $IndexInstanceSyncStatesTable, IndexInstanceSyncState> {
+  $$IndexInstanceSyncStatesTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $SyncIrisTable _indexInstanceIriIdTable(_$SyncDatabase db) =>
+      db.syncIris.createAlias($_aliasNameGenerator(
+          db.indexInstanceSyncStates.indexInstanceIriId, db.syncIris.id));
+
+  $$SyncIrisTableProcessedTableManager get indexInstanceIriId {
+    final $_column = $_itemColumn<int>('index_instance_iri_id')!;
+
+    final manager = $$SyncIrisTableTableManager($_db, $_db.syncIris)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_indexInstanceIriIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $RemoteSettingsTable _remoteSettingIdTable(_$SyncDatabase db) =>
+      db.remoteSettings.createAlias($_aliasNameGenerator(
+          db.indexInstanceSyncStates.remoteSettingId, db.remoteSettings.id));
+
+  $$RemoteSettingsTableProcessedTableManager get remoteSettingId {
+    final $_column = $_itemColumn<int>('remote_setting_id')!;
+
+    final manager = $$RemoteSettingsTableTableManager($_db, $_db.remoteSettings)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_remoteSettingIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$IndexInstanceSyncStatesTableFilterComposer
+    extends Composer<_$SyncDatabase, $IndexInstanceSyncStatesTable> {
+  $$IndexInstanceSyncStatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get phase => $composableBuilder(
+      column: $table.phase, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get lastSuccessfulSyncAtMs => $composableBuilder(
+      column: $table.lastSuccessfulSyncAtMs,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get lastAttemptStartedAtMs => $composableBuilder(
+      column: $table.lastAttemptStartedAtMs,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get lastAttemptFinishedAtMs => $composableBuilder(
+      column: $table.lastAttemptFinishedAtMs,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lastErrorMessage => $composableBuilder(
+      column: $table.lastErrorMessage,
+      builder: (column) => ColumnFilters(column));
+
+  $$SyncIrisTableFilterComposer get indexInstanceIriId {
+    final $$SyncIrisTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.indexInstanceIriId,
+        referencedTable: $db.syncIris,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SyncIrisTableFilterComposer(
+              $db: $db,
+              $table: $db.syncIris,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$RemoteSettingsTableFilterComposer get remoteSettingId {
+    final $$RemoteSettingsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.remoteSettingId,
+        referencedTable: $db.remoteSettings,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$RemoteSettingsTableFilterComposer(
+              $db: $db,
+              $table: $db.remoteSettings,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$IndexInstanceSyncStatesTableOrderingComposer
+    extends Composer<_$SyncDatabase, $IndexInstanceSyncStatesTable> {
+  $$IndexInstanceSyncStatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get phase => $composableBuilder(
+      column: $table.phase, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get lastSuccessfulSyncAtMs => $composableBuilder(
+      column: $table.lastSuccessfulSyncAtMs,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get lastAttemptStartedAtMs => $composableBuilder(
+      column: $table.lastAttemptStartedAtMs,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get lastAttemptFinishedAtMs => $composableBuilder(
+      column: $table.lastAttemptFinishedAtMs,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lastErrorMessage => $composableBuilder(
+      column: $table.lastErrorMessage,
+      builder: (column) => ColumnOrderings(column));
+
+  $$SyncIrisTableOrderingComposer get indexInstanceIriId {
+    final $$SyncIrisTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.indexInstanceIriId,
+        referencedTable: $db.syncIris,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SyncIrisTableOrderingComposer(
+              $db: $db,
+              $table: $db.syncIris,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$RemoteSettingsTableOrderingComposer get remoteSettingId {
+    final $$RemoteSettingsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.remoteSettingId,
+        referencedTable: $db.remoteSettings,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$RemoteSettingsTableOrderingComposer(
+              $db: $db,
+              $table: $db.remoteSettings,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$IndexInstanceSyncStatesTableAnnotationComposer
+    extends Composer<_$SyncDatabase, $IndexInstanceSyncStatesTable> {
+  $$IndexInstanceSyncStatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get phase =>
+      $composableBuilder(column: $table.phase, builder: (column) => column);
+
+  GeneratedColumn<int> get lastSuccessfulSyncAtMs => $composableBuilder(
+      column: $table.lastSuccessfulSyncAtMs, builder: (column) => column);
+
+  GeneratedColumn<int> get lastAttemptStartedAtMs => $composableBuilder(
+      column: $table.lastAttemptStartedAtMs, builder: (column) => column);
+
+  GeneratedColumn<int> get lastAttemptFinishedAtMs => $composableBuilder(
+      column: $table.lastAttemptFinishedAtMs, builder: (column) => column);
+
+  GeneratedColumn<String> get lastErrorMessage => $composableBuilder(
+      column: $table.lastErrorMessage, builder: (column) => column);
+
+  $$SyncIrisTableAnnotationComposer get indexInstanceIriId {
+    final $$SyncIrisTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.indexInstanceIriId,
+        referencedTable: $db.syncIris,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SyncIrisTableAnnotationComposer(
+              $db: $db,
+              $table: $db.syncIris,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$RemoteSettingsTableAnnotationComposer get remoteSettingId {
+    final $$RemoteSettingsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.remoteSettingId,
+        referencedTable: $db.remoteSettings,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$RemoteSettingsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.remoteSettings,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$IndexInstanceSyncStatesTableTableManager extends RootTableManager<
+    _$SyncDatabase,
+    $IndexInstanceSyncStatesTable,
+    IndexInstanceSyncState,
+    $$IndexInstanceSyncStatesTableFilterComposer,
+    $$IndexInstanceSyncStatesTableOrderingComposer,
+    $$IndexInstanceSyncStatesTableAnnotationComposer,
+    $$IndexInstanceSyncStatesTableCreateCompanionBuilder,
+    $$IndexInstanceSyncStatesTableUpdateCompanionBuilder,
+    (IndexInstanceSyncState, $$IndexInstanceSyncStatesTableReferences),
+    IndexInstanceSyncState,
+    PrefetchHooks Function({bool indexInstanceIriId, bool remoteSettingId})> {
+  $$IndexInstanceSyncStatesTableTableManager(
+      _$SyncDatabase db, $IndexInstanceSyncStatesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$IndexInstanceSyncStatesTableFilterComposer(
+                  $db: db, $table: table),
+          createOrderingComposer: () =>
+              $$IndexInstanceSyncStatesTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$IndexInstanceSyncStatesTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> indexInstanceIriId = const Value.absent(),
+            Value<int> remoteSettingId = const Value.absent(),
+            Value<String> phase = const Value.absent(),
+            Value<int?> lastSuccessfulSyncAtMs = const Value.absent(),
+            Value<int?> lastAttemptStartedAtMs = const Value.absent(),
+            Value<int?> lastAttemptFinishedAtMs = const Value.absent(),
+            Value<String?> lastErrorMessage = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              IndexInstanceSyncStatesCompanion(
+            indexInstanceIriId: indexInstanceIriId,
+            remoteSettingId: remoteSettingId,
+            phase: phase,
+            lastSuccessfulSyncAtMs: lastSuccessfulSyncAtMs,
+            lastAttemptStartedAtMs: lastAttemptStartedAtMs,
+            lastAttemptFinishedAtMs: lastAttemptFinishedAtMs,
+            lastErrorMessage: lastErrorMessage,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required int indexInstanceIriId,
+            required int remoteSettingId,
+            required String phase,
+            Value<int?> lastSuccessfulSyncAtMs = const Value.absent(),
+            Value<int?> lastAttemptStartedAtMs = const Value.absent(),
+            Value<int?> lastAttemptFinishedAtMs = const Value.absent(),
+            Value<String?> lastErrorMessage = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              IndexInstanceSyncStatesCompanion.insert(
+            indexInstanceIriId: indexInstanceIriId,
+            remoteSettingId: remoteSettingId,
+            phase: phase,
+            lastSuccessfulSyncAtMs: lastSuccessfulSyncAtMs,
+            lastAttemptStartedAtMs: lastAttemptStartedAtMs,
+            lastAttemptFinishedAtMs: lastAttemptFinishedAtMs,
+            lastErrorMessage: lastErrorMessage,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$IndexInstanceSyncStatesTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: (
+              {indexInstanceIriId = false, remoteSettingId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (indexInstanceIriId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.indexInstanceIriId,
+                    referencedTable: $$IndexInstanceSyncStatesTableReferences
+                        ._indexInstanceIriIdTable(db),
+                    referencedColumn: $$IndexInstanceSyncStatesTableReferences
+                        ._indexInstanceIriIdTable(db)
+                        .id,
+                  ) as T;
+                }
+                if (remoteSettingId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.remoteSettingId,
+                    referencedTable: $$IndexInstanceSyncStatesTableReferences
+                        ._remoteSettingIdTable(db),
+                    referencedColumn: $$IndexInstanceSyncStatesTableReferences
+                        ._remoteSettingIdTable(db)
+                        .id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$IndexInstanceSyncStatesTableProcessedTableManager
+    = ProcessedTableManager<
+        _$SyncDatabase,
+        $IndexInstanceSyncStatesTable,
+        IndexInstanceSyncState,
+        $$IndexInstanceSyncStatesTableFilterComposer,
+        $$IndexInstanceSyncStatesTableOrderingComposer,
+        $$IndexInstanceSyncStatesTableAnnotationComposer,
+        $$IndexInstanceSyncStatesTableCreateCompanionBuilder,
+        $$IndexInstanceSyncStatesTableUpdateCompanionBuilder,
+        (IndexInstanceSyncState, $$IndexInstanceSyncStatesTableReferences),
+        IndexInstanceSyncState,
+        PrefetchHooks Function(
+            {bool indexInstanceIriId, bool remoteSettingId})>;
 typedef $$IndexIriIdSetVersionsTableCreateCompanionBuilder
     = IndexIriIdSetVersionsCompanion Function({
   Value<int> id,
@@ -6228,263 +7524,6 @@ typedef $$IndexIriIdSetVersionsTableProcessedTableManager
         ),
         IndexIriIdSetVersion,
         PrefetchHooks Function()>;
-typedef $$RemoteSettingsTableCreateCompanionBuilder = RemoteSettingsCompanion
-    Function({
-  Value<int> id,
-  required String remoteId,
-  required String remoteType,
-  Value<int> lastSyncTimestamp,
-  required int createdAt,
-});
-typedef $$RemoteSettingsTableUpdateCompanionBuilder = RemoteSettingsCompanion
-    Function({
-  Value<int> id,
-  Value<String> remoteId,
-  Value<String> remoteType,
-  Value<int> lastSyncTimestamp,
-  Value<int> createdAt,
-});
-
-final class $$RemoteSettingsTableReferences extends BaseReferences<
-    _$SyncDatabase, $RemoteSettingsTable, RemoteSetting> {
-  $$RemoteSettingsTableReferences(
-      super.$_db, super.$_table, super.$_typedResult);
-
-  static MultiTypedResultKey<$RemoteSyncStateTable, List<RemoteSyncStateData>>
-      _remoteSyncStateRefsTable(_$SyncDatabase db) =>
-          MultiTypedResultKey.fromTable(db.remoteSyncState,
-              aliasName: $_aliasNameGenerator(
-                  db.remoteSettings.id, db.remoteSyncState.remoteId));
-
-  $$RemoteSyncStateTableProcessedTableManager get remoteSyncStateRefs {
-    final manager =
-        $$RemoteSyncStateTableTableManager($_db, $_db.remoteSyncState)
-            .filter((f) => f.remoteId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache =
-        $_typedResult.readTableOrNull(_remoteSyncStateRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-}
-
-class $$RemoteSettingsTableFilterComposer
-    extends Composer<_$SyncDatabase, $RemoteSettingsTable> {
-  $$RemoteSettingsTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get remoteId => $composableBuilder(
-      column: $table.remoteId, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get remoteType => $composableBuilder(
-      column: $table.remoteType, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get lastSyncTimestamp => $composableBuilder(
-      column: $table.lastSyncTimestamp,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
-
-  Expression<bool> remoteSyncStateRefs(
-      Expression<bool> Function($$RemoteSyncStateTableFilterComposer f) f) {
-    final $$RemoteSyncStateTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.remoteSyncState,
-        getReferencedColumn: (t) => t.remoteId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RemoteSyncStateTableFilterComposer(
-              $db: $db,
-              $table: $db.remoteSyncState,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-}
-
-class $$RemoteSettingsTableOrderingComposer
-    extends Composer<_$SyncDatabase, $RemoteSettingsTable> {
-  $$RemoteSettingsTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get remoteId => $composableBuilder(
-      column: $table.remoteId, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get remoteType => $composableBuilder(
-      column: $table.remoteType, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get lastSyncTimestamp => $composableBuilder(
-      column: $table.lastSyncTimestamp,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
-}
-
-class $$RemoteSettingsTableAnnotationComposer
-    extends Composer<_$SyncDatabase, $RemoteSettingsTable> {
-  $$RemoteSettingsTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get remoteId =>
-      $composableBuilder(column: $table.remoteId, builder: (column) => column);
-
-  GeneratedColumn<String> get remoteType => $composableBuilder(
-      column: $table.remoteType, builder: (column) => column);
-
-  GeneratedColumn<int> get lastSyncTimestamp => $composableBuilder(
-      column: $table.lastSyncTimestamp, builder: (column) => column);
-
-  GeneratedColumn<int> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  Expression<T> remoteSyncStateRefs<T extends Object>(
-      Expression<T> Function($$RemoteSyncStateTableAnnotationComposer a) f) {
-    final $$RemoteSyncStateTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.remoteSyncState,
-        getReferencedColumn: (t) => t.remoteId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$RemoteSyncStateTableAnnotationComposer(
-              $db: $db,
-              $table: $db.remoteSyncState,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-}
-
-class $$RemoteSettingsTableTableManager extends RootTableManager<
-    _$SyncDatabase,
-    $RemoteSettingsTable,
-    RemoteSetting,
-    $$RemoteSettingsTableFilterComposer,
-    $$RemoteSettingsTableOrderingComposer,
-    $$RemoteSettingsTableAnnotationComposer,
-    $$RemoteSettingsTableCreateCompanionBuilder,
-    $$RemoteSettingsTableUpdateCompanionBuilder,
-    (RemoteSetting, $$RemoteSettingsTableReferences),
-    RemoteSetting,
-    PrefetchHooks Function({bool remoteSyncStateRefs})> {
-  $$RemoteSettingsTableTableManager(
-      _$SyncDatabase db, $RemoteSettingsTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$RemoteSettingsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$RemoteSettingsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$RemoteSettingsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String> remoteId = const Value.absent(),
-            Value<String> remoteType = const Value.absent(),
-            Value<int> lastSyncTimestamp = const Value.absent(),
-            Value<int> createdAt = const Value.absent(),
-          }) =>
-              RemoteSettingsCompanion(
-            id: id,
-            remoteId: remoteId,
-            remoteType: remoteType,
-            lastSyncTimestamp: lastSyncTimestamp,
-            createdAt: createdAt,
-          ),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            required String remoteId,
-            required String remoteType,
-            Value<int> lastSyncTimestamp = const Value.absent(),
-            required int createdAt,
-          }) =>
-              RemoteSettingsCompanion.insert(
-            id: id,
-            remoteId: remoteId,
-            remoteType: remoteType,
-            lastSyncTimestamp: lastSyncTimestamp,
-            createdAt: createdAt,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$RemoteSettingsTableReferences(db, table, e)
-                  ))
-              .toList(),
-          prefetchHooksCallback: ({remoteSyncStateRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (remoteSyncStateRefs) db.remoteSyncState
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (remoteSyncStateRefs)
-                    await $_getPrefetchedData<RemoteSetting,
-                            $RemoteSettingsTable, RemoteSyncStateData>(
-                        currentTable: table,
-                        referencedTable: $$RemoteSettingsTableReferences
-                            ._remoteSyncStateRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$RemoteSettingsTableReferences(db, table, p0)
-                                .remoteSyncStateRefs,
-                        referencedItemsForCurrentItem: (item,
-                                referencedItems) =>
-                            referencedItems.where((e) => e.remoteId == item.id),
-                        typedResults: items)
-                ];
-              },
-            );
-          },
-        ));
-}
-
-typedef $$RemoteSettingsTableProcessedTableManager = ProcessedTableManager<
-    _$SyncDatabase,
-    $RemoteSettingsTable,
-    RemoteSetting,
-    $$RemoteSettingsTableFilterComposer,
-    $$RemoteSettingsTableOrderingComposer,
-    $$RemoteSettingsTableAnnotationComposer,
-    $$RemoteSettingsTableCreateCompanionBuilder,
-    $$RemoteSettingsTableUpdateCompanionBuilder,
-    (RemoteSetting, $$RemoteSettingsTableReferences),
-    RemoteSetting,
-    PrefetchHooks Function({bool remoteSyncStateRefs})>;
 typedef $$RemoteSyncStateTableCreateCompanionBuilder = RemoteSyncStateCompanion
     Function({
   required int documentIriId,
@@ -6842,10 +7881,13 @@ class $SyncDatabaseManager {
   $$GroupIndexSubscriptionsTableTableManager get groupIndexSubscriptions =>
       $$GroupIndexSubscriptionsTableTableManager(
           _db, _db.groupIndexSubscriptions);
-  $$IndexIriIdSetVersionsTableTableManager get indexIriIdSetVersions =>
-      $$IndexIriIdSetVersionsTableTableManager(_db, _db.indexIriIdSetVersions);
   $$RemoteSettingsTableTableManager get remoteSettings =>
       $$RemoteSettingsTableTableManager(_db, _db.remoteSettings);
+  $$IndexInstanceSyncStatesTableTableManager get indexInstanceSyncStates =>
+      $$IndexInstanceSyncStatesTableTableManager(
+          _db, _db.indexInstanceSyncStates);
+  $$IndexIriIdSetVersionsTableTableManager get indexIriIdSetVersions =>
+      $$IndexIriIdSetVersionsTableTableManager(_db, _db.indexIriIdSetVersions);
   $$RemoteSyncStateTableTableManager get remoteSyncState =>
       $$RemoteSyncStateTableTableManager(_db, _db.remoteSyncState);
 }
