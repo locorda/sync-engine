@@ -309,56 +309,366 @@ class LocalResource extends RdfLocalResource implements LocordaAnnotation {
   const LocalResource.externalVocab([IriTerm? classIri]) : super(classIri);
 }
 
-/// Annotation for index item (entry) classes.
+/// Annotation for index item (entry) classes that represent projections of
+/// root resources within indices.
 ///
-/// Use [IndexItem.fullIndex] for FullIndex entries and
-/// [IndexItem.groupIndex] for GroupIndex entries.
+/// **Important**: IndexItem does **not define** a new RDF type. Index entries
+/// are framework-internal metadata structures represented as untyped fragment
+/// IRIs within shard documents. They have **no explicit `rdf:type` triple** and
+/// use predicate-based CRDT mappings instead of class-based mappings.
+///
+/// This is fundamentally different from [RootResource], [SubResource], and
+/// [LocalResource], which define new semantic types with explicit `rdf:type`
+/// triples. IndexItem classes are framework projections for performance
+/// optimization, not domain model entities.
+///
+/// ## Usage
+///
+/// Use [IndexItem.fullIndex] for FullIndex entries and [IndexItem.groupIndex]
+/// for GroupIndex entries.
+///
+/// ## Example: FullIndex Entry
+///
+/// ```dart
+/// @RootResource(PersonalNotesVocab.Note, ...)
+/// class Note {
+///   @RdfProperty(Schema.name)
+///   @CrdtLwwRegister()
+///   String? title;
+///
+///   @RdfProperty(Schema.text)
+///   @CrdtLwwRegister()
+///   String? content;
+///
+///   @RdfProperty(Schema.dateCreated)
+///   @CrdtImmutable()
+///   DateTime? createdAt;
+/// }
+///
+/// // Index item with subset of Note properties
+/// @IndexItem.fullIndex(IndexItemIriStrategy(Note))
+/// class NoteIndexItem {
+///   @RdfProperty(Schema.name)
+///   String? title;
+///
+///   @RdfProperty(Schema.dateCreated)
+///   DateTime? createdAt;
+///
+///   // Note: content field omitted for performance - full data fetched on demand
+/// }
+/// ```
+///
+/// ## Example: GroupIndex Entry
+///
+/// ```dart
+/// @GroupKey(Note, localName: 'byMonth', ...)
+/// class NoteMonthGroupKey { ... }
+///
+/// @IndexItem.groupIndex(NoteMonthGroupKey, IndexItemIriStrategy(Note))
+/// class NoteMonthIndexItem {
+///   @RdfProperty(Schema.name)
+///   String? title;
+///
+///   @RdfProperty(Schema.dateCreated)
+///   DateTime? createdAt;
+/// }
+/// ```
+///
+/// ## RDF Structure
+///
+/// Index entries are stored as framework-internal metadata without explicit
+/// RDF typing. Each entry is a fragment IRI (e.g., `#entry-a1b2c3...`) with:
+///
+/// - `idx:resource` → IRI of the actual root resource (Immutable)
+/// - `crdt:clockHash` → Clock hash for change detection (LWW-Register)
+/// - Optional header properties extracted from root resource (LWW-Register)
+///
+/// No `rdf:type` triple is present. CRDT merging uses predicate-based rules.
+///
+/// ## IRI Strategy
+///
+/// [IndexItemIriStrategy] resolves to the same IRI as the root resource
+/// instance, ensuring index items and full resources are semantically identical.
+///
+/// ## Properties
+///
+/// - Index item properties must be a **subset** of the root resource properties
+/// - Property annotations (`@RdfProperty`, types) must match exactly
+/// - CRDT annotations are inherited from root resource merge contract
+///
+/// ## Custom Vocabulary Properties
+///
+/// Index items can include properties from custom vocabularies defined for
+/// your application:
+///
+/// ```dart
+/// // Define custom vocabulary
+/// const appVocab = AppVocab(
+///   appBaseUri: 'https://myapp.example.com/',
+///   vocabPath: 'vocabulary/myapp',
+/// );
+///
+/// class MyAppProperties {
+///   static const priority = IriTerm('https://myapp.example.com/vocabulary/myapp#priority');
+///   static const categoryId = IriTerm('https://myapp.example.com/vocabulary/myapp#category');
+/// }
+///
+/// // Root resource - generator creates vocabulary properties from fields
+/// @RootResource(appVocab, ...)
+/// class Task {
+///   @RdfProperty(Schema.name)
+///   String? title;
+///
+///   int? priority;  // @RdfProperty.define() is optional - auto-generated as myapp:priority
+///
+///   @RdfProperty.define(fragment: 'category')  // Explicit - generated as myapp:category
+///   String? categoryId;
+/// }
+///
+/// // Index item - references the generated vocabulary
+/// @IndexItem.fullIndex(IndexItemIriStrategy(Task))
+/// class TaskIndexItem {
+///   @RdfProperty(Schema.name)
+///   String? title;
+///
+///   @RdfProperty(MyAppProperties.priority)
+///   int? priority;
+///
+///   @RdfProperty(MyAppProperties.categoryId)
+///   String? categoryId;
+/// }
+/// ```
+///
+/// ## Code Generation
+///
+/// The generator creates deserialization-only mappers (no serialization needed)
+/// and links index items to their root resource type for proper RDF type handling.
+///
+/// ## See Also
+///
+/// - [RootResource] - Defines new semantic types (contrasts with IndexItem)
+/// - [GroupKey] - Organizes resources into groups for partitioned indices
+/// - [IndexItemIriStrategy] - IRI resolution for index items
 class IndexItem extends RdfGlobalResource implements LocordaAnnotation {
   /// The GroupKey type this item belongs to, or `null` for FullIndex items.
   final Type? groupKeyType;
 
-  /// Creates a FullIndex item entry.
+  /// Creates a FullIndex item annotation.
   ///
-  /// The [iriStrategy] links back to the root resource type.
-  /// Due to Dart const-constructor limitations, `IndexItemIriStrategy`
-  /// must be passed as a parameter rather than constructed inline.
-  const IndexItem.fullIndex(
-    AppVocab appVocab,
-    IndexItemIriStrategy iriStrategy, {
-    super.comment,
-    super.label,
-    super.metadata,
-    super.subClassOf,
-  })  : groupKeyType = null,
-        super.define(appVocab, iriStrategy,
-            direction: MapperDirection.deserializeOnly);
-
-  const IndexItem.fullIndexExternalVocab(IndexItemIriStrategy iriStrategy)
+  /// Use this for index entries in a FullIndex (monolithic index containing
+  /// all resources of a type).
+  ///
+  /// The [iriStrategy] must resolve to the same IRI as the corresponding
+  /// root resource instance to ensure proper linking.
+  ///
+  /// Example:
+  /// ```dart
+  /// @IndexItem.fullIndex(IndexItemIriStrategy(Note))
+  /// class NoteIndexItem { ... }
+  /// ```
+  const IndexItem.fullIndex(IndexItemIriStrategy iriStrategy)
       : groupKeyType = null,
         super.deserializeOnly(null, iri: iriStrategy);
 
-  /// Creates a GroupIndex item entry linked to a specific [groupKeyType].
+  /// Creates a GroupIndex item annotation.
+  ///
+  /// Use this for index entries in a GroupIndex (partitioned index where
+  /// resources are organized into groups).
+  ///
+  /// The [groupKeyType] links this item to a specific [GroupKey] class that
+  /// defines the grouping strategy. The [iriStrategy] must resolve to the
+  /// same IRI as the corresponding root resource instance.
+  ///
+  /// Example:
+  /// ```dart
+  /// @IndexItem.groupIndex(NoteMonthGroupKey, IndexItemIriStrategy(Note))
+  /// class NoteMonthIndexItem { ... }
+  /// ```
   const IndexItem.groupIndex(
-    AppVocab appVocab,
-    this.groupKeyType,
-    IndexItemIriStrategy iriStrategy, {
-    super.comment,
-    super.label,
-    super.metadata,
-    super.subClassOf,
-  }) : super.define(appVocab, iriStrategy,
-            direction: MapperDirection.deserializeOnly);
-
-  const IndexItem.groupIndexExternalVocab(
     this.groupKeyType,
     IndexItemIriStrategy iriStrategy,
   ) : super.deserializeOnly(null, iri: iriStrategy);
 }
 
-/// Annotation for GroupIndex key classes.
+/// Annotation for GroupIndex key classes that organize root resources into
+/// logical groups for partitioned indexing.
 ///
-/// Links a group key to its parent resource type and configures
-/// the GroupIndex with an optional local name and grouping properties.
+/// **Important**: GroupKey does **not define** a new RDF type. It is a
+/// **framework construct** used to organize resources into hierarchical groups
+/// (e.g., by date, category, tag). Group keys are typically represented as
+/// blank nodes or use the standard `idx:GroupKey` framework type.
+///
+/// This contrasts with [RootResource], [SubResource], and [LocalResource],
+/// which define semantic domain types. GroupKey is purely organizational.
+///
+/// ## Concept
+///
+/// Group keys partition a large set of resources into smaller groups for
+/// performance and selective synchronization. Each group has:
+/// - A unique key value derived from resource properties (via [groupingProperties])
+/// - A separate index containing only resources in that group
+/// - Independent synchronization and caching
+///
+/// ## Basic Example
+///
+/// ```dart
+/// @RootResource(PersonalNotesVocab.Note, ...)
+/// class Note {
+///   @RdfProperty(Schema.name)
+///   String? title;
+///
+///   @RdfProperty(Schema.dateCreated)
+///   DateTime? createdAt;
+/// }
+///
+/// // Group notes by creation month (e.g., "2025-01", "2025-02")
+/// @GroupKey(
+///   Note,
+///   localName: 'byMonth',
+///   groupingProperties: [
+///     GroupingProperty(
+///       Schema.dateCreated,
+///       transforms: [
+///         RegexTransform(r'^(\d{4}-\d{2})', r'\1'),  // Extract YYYY-MM
+///       ],
+///     ),
+///   ],
+/// )
+/// class NoteMonthGroupKey {
+///   @RdfProperty(Schema.dateCreated)
+///   String? month;  // "2025-01"
+/// }
+/// ```
+///
+/// ## Resource Type Reference
+///
+/// The [resourceType] parameter references the [RootResource] type this
+/// group index organizes. The generator uses this to:
+/// - Link the group index configuration to the correct resource type
+/// - Generate type-safe query APIs
+/// - Configure index synchronization
+///
+/// ## Local Name
+///
+/// The optional [localName] distinguishes multiple group indices for the
+/// same resource type:
+/// - `localName: 'byMonth'` → group by month
+/// - `localName: 'byCategory'` → group by category
+/// - Default: `'default'` if omitted
+///
+/// ## Grouping Properties
+///
+/// [groupingProperties] defines how group key values are derived from
+/// resource properties:
+///
+/// ```dart
+/// groupingProperties: [
+///   // Extract year-month from DateTime (YYYY-MM)
+///   GroupingProperty(
+///     Schema.dateCreated,
+///     transforms: [RegexTransform(r'^(\d{4}-\d{2})', r'\1')],
+///   ),
+///   // Use property as-is without transformation
+///   GroupingProperty(PersonalNotesVocab.category),
+/// ]
+/// ```
+///
+/// Multiple properties create hierarchical group keys (e.g., "work/2025-01").
+///
+/// ## Custom Vocabulary Properties
+///
+/// Group keys can use properties from custom vocabularies:
+///
+/// ```dart
+/// // Define custom vocabulary
+/// const appVocab = AppVocab(
+///   appBaseUri: 'https://myapp.example.com/',
+///   vocabPath: 'vocabulary/myapp',
+/// );
+///
+/// class MyAppProperties {
+///   static const channelId = IriTerm('https://myapp.example.com/vocabulary/myapp#channelId');
+///   static const timestamp = IriTerm('https://myapp.example.com/vocabulary/myapp#timestamp');
+/// }
+///
+/// // Root resource - generator creates vocabulary properties
+/// @RootResource(appVocab, ...)
+/// class Message {
+///   @RdfProperty(Schema.text)
+///   String? content;
+///
+///   @RdfProperty.define()  // Generated: myapp:channelId
+///   String? channelId;
+///
+///   // Generated: myapp:timestamp - @RdfProperty.define() is optional
+///   DateTime? timestamp;
+/// }
+///
+/// // Group by channel and month using custom properties
+/// @GroupKey(
+///   Message,
+///   localName: 'byChannelAndMonth',
+///   groupingProperties: [
+///     GroupingProperty(MyAppProperties.channelId),
+///     GroupingProperty(
+///       MyAppProperties.timestamp,
+///       transforms: [
+///         RegexTransform(r'^(\d{4}-\d{2})', r'\1'),  // Extract YYYY-MM
+///       ],
+///     ),
+///   ],
+/// )
+/// class MessageChannelMonthGroupKey {
+///   @RdfProperty(MyAppProperties.channelId)
+///   String? channelId;
+///
+///   @RdfProperty(MyAppProperties.timestamp)
+///   DateTime? yearMonth;  // Normalized to first UTC instant of month
+/// }
+/// ```
+///
+/// ## Advanced: Multi-Level Grouping
+///
+/// ```dart
+/// @GroupKey(
+///   Note,
+///   localName: 'byCategoryAndMonth',
+///   groupingProperties: [
+///     GroupingProperty(PersonalNotesVocab.category),  // First level
+///     GroupingProperty(
+///       Schema.dateCreated,
+///       transforms: [RegexTransform(r'^(\d{4}-\d{2})', r'\1')],  // Extract YYYY-MM
+///     ),
+///   ],
+/// )
+/// class NoteCategoryMonthGroupKey {
+///   @RdfProperty(PersonalNotesVocab.category)
+///   String? category;
+///
+///   @RdfProperty(Schema.dateCreated)
+///   String? month;
+/// }
+/// ```
+///
+/// This creates group keys like `"work/2025-01"`, `"personal/2025-02"`.
+///
+/// ## RDF Representation
+///
+/// Group keys do not create app-specific RDF types. They use framework
+/// infrastructure (blank nodes or `idx:GroupKey`) for organization.
+///
+/// ## Code Generation
+///
+/// The generator creates:
+/// - GroupIndex configuration in `LocordaConfig`
+/// - Type-safe query APIs for accessing groups
+/// - Index synchronization logic
+///
+/// ## See Also
+///
+/// - [IndexItem] - Entries within group indices
+/// - [GroupingProperty] - Property extraction and transformation
+/// - [RootResource] - Defines the resource type being grouped
 class GroupKey extends RdfLocalResource implements LocordaAnnotation {
   /// The resource type this group index is for.
   final Type resourceType;
@@ -369,18 +679,35 @@ class GroupKey extends RdfLocalResource implements LocordaAnnotation {
   /// Grouping property definitions with optional transforms.
   final List<GroupingProperty> groupingProperties;
 
+  /// Creates a GroupKey annotation for organizing resources into groups.
+  ///
+  /// The [resourceType] specifies which [RootResource] type this group index
+  /// organizes.
+  ///
+  /// The optional [localName] distinguishes multiple group indices for the
+  /// same resource type (defaults to 'default' if omitted).
+  ///
+  /// The [groupingProperties] define how group key values are extracted and
+  /// transformed from resource properties. Use [GroupingProperty] with optional
+  /// [RegexTransform]s to normalize values (e.g., extract year-month from dates).
+  ///
+  /// Example:
+  /// ```dart
+  /// @GroupKey(
+  ///   Note,
+  ///   localName: 'byMonth',
+  ///   groupingProperties: [
+  ///     GroupingProperty(
+  ///       Schema.dateCreated,
+  ///       transforms: [
+  ///         RegexTransform(r'^(\d{4}-\d{2})', r'\1'),  // Extract YYYY-MM
+  ///       ],
+  ///     ),
+  ///   ],
+  /// )
+  /// class NoteMonthGroupKey { ... }
+  /// ```
   const GroupKey(
-    AppVocab appVocab,
-    this.resourceType, {
-    this.localName,
-    this.groupingProperties = const [],
-    super.comment,
-    super.label,
-    super.metadata,
-    super.subClassOf,
-  }) : super.define(appVocab);
-
-  const GroupKey.externalVocab(
     this.resourceType, {
     this.localName,
     this.groupingProperties = const [],

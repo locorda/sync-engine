@@ -204,6 +204,21 @@
 - [ ] do not check generated *.js files in for example apps, rather make sure we run the build_runner before deployment
 - [ ] BUGFIX: generated crdt merge mapping files like packages/locorda/example/minimal/lib/src/generated/mapping_bootstrap.g.dart contain a rule for `mc:predicate <vocab#id> ; ca:mergeWith ca:LWW_Register` - but where does this id thing come from? Why is it not excluded like other excluded fields are? Are we missing some more exclusions here, which are done in the RDF mapper vocabulary generator?
 - [ ] GroupIndexData.rootResourceFetchPolicy currently cannot be filled via annotation - in generated code it is always the default. We should be able to control this via @GroupKey
+- [x] `@GroupKey` and `@IndexItem` annotations must not be using .define() - semantically we do not define our own types here, it is a view. So they should only use the "external" mechanism
+- [ ] Use rdf_terms_generator on generated vocabulary. This way, `@GroupKey` and `@IndexItem` should be easier to use because they could use MyVocab.myProperty. It sort of means to use a vocabularies.json like this
+```
+{
+  "vocabularies": {
+    "chatEssence": {
+      "type": "package",
+      "namespace": "https://locorda.dev/chat-essence/vocabulary/chat-essence#",
+      "source": "package:chat_browser_f/vocab.g.ttl",
+      "generate": true
+    }
+  }
+}
+```
+but the problem is, that vocab.g.ttl is generated - we would need to ensure that the terms generator runs *after* the vocabulary generator, but most importantly that it materializes the vocab.g.ttl file first! 
 - [ ] URGENT FIXME: `test_cases/dataset/02_foreign_shard_discovery/04_default_installation_sync/Shard` zeigt, dass das recipe in allen 3 shard datasets ist - allerdings mit 3 verschiedenen states !?!? das darf eigentlich nicht sein, wir hätten da auf einen State konvergieren müssen!
 
 ## Future Feature Ideas

@@ -6,10 +6,9 @@
 library;
 
 import 'package:locorda/annotations.dart';
-import 'package:personal_notes_app/consts.dart';
+import 'package:locorda_rdf_terms_schema/schema.dart';
 import 'package:personal_notes_app/models/note.dart';
 import 'package:personal_notes_app/models/note_group_key.dart';
-import 'package:locorda_rdf_terms_schema/schema.dart';
 
 /// Lightweight index entry for Note resources.
 ///
@@ -18,8 +17,10 @@ import 'package:locorda_rdf_terms_schema/schema.dart';
 /// on-demand sync scenarios.
 ///
 /// No CRDT annotations needed for index entries, would be ignored anyways.
-@IndexItem.groupIndex(appVocab, NoteGroupKey, IndexItemIriStrategy(Note),
-    subClassOf: SchemaNoteDigitalDocument.classIri)
+@IndexItem.groupIndex(
+  NoteGroupKey,
+  IndexItemIriStrategy(Note),
+)
 class NoteIndexEntry {
   /// Unique identifier for the note
   @RdfIriPart()

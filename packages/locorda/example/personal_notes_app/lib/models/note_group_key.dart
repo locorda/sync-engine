@@ -1,11 +1,9 @@
 import 'package:locorda/annotations.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
-import 'package:personal_notes_app/consts.dart';
 
 import 'note.dart';
 
 @GroupKey(
-  appVocab,
   Note,
   groupingProperties: [
     GroupingProperty(
@@ -18,7 +16,6 @@ import 'note.dart';
       ],
     ),
   ],
-  subClassOf: SchemaNoteDigitalDocument.classIri,
 )
 class NoteGroupKey {
   @RdfProperty(SchemaNoteDigitalDocument.dateCreated)
