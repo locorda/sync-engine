@@ -877,6 +877,16 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
     throw UnimplementedError('deleteDocument not yet fully implemented');
   }
 
+  @override
+  Future<void> deleteDocuments(
+    IriTerm typeIri,
+    Iterable<IriTerm> externalIris,
+  ) async {
+    for (final externalIri in externalIris) {
+      await deleteDocument(typeIri, externalIri);
+    }
+  }
+
   /// Hydrates resources of the specified type using a reactive stream.
   ///
   /// Returns a stream of [HydrationBatch]es containing updates, deletions,

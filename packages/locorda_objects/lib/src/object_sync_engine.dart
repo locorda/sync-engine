@@ -85,8 +85,9 @@ typedef SyncEngineFactory = Future<SyncEngine> Function(
 ///   loadFromLocal: (id) => noteDao.getById(id),
 /// );
 ///
-/// // Delete documents
-/// await objectSyncEngine.deleteDocument<Note>('note-123');
+/// // Delete resources
+/// await objectSyncEngine.delete<Note>('note-123');
+/// await objectSyncEngine.deleteAll<Note>(['note-1', 'note-2']);
 /// ```
 ///
 /// ## Comparison with SyncEngine
@@ -475,24 +476,67 @@ class ObjectSyncEngine {
     return graph != null ? _mapper.graph.decodeObject<T>(graph) : null;
   }
 
-  /// Delete a document with CRDT processing.
+  /// Delete a root resource with CRDT processing.
   ///
-  /// This performs document-level deletion, marking the entire document as deleted
-  /// and affecting all resources contained within, following CRDT semantics.
+  /// Deletes the root resource identified by [id], including all its sub-resources
+  /// and local resources. The deletion follows CRDT semantics, so the resource
+  /// can be re-created with new data after deletion.
+  ///
   /// Application state is updated via the hydration stream - repositories should
-  /// listen to hydrateStream() to receive deletion notifications.
+  /// listen to [hydrateStream] to receive deletion notifications.
   ///
-  /// Process:
-  /// 1. Add crdt:deletedAt timestamp to document
+  /// ## Parameters
+  /// - [id]: The ID of the root resource to delete (e.g., 'note-123')
+  ///
+  /// ## Process
+  /// 1. Add crdt:deletedAt timestamp to underlying document
   /// 2. Perform universal emptying (remove semantic content, keep framework metadata)
   /// 3. Store updated document in sync system
   /// 4. Hydration stream automatically emits deletion
   /// 5. Schedule async Pod sync
-  Future<void> deleteDocument<T>(String id) async {
+  ///
+  /// ## Example
+  /// ```dart
+  /// await objectSyncEngine.delete<Note>('note-123');
+  /// ```
+  Future<void> delete<T>(String id) async {
     IriTerm typeIri = _getTypeIri(T);
     final localIri =
         _localResourceLocator.toIri(ResourceIdentifier.document(typeIri, id));
     return _syncSystem.deleteDocument(typeIri, localIri);
+  }
+
+  /// Delete multiple root resources with CRDT processing.
+  ///
+  /// Batch variant of [delete] for deleting multiple resources efficiently.
+  /// Deletes all root resources identified by [ids], including all their
+  /// sub-resources and local resources. The deletion follows CRDT semantics,
+  /// so resources can be re-created with new data after deletion.
+  ///
+  /// Application state is updated via the hydration stream - repositories should
+  /// listen to [hydrateStream] to receive deletion notifications.
+  ///
+  /// ## Parameters
+  /// - [ids]: The IDs of the root resources to delete (e.g., ['note-1', 'note-2'])
+  ///
+  /// ## Process (per resource)
+  /// 1. Add crdt:deletedAt timestamp to underlying document
+  /// 2. Perform universal emptying (remove semantic content, keep framework metadata)
+  /// 3. Store updated document in sync system
+  /// 4. Hydration stream automatically emits deletion
+  /// 5. Schedule async Pod sync
+  ///
+  /// ## Example
+  /// ```dart
+  /// await objectSyncEngine.deleteAll<Note>(['note-1', 'note-2']);
+  /// ```
+  Future<void> deleteAll<T>(Iterable<String> ids) async {
+    IriTerm typeIri = _getTypeIri(T);
+    final localIris = ids.map(
+      (id) =>
+          _localResourceLocator.toIri(ResourceIdentifier.document(typeIri, id)),
+    );
+    return _syncSystem.deleteDocuments(typeIri, localIris);
   }
 
   /// Hydrates resources of type [T] using a reactive stream.

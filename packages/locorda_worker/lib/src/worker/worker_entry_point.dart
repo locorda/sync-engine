@@ -137,6 +137,8 @@ class WorkerContext {
         await _handleSaveAll(workerMessage);
       } else if (workerMessage is DeleteDocumentRequest) {
         await _handleDelete(workerMessage);
+      } else if (workerMessage is DeleteDocumentsRequest) {
+        await _handleDeleteDocuments(workerMessage);
       } else if (workerMessage is EnsureGroupIndexSubscriptionRequest) {
         await _handleEnsureGroupIndexSubscription(workerMessage);
       } else if (workerMessage is HydrateStreamRequest) {
@@ -221,6 +223,28 @@ class WorkerContext {
       _sendMessage(DeleteDocumentResponse(request.requestId, success: true));
     } catch (e, st) {
       _sendMessage(DeleteDocumentResponse(
+        request.requestId,
+        success: false,
+        error: '$e\n$st',
+      ));
+    }
+  }
+
+  Future<void> _handleDeleteDocuments(DeleteDocumentsRequest request) async {
+    try {
+      if (_syncSystem == null) {
+        throw StateError('Sync system not initialized');
+      }
+
+      final typeIri = IriTerm(request.typeIri);
+      final externalIris =
+          request.externalIris.map((iri) => IriTerm(iri)).toList();
+
+      await _syncSystem!.deleteDocuments(typeIri, externalIris);
+
+      _sendMessage(DeleteDocumentsResponse(request.requestId, success: true));
+    } catch (e, st) {
+      _sendMessage(DeleteDocumentsResponse(
         request.requestId,
         success: false,
         error: '$e\n$st',

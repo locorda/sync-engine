@@ -364,6 +364,23 @@ class ProxySyncEngine implements SyncEngine {
   }
 
   @override
+  Future<void> deleteDocuments(
+    IriTerm typeIri,
+    Iterable<IriTerm> externalIris,
+  ) async {
+    final request = DeleteDocumentsRequest(
+      _nextRequestId(),
+      typeIri.value,
+      externalIris.map((iri) => iri.value).toList(),
+    );
+
+    final response = await _sendAndAwait<DeleteDocumentsResponse>(request);
+    if (!response.success) {
+      throw Exception('DeleteDocuments failed: ${response.error}');
+    }
+  }
+
+  @override
   Future<RdfGraph?> ensure(
     IriTerm typeIri,
     IriTerm localIri, {

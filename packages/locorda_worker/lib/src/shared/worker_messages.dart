@@ -169,6 +169,53 @@ class DeleteDocumentResponse extends WorkerResponse {
   }
 }
 
+/// Batch delete request
+class DeleteDocumentsRequest extends WorkerRequest {
+  final String typeIri;
+  final List<String> externalIris;
+
+  DeleteDocumentsRequest(super.requestId, this.typeIri, this.externalIris);
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': 'DeleteDocumentsRequest',
+        'requestId': requestId,
+        'typeIri': typeIri,
+        'externalIris': externalIris,
+      };
+
+  factory DeleteDocumentsRequest.fromJson(Map<String, dynamic> json) {
+    return DeleteDocumentsRequest(
+      json['requestId'] as String,
+      json['typeIri'] as String,
+      (json['externalIris'] as List).cast<String>(),
+    );
+  }
+}
+
+class DeleteDocumentsResponse extends WorkerResponse {
+  final bool success;
+  final String? error;
+
+  DeleteDocumentsResponse(super.requestId, {required this.success, this.error});
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': 'DeleteDocumentsResponse',
+        'requestId': requestId,
+        'success': success,
+        if (error != null) 'error': error,
+      };
+
+  factory DeleteDocumentsResponse.fromJson(Map<String, dynamic> json) {
+    return DeleteDocumentsResponse(
+      json['requestId'] as String,
+      success: json['success'] as bool,
+      error: json['error'] as String?,
+    );
+  }
+}
+
 /// Ensure request
 class EnsureRequest extends WorkerRequest {
   final String typeIri;
@@ -734,6 +781,8 @@ WorkerMessage deserializeMessage(Map<String, dynamic> json) {
     'SaveAllResponse' => SaveAllResponse.fromJson(json),
     'DeleteDocumentRequest' => DeleteDocumentRequest.fromJson(json),
     'DeleteDocumentResponse' => DeleteDocumentResponse.fromJson(json),
+    'DeleteDocumentsRequest' => DeleteDocumentsRequest.fromJson(json),
+    'DeleteDocumentsResponse' => DeleteDocumentsResponse.fromJson(json),
     'EnsureGroupIndexSubscriptionRequest' =>
       EnsureGroupIndexSubscriptionRequest.fromJson(json),
     'EnsureGroupIndexSubscriptionResponse' =>

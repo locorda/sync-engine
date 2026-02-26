@@ -292,7 +292,7 @@ class NoteRepository {
     final note = await getNote(id);
     if (note != null) {
       // Use sync system - local storage will be updated via hydration stream
-      await _syncSystem.deleteDocument<models.Note>(id);
+      await _syncSystem.delete<models.Note>(id);
     }
   }
 

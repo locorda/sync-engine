@@ -229,6 +229,23 @@ abstract interface class SyncEngine {
   /// 5. Schedule async Pod sync
   Future<void> deleteDocument(IriTerm typeIri, IriTerm externalIri);
 
+  /// Delete multiple documents with CRDT processing.
+  ///
+  /// This performs document-level deletion for each item, marking each document
+  /// as deleted and affecting all resources contained within, following CRDT
+  /// semantics. Implementations may optimize this as a batch operation.
+  ///
+  /// Process (per document):
+  /// 1. Add crdt:deletedAt timestamp to document
+  /// 2. Perform universal emptying (remove semantic content, keep framework metadata)
+  /// 3. Store updated document in sync system
+  /// 4. Hydration stream automatically emits deletion
+  /// 5. Schedule async Pod sync
+  Future<void> deleteDocuments(
+    IriTerm typeIri,
+    Iterable<IriTerm> externalIris,
+  );
+
   /// Hydrates resources of the specified type using a reactive stream.
   ///
   /// Returns a stream of [HydrationBatch]es containing updates, deletions,
