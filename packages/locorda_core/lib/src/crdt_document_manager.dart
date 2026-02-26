@@ -567,7 +567,7 @@ class CrdtDocumentManager {
         rethrow; // Don't emit hydration event if storage failed
       }
 
-      _log.info(
+      _log.finer(
           'Successfully saved document ${documentIri.debug} with ${propertyChanges.length} property changes');
       return (
         documentIri: documentIri,
