@@ -668,6 +668,102 @@ class ObjectSyncEngine {
             await onCursorUpdate(batch.cursor!);
           }
         } catch (error, stackTrace) {
+          // TODO: Review error handling strategy - should we allow the stream to continue on errors?
+          // How will a new change behave? Will it be based on the old cursor, e.g.
+          // include the failed batch, or will it fetch a new batch based on the last successfully processed cursor
+          // and then "skip" the failed batch? This has implications on consistency and error recovery strategies.
+          if (onError != null) {
+            onError(error, stackTrace);
+          } else {
+            // Default: log but don't crash the stream
+            logger.severe(
+                'Failed to process hydration batch', error, stackTrace);
+          }
+        }
+      },
+      onError: onError ??
+          (error, stackTrace) {
+            logger.severe('Hydration stream error', error, stackTrace);
+          },
+      cancelOnError: false, // Keep stream alive despite errors
+    );
+  }
+
+  /// Convenience wrapper for batch-based hydration with automatic error handling.
+  ///
+  /// This variant processes entire batches of updates and deletions at once,
+  /// which is more efficient for repositories that support batch operations
+  /// (e.g., database bulk inserts, transactional updates).
+  ///
+  /// Advantages over [hydrateWithCallbacks]:
+  /// - **Performance**: Single batch operation instead of N individual operations
+  /// - **Transactional integrity**: Wrap entire batch in transaction (all-or-nothing)
+  /// - **Simpler code**: Direct mapping to batch-optimized repository methods
+  ///
+  /// Use [hydrateWithCallbacks] if you need item-by-item processing (e.g., for
+  /// validation, side effects per item, or repositories without batch support).
+  ///
+  /// Example with transactional batch processing:
+  /// ```dart
+  /// final subscription = await syncSystem.hydrateWithBatchCallbacks<Note>(
+  ///   getCurrentCursor: () => cursorDao.getCursor('note'),
+  ///   onUpdateBatch: (notes) async {
+  ///     await db.transaction(() async {
+  ///       await noteDao.upsertAll(notes);
+  ///     });
+  ///   },
+  ///   onDeleteBatch: (noteIds) async {
+  ///     await db.transaction(() async {
+  ///       await noteDao.deleteAll(noteIds);
+  ///     });
+  ///   },
+  ///   onCursorUpdate: (cursor) => cursorDao.storeCursor('note', cursor),
+  /// );
+  /// ```
+  ///
+  /// Parameters:
+  /// - [getCurrentCursor]: Async function to retrieve the current cursor position
+  /// - [onUpdateBatch]: Callback for processing batches of updated items
+  /// - [onDeleteBatch]: Callback for processing batches of deleted item IDs
+  /// - [onCursorUpdate]: Callback for persisting cursor updates
+  /// - [onError]: Optional custom error handler. If not provided, errors are logged
+  ///   but the stream continues running
+  /// - [localName]: For distinguishing between different indices (default: 'default')
+  /// - [initialBatchSize]: Number of items to load per batch (default: 100)
+  Future<StreamSubscription<TypedHydrationBatch<T>>> hydrateWithBatchCallbacks<T>({
+    required Future<String?> Function() getCurrentCursor,
+    required Future<void> Function(List<T> items) onUpdateBatch,
+    required Future<void> Function(List<String> itemIds) onDeleteBatch,
+    required Future<void> Function(String cursor) onCursorUpdate,
+    void Function(Object error, StackTrace stackTrace)? onError,
+    String localName = defaultIndexLocalName,
+    int initialBatchSize = 100,
+  }) async {
+    final cursor = await getCurrentCursor();
+    final logger = Logger('Locorda.hydration<$T>');
+
+    return hydrateStream<T>(
+      cursor: cursor,
+      localName: localName,
+      initialBatchSize: initialBatchSize,
+    ).listen(
+      (batch) async {
+        try {
+          // Process updates as batch
+          if (batch.updates.isNotEmpty) {
+            await onUpdateBatch(batch.updates);
+          }
+
+          // Process deletions as batch
+          if (batch.deletions.isNotEmpty) {
+            await onDeleteBatch(batch.deletions);
+          }
+
+          // Update cursor if present
+          if (batch.cursor != null) {
+            await onCursorUpdate(batch.cursor!);
+          }
+        } catch (error, stackTrace) {
           if (onError != null) {
             onError(error, stackTrace);
           } else {
