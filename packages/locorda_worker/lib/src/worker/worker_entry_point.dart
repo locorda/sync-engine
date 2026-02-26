@@ -133,6 +133,8 @@ class WorkerContext {
 
       if (workerMessage is SaveRequest) {
         await _handleSave(workerMessage);
+      } else if (workerMessage is SaveAllRequest) {
+        await _handleSaveAll(workerMessage);
       } else if (workerMessage is DeleteDocumentRequest) {
         await _handleDelete(workerMessage);
       } else if (workerMessage is EnsureGroupIndexSubscriptionRequest) {
@@ -173,6 +175,31 @@ class WorkerContext {
       _sendMessage(SaveResponse(request.requestId, success: true));
     } catch (e, st) {
       _sendMessage(SaveResponse(
+        request.requestId,
+        success: false,
+        error: '$e\n$st',
+      ));
+    }
+  }
+
+  Future<void> _handleSaveAll(SaveAllRequest request) async {
+    try {
+      if (_syncSystem == null) {
+        throw StateError('Sync system not initialized');
+      }
+
+      final items = request.items
+          .map((item) => (
+                IriTerm(item.$1),
+                _codec.decode(item.$2),
+              ))
+          .toList();
+
+      await _syncSystem!.saveAll(items);
+
+      _sendMessage(SaveAllResponse(request.requestId, success: true));
+    } catch (e, st) {
+      _sendMessage(SaveAllResponse(
         request.requestId,
         success: false,
         error: '$e\n$st',

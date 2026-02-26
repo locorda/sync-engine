@@ -379,6 +379,23 @@ class ObjectSyncEngine {
     _syncSystem.save(typeIri, graph);
   }
 
+  /// Save multiple objects with CRDT processing in sequence.
+  ///
+  /// Each object is processed independently following the same CRDT merge logic
+  /// as individual save() calls.
+  Future<void> saveAll<T>(List<T> objects) async {
+    IriTerm typeIri = _getTypeIri(T);
+
+    // Convert objects to graphs and delegate to underlying sync system
+    final items = objects.map((object) {
+      final graph = _mapper.graph.encodeObject(object);
+      return (typeIri, graph);
+    }).toList();
+
+    // Properly pass through to SyncEngine.saveAll, not a loop
+    await _syncSystem.saveAll(items);
+  }
+
   IriTerm _getTypeIri(Type type) => _resourceTypeCache.getIri(type);
 
   /// Ensures a resource is available locally, fetching it from the remote source if necessary.

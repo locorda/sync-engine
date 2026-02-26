@@ -335,6 +335,21 @@ class ProxySyncEngine implements SyncEngine {
   }
 
   @override
+  Future<void> saveAll(List<(IriTerm type, RdfGraph appData)> items) async {
+    final serializedItems =
+        items.map((item) => (item.$1.value, _serializeGraph(item.$2))).toList();
+    final request = SaveAllRequest(
+      _nextRequestId(),
+      serializedItems,
+    );
+
+    final response = await _sendAndAwait<SaveAllResponse>(request);
+    if (!response.success) {
+      throw Exception('SaveAll failed: ${response.error}');
+    }
+  }
+
+  @override
   Future<void> deleteDocument(IriTerm typeIri, IriTerm externalIri) async {
     final request = DeleteDocumentRequest(
       _nextRequestId(),

@@ -150,6 +150,15 @@ abstract interface class SyncEngine {
   /// 4. Schedule async Pod sync
   Future<void> save(IriTerm type, RdfGraph appData);
 
+  /// Save multiple objects with CRDT processing in sequence.
+  ///
+  /// Each item is processed independently following the same CRDT merge logic
+  /// as individual save() calls. Items are saved sequentially (not in parallel).
+  ///
+  /// Parameters:
+  /// - items: List of (typeIri, appData) tuples to save
+  Future<void> saveAll(List<(IriTerm type, RdfGraph appData)> items);
+
   /// Ensures a resource is available locally, fetching it from the remote source if necessary.
   ///
   /// This method guarantees that after its successful completion, the requested

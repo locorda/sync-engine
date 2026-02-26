@@ -744,6 +744,15 @@ Use the 'documentIriTemplate' property of the resource configuration to configur
     );
   }
 
+  @override
+  Future<void> saveAll(List<(IriTerm type, RdfGraph appData)> items) async {
+    // TODO: Batch these operations more efficiently - combine CRDT processing,
+    // index updates, and hydration notifications to reduce overhead.
+    for (final (type, appData) in items) {
+      await save(type, appData);
+    }
+  }
+
   /// Ensures a resource is available locally, fetching it from the remote source if necessary.
   ///
   /// This method guarantees that after its successful completion, the requested

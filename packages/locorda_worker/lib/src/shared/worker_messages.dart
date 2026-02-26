@@ -69,6 +69,59 @@ class SaveResponse extends WorkerResponse {
   }
 }
 
+/// SaveAll request
+class SaveAllRequest extends WorkerRequest {
+  final List<(String typeIri, String appDataTurtle)> items;
+
+  SaveAllRequest(super.requestId, this.items);
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': 'SaveAllRequest',
+        'requestId': requestId,
+        'items': items
+            .map((item) => {'typeIri': item.$1, 'appDataTurtle': item.$2})
+            .toList(),
+      };
+
+  factory SaveAllRequest.fromJson(Map<String, dynamic> json) {
+    final itemsList = (json['items'] as List<dynamic>)
+        .cast<Map<String, dynamic>>()
+        .map((item) => (
+              item['typeIri'] as String,
+              item['appDataTurtle'] as String,
+            ))
+        .toList();
+    return SaveAllRequest(
+      json['requestId'] as String,
+      itemsList,
+    );
+  }
+}
+
+class SaveAllResponse extends WorkerResponse {
+  final bool success;
+  final String? error;
+
+  SaveAllResponse(super.requestId, {required this.success, this.error});
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': 'SaveAllResponse',
+        'requestId': requestId,
+        'success': success,
+        if (error != null) 'error': error,
+      };
+
+  factory SaveAllResponse.fromJson(Map<String, dynamic> json) {
+    return SaveAllResponse(
+      json['requestId'] as String,
+      success: json['success'] as bool,
+      error: json['error'] as String?,
+    );
+  }
+}
+
 /// Delete request
 class DeleteDocumentRequest extends WorkerRequest {
   final String typeIri;
@@ -677,6 +730,8 @@ WorkerMessage deserializeMessage(Map<String, dynamic> json) {
   return switch (type) {
     'SaveRequest' => SaveRequest.fromJson(json),
     'SaveResponse' => SaveResponse.fromJson(json),
+    'SaveAllRequest' => SaveAllRequest.fromJson(json),
+    'SaveAllResponse' => SaveAllResponse.fromJson(json),
     'DeleteDocumentRequest' => DeleteDocumentRequest.fromJson(json),
     'DeleteDocumentResponse' => DeleteDocumentResponse.fromJson(json),
     'EnsureGroupIndexSubscriptionRequest' =>
