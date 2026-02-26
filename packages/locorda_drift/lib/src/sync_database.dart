@@ -829,9 +829,9 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
 
     return query
         .watchWithCursor(
-          getCursor: (e) => e.updatedAt,
-          initialCursor: initialCursor,
-        )
+      getCursor: (e) => e.updatedAt,
+      initialCursor: initialCursor,
+    )
         .asyncMap((newEntries) async {
       // Batch load resource IRIs only for new entries
       final resourceIriIds = newEntries.map((e) => e.resourceIriId).toSet();

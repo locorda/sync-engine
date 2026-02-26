@@ -164,6 +164,7 @@ class StandardSyncEngine implements SyncEngine {
   final IndexRdfGenerator _indexRdfGenerator;
   final List<Future<void> Function()> _closeFunctions;
   final Map<IriTerm, String> _groupIndexSubscriptionFingerprints = {};
+  final Perflog _perflog;
 
   /// Access the sync manager for manual sync triggering and status monitoring.
   SyncManager get syncManager => _syncManager;
@@ -178,6 +179,7 @@ class StandardSyncEngine implements SyncEngine {
       required PhysicalTimestampFactory physicalTimestampFactory,
       required SyncManager syncManager,
       required List<Backend> backends,
+      required Perflog perflog,
       List<Future<void> Function()> closeFunctions = const []})
       : _storage = storage,
         _indexManager = indexManager,
@@ -193,6 +195,7 @@ class StandardSyncEngine implements SyncEngine {
         _syncManager = syncManager,
         _indexRdfGenerator = indexRdfGenerator,
         _physicalTimestampFactory = physicalTimestampFactory,
+        _perflog = perflog,
         _closeFunctions = closeFunctions;
 
   SyncEngineConfig get _effectiveConfig => _configService.currentConfig;
@@ -516,11 +519,14 @@ the streams yourself.''');
     http.Client? httpClient,
     Fetcher? fetcher,
     Iterable<String>? mappingBootstrapSources,
+    Perflog? perflog,
   }) async {
     rdfCore ??= RdfCore.withStandardCodecs();
     httpClient ??= http.Client();
     fetcher ??= HttpFetcher(httpClient: httpClient);
     iriFactory ??= IriTerm.validated;
+    perflog ??= Perflog.root();
+
     final timestampFactory =
         physicalTimestampFactory ?? defaultPhysicalTimestampFactory;
 
@@ -634,7 +640,7 @@ the streams yourself.''');
     );
 
     await indexManager.initializeIndices();
-    final perflog = Perflog.root();
+
     final remoteDocumentMerger = RemoteDocumentMerger(
       storage: storage,
       hlcService: hlcService,
@@ -674,8 +680,8 @@ the streams yourself.''');
       remoteSyncOrchestratorFactory: remoteSyncOrchestratorFactory,
     );
     final syncManager = StandardSyncManager(
-        syncFunction: (DateTime syncTime) =>
-            perflog.measure('syncFunction', () => syncFunction(syncTime)),
+        syncFunction: (DateTime syncTime) => (perflog ?? Perflog.disabled)
+            .measure('syncFunction', () => syncFunction(syncTime)),
         configService: configService,
         physicalTimestampFactory: timestampFactory);
 
@@ -689,6 +695,7 @@ the streams yourself.''');
         physicalTimestampFactory: timestampFactory,
         syncManager: syncManager,
         backends: backends,
+        perflog: perflog,
         closeFunctions: backends.map((b) => b.dispose).toList());
 
     // installation documents might be organized in indices, so we need to use graph sync instead of crdtDocumentManager directly
@@ -746,11 +753,16 @@ Use the 'documentIriTemplate' property of the resource configuration to configur
 
   @override
   Future<void> saveAll(List<(IriTerm type, RdfGraph appData)> items) async {
-    // TODO: Batch these operations more efficiently - combine CRDT processing,
-    // index updates, and hydration notifications to reduce overhead.
-    for (final (type, appData) in items) {
-      await save(type, appData);
-    }
+    return _perflog.measure('saveAll', () async {
+      // TODO: Batch these operations more efficiently - combine CRDT processing,
+      // index updates, and hydration notifications to reduce overhead.
+      for (final (type, appData) in items) {
+        await save(type, appData);
+      }
+    }, args: [
+      'count=${items.length}',
+      if (items.isNotEmpty) 'lastType=${items.last.$1.value.split('/').last}',
+    ]);
   }
 
   /// Ensures a resource is available locally, fetching it from the remote source if necessary.

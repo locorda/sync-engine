@@ -107,6 +107,7 @@ class ObjectSyncEngine {
   final ResourceTypeCache _resourceTypeCache;
   late final GroupKeyConverter _groupKeyConverter;
   final ResourceLocator _localResourceLocator;
+  final Perflog _perflog;
 
   /// Access the sync manager for manual sync triggering and status monitoring.
   ///
@@ -123,11 +124,13 @@ class ObjectSyncEngine {
     required LocordaConfig config,
     required ResourceTypeCache resourceTypeCache,
     required ResourceLocator localResourceLocator,
+    Perflog? perflog,
   })  : _syncSystem = syncEngine,
         _mapper = mapper,
         _config = config,
         _resourceTypeCache = resourceTypeCache,
-        _localResourceLocator = localResourceLocator {
+        _localResourceLocator = localResourceLocator,
+        _perflog = perflog ?? Perflog.root() {
     _groupKeyConverter = GroupKeyConverter(
       config: _config,
       mapper: _mapper,
@@ -264,6 +267,7 @@ class ObjectSyncEngine {
     required SyncEngineFactory syncEngineFactory,
     IriTermFactory? iriTermFactory,
     RdfCore? rdfCore,
+    Perflog? perflog,
   }) async {
     final (
       :localResourceLocator,
@@ -288,6 +292,7 @@ class ObjectSyncEngine {
       config: config,
       localResourceLocator: localResourceLocator,
       resourceTypeCache: resourceTypeCache,
+      perflog: perflog,
     );
   }
 
@@ -385,16 +390,21 @@ class ObjectSyncEngine {
   /// Each object is processed independently following the same CRDT merge logic
   /// as individual save() calls.
   Future<void> saveAll<T>(List<T> objects) async {
-    IriTerm typeIri = _getTypeIri(T);
+    return _perflog.measure('ObjectSyncEngine.saveAll', () async {
+      IriTerm typeIri = _getTypeIri(T);
 
-    // Convert objects to graphs and delegate to underlying sync system
-    final items = objects.map((object) {
-      final graph = _mapper.graph.encodeObject(object);
-      return (typeIri, graph);
-    }).toList();
+      // Convert objects to graphs and delegate to underlying sync system
+      final items = objects.map((object) {
+        final graph = _mapper.graph.encodeObject(object);
+        return (typeIri, graph);
+      }).toList();
 
-    // Properly pass through to SyncEngine.saveAll, not a loop
-    await _syncSystem.saveAll(items);
+      // Properly pass through to SyncEngine.saveAll, not a loop
+      await _syncSystem.saveAll(items);
+    }, args: [
+      'count=${objects.length}',
+      'type=$T',
+    ]);
   }
 
   IriTerm _getTypeIri(Type type) => _resourceTypeCache.getIri(type);
@@ -796,12 +806,22 @@ class ObjectSyncEngine {
         try {
           // Process updates as batch
           if (batch.updates.isNotEmpty) {
-            await onUpdateBatch(batch.updates);
+            await _perflog.measure(
+                'onUpdateBatch', () => onUpdateBatch(batch.updates),
+                args: [
+                  'count=${batch.updates.length}',
+                  'type=$T',
+                ]);
           }
 
           // Process deletions as batch
           if (batch.deletions.isNotEmpty) {
-            await onDeleteBatch(batch.deletions);
+            await _perflog.measure(
+                'onDeleteBatch', () => onDeleteBatch(batch.deletions),
+                args: [
+                  'count=${batch.deletions.length}',
+                  'type=$T',
+                ]);
           }
 
           // Update cursor if present
