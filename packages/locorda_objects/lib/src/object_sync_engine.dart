@@ -730,7 +730,8 @@ class ObjectSyncEngine {
   ///   but the stream continues running
   /// - [localName]: For distinguishing between different indices (default: 'default')
   /// - [initialBatchSize]: Number of items to load per batch (default: 100)
-  Future<StreamSubscription<TypedHydrationBatch<T>>> hydrateWithBatchCallbacks<T>({
+  Future<StreamSubscription<TypedHydrationBatch<T>>>
+      hydrateWithBatchCallbacks<T>({
     required Future<String?> Function() getCurrentCursor,
     required Future<void> Function(List<T> items) onUpdateBatch,
     required Future<void> Function(List<String> itemIds) onDeleteBatch,
