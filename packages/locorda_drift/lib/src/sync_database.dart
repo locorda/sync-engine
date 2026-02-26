@@ -243,6 +243,54 @@ class IndexIriIdSetVersions extends Table {
       ];
 }
 
+/// Extension for reactive stream queries with progressive cursor tracking.
+///
+/// Provides `watchWithCursor` for watch queries that only emit
+/// entries/documents that have changed since the last emission.
+extension WatchWithCursorExtension<T extends HasResultSet, D>
+    on SimpleSelectStatement<T, D> {
+  /// Watch query results with progressive cursor tracking.
+  ///
+  /// Only emits results that are newer than the last emission, preventing
+  /// re-emission of already processed data. Combines with asyncMap for
+  /// domain-specific post-processing.
+  ///
+  /// Parameters:
+  /// - [getCursor]: Function to extract timestamp from a result
+  /// - [initialCursor]: Starting cursor position (0 = from beginning)
+  Stream<List<D>> watchWithCursor({
+    required int Function(D result) getCursor,
+    required int initialCursor,
+  }) {
+    final controller = StreamController<List<D>>();
+    var currentCursor = initialCursor;
+
+    final subscription = watch().listen((allEntries) async {
+      // Progressive in-memory filter: only emit entries newer than last emission
+      // This is the key optimization: prevents re-emitting already processed entries
+      final newEntries =
+          allEntries.where((e) => getCursor(e) > currentCursor).toList();
+
+      if (newEntries.isEmpty) {
+        // No new entries - skip this emission
+        return;
+      }
+
+      // Update cursor to the latest timestamp we're emitting
+      // This ensures next emission only includes entries changed after this point
+      currentCursor =
+          newEntries.map((e) => getCursor(e)).reduce((a, b) => a > b ? a : b);
+
+      controller.add(newEntries);
+    });
+
+    // Cleanup: cancel drift watch subscription when stream is cancelled
+    controller.onCancel = () => subscription.cancel();
+
+    return controller.stream;
+  }
+}
+
 /// Mixin for efficient IRI batch loading and creation
 ///
 /// TODO: can we optimize this further by caching recently used IRIs in memory?
@@ -513,53 +561,57 @@ class SyncDocumentDao extends DatabaseAccessor<SyncDatabase>
   /// Watch documents of a specific type modified since cursor, ordered by updatedAt ascending.
   ///
   /// Automatically emits updates whenever documents of the given type change in the database.
+  /// Uses progressive cursor tracking to emit only documents that have changed since the last emission.
+  /// Combines WHERE clause filtering (DB-level efficiency) with in-memory progressive filtering (avoiding re-emissions).
   /// This leverages Drift's reactive query support for efficient change detection.
   Stream<List<DocumentWithIri>> watchDocumentsModifiedSince(
       String typeIri, String? minCursor) async* {
     // for watch we need to do getOrCreate to ensure typeIri exists
     // because there might be no documents of this type yet but later
     final typeIriId = await getOrCreateIriId(typeIri);
+    final initialCursor = minCursor != null ? int.parse(minCursor) : 0;
 
-    final timestamp = minCursor != null ? int.parse(minCursor) : 0;
+    // WHERE clause filters at DB level for efficiency (static, uses initial cursor)
+    // This prevents loading documents that are clearly before our starting point
+    final query = select(syncDocuments)
+      ..where((d) =>
+          d.typeIriId.equals(typeIriId) &
+          d.updatedAt.isBiggerThanValue(initialCursor))
+      ..orderBy([(d) => OrderingTerm(expression: d.updatedAt)]);
 
-    // Use Drift's watch() to get a reactive stream
-    await for (final documents in (select(syncDocuments)
-          ..where((d) =>
-              d.typeIriId.equals(typeIriId) &
-              d.updatedAt.isBiggerThanValue(timestamp))
-          ..orderBy([(d) => OrderingTerm(expression: d.updatedAt)]))
-        .watch()) {
-      /*
-      _log.info(
-          'Emitting ${documents.length} updated documents for type $typeIri ($typeIriId) since $minCursor');
-      for (final doc in documents) {
-        _log.info(
-            'Document updated: ID=${doc.id}, updatedAt=${doc.updatedAt}, type=${doc.typeIriId} \n${doc.documentContent.substring(0, math.min(12000, doc.documentContent.length))}\n');
-      }
-      */
-      yield await _convertDocumentsWithIris(documents);
-    }
+    yield* query
+        .watchWithCursor(
+          getCursor: (d) => d.updatedAt,
+          initialCursor: initialCursor,
+        )
+        .asyncMap((newDocuments) => _convertDocumentsWithIris(newDocuments));
   }
 
   /// Watch documents of a specific type changed by us since cursor, ordered by ourPhysicalClock ascending.
   ///
   /// Automatically emits updates whenever documents that we changed are modified in the database.
+  /// Uses progressive cursor tracking to emit only documents that have changed since the last emission.
+  /// Combines WHERE clause filtering (DB-level efficiency) with in-memory progressive filtering (avoiding re-emissions).
   /// This leverages Drift's reactive query support for efficient change detection.
   Stream<List<DocumentWithIri>> watchDocumentsChangedByUsSince(
       String typeIri, String? minCursor) async* {
     final typeIriId = await getOrCreateIriId(typeIri);
+    final initialCursor = minCursor != null ? int.parse(minCursor) : 0;
 
-    final timestamp = minCursor != null ? int.parse(minCursor) : 0;
+    // WHERE clause filters at DB level for efficiency (static, uses initial cursor)
+    // This prevents loading documents that are clearly before our starting point
+    final query = select(syncDocuments)
+      ..where((d) =>
+          d.typeIriId.equals(typeIriId) &
+          d.ourPhysicalClock.isBiggerThanValue(initialCursor))
+      ..orderBy([(d) => OrderingTerm(expression: d.ourPhysicalClock)]);
 
-    // Use Drift's watch() to get a reactive stream
-    await for (final documents in (select(syncDocuments)
-          ..where((d) =>
-              d.typeIriId.equals(typeIriId) &
-              d.ourPhysicalClock.isBiggerThanValue(timestamp))
-          ..orderBy([(d) => OrderingTerm(expression: d.ourPhysicalClock)]))
-        .watch()) {
-      yield await _convertDocumentsWithIris(documents);
-    }
+    yield* query
+        .watchWithCursor(
+          getCursor: (d) => d.ourPhysicalClock,
+          initialCursor: initialCursor,
+        )
+        .asyncMap((newDocuments) => _convertDocumentsWithIris(newDocuments));
   }
 
   /// Get the highest updatedAt timestamp for a specific type (for cursor management)
@@ -755,54 +807,43 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
   /// Uses entry-level change tracking to emit only entries that have changed
   /// since the last emission. The [cursorTimestamp] acts as the initial baseline,
   /// and subsequent emissions only include entries with updatedAt > last emitted cursor.
+  /// Combines WHERE clause filtering (DB-level efficiency) with in-memory progressive filtering (avoiding re-emissions).
   ///
   /// This minimizes the number of entries re-emitted when a single entry in a shard changes.
   Stream<List<DriftIndexEntry>> watchIndexEntries({
     required Iterable<int> indexIds,
     int? cursorTimestamp,
   }) {
-    final controller = StreamController<List<DriftIndexEntry>>();
-    var currentCursor = cursorTimestamp ?? 0;
+    final initialCursor = cursorTimestamp ?? 0;
 
-    // Direct query without joins - indexId is denormalized on index_entries
-    final query = select(db.indexEntries)
-      ..where((e) => e.indexIriId.isIn(indexIds))
-      ..orderBy([(e) => OrderingTerm.asc(e.updatedAt)]);
+    // WHERE clause filters at DB level for efficiency (static, uses initial cursor)
+    // This prevents loading entries that are clearly before our starting point
+    var query = select(db.indexEntries)
+      ..where((e) => e.indexIriId.isIn(indexIds));
 
-    final subscription = query.watch().listen((allEntries) async {
-      // Filter only entries that are newer than our current cursor
-      // This is the key optimization: only emit entries that have actually changed
-      final newEntries =
-          allEntries.where((e) => e.updatedAt > currentCursor).toList();
+    if (initialCursor > 0) {
+      query = query..where((e) => e.updatedAt.isBiggerThanValue(initialCursor));
+    }
 
-      if (newEntries.isEmpty) {
-        // No new entries - skip this emission
-        return;
-      }
+    query = query..orderBy([(e) => OrderingTerm.asc(e.updatedAt)]);
 
-      // Update cursor to the latest timestamp we're emitting
-      // This ensures next emission only includes entries changed after this point
-      currentCursor =
-          newEntries.map((e) => e.updatedAt).reduce((a, b) => a > b ? a : b);
-
+    return query
+        .watchWithCursor(
+          getCursor: (e) => e.updatedAt,
+          initialCursor: initialCursor,
+        )
+        .asyncMap((newEntries) async {
       // Batch load resource IRIs only for new entries
       final resourceIriIds = newEntries.map((e) => e.resourceIriId).toSet();
       final iriMap = await getIrisBatch(resourceIriIds);
 
-      final entriesWithIris = newEntries
+      return newEntries
           .map((e) => DriftIndexEntry(
                 entry: e,
                 resourceIri: iriMap[e.resourceIriId]!,
               ))
           .toList();
-
-      controller.add(entriesWithIris);
     });
-
-    // Cleanup: cancel drift watch subscription when stream is cancelled
-    controller.onCancel = () => subscription.cancel();
-
-    return controller.stream;
   }
 
   /// Save or update a group index subscription

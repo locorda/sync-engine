@@ -1240,6 +1240,8 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
 
     // Phase 2: Switch to reactive watch for ongoing changes
     // This automatically emits updates whenever documents of this type change
+    // watchDocumentsModifiedSince now uses progressive cursor tracking to only emit
+    // documents that have actually changed since the last emission
     yield* _storage
         .watchDocumentsModifiedSince(typeIri, cursor)
         .map((result) => convertResult(result.documents, result.currentCursor));

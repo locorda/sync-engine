@@ -199,6 +199,7 @@
 - [ ] Use drift storage for locorda graph sync test
 
 ## Later
+- [x] hydrate: Apparently, the watch causes us to include previously hydrated, unchanged items. This is a bit problematic e.g. during chat essence import where we import a lot into locorda and simultaneously hydrating the data.
 - [ ] Implement namespace in Resource Identity => maybe later
 - [ ] Final check if the spec in ARCHITECTURE.md is fully implemented
 - [ ] do not check generated *.js files in for example apps, rather make sure we run the build_runner before deployment
