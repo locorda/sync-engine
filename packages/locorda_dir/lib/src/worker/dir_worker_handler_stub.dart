@@ -29,7 +29,7 @@ class DirWorkerHandler implements RemoteWorkerHandler {
   final String appName;
   @override
   final String id;
-
+  final Perflog? perflog;
   DirWorkerHandler({
     this.appName = 'locorda',
     String? contentType,
@@ -38,6 +38,7 @@ class DirWorkerHandler implements RemoteWorkerHandler {
     IriTermFactory? iriTermFactory,
     bool useShardDatasets = false,
     this.id = directoryRemoteHandlerId,
+    this.perflog,
   });
 
   @override

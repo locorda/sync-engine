@@ -33,19 +33,20 @@ class DirWorkerHandler implements RemoteWorkerHandler {
   final String _contentType;
   final String _datasetContentType;
   final bool _useShardDatasets;
-
+  final Perflog? perflog;
   @override
   final String id;
 
-  DirWorkerHandler(
-      {this.appName = 'locorda',
-      String? contentType,
-      String? datasetContentType,
-      RdfCore? rdfCore,
-      IriTermFactory? iriTermFactory,
-      bool useShardDatasets = false,
-      this.id = directoryRemoteHandlerId})
-      : _rdfCore = rdfCore ??
+  DirWorkerHandler({
+    this.appName = 'locorda',
+    String? contentType,
+    String? datasetContentType,
+    RdfCore? rdfCore,
+    IriTermFactory? iriTermFactory,
+    bool useShardDatasets = false,
+    this.id = directoryRemoteHandlerId,
+    this.perflog,
+  })  : _rdfCore = rdfCore ??
             RdfCore.withStandardCodecs(
                 iriTermFactory: iriTermFactory ?? IriTerm.validated),
         _contentType = contentType ?? turtle.primaryMimeType,
@@ -59,12 +60,17 @@ class DirWorkerHandler implements RemoteWorkerHandler {
     // Backend queries syncDirectoryPath from auth when it becomes enabled
     final auth = DirAuthConnectorWorker.receiver(context, id);
 
-    return DirBackend(
+    final backend = DirBackend(
       auth: auth,
       contentType: _contentType,
       datasetContentType: _datasetContentType,
       rdfCore: _rdfCore,
       useShardDatasets: _useShardDatasets,
     );
+    if (perflog != null) {
+      return PerflogBackend(backend, perflog: perflog!);
+    } else {
+      return backend;
+    }
   }
 }
