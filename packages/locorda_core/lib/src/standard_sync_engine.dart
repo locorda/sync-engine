@@ -716,6 +716,10 @@ the streams yourself.''');
   /// 3. Hydration stream automatically emits update
   /// 4. Schedule async Pod sync
   Future<void> save(IriTerm type, RdfGraph appData) async {
+    await _saveSingle(type, appData);
+  }
+
+  Future<void> _saveSingle(IriTerm type, RdfGraph appData) async {
     // 1. Translate external IRIs to internal format if documentIriTemplate is configured
     final internalAppData = _iriTranslator.translateGraphToInternal(appData);
 
@@ -751,16 +755,25 @@ Use the 'documentIriTemplate' property of the resource configuration to configur
     );
   }
 
+  Future<void> _saveAllSequential(
+      List<(IriTerm type, RdfGraph appData)> items) async {
+    for (final (type, appData) in items) {
+      await _saveSingle(type, appData);
+    }
+  }
+
   @override
   Future<void> saveAll(List<(IriTerm type, RdfGraph appData)> items) async {
     return _perflog.measure('saveAll', () async {
-      // TODO: Batch these operations more efficiently - combine CRDT processing,
-      // index updates, and hydration notifications to reduce overhead.
-      for (final (type, appData) in items) {
-        await save(type, appData);
+      if (_storage case TransactionalStorage transactionalStorage) {
+        await transactionalStorage
+            .inTransaction(() => _saveAllSequential(items));
+      } else {
+        await _saveAllSequential(items);
       }
     }, args: [
       'count=${items.length}',
+      'tx=${_storage is TransactionalStorage}',
       if (items.isNotEmpty) 'lastType=${items.last.$1.value.split('/').last}',
     ]);
   }

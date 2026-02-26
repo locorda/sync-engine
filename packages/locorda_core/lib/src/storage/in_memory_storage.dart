@@ -54,7 +54,7 @@ class _WatchController<T> {
 /// ```
 ///
 /// For persistent storage, use [DriftStorage] from the `locorda_drift` package.
-class InMemoryStorage implements Storage {
+class InMemoryStorage implements Storage, TransactionalStorage {
   final Map<IriTerm, StoredDocument> _documents = {};
   final Map<IriTerm, IriTerm> _documentTypes = {}; // documentIri -> typeIri
   final Map<IriTerm, List<PropertyChange>> _propertyChanges = {};
@@ -110,6 +110,9 @@ class InMemoryStorage implements Storage {
     _watchControllers.clear();
     await _configuredRemotesController.close();
   }
+
+  @override
+  Future<T> inTransaction<T>(Future<T> Function() action) => action();
 
   void _registerRemote(RemoteId remoteId) {
     final isNew = _configuredRemotes.add(remoteId);

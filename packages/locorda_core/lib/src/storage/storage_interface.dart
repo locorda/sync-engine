@@ -7,6 +7,14 @@ library;
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
 
+abstract interface class TransactionalStorage {
+  /// Execute [action] inside one storage transaction.
+  ///
+  /// Implementations should guarantee atomicity and commit once at the end,
+  /// which helps coalesce reactive notifications during bulk operations.
+  Future<T> inTransaction<T>(Future<T> Function() action);
+}
+
 abstract interface class Storage {
   /// Save a document with content, metadata, and property changes atomically.
   ///
