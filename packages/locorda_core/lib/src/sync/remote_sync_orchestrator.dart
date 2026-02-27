@@ -1384,7 +1384,7 @@ class _ShardSyncOrchestrator {
       shardIri,
       limitToResourceIris: limitToResources,
       pendingIndexEntryWrites:
-        deferredLocalCommit?.indexEntryRequests ?? const [],
+          deferredLocalCommit?.indexEntryRequests ?? const [],
     );
     //print('Final entry set for shard ${shardIri.debug}: '
     //    '${finalEntrySet.map((e) => e.resourceIri.debug).toList()}\n limitToResources: ${limitToResources?.map((e) => e.debug).toList()}');
@@ -1679,7 +1679,8 @@ class _ShardSyncOrchestrator {
       {Set<IriTerm>? limitToResourceIris,
       Iterable<SaveIndexEntryRequest> pendingIndexEntryWrites =
           const <SaveIndexEntryRequest>[]}) async {
-    final activeEntries = await _storage.getActiveIndexEntriesForShard(shardIri);
+    final activeEntries =
+        await _storage.getActiveIndexEntriesForShard(shardIri);
 
     final entriesByResource = <IriTerm, IndexEntryWithIri>{
       for (final entry in activeEntries) entry.resourceIri: entry,

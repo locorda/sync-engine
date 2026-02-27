@@ -35,7 +35,7 @@ abstract interface class Perflog {
   Perflog create(String name, Object target, {bool? includeArgs});
 
   Future<T> measure<T>(String operation, Future<T> Function() action,
-      {List<String>? args});
+      {List<String>? args, int? minDurationMs});
 
   Future<void> dispose() => Future.value();
 }
@@ -47,7 +47,7 @@ class DisabledPerflog extends Perflog {
 
   @override
   Future<T> measure<T>(String operation, Future<T> Function() action,
-          {List<String>? args}) =>
+          {List<String>? args, int? minDurationMs}) =>
       action();
 }
 
@@ -129,20 +129,23 @@ class LoggingPerflog implements Perflog {
   }
 
   Future<T> measure<T>(String operation, Future<T> Function() action,
-      {List<String>? args}) async {
-    final opPadded =
-        _shortenMiddle(operation, operationWidth).padRight(operationWidth);
-    final argsStr = _includeArgs ? _formatAndPadList(args, argsWidth) : '';
-    final contextStr = _formatAndPadList(_names, contextWidth);
-
+      {List<String>? args, int? minDurationMs}) async {
     //_operationsLog.info('$contextStr.$opPadded $argsStr');
     final stopwatch = Stopwatch()..start();
     try {
       return await action();
     } finally {
       stopwatch.stop();
-      final duration = '${stopwatch.elapsedMilliseconds} ms'.padLeft(8);
-      _performanceLog.info('$contextStr.$opPadded $duration $argsStr');
+      final elapsedMs = stopwatch.elapsedMilliseconds;
+      final threshold = minDurationMs ?? 0;
+      if (elapsedMs >= threshold) {
+        final opPadded =
+            _shortenMiddle(operation, operationWidth).padRight(operationWidth);
+        final argsStr = _includeArgs ? _formatAndPadList(args, argsWidth) : '';
+        final contextStr = _formatAndPadList(_names, contextWidth);
+        final duration = '$elapsedMs ms'.padLeft(8);
+        _performanceLog.info('$contextStr.$opPadded $duration $argsStr');
+      }
     }
   }
 

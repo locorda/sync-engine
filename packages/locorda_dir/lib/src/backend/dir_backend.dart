@@ -177,6 +177,7 @@ class DirSyncStorage extends RemoteSyncStorage {
   final String _contentType;
   final String _datasetContentType;
   final ResourceLocator _resourceLocator;
+  final Perflog _perflog;
 
   DirSyncStorage({
     required String directoryPath,
@@ -187,6 +188,7 @@ class DirSyncStorage extends RemoteSyncStorage {
         _rdfCore = rdfCore,
         _contentType = contentType,
         _datasetContentType = datasetContentType,
+        _perflog = Perflog.root().create('Backend', 'DirSyncStorage'),
         _resourceLocator =
             LocalResourceLocator(iriTermFactory: IriTerm.validated);
 
@@ -331,26 +333,49 @@ class DirSyncStorage extends RemoteSyncStorage {
   }) async {
     final filePath = _iriToFilePath(documentIri, isDataset: isDataset);
     final file = File(filePath);
+    final kind = isDataset ? 'dataset' : 'graph';
 
     _log.fine('Uploading: $filePath, ifMatch: $ifMatch');
 
     // Ensure parent directory exists
-    await file.parent.create(recursive: true);
+    await _perflog.measure(
+      '_upload.ensureParentDir',
+      () => file.parent.create(recursive: true),
+      args: ['kind=$kind', 'type=${_resourceLocator.fromIri(documentIri).typeIri.localName}'],
+      minDurationMs: 2,
+    );
 
     // Check for create-only semantics (ifMatch: null)
     if (ifMatch == null) {
-      if (await file.exists()) {
+      final exists = await _perflog.measure(
+        '_upload.existsCheck',
+        () => file.exists(),
+        args: ['kind=$kind', 'mode=create'],
+        minDurationMs: 2,
+      );
+      if (exists) {
         _log.fine('File already exists, cannot create: $filePath');
         return RemoteUploadResult.conflict();
       }
     } else {
       // Check for update semantics with ETag validation
-      if (!await file.exists()) {
+      final exists = await _perflog.measure(
+        '_upload.existsCheck',
+        () => file.exists(),
+        args: ['kind=$kind', 'mode=update'],
+        minDurationMs: 2,
+      );
+      if (!exists) {
         _log.fine('File does not exist, cannot update: $filePath');
         return RemoteUploadResult.conflict();
       }
 
-      final currentETag = _generateETag(file);
+      final currentETag = await _perflog.measure(
+        '_upload.computeCurrentEtag',
+        () async => _generateETag(file),
+        args: ['kind=$kind'],
+        minDurationMs: 2,
+      );
       if (currentETag != ifMatch) {
         _log.fine(
             'ETag mismatch: $filePath (current: $currentETag, expected: $ifMatch)');
@@ -360,11 +385,27 @@ class DirSyncStorage extends RemoteSyncStorage {
 
     // Write file
     try {
-      final content = convert(graph);
-      await file.writeAsString(content);
+      final content = await _perflog.measure(
+        '_upload.convert',
+        () async => convert(graph),
+        args: ['kind=$kind', 'type=${_resourceLocator.fromIri(documentIri).typeIri.localName}'],
+        minDurationMs: 2,
+      );
+
+      await _perflog.measure(
+        '_upload.writeAsString',
+        () => file.writeAsString(content),
+        args: ['kind=$kind', 'bytes=${utf8.encode(content).length}'],
+        minDurationMs: 2,
+      );
 
       // Generate new ETag
-      final newETag = _generateETag(file);
+      final newETag = await _perflog.measure(
+        '_upload.computeNewEtag',
+        () async => _generateETag(file),
+        args: ['kind=$kind'],
+        minDurationMs: 2,
+      );
 
       _log.fine('Uploaded: $filePath, new etag: $newETag');
       return RemoteUploadResult.success(newETag);
