@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/backend/backend.dart';
 import 'package:locorda_core/src/config/sync_engine_config.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
@@ -238,7 +239,8 @@ class PerflogRemoteStorage implements RemoteStorage {
 class PerflogRemoteSyncStorage implements RemoteSyncStorage {
   final RemoteSyncStorage _inner;
   final Perflog perflog;
-
+  final LocalResourceLocator _localResourceLocator =
+      LocalResourceLocator(iriTermFactory: IriTerm.validated);
   PerflogRemoteSyncStorage(this._inner,
       {required Perflog perflog,
       String name = 'RemoteSyncStorage',
@@ -255,8 +257,12 @@ class PerflogRemoteSyncStorage implements RemoteSyncStorage {
   @override
   Future<List<RemoteDownloadResult<RdfGraph>>> downloadMany(
           Iterable<RemoteDownloadRequest> requests) =>
-      perflog.measure('downloadMany', () => _inner.downloadMany(requests),
-          args: ['count=${requests.length}']);
+      perflog
+          .measure('downloadMany', () => _inner.downloadMany(requests), args: [
+        'count=${requests.length}',
+        if (requests.isNotEmpty)
+          'firstType=${getType(requests.first.documentIri)}'
+      ]);
 
   @override
   Future<RemoteDownloadResult<RdfDataset>> downloadDataset(IriTerm documentIri,
@@ -270,7 +276,14 @@ class PerflogRemoteSyncStorage implements RemoteSyncStorage {
           Iterable<RemoteDownloadRequest> requests) =>
       perflog.measure(
           'downloadManyDatasets', () => _inner.downloadManyDatasets(requests),
-          args: ['count=${requests.length}']);
+          args: [
+            'count=${requests.length}',
+            if (requests.isNotEmpty)
+              'firstType=${getType(requests.first.documentIri)}'
+          ]);
+
+  String getType(IriTerm documentIri) =>
+      _localResourceLocator.fromIri(documentIri).typeIri.localName;
 
   @override
   Future<void> finalizeSync() async {
@@ -296,8 +309,11 @@ class PerflogRemoteSyncStorage implements RemoteSyncStorage {
   @override
   Future<List<RemoteUploadResult>> uploadMany(
           Iterable<RemoteUploadRequest<RdfGraph>> requests) =>
-      perflog.measure('uploadMany', () => _inner.uploadMany(requests),
-          args: ['count=${requests.length}']);
+      perflog.measure('uploadMany', () => _inner.uploadMany(requests), args: [
+        'count=${requests.length}',
+        if (requests.isNotEmpty)
+          'firstType=${getType(requests.first.documentIri)}'
+      ]);
 
   @override
   Future<RemoteUploadResult> uploadDataset(
@@ -311,7 +327,11 @@ class PerflogRemoteSyncStorage implements RemoteSyncStorage {
           Iterable<RemoteUploadRequest<RdfDataset>> requests) =>
       perflog.measure(
           'uploadManyDatasets', () => _inner.uploadManyDatasets(requests),
-          args: ['count=${requests.length}']);
+          args: [
+            'count=${requests.length}',
+            if (requests.isNotEmpty)
+              'firstType=${getType(requests.first.documentIri)}'
+          ]);
   @override
   String toString() => 'Perflog(${_inner.toString()})';
 }
