@@ -341,7 +341,10 @@ class DirSyncStorage extends RemoteSyncStorage {
     await _perflog.measure(
       '_upload.ensureParentDir',
       () => file.parent.create(recursive: true),
-      args: ['kind=$kind', 'type=${_resourceLocator.fromIri(documentIri).typeIri.localName}'],
+      args: [
+        'kind=$kind',
+        'type=${_resourceLocator.fromIri(documentIri).typeIri.localName}'
+      ],
       minDurationMs: 2,
     );
 
@@ -388,7 +391,10 @@ class DirSyncStorage extends RemoteSyncStorage {
       final content = await _perflog.measure(
         '_upload.convert',
         () async => convert(graph),
-        args: ['kind=$kind', 'type=${_resourceLocator.fromIri(documentIri).typeIri.localName}'],
+        args: [
+          'kind=$kind',
+          'type=${_resourceLocator.fromIri(documentIri).typeIri.localName}'
+        ],
         minDurationMs: 2,
       );
 
