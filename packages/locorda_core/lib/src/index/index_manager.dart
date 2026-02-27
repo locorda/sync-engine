@@ -287,6 +287,26 @@ class IndexManager {
       required int physicalTime,
       required int updatedAt,
       required Iterable<MissingGroupIndex> missingGroupIndices}) async {
+    final requests = await prepareIndexEntryWrites(
+      document: document,
+      documentIri: documentIri,
+      resourceTypeIri: resourceTypeIri,
+      physicalTime: physicalTime,
+      updatedAt: updatedAt,
+      missingGroupIndices: missingGroupIndices,
+    );
+
+    await _storage.saveIndexEntries(requests);
+  }
+
+  Future<List<SaveIndexEntryRequest>> prepareIndexEntryWrites({
+    required RdfGraph document,
+    required IriTerm documentIri,
+    required IriTerm resourceTypeIri,
+    required int physicalTime,
+    required int updatedAt,
+    required Iterable<MissingGroupIndex> missingGroupIndices,
+  }) async {
     //  Create any missing GroupIndex documents that were detected during save
     // This must happen before updateIndices so the shards exist
     for (final missing in missingGroupIndices) {
@@ -340,10 +360,10 @@ class IndexManager {
       indexedPropertiesByShardDocumentIri,
     );
 
-    await _storage.saveIndexEntries([
+    return [
       ...tombstonedEntries,
       ...updatedEntries,
-    ]);
+    ];
   }
 
   /// Generates RDF graph for a GroupIndex resource.

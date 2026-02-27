@@ -192,6 +192,12 @@
 - [ ] merge-contract: RdfGraphFetcher caching with etag support (HTTP best practices, benefits all RDF loading)
 - [ ] merge-contract: Local database caching (persistence across app restarts)
 - [ ] rdf_vocabulary_to_dart: failed to load RDF graph for graphs marked as skipped must not be an error, build must not be marked as "failed" due to this
+- [ ] Remote sync batching: batch GroupIndex document sync operations in orchestrator (avoid singleton `syncDocument` loops for index documents)
+- [ ] Remote sync batching: add cross-shard micro-batching for shard dataset uploads/downloads (aggregate multiple shard requests before remote call)
+- [ ] Remote sync efficiency: skip dataset upload when merged shard dataset is byte-identical to remote/local baseline
+- [ ] Shard sizing: implement proactive shard split threshold by payload/triple count to avoid very large single-shard uploads
+- [ ] Concurrency tuning profile for local directory remote: raise shard/index concurrency limits and validate with perf logs
+- [ ] Perf instrumentation: log per-request payload size and triple count for uploadManyDatasets/downloadManyDatasets to correlate size with latency
 - [ ] Implement shard splitting/resharding when shards reach maxSize limits (Implement Re-Sharding as per the specification)
   - Increment shard number for overflow
   - Update shardTotal in index/template

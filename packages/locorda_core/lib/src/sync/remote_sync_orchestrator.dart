@@ -104,6 +104,12 @@ typedef _BatchSyncCandidate = ({
   String debugName,
 });
 
+typedef _DeferredBatchCommit = ({
+  List<SaveDocumentRequest> saveRequests,
+  List<SaveIndexEntryRequest> indexEntryRequests,
+  Map<IriTerm, String> etagUpdates,
+});
+
 /// Entry in the document queue tracking sync metadata for a resource
 final class _DocumentQueueEntry {
   /// Resource IRI (not document IRI)
@@ -740,14 +746,15 @@ class _DocumentSyncHelper {
     }, debugOperationName: 'syncing $debugName');
   }
 
-  Future<void> syncDocumentsBatch(
+  Future<_DeferredBatchCommit?> syncDocumentsBatch(
     List<_BatchSyncCandidate> candidates,
     int lastSyncTimestamp,
     DateTime syncTime, {
     required GraphSyncStorage graphSyncStorage,
+    bool deferLocalCommit = false,
   }) async {
     if (candidates.isEmpty) {
-      return;
+      return null;
     }
 
     final documentIris =
@@ -839,7 +846,7 @@ class _DocumentSyncHelper {
     }
 
     if (prepared.isEmpty) {
-      return;
+      return null;
     }
 
     final uploadResults = await graphSyncStorage.uploadMany(
@@ -865,70 +872,65 @@ class _DocumentSyncHelper {
       }
     }
 
-    final commit = () async {
-      final etagUpdates = <IriTerm, String>{};
-      final saveRequests = <SaveDocumentRequest>[];
-      final preparedWithUpdatedAt = <({
-        IriTerm documentIri,
-        IriTerm typeIri,
-        RdfGraph documentToUpload,
-        CurrentCrdtClock clock,
-        int? localUpdatedAt,
-        Iterable<MissingGroupIndex> missingGroupIndices,
-        String? ifMatch,
-        String debugName,
-        int updatedAtTimestamp,
-      })>[];
+    final etagUpdates = <IriTerm, String>{};
+    final saveRequests = <SaveDocumentRequest>[];
+    final indexEntryRequests = <SaveIndexEntryRequest>[];
 
-      for (final entry in prepared) {
-        final updatedAtTimestamp =
-            _physicalTimestampFactory().millisecondsSinceEpoch;
-        saveRequests.add(
-          SaveDocumentRequest(
-            documentIri: entry.documentIri,
-            typeIri: entry.typeIri,
-            document: entry.documentToUpload,
-            metadata: DocumentMetadata(
-              ourPhysicalClock: entry.clock.physicalTime,
-              updatedAt: updatedAtTimestamp,
-            ),
-            changes: const <PropertyChange>[],
-            ifMatchUpdatedAt: entry.localUpdatedAt,
-          ),
-        );
-        preparedWithUpdatedAt.add((
+    for (final entry in prepared) {
+      final updatedAtTimestamp =
+          _physicalTimestampFactory().millisecondsSinceEpoch;
+      saveRequests.add(
+        SaveDocumentRequest(
           documentIri: entry.documentIri,
           typeIri: entry.typeIri,
-          documentToUpload: entry.documentToUpload,
-          clock: entry.clock,
-          localUpdatedAt: entry.localUpdatedAt,
-          missingGroupIndices: entry.missingGroupIndices,
-          ifMatch: entry.ifMatch,
-          debugName: entry.debugName,
-          updatedAtTimestamp: updatedAtTimestamp,
-        ));
-
-        final etag = uploadedEtags[entry.documentIri];
-        if (etag != null) {
-          etagUpdates[entry.documentIri] = etag;
-        }
-      }
-
-      await _storage.saveDocuments(saveRequests);
-
-      for (final entry in preparedWithUpdatedAt) {
-        await _indexManager.updateIndices(
           document: entry.documentToUpload,
-          documentIri: entry.documentIri,
-          physicalTime: entry.clock.physicalTime,
-          resourceTypeIri: entry.typeIri,
-          missingGroupIndices: entry.missingGroupIndices,
-          updatedAt: entry.updatedAtTimestamp,
-        );
-      }
+          metadata: DocumentMetadata(
+            ourPhysicalClock: entry.clock.physicalTime,
+            updatedAt: updatedAtTimestamp,
+          ),
+          changes: const <PropertyChange>[],
+          ifMatchUpdatedAt: entry.localUpdatedAt,
+        ),
+      );
 
-      if (etagUpdates.isNotEmpty) {
-        await _storage.setRemoteETags(_remoteId, etagUpdates);
+      final entryWrites = await _indexManager.prepareIndexEntryWrites(
+        document: entry.documentToUpload,
+        documentIri: entry.documentIri,
+        physicalTime: entry.clock.physicalTime,
+        resourceTypeIri: entry.typeIri,
+        missingGroupIndices: entry.missingGroupIndices,
+        updatedAt: updatedAtTimestamp,
+      );
+      indexEntryRequests.addAll(entryWrites);
+
+      final etag = uploadedEtags[entry.documentIri];
+      if (etag != null) {
+        etagUpdates[entry.documentIri] = etag;
+      }
+    }
+
+    final deferred = (
+      saveRequests: saveRequests,
+      indexEntryRequests: indexEntryRequests,
+      etagUpdates: etagUpdates,
+    );
+
+    if (deferLocalCommit) {
+      return deferred;
+    }
+
+    await commitDeferredBatch(deferred);
+    return null;
+  }
+
+  Future<void> commitDeferredBatch(_DeferredBatchCommit deferred) async {
+    final commit = () async {
+      await _storage.saveDocuments(deferred.saveRequests);
+      if (deferred.indexEntryRequests.isNotEmpty) {
+        await _storage.saveIndexEntries(deferred.indexEntryRequests);
+      }
+      if (deferred.etagUpdates.isNotEmpty) {
+        await _storage.setRemoteETags(_remoteId, deferred.etagUpdates);
       }
     };
 
@@ -1357,13 +1359,12 @@ class _ShardSyncOrchestrator {
       debugName,
     );
 
-    // Sync all resource documents of this shard in bulk and commit local
-    // storage updates in a single transaction.
-    await _docSync.syncDocumentsBatch(
+    final deferredLocalCommit = await _docSync.syncDocumentsBatch(
       syncCandidates,
       lastSyncTimestamp,
       syncTime,
       graphSyncStorage: graphSyncStorage,
+      deferLocalCommit: adapter is FilePerShardShardSyncAdapter,
     );
 
     // Phase B: Document & Shard Finalization for this type
@@ -1379,8 +1380,12 @@ class _ShardSyncOrchestrator {
       PartialShardSync() => documentQueue.map((e) => e.resourceIri).toSet(),
     };
 
-    final finalEntrySet = await _getFinalEntrySet(shardIri,
-        limitToResourceIris: limitToResources);
+    final finalEntrySet = await _getFinalEntrySet(
+      shardIri,
+      limitToResourceIris: limitToResources,
+      pendingIndexEntryWrites:
+        deferredLocalCommit?.indexEntryRequests ?? const [],
+    );
     //print('Final entry set for shard ${shardIri.debug}: '
     //    '${finalEntrySet.map((e) => e.resourceIri.debug).toList()}\n limitToResources: ${limitToResources?.map((e) => e.debug).toList()}');
 
@@ -1471,6 +1476,12 @@ class _ShardSyncOrchestrator {
       etag: merged.etag,
       debugName: debugName,
     );
+
+    // In shard-dataset mode we stage local resource/index updates and persist
+    // them only after the shard upload succeeded (remote-first semantics).
+    if (deferredLocalCommit != null) {
+      await _docSync.commitDeferredBatch(deferredLocalCommit);
+    }
   }
 
   /// Populate document queue by comparing local and remote shard entries
@@ -1665,8 +1676,35 @@ class _ShardSyncOrchestrator {
 
   /// Get final entry set for a shard from index items table
   Future<Set<IndexEntryWithIri>> _getFinalEntrySet(IriTerm shardIri,
-      {Set<IriTerm>? limitToResourceIris}) async {
-    final entries = await _storage.getActiveIndexEntriesForShard(shardIri);
+      {Set<IriTerm>? limitToResourceIris,
+      Iterable<SaveIndexEntryRequest> pendingIndexEntryWrites =
+          const <SaveIndexEntryRequest>[]}) async {
+    final activeEntries = await _storage.getActiveIndexEntriesForShard(shardIri);
+
+    final entriesByResource = <IriTerm, IndexEntryWithIri>{
+      for (final entry in activeEntries) entry.resourceIri: entry,
+    };
+
+    for (final write in pendingIndexEntryWrites) {
+      if (write.shardIri != shardIri) {
+        continue;
+      }
+      if (write.isDeleted) {
+        entriesByResource.remove(write.resourceIri);
+        continue;
+      }
+
+      entriesByResource[write.resourceIri] = IndexEntryWithIri(
+        resourceIri: write.resourceIri,
+        clockHash: write.clockHash,
+        headerProperties: write.headerProperties,
+        updatedAt: write.updatedAt,
+        ourPhysicalClock: write.ourPhysicalClock,
+        isDeleted: false,
+      );
+    }
+
+    final entries = entriesByResource.values;
 
     // For partial shard sync, filter to only the specified resources
     if (limitToResourceIris != null) {

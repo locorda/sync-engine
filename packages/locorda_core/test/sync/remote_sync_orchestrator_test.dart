@@ -78,12 +78,16 @@ class TestOrchestratorSetup {
     required SyncEngineConfig config,
     DateTime? baseTimestamp,
     String? installationId,
+    bool useShardDatasets = false,
   }) async {
     // Build effective config with framework-owned resources
     final effectiveConfig = buildEffectiveConfig(config);
 
     final storage = InMemoryStorage();
-    final backend = InMemoryRemoteStorage(RemoteId('test', 'mock'));
+    final backend = InMemoryRemoteStorage(
+      RemoteId('test', 'mock'),
+      useShardDatasets: useShardDatasets,
+    );
     final timestampFactory = TestPhysicalTimestampFactory(
         baseTimestamp: baseTimestamp ?? DateTime.now());
     final testInstallationId = installationId ?? 'test-installation';
@@ -316,6 +320,38 @@ void main() {
       // Assert - Multiple syncs should not cause errors
       expect(setup.storage, isNotNull,
           reason: 'Storage should remain functional after multiple syncs');
+    });
+
+    test('should complete sync in shard-dataset mode', () async {
+      final noteType = const IriTerm('http://example.org/Note');
+      final config = SyncEngineConfig(
+        resources: [
+          ResourceConfigData(
+            crdtMapping: Uri.parse('https://example.org/note-mapping.ttl'),
+            typeIri: noteType,
+            indices: [
+              const FullIndexData(
+                localName: 'all-notes',
+                rootResourceFetchPolicy: RootResourceFetchPolicy.onRequest,
+              ),
+            ],
+          ),
+        ],
+      );
+
+      final setup = await TestOrchestratorSetup.create(
+        config: config,
+        useShardDatasets: true,
+      );
+
+      await expectLater(
+        setup.orchestrator.sync(
+          setup.timestampFactory(),
+          0,
+          config: setup.config,
+        ),
+        completes,
+      );
     });
 
     test('should handle different resource types independently', () async {
