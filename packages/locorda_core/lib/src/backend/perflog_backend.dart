@@ -12,7 +12,7 @@ import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart';
 
 final _performanceLog = Logger('perf.backend');
-final _operationsLog = Logger('perf.ops.backend');
+//final _operationsLog = Logger('perf.ops.backend');
 
 abstract interface class Perflog {
   static const disabled = DisabledPerflog();
@@ -134,7 +134,7 @@ class LoggingPerflog implements Perflog {
     final argsStr = _includeArgs ? _formatAndPadList(args, argsWidth) : '';
     final contextStr = _formatAndPadList(_names, contextWidth);
 
-    _operationsLog.info('$contextStr.$opPadded $argsStr');
+    //_operationsLog.info('$contextStr.$opPadded $argsStr');
     final stopwatch = Stopwatch()..start();
     try {
       return await action();
