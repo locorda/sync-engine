@@ -253,11 +253,24 @@ class PerflogRemoteSyncStorage implements RemoteSyncStorage {
           args: [documentIri.debug]);
 
   @override
+  Future<List<RemoteDownloadResult<RdfGraph>>> downloadMany(
+          Iterable<RemoteDownloadRequest> requests) =>
+      perflog.measure('downloadMany', () => _inner.downloadMany(requests),
+          args: ['count=${requests.length}']);
+
+  @override
   Future<RemoteDownloadResult<RdfDataset>> downloadDataset(IriTerm documentIri,
           {String? ifNoneMatch}) =>
       perflog.measure('downloadDataset',
           () => _inner.downloadDataset(documentIri, ifNoneMatch: ifNoneMatch),
           args: [documentIri.debug]);
+
+  @override
+  Future<List<RemoteDownloadResult<RdfDataset>>> downloadManyDatasets(
+          Iterable<RemoteDownloadRequest> requests) =>
+      perflog.measure(
+          'downloadManyDatasets', () => _inner.downloadManyDatasets(requests),
+          args: ['count=${requests.length}']);
 
   @override
   Future<void> finalizeSync() async {
@@ -281,11 +294,24 @@ class PerflogRemoteSyncStorage implements RemoteSyncStorage {
           args: [documentIri.debug]);
 
   @override
+  Future<List<RemoteUploadResult>> uploadMany(
+          Iterable<RemoteUploadRequest<RdfGraph>> requests) =>
+      perflog.measure('uploadMany', () => _inner.uploadMany(requests),
+          args: ['count=${requests.length}']);
+
+  @override
   Future<RemoteUploadResult> uploadDataset(
           IriTerm documentIri, RdfDataset dataset, {String? ifMatch}) =>
       perflog.measure('uploadDataset',
           () => _inner.uploadDataset(documentIri, dataset, ifMatch: ifMatch),
           args: [documentIri.debug]);
+
+  @override
+  Future<List<RemoteUploadResult>> uploadManyDatasets(
+          Iterable<RemoteUploadRequest<RdfDataset>> requests) =>
+      perflog.measure(
+          'uploadManyDatasets', () => _inner.uploadManyDatasets(requests),
+          args: ['count=${requests.length}']);
   @override
   String toString() => 'Perflog(${_inner.toString()})';
 }

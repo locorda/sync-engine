@@ -34,6 +34,17 @@ class RemoteDownloadResult<T> {
   }
 }
 
+/// Request descriptor for conditional remote downloads.
+class RemoteDownloadRequest {
+  final IriTerm documentIri;
+  final String? ifNoneMatch;
+
+  const RemoteDownloadRequest({
+    required this.documentIri,
+    this.ifNoneMatch,
+  });
+}
+
 /// Result of a remote upload operation with ETag support.
 sealed class RemoteUploadResult {
   const RemoteUploadResult();
@@ -53,6 +64,19 @@ final class ConflictUploadResult extends RemoteUploadResult {
 final class SuccessUploadResult extends RemoteUploadResult {
   final String etag;
   const SuccessUploadResult(this.etag);
+}
+
+/// Request descriptor for conditional remote uploads.
+class RemoteUploadRequest<T> {
+  final IriTerm documentIri;
+  final T document;
+  final String? ifMatch;
+
+  const RemoteUploadRequest({
+    required this.documentIri,
+    required this.document,
+    this.ifMatch,
+  });
 }
 
 /// Session-specific sync storage with cached state.
@@ -97,6 +121,39 @@ abstract class RemoteSyncStorage extends GraphSyncStorage {
   Future<RemoteDownloadResult<RdfDataset>> downloadDataset(IriTerm documentIri,
           {String? ifNoneMatch}) =>
       throw UnimplementedError();
+
+  /// Download multiple datasets from remote storage.
+  ///
+  /// Default implementation maps each request to [downloadDataset].
+  /// Backends may override this for transport-level batching.
+  Future<List<RemoteDownloadResult<RdfDataset>>> downloadManyDatasets(
+      Iterable<RemoteDownloadRequest> requests) async {
+    final results = <RemoteDownloadResult<RdfDataset>>[];
+    for (final request in requests) {
+      results.add(await downloadDataset(
+        request.documentIri,
+        ifNoneMatch: request.ifNoneMatch,
+      ));
+    }
+    return results;
+  }
+
+  /// Upload multiple datasets to remote storage.
+  ///
+  /// Default implementation maps each request to [uploadDataset].
+  /// Backends may override this for transport-level batching.
+  Future<List<RemoteUploadResult>> uploadManyDatasets(
+      Iterable<RemoteUploadRequest<RdfDataset>> requests) async {
+    final results = <RemoteUploadResult>[];
+    for (final request in requests) {
+      results.add(await uploadDataset(
+        request.documentIri,
+        request.document,
+        ifMatch: request.ifMatch,
+      ));
+    }
+    return results;
+  }
 
   /// Finalize sync operations and perform cleanup.
   ///
@@ -153,6 +210,39 @@ abstract class GraphSyncStorage {
   /// Returns download result with graph using internal IRIs, plus ETag.
   Future<RemoteDownloadResult<RdfGraph>> download(IriTerm documentIri,
       {String? ifNoneMatch});
+
+  /// Download multiple documents from remote storage.
+  ///
+  /// Default implementation maps each request to [download].
+  /// Backends may override this for transport-level batching.
+  Future<List<RemoteDownloadResult<RdfGraph>>> downloadMany(
+      Iterable<RemoteDownloadRequest> requests) async {
+    final results = <RemoteDownloadResult<RdfGraph>>[];
+    for (final request in requests) {
+      results.add(await download(
+        request.documentIri,
+        ifNoneMatch: request.ifNoneMatch,
+      ));
+    }
+    return results;
+  }
+
+  /// Upload multiple documents to remote storage.
+  ///
+  /// Default implementation maps each request to [upload].
+  /// Backends may override this for transport-level batching.
+  Future<List<RemoteUploadResult>> uploadMany(
+      Iterable<RemoteUploadRequest<RdfGraph>> requests) async {
+    final results = <RemoteUploadResult>[];
+    for (final request in requests) {
+      results.add(await upload(
+        request.documentIri,
+        request.document,
+        ifMatch: request.ifMatch,
+      ));
+    }
+    return results;
+  }
 }
 
 /// Abstract interface for remote storage backend setup.
@@ -342,6 +432,15 @@ class AuthAwareSyncStorage implements RemoteSyncStorage {
           onAuthFailure: _onAuthFailure,
           operation: () =>
               _inner.download(documentIri, ifNoneMatch: ifNoneMatch));
+
+  @override
+  Future<List<RemoteDownloadResult<RdfGraph>>> downloadMany(
+          Iterable<RemoteDownloadRequest> requests) =>
+      _retryOnAuthFailure(
+          config: _config,
+          onAuthFailure: _onAuthFailure,
+          operation: () => _inner.downloadMany(requests));
+
   @override
   Future<RemoteUploadResult> uploadDataset(
     IriTerm documentIri,
@@ -364,6 +463,30 @@ class AuthAwareSyncStorage implements RemoteSyncStorage {
           onAuthFailure: _onAuthFailure,
           operation: () =>
               _inner.downloadDataset(documentIri, ifNoneMatch: ifNoneMatch));
+
+  @override
+  Future<List<RemoteUploadResult>> uploadMany(
+          Iterable<RemoteUploadRequest<RdfGraph>> requests) =>
+      _retryOnAuthFailure(
+          config: _config,
+          onAuthFailure: _onAuthFailure,
+          operation: () => _inner.uploadMany(requests));
+
+  @override
+  Future<List<RemoteDownloadResult<RdfDataset>>> downloadManyDatasets(
+          Iterable<RemoteDownloadRequest> requests) =>
+      _retryOnAuthFailure(
+          config: _config,
+          onAuthFailure: _onAuthFailure,
+          operation: () => _inner.downloadManyDatasets(requests));
+
+  @override
+  Future<List<RemoteUploadResult>> uploadManyDatasets(
+          Iterable<RemoteUploadRequest<RdfDataset>> requests) =>
+      _retryOnAuthFailure(
+          config: _config,
+          onAuthFailure: _onAuthFailure,
+          operation: () => _inner.uploadManyDatasets(requests));
 
   @override
   Future<void> finalizeSync() => _inner.finalizeSync();

@@ -668,8 +668,14 @@ class _DocumentSyncHelper {
           documentIri,
           lastSyncTimestamp,
           debugName: debugName,
-          downloadFunction: (documentIri, {ifNoneMatch}) =>
-              graphSyncStorage.download(documentIri, ifNoneMatch: ifNoneMatch),
+          downloadFunction: (documentIri, {ifNoneMatch}) async =>
+              (await graphSyncStorage.downloadMany([
+            RemoteDownloadRequest(
+              documentIri: documentIri,
+              ifNoneMatch: ifNoneMatch,
+            ),
+          ]))
+                  .single,
           extractGraph: (RdfGraph graph) => graph,
         );
         if (merged == null) {
@@ -684,8 +690,15 @@ class _DocumentSyncHelper {
 
         // Will throw [ConcurrentUpdateException] on conflict
         await applyAndStoreMergedDocument(
-          uploadFunction: (documentIri, data, {ifMatch}) =>
-              graphSyncStorage.upload(documentIri, data, ifMatch: ifMatch),
+          uploadFunction: (documentIri, data, {ifMatch}) async =>
+              (await graphSyncStorage.uploadMany([
+            RemoteUploadRequest<RdfGraph>(
+              documentIri: documentIri,
+              document: data,
+              ifMatch: ifMatch,
+            ),
+          ]))
+                  .single,
           extractGraph: (RdfGraph graph) => graph,
           documentIri: documentIri,
           clock: clock,
@@ -852,13 +865,26 @@ class FilePerResourceShardSyncAdapter
 
   @override
   Future<RemoteDownloadResult<RdfGraph>> downloadShard(IriTerm documentIri,
-          {String? ifNoneMatch}) =>
-      _remoteSyncStorage.download(documentIri, ifNoneMatch: ifNoneMatch);
+          {String? ifNoneMatch}) async =>
+      (await _remoteSyncStorage.downloadMany([
+        RemoteDownloadRequest(
+          documentIri: documentIri,
+          ifNoneMatch: ifNoneMatch,
+        ),
+      ]))
+          .single;
 
   @override
   Future<RemoteUploadResult> uploadShard(IriTerm documentIri, RdfGraph document,
-          {String? ifMatch}) =>
-      _remoteSyncStorage.upload(documentIri, document, ifMatch: ifMatch);
+          {String? ifMatch}) async =>
+      (await _remoteSyncStorage.uploadMany([
+        RemoteUploadRequest<RdfGraph>(
+          documentIri: documentIri,
+          document: document,
+          ifMatch: ifMatch,
+        ),
+      ]))
+          .single;
 
   @override
   RdfGraph extractGraph(RdfGraph graph) => graph;
@@ -909,14 +935,27 @@ class FilePerShardShardSyncAdapter
 
   @override
   Future<RemoteDownloadResult<RdfDataset>> downloadShard(IriTerm documentIri,
-          {String? ifNoneMatch}) =>
-      _remoteSyncStorage.downloadDataset(documentIri, ifNoneMatch: ifNoneMatch);
+          {String? ifNoneMatch}) async =>
+      (await _remoteSyncStorage.downloadManyDatasets([
+        RemoteDownloadRequest(
+          documentIri: documentIri,
+          ifNoneMatch: ifNoneMatch,
+        ),
+      ]))
+          .single;
 
   @override
   Future<RemoteUploadResult> uploadShard(
           IriTerm documentIri, RdfDataset document,
-          {String? ifMatch}) =>
-      _remoteSyncStorage.uploadDataset(documentIri, document, ifMatch: ifMatch);
+          {String? ifMatch}) async =>
+      (await _remoteSyncStorage.uploadManyDatasets([
+        RemoteUploadRequest<RdfDataset>(
+          documentIri: documentIri,
+          document: document,
+          ifMatch: ifMatch,
+        ),
+      ]))
+          .single;
 
   @override
   RdfGraph extractGraph(RdfDataset data) => data.defaultGraph;
