@@ -85,6 +85,110 @@ void main() {
         expect(result, isNull);
       });
 
+      testWidgets('gets multiple documents by IRI including missing entries',
+          (tester) async {
+        final doc1 = const IriTerm('https://example.com/doc1');
+        final doc2 = const IriTerm('https://example.com/doc2');
+        final missing = const IriTerm('https://example.com/missing');
+        final typeIri = const IriTerm('https://example.com/TestType');
+
+        await storage.saveDocument(
+          doc1,
+          typeIri,
+          RdfGraph(),
+          DocumentMetadata(ourPhysicalClock: 1000, updatedAt: 2000),
+          const [],
+        );
+        await storage.saveDocument(
+          doc2,
+          typeIri,
+          RdfGraph(),
+          DocumentMetadata(ourPhysicalClock: 1100, updatedAt: 2100),
+          const [],
+        );
+
+        final result = await storage.getDocumentsByIri([doc1, doc2, missing]);
+
+        expect(result, hasLength(3));
+        expect(result[doc1], isNotNull);
+        expect(result[doc2], isNotNull);
+        expect(result[missing], isNull);
+      });
+
+      testWidgets('saves documents in batch', (tester) async {
+        final doc1 = const IriTerm('https://example.com/doc-batch-1');
+        final doc2 = const IriTerm('https://example.com/doc-batch-2');
+        final typeIri = const IriTerm('https://example.com/TestType');
+
+        final results = await storage.saveDocuments([
+          SaveDocumentRequest(
+            documentIri: doc1,
+            typeIri: typeIri,
+            document: RdfGraph(),
+            metadata: DocumentMetadata(ourPhysicalClock: 1200, updatedAt: 2200),
+            changes: const [],
+          ),
+          SaveDocumentRequest(
+            documentIri: doc2,
+            typeIri: typeIri,
+            document: RdfGraph(),
+            metadata: DocumentMetadata(ourPhysicalClock: 1300, updatedAt: 2300),
+            changes: const [],
+          ),
+        ]);
+
+        final docs = await storage.getDocumentsByIri([doc1, doc2]);
+
+        expect(results, hasLength(2));
+        expect(results.first.currentCursor, '2200');
+        expect(results.last.currentCursor, '2300');
+        expect(docs[doc1], isNotNull);
+        expect(docs[doc2], isNotNull);
+      });
+
+      testWidgets('saveDocuments is atomic on optimistic-lock conflict',
+          (tester) async {
+        final existing = const IriTerm('https://example.com/doc-existing');
+        final newDoc = const IriTerm('https://example.com/doc-new');
+        final typeIri = const IriTerm('https://example.com/TestType');
+
+        await storage.saveDocument(
+          existing,
+          typeIri,
+          RdfGraph(),
+          DocumentMetadata(ourPhysicalClock: 1000, updatedAt: 2000),
+          const [],
+        );
+
+        await expectLater(
+          () => storage.saveDocuments([
+            SaveDocumentRequest(
+              documentIri: existing,
+              typeIri: typeIri,
+              document: RdfGraph(),
+              metadata:
+                  DocumentMetadata(ourPhysicalClock: 1100, updatedAt: 2100),
+              changes: const [],
+              ifMatchUpdatedAt: 1999,
+            ),
+            SaveDocumentRequest(
+              documentIri: newDoc,
+              typeIri: typeIri,
+              document: RdfGraph(),
+              metadata:
+                  DocumentMetadata(ourPhysicalClock: 1200, updatedAt: 2200),
+              changes: const [],
+            ),
+          ]),
+          throwsA(isA<ConcurrentUpdateException>()),
+        );
+
+        final persisted = await storage.getDocumentsByIri([existing, newDoc]);
+        expect(persisted[existing], isNotNull);
+        expect(persisted[existing]!.metadata.updatedAt, 2000);
+        expect(persisted[newDoc], isNull);
+      });
+
       testWidgets('saves document with property changes in transaction',
           (tester) async {
         // Arrange
@@ -220,6 +324,28 @@ void main() {
       });
     });
 
+    group('Remote ETag Operations', () {
+      testWidgets('sets and gets remote ETags in batch', (tester) async {
+        final remote = RemoteId('solid', 'https://alice.example/');
+        final doc1 = const IriTerm('https://example.com/doc-1');
+        final doc2 = const IriTerm('https://example.com/doc-2');
+        final missing = const IriTerm('https://example.com/doc-missing');
+
+        await storage.setRemoteETags(remote, {
+          doc1: 'etag-1',
+          doc2: 'etag-2',
+        });
+
+        final etags =
+            await storage.getRemoteETags(remote, [doc1, doc2, missing]);
+
+        expect(etags, hasLength(3));
+        expect(etags[doc1], 'etag-1');
+        expect(etags[doc2], 'etag-2');
+        expect(etags[missing], isNull);
+      });
+    });
+
     group('Sync Query Operations', () {
       testWidgets('gets documents modified since timestamp', (tester) async {
         // Arrange
@@ -323,6 +449,41 @@ void main() {
         final secondResult = await streamFuture;
         expect(secondResult.documents, hasLength(2));
       }, skip: true /* TODO: fix watch tests */);
+    });
+
+    group('Index Entry Operations', () {
+      testWidgets('saves index entries in batch', (tester) async {
+        final shardIri = const IriTerm('https://example.com/shard#it');
+        final indexIri = const IriTerm('https://example.com/index#it');
+        final resourceType = const IriTerm('https://example.com/TestType');
+
+        await storage.saveIndexEntries([
+          SaveIndexEntryRequest(
+            shardIri: shardIri,
+            indexIri: indexIri,
+            resourceIri: const IriTerm('https://example.com/resource-1#it'),
+            resourceType: resourceType,
+            clockHash: 'hash-1',
+            ourPhysicalClock: 100,
+            updatedAt: 200,
+          ),
+          SaveIndexEntryRequest(
+            shardIri: shardIri,
+            indexIri: indexIri,
+            resourceIri: const IriTerm('https://example.com/resource-2#it'),
+            resourceType: resourceType,
+            clockHash: 'hash-2',
+            ourPhysicalClock: 101,
+            updatedAt: 201,
+          ),
+        ]);
+
+        final entries = await storage.getActiveIndexEntriesForShard(shardIri);
+
+        expect(entries, hasLength(2));
+        expect(entries.map((entry) => entry.clockHash), contains('hash-1'));
+        expect(entries.map((entry) => entry.clockHash), contains('hash-2'));
+      });
     });
 
     group('Initialization and Cleanup', () {

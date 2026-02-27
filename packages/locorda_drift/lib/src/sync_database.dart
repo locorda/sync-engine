@@ -393,6 +393,93 @@ class SyncDocumentDao extends DatabaseAccessor<SyncDatabase>
     with _$SyncDocumentDaoMixin, IriBatchLoader {
   SyncDocumentDao(super.db);
 
+  Future<Map<int, SyncDocument>> getDocumentsByDocumentIriIds(
+      Iterable<int> documentIriIds) async {
+    final ids = documentIriIds.toSet();
+    if (ids.isEmpty) {
+      return const {};
+    }
+
+    final rows = await (select(syncDocuments)
+          ..where((d) => d.documentIriId.isIn(ids)))
+        .get();
+    return {
+      for (final row in rows) row.documentIriId: row,
+    };
+  }
+
+  Future<Map<int, int?>> getMaxUpdatedAtForTypeIds(
+      Iterable<int> typeIriIds) async {
+    final ids = typeIriIds.toSet();
+    if (ids.isEmpty) {
+      return const {};
+    }
+
+    final rows = await customSelect(
+      '''
+      SELECT type_iri_id, MAX(updated_at) AS max_updated_at
+      FROM sync_documents
+      WHERE type_iri_id IN (${ids.join(',')})
+      GROUP BY type_iri_id
+      ''',
+      readsFrom: {syncDocuments},
+    ).get();
+
+    final result = <int, int?>{for (final id in ids) id: null};
+    for (final row in rows) {
+      result[row.read<int>('type_iri_id')] = row.read<int?>('max_updated_at');
+    }
+    return result;
+  }
+
+  Future<void> saveDocumentsBatch(
+      List<BatchDocumentSaveOperation> operations) async {
+    if (operations.isEmpty) {
+      return;
+    }
+
+    final existingByDocumentIriId = await getDocumentsByDocumentIriIds(
+      operations.map((operation) => operation.documentIriId),
+    );
+
+    for (final operation in operations) {
+      final existing = existingByDocumentIriId[operation.documentIriId];
+      if (existing == null && operation.ifMatchUpdatedAt != null) {
+        throw ConcurrentUpdateException(
+            'Trying to conditionally update a non-existent document');
+      }
+      if (existing != null &&
+          operation.ifMatchUpdatedAt != null &&
+          existing.updatedAt != operation.ifMatchUpdatedAt) {
+        throw ConcurrentUpdateException(
+            "Conflict: document exists but updatedAt didn't match");
+      }
+    }
+
+    await batch((batch) {
+      for (final operation in operations) {
+        final existing = existingByDocumentIriId[operation.documentIriId];
+        final companion = SyncDocumentsCompanion(
+          documentIriId: Value(operation.documentIriId),
+          typeIriId: Value(operation.typeIriId),
+          documentContent: Value(operation.content),
+          ourPhysicalClock: Value(operation.ourPhysicalClock),
+          updatedAt: Value(operation.updatedAt),
+        );
+
+        if (existing != null) {
+          batch.update(
+            syncDocuments,
+            companion,
+            where: (table) => table.id.equals(existing.id),
+          );
+        } else {
+          batch.insert(syncDocuments, companion);
+        }
+      }
+    });
+  }
+
   /// Save a document with content and timestamps, returning the document ID.
   ///
   /// Supports optimistic locking via [ifMatchUpdatedAt]:
@@ -497,6 +584,38 @@ class SyncDocumentDao extends DatabaseAccessor<SyncDatabase>
           d.ourPhysicalClock.isBiggerThanValue(ifChangedSincePhysicalClock));
     }
     return await query.getSingleOrNull();
+  }
+
+  /// Get multiple documents with metadata by IRI.
+  Future<List<DocumentWithIri>> getDocumentsByIri(Iterable<String> documentIris,
+      {int? ifChangedSincePhysicalClock}) async {
+    final iris = documentIris.toSet();
+    if (iris.isEmpty) return [];
+
+    final existingIriIds = await _getExistingIriIds(iris);
+    if (existingIriIds.isEmpty) return [];
+
+    final query = select(syncDocuments)
+      ..where((d) => d.documentIriId.isIn(existingIriIds.values.toList()));
+    if (ifChangedSincePhysicalClock != null &&
+        ifChangedSincePhysicalClock > 0) {
+      query.where((d) =>
+          d.ourPhysicalClock.isBiggerThanValue(ifChangedSincePhysicalClock));
+    }
+
+    final documents = await query.get();
+    if (documents.isEmpty) return [];
+
+    final idToIri = {
+      for (final entry in existingIriIds.entries) entry.value: entry.key,
+    };
+
+    return documents
+        .map((document) => DocumentWithIri(
+              iri: idToIri[document.documentIriId]!,
+              document: document,
+            ))
+        .toList(growable: false);
   }
 
   /// Get document ID by IRI (for property changes)
@@ -681,6 +800,47 @@ class SyncPropertyChangeDao extends DatabaseAccessor<SyncDatabase>
               isFrameworkProperty: Value(change.isFrameworkProperty),
             ))
         .toList();
+
+    await batch((batch) {
+      batch.insertAll(syncPropertyChanges, companions);
+    });
+  }
+
+  Future<void> recordPropertyChangesForDocumentsBatch(
+      Map<int, List<PropertyChange>> changesByDocumentId) async {
+    if (changesByDocumentId.isEmpty) {
+      return;
+    }
+
+    final allChanges = changesByDocumentId.values.expand((value) => value);
+    final allIris = allChanges
+        .expand((change) => [
+              change.resourceIri.value,
+              predicateValue(change.propertyIri),
+            ])
+        .toSet();
+    final iriToIdMap = await getOrCreateIriIdsBatch(allIris);
+
+    final companions = <SyncPropertyChangesCompanion>[];
+    for (final entry in changesByDocumentId.entries) {
+      for (final change in entry.value) {
+        companions.add(
+          SyncPropertyChangesCompanion(
+            documentId: Value(entry.key),
+            resourceIriId: Value(iriToIdMap[change.resourceIri.value]!),
+            propertyIriId:
+                Value(iriToIdMap[predicateValue(change.propertyIri)]!),
+            changedAtMs: Value(change.changedAtMs),
+            changeLogicalClock: Value(change.changeLogicalClock),
+            isFrameworkProperty: Value(change.isFrameworkProperty),
+          ),
+        );
+      }
+    }
+
+    if (companions.isEmpty) {
+      return;
+    }
 
     await batch((batch) {
       batch.insertAll(syncPropertyChanges, companions);
@@ -999,6 +1159,35 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
         isDeleted: Value(isDeleted),
       ),
     );
+  }
+
+  /// Save or update multiple index entries.
+  Future<void> saveIndexEntriesBatch(
+      Iterable<BatchIndexEntrySaveOperation> operations) async {
+    final operationList = operations.toList(growable: false);
+    if (operationList.isEmpty) {
+      return;
+    }
+
+    await batch((batch) {
+      for (final operation in operationList) {
+        batch.insert(
+          db.indexEntries,
+          IndexEntriesCompanion.insert(
+            shardIri: operation.shardIriId,
+            indexIriId: operation.indexIriId,
+            resourceIriId: operation.resourceIriId,
+            resourceTypeIriId: operation.resourceTypeIriId,
+            clockHash: operation.clockHash,
+            headerProperties: Value(operation.headerProperties),
+            updatedAt: operation.updatedAt,
+            ourPhysicalClock: operation.ourPhysicalClock,
+            isDeleted: Value(operation.isDeleted),
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
+      }
+    });
   }
 
   /// Get all active (non-deleted) entries for a shard.
@@ -1330,6 +1519,30 @@ class RemoteSyncStateDao extends DatabaseAccessor<SyncDatabase>
     return state?.etag;
   }
 
+  /// Get ETags for multiple documents on a specific remote.
+  Future<Map<int, String?>> getETags({
+    required Iterable<int> documentIriIds,
+    required int remoteId,
+  }) async {
+    final ids = documentIriIds.toSet();
+    if (ids.isEmpty) {
+      return const {};
+    }
+
+    final rows = await (select(db.remoteSyncState)
+          ..where(
+              (s) => s.remoteId.equals(remoteId) & s.documentIriId.isIn(ids)))
+        .get();
+
+    final etagByDocumentId = <int, String?>{
+      for (final row in rows) row.documentIriId: row.etag,
+    };
+
+    return {
+      for (final id in ids) id: etagByDocumentId[id],
+    };
+  }
+
   /// Set ETag for a document on a specific remote
   ///
   /// Creates or updates the sync state entry
@@ -1348,6 +1561,32 @@ class RemoteSyncStateDao extends DatabaseAccessor<SyncDatabase>
         lastSyncedAt: Value(now),
       ),
     );
+  }
+
+  /// Set ETags for multiple documents on a specific remote.
+  Future<void> setETags({
+    required int remoteId,
+    required Map<int, String> etagsByDocumentIriId,
+  }) async {
+    if (etagsByDocumentIriId.isEmpty) {
+      return;
+    }
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await batch((batch) {
+      for (final entry in etagsByDocumentIriId.entries) {
+        batch.insert(
+          db.remoteSyncState,
+          RemoteSyncStateCompanion.insert(
+            documentIriId: entry.key,
+            remoteId: remoteId,
+            etag: Value(entry.value),
+            lastSyncedAt: Value(now),
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
+      }
+    });
   }
 
   /// Clear ETag for a document on a specific remote
@@ -1419,6 +1658,48 @@ class DocumentWithIri {
   DocumentWithIri({
     required this.iri,
     required this.document,
+  });
+}
+
+class BatchDocumentSaveOperation {
+  final int documentIriId;
+  final int typeIriId;
+  final String content;
+  final int ourPhysicalClock;
+  final int updatedAt;
+  final int? ifMatchUpdatedAt;
+
+  BatchDocumentSaveOperation({
+    required this.documentIriId,
+    required this.typeIriId,
+    required this.content,
+    required this.ourPhysicalClock,
+    required this.updatedAt,
+    required this.ifMatchUpdatedAt,
+  });
+}
+
+class BatchIndexEntrySaveOperation {
+  final int shardIriId;
+  final int indexIriId;
+  final int resourceIriId;
+  final int resourceTypeIriId;
+  final String clockHash;
+  final String? headerProperties;
+  final bool isDeleted;
+  final int ourPhysicalClock;
+  final int updatedAt;
+
+  BatchIndexEntrySaveOperation({
+    required this.shardIriId,
+    required this.indexIriId,
+    required this.resourceIriId,
+    required this.resourceTypeIriId,
+    required this.clockHash,
+    required this.headerProperties,
+    required this.isDeleted,
+    required this.ourPhysicalClock,
+    required this.updatedAt,
   });
 }
 

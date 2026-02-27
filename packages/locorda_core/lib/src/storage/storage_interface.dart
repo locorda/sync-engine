@@ -39,11 +39,49 @@ abstract interface class Storage {
       List<PropertyChange> changes,
       {int? ifMatchUpdatedAt});
 
+  /// Save multiple documents.
+  ///
+  /// Default implementation delegates to [saveDocument] per request.
+  /// Storage backends may override this with optimized set-based writes.
+  Future<List<SaveDocumentResult>> saveDocuments(
+      Iterable<SaveDocumentRequest> requests) async {
+    final results = <SaveDocumentResult>[];
+    for (final request in requests) {
+      results.add(await saveDocument(
+        request.documentIri,
+        request.typeIri,
+        request.document,
+        request.metadata,
+        request.changes,
+        ifMatchUpdatedAt: request.ifMatchUpdatedAt,
+      ));
+    }
+    return results;
+  }
+
   /// Get document with content and metadata by IRI.
   Future<StoredDocument?> getDocument(
     IriTerm documentIri, {
     int? ifChangedSincePhysicalClock = 0,
   });
+
+  /// Get multiple documents by IRI.
+  ///
+  /// Default implementation delegates to [getDocument] per IRI.
+  /// Storage backends may override this with optimized batch queries.
+  Future<Map<IriTerm, StoredDocument?>> getDocumentsByIri(
+    Iterable<IriTerm> documentIris, {
+    int? ifChangedSincePhysicalClock,
+  }) async {
+    final result = <IriTerm, StoredDocument?>{};
+    for (final documentIri in documentIris) {
+      result[documentIri] = await getDocument(
+        documentIri,
+        ifChangedSincePhysicalClock: ifChangedSincePhysicalClock,
+      );
+    }
+    return result;
+  }
 
   /// Get property changes for a document, optionally filtered by logical clock.
   ///
@@ -272,6 +310,27 @@ abstract interface class Storage {
     required int updatedAt,
   });
 
+  /// Save or update multiple index entries.
+  ///
+  /// Default implementation delegates to [saveIndexEntry] per request.
+  /// Storage backends may override this with optimized batch writes.
+  Future<void> saveIndexEntries(
+      Iterable<SaveIndexEntryRequest> requests) async {
+    for (final request in requests) {
+      await saveIndexEntry(
+        shardIri: request.shardIri,
+        indexIri: request.indexIri,
+        resourceIri: request.resourceIri,
+        resourceType: request.resourceType,
+        clockHash: request.clockHash,
+        headerProperties: request.headerProperties,
+        isDeleted: request.isDeleted,
+        ourPhysicalClock: request.ourPhysicalClock,
+        updatedAt: request.updatedAt,
+      );
+    }
+  }
+
   /// Get all active (non-deleted) index entries for a shard.
   ///
   /// Used by SyncFunction to generate shard documents for sync.
@@ -344,6 +403,19 @@ abstract interface class Storage {
   /// - [documentIri]: The document IRI to look up
   Future<String?> getRemoteETag(RemoteId remoteId, IriTerm documentIri);
 
+  /// Get stored ETags for multiple documents on a specific remote.
+  ///
+  /// Default implementation delegates to [getRemoteETag] per document.
+  /// Storage backends may override this with optimized batch queries.
+  Future<Map<IriTerm, String?>> getRemoteETags(
+      RemoteId remoteId, Iterable<IriTerm> documentIris) async {
+    final result = <IriTerm, String?>{};
+    for (final documentIri in documentIris) {
+      result[documentIri] = await getRemoteETag(remoteId, documentIri);
+    }
+    return result;
+  }
+
   /// Store ETag for a document on a specific remote.
   ///
   /// Called after successful download or upload to cache the current version.
@@ -355,6 +427,17 @@ abstract interface class Storage {
   /// - [etag]: The ETag value from HTTP response headers
   Future<void> setRemoteETag(
       RemoteId remoteId, IriTerm documentIri, String etag);
+
+  /// Store ETags for multiple documents on a specific remote.
+  ///
+  /// Default implementation delegates to [setRemoteETag] per document.
+  /// Storage backends may override this with optimized batch writes.
+  Future<void> setRemoteETags(
+      RemoteId remoteId, Map<IriTerm, String> etagsByDocument) async {
+    for (final entry in etagsByDocument.entries) {
+      await setRemoteETag(remoteId, entry.key, entry.value);
+    }
+  }
 
   /// Clear ETag for a document on a specific remote.
   ///
@@ -635,6 +718,50 @@ class SaveDocumentResult {
   SaveDocumentResult({
     required this.previousCursor,
     required this.currentCursor,
+  });
+}
+
+/// Request descriptor for document batch writes.
+class SaveDocumentRequest {
+  final IriTerm documentIri;
+  final IriTerm typeIri;
+  final RdfGraph document;
+  final DocumentMetadata metadata;
+  final List<PropertyChange> changes;
+  final int? ifMatchUpdatedAt;
+
+  const SaveDocumentRequest({
+    required this.documentIri,
+    required this.typeIri,
+    required this.document,
+    required this.metadata,
+    required this.changes,
+    this.ifMatchUpdatedAt,
+  });
+}
+
+/// Request descriptor for index entry batch writes.
+class SaveIndexEntryRequest {
+  final IriTerm shardIri;
+  final IriTerm indexIri;
+  final IriTerm resourceIri;
+  final IriTerm resourceType;
+  final String clockHash;
+  final String? headerProperties;
+  final bool isDeleted;
+  final int ourPhysicalClock;
+  final int updatedAt;
+
+  const SaveIndexEntryRequest({
+    required this.shardIri,
+    required this.indexIri,
+    required this.resourceIri,
+    required this.resourceType,
+    required this.clockHash,
+    this.headerProperties,
+    this.isDeleted = false,
+    required this.ourPhysicalClock,
+    required this.updatedAt,
   });
 }
 

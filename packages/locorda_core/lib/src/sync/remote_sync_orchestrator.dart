@@ -99,6 +99,11 @@ typedef PreparedShardSync<T> = ({
   ShardSyncSpec shardSpec,
 });
 
+typedef _BatchSyncCandidate = ({
+  IriTerm documentIri,
+  String debugName,
+});
+
 /// Entry in the document queue tracking sync metadata for a resource
 final class _DocumentQueueEntry {
   /// Resource IRI (not document IRI)
@@ -559,17 +564,22 @@ class _DocumentSyncHelper {
             {String? ifNoneMatch})
         downloadFunction,
     required RdfGraph Function(T) extractGraph,
+    String? cachedEtagOverride,
+    RemoteDownloadResult<T>? downloadResultOverride,
+    StoredDocument? localDocumentOverride,
   }) async {
     // 1. Conditional GET
-    final cachedETag = await _storage.getRemoteETag(
-      _remoteId,
-      documentIri,
-    );
+    final cachedETag = cachedEtagOverride ??
+        await _storage.getRemoteETag(
+          _remoteId,
+          documentIri,
+        );
 
-    final downloadResult = await downloadFunction(
-      documentIri,
-      ifNoneMatch: cachedETag,
-    );
+    final downloadResult = downloadResultOverride ??
+        await downloadFunction(
+          documentIri,
+          ifNoneMatch: cachedETag,
+        );
 
     late final RdfGraph documentToUpload;
     late final MergeContract mergeContract;
@@ -580,8 +590,15 @@ class _DocumentSyncHelper {
     if (downloadResult.notModified) {
       // Case: 304 Not Modified
       _log.fine('$debugName unchanged (304)');
-      loadedLocalDocument = await _getLocalDocumentWithMetadata(documentIri,
-          ifChangedSincePhysicalClock: lastSyncTimestamp);
+      loadedLocalDocument = localDocumentOverride ??
+          await _getLocalDocumentWithMetadata(documentIri,
+              ifChangedSincePhysicalClock: lastSyncTimestamp);
+      if (localDocumentOverride != null &&
+          localDocumentOverride.metadata.ourPhysicalClock <=
+              lastSyncTimestamp) {
+        _log.fine('Local $debugName has no changes since last sync');
+        return null;
+      }
       if (loadedLocalDocument == null) {
         _log.fine('Local $debugName has no changes since last sync');
         // Return null to indicate no changes
@@ -596,7 +613,8 @@ class _DocumentSyncHelper {
       _log.fine('$debugName changed remotely');
       // Theoretically, we could skip merge if local unchanged since last sync
       // but just to be safe, always merge if remote changed and then compare
-      loadedLocalDocument = await _getLocalDocumentWithMetadata(documentIri);
+      loadedLocalDocument = localDocumentOverride ??
+          await _getLocalDocumentWithMetadata(documentIri);
       final localDocument = loadedLocalDocument?.document;
       final governanceIris = _mergeContractLoader.getMergedGovernanceIris(
           [if (localDocument != null) localDocument, remoteGraph], documentIri);
@@ -631,7 +649,8 @@ class _DocumentSyncHelper {
     } else {
       // Case: 404 Not Found - New index
       _log.fine('$debugName not found remotely (404)');
-      loadedLocalDocument = await _getLocalDocumentWithMetadata(documentIri);
+      loadedLocalDocument = localDocumentOverride ??
+          await _getLocalDocumentWithMetadata(documentIri);
       if (loadedLocalDocument == null) {
         _log.warning(
             '$debugName was found neither remotely nor locally, will skip');
@@ -719,6 +738,205 @@ class _DocumentSyncHelper {
         rethrow;
       }
     }, debugOperationName: 'syncing $debugName');
+  }
+
+  Future<void> syncDocumentsBatch(
+    List<_BatchSyncCandidate> candidates,
+    int lastSyncTimestamp,
+    DateTime syncTime, {
+    required GraphSyncStorage graphSyncStorage,
+  }) async {
+    if (candidates.isEmpty) {
+      return;
+    }
+
+    final documentIris =
+        candidates.map((candidate) => candidate.documentIri).toList();
+
+    Future<
+        ({
+          Map<IriTerm, StoredDocument?> localDocumentsByIri,
+          Map<IriTerm, String?> cachedEtagsByIri,
+        })> readPhase() async {
+      final localDocumentsByIri =
+          await _storage.getDocumentsByIri(documentIris);
+      final cachedEtagsByIri =
+          await _storage.getRemoteETags(_remoteId, documentIris);
+      return (
+        localDocumentsByIri: localDocumentsByIri,
+        cachedEtagsByIri: cachedEtagsByIri,
+      );
+    }
+
+    final ({
+      Map<IriTerm, StoredDocument?> localDocumentsByIri,
+      Map<IriTerm, String?> cachedEtagsByIri,
+    }) readData;
+    if (_storage case final TransactionalStorage txStorageRead) {
+      readData = await txStorageRead.inTransaction(readPhase);
+    } else {
+      readData = await readPhase();
+    }
+
+    final localDocumentsByIri = readData.localDocumentsByIri;
+    final cachedEtagsByIri = readData.cachedEtagsByIri;
+
+    final downloadResults = await graphSyncStorage.downloadMany(
+      documentIris
+          .map((documentIri) => RemoteDownloadRequest(
+                documentIri: documentIri,
+                ifNoneMatch: cachedEtagsByIri[documentIri],
+              ))
+          .toList(growable: false),
+    );
+
+    final prepared = <({
+      IriTerm documentIri,
+      IriTerm typeIri,
+      RdfGraph documentToUpload,
+      CurrentCrdtClock clock,
+      int? localUpdatedAt,
+      Iterable<MissingGroupIndex> missingGroupIndices,
+      String? ifMatch,
+      String debugName,
+    })>[];
+
+    for (var i = 0; i < candidates.length; i++) {
+      final candidate = candidates[i];
+      final merged = await downloadAndMerge<RdfGraph>(
+        candidate.documentIri,
+        lastSyncTimestamp,
+        debugName: candidate.debugName,
+        downloadFunction: (documentIri, {ifNoneMatch}) =>
+            graphSyncStorage.download(documentIri, ifNoneMatch: ifNoneMatch),
+        extractGraph: (graph) => graph,
+        cachedEtagOverride: cachedEtagsByIri[candidate.documentIri],
+        downloadResultOverride: downloadResults[i],
+        localDocumentOverride: localDocumentsByIri[candidate.documentIri],
+      );
+
+      if (merged == null) {
+        continue;
+      }
+
+      final (typeIri, documentToUpload, clock, missingGroupIndices) =
+          await reconcileDocumentShards(
+        candidate.documentIri,
+        merged.mergedDocument,
+        merged.mergeContract,
+      );
+
+      prepared.add((
+        documentIri: candidate.documentIri,
+        typeIri: typeIri,
+        documentToUpload: documentToUpload,
+        clock: clock,
+        localUpdatedAt: merged.localUpdatedAt,
+        missingGroupIndices: missingGroupIndices,
+        ifMatch: merged.etag,
+        debugName: candidate.debugName,
+      ));
+    }
+
+    if (prepared.isEmpty) {
+      return;
+    }
+
+    final uploadResults = await graphSyncStorage.uploadMany(
+      prepared
+          .map((entry) => RemoteUploadRequest<RdfGraph>(
+                documentIri: entry.documentIri,
+                document: entry.documentToUpload,
+                ifMatch: entry.ifMatch,
+              ))
+          .toList(growable: false),
+    );
+
+    final uploadedEtags = <IriTerm, String>{};
+    for (var i = 0; i < uploadResults.length; i++) {
+      final uploadResult = uploadResults[i];
+      final preparedEntry = prepared[i];
+      switch (uploadResult) {
+        case ConflictUploadResult():
+          throw ConcurrentUpdateException(
+              'Remote document ${preparedEntry.debugName} changed during batch upload');
+        case SuccessUploadResult():
+          uploadedEtags[preparedEntry.documentIri] = uploadResult.etag;
+      }
+    }
+
+    final commit = () async {
+      final etagUpdates = <IriTerm, String>{};
+      final saveRequests = <SaveDocumentRequest>[];
+      final preparedWithUpdatedAt = <({
+        IriTerm documentIri,
+        IriTerm typeIri,
+        RdfGraph documentToUpload,
+        CurrentCrdtClock clock,
+        int? localUpdatedAt,
+        Iterable<MissingGroupIndex> missingGroupIndices,
+        String? ifMatch,
+        String debugName,
+        int updatedAtTimestamp,
+      })>[];
+
+      for (final entry in prepared) {
+        final updatedAtTimestamp =
+            _physicalTimestampFactory().millisecondsSinceEpoch;
+        saveRequests.add(
+          SaveDocumentRequest(
+            documentIri: entry.documentIri,
+            typeIri: entry.typeIri,
+            document: entry.documentToUpload,
+            metadata: DocumentMetadata(
+              ourPhysicalClock: entry.clock.physicalTime,
+              updatedAt: updatedAtTimestamp,
+            ),
+            changes: const <PropertyChange>[],
+            ifMatchUpdatedAt: entry.localUpdatedAt,
+          ),
+        );
+        preparedWithUpdatedAt.add((
+          documentIri: entry.documentIri,
+          typeIri: entry.typeIri,
+          documentToUpload: entry.documentToUpload,
+          clock: entry.clock,
+          localUpdatedAt: entry.localUpdatedAt,
+          missingGroupIndices: entry.missingGroupIndices,
+          ifMatch: entry.ifMatch,
+          debugName: entry.debugName,
+          updatedAtTimestamp: updatedAtTimestamp,
+        ));
+
+        final etag = uploadedEtags[entry.documentIri];
+        if (etag != null) {
+          etagUpdates[entry.documentIri] = etag;
+        }
+      }
+
+      await _storage.saveDocuments(saveRequests);
+
+      for (final entry in preparedWithUpdatedAt) {
+        await _indexManager.updateIndices(
+          document: entry.documentToUpload,
+          documentIri: entry.documentIri,
+          physicalTime: entry.clock.physicalTime,
+          resourceTypeIri: entry.typeIri,
+          missingGroupIndices: entry.missingGroupIndices,
+          updatedAt: entry.updatedAtTimestamp,
+        );
+      }
+
+      if (etagUpdates.isNotEmpty) {
+        await _storage.setRemoteETags(_remoteId, etagUpdates);
+      }
+    };
+
+    if (_storage case final TransactionalStorage txStorage) {
+      await txStorage.inTransaction(commit);
+    } else {
+      await commit();
+    }
   }
 
   Future<
@@ -1133,17 +1351,20 @@ class _ShardSyncOrchestrator {
     );
     //_log.fine(
     //    'Document queue for ${shardIri.debug}: ${documentQueue.map((e) => e.resourceIri.debug).join(', ')}');
-    // Sync documents based on clock hash differences and fetch policy
-    await _executeInChunks(
-        _createSyncDocumentQueueTasks(
-          documentQueue,
-          shard,
-          lastSyncTimestamp,
-          syncTime,
-          debugName,
-          graphSyncStorage: graphSyncStorage,
-        ),
-        maxConcurrent: adapter.maxConcurrentDocumentSyncs);
+    final syncCandidates = _createSyncCandidates(
+      documentQueue,
+      shard,
+      debugName,
+    );
+
+    // Sync all resource documents of this shard in bulk and commit local
+    // storage updates in a single transaction.
+    await _docSync.syncDocumentsBatch(
+      syncCandidates,
+      lastSyncTimestamp,
+      syncTime,
+      graphSyncStorage: graphSyncStorage,
+    );
 
     // Phase B: Document & Shard Finalization for this type
     // 1. Determine final_entry_set from index items table
@@ -1358,14 +1579,11 @@ class _ShardSyncOrchestrator {
     return remoteEntries;
   }
 
-  Iterable<Future<void> Function()> _createSyncDocumentQueueTasks(
+  List<_BatchSyncCandidate> _createSyncCandidates(
     Set<_DocumentQueueEntry> documentQueue,
     ShardSyncSpec shard,
-    int lastSyncTimestamp,
-    DateTime syncTime,
-    String debugName, {
-    required GraphSyncStorage graphSyncStorage,
-  }) {
+    String debugName,
+  ) {
     return documentQueue
         .map((queueEntry) {
           // Determine if this document should be synced:
@@ -1396,19 +1614,15 @@ class _ShardSyncOrchestrator {
           return (
             shouldSync: shouldSync,
             documentIri: queueEntry.resourceIri.getDocumentIri(),
-            lastSyncTimestamp: lastSyncTimestamp,
-            syncTime: syncTime,
           );
         })
         .where((params) => params.shouldSync)
-        .map<Future<void> Function()>((params) => () => _docSync.syncDocument(
-              graphSyncStorage: graphSyncStorage,
-              params.documentIri,
-              params.lastSyncTimestamp,
-              params.syncTime,
+        .map((params) => (
+              documentIri: params.documentIri,
               debugName:
                   'Document ${params.documentIri.debug} (as part of ${debugName})',
-            ));
+            ))
+        .toList(growable: false);
   }
 
   Set<IriTerm>? _computeEntriesToKeep(

@@ -311,14 +311,39 @@ class IndexManager {
         documentIri, SyncManagedDocument.foafPrimaryTopic)!;
     final type = document.expectSingleObject<IriTerm>(resourceIri, Rdf.type)!;
 
-    // Remove entries from shards where belongsToIndexShard was removed
-    // This must happen BEFORE updateShardIndexEntries to ensure tombstones are created first
-    await _removeTombstonedShardEntries(resourceIri, resourceTypeIri, document,
-        documentIri, physicalTime, updatedAt);
+    final tombstonedShards = _collectTombstonedShards(document, documentIri);
+    final shardDocumentIris = {
+      ...allShards.map((shardIri) => shardIri.getDocumentIri()),
+      ...tombstonedShards.map((shardIri) => shardIri.getDocumentIri()),
+    };
+    final indexedPropertiesByShardDocumentIri = await _propertyResolver
+        .resolveIndexedPropertiesBatch(shardDocumentIris);
 
-    // Update the indices
-    await _updateShardIndexEntries(type, resourceIri, clockHash, document,
-        allShards, physicalTime, updatedAt);
+    final tombstonedEntries = await _buildTombstonedShardEntryWrites(
+      resourceIri,
+      resourceTypeIri,
+      document,
+      documentIri,
+      physicalTime,
+      updatedAt,
+      indexedPropertiesByShardDocumentIri,
+    );
+
+    final updatedEntries = await _buildShardIndexEntryWrites(
+      type,
+      resourceIri,
+      clockHash,
+      document,
+      allShards,
+      physicalTime,
+      updatedAt,
+      indexedPropertiesByShardDocumentIri,
+    );
+
+    await _storage.saveIndexEntries([
+      ...tombstonedEntries,
+      ...updatedEntries,
+    ]);
   }
 
   /// Generates RDF graph for a GroupIndex resource.
@@ -365,7 +390,7 @@ class IndexManager {
   /// - [clockHash]: The clock hash from the saved CRDT document
   /// - [document]: The full document (for extracting header properties)
   /// - [allShards]: All shard IRIs the resource currently belongs to (from idx:belongsToIndexShard)
-  Future<void> _updateShardIndexEntries(
+  Future<List<SaveIndexEntryRequest>> _buildShardIndexEntryWrites(
     IriTerm type,
     IriTerm resourceIri,
     String clockHash,
@@ -373,13 +398,17 @@ class IndexManager {
     Iterable<IriTerm> allShards,
     int physicalTime,
     int updatedAt,
+    Map<IriTerm, IndexProperties> indexedPropertiesByShardDocumentIri,
   ) async {
+    final requests = <SaveIndexEntryRequest>[];
+
     // Process each shard the resource belongs to
     for (final shardIri in allShards) {
       final shardDocumentIri = shardIri.getDocumentIri();
       // Resolve which properties should be indexed for this shard
       final (indexIri, indexedProperties) =
-          await _propertyResolver.resolveIndexedProperties(shardDocumentIri);
+          indexedPropertiesByShardDocumentIri[shardDocumentIri] ??
+              (null, const <IriTerm>{});
       if (indexIri == null) {
         _log.warning(
             'Shard ${shardDocumentIri.debug} has no associated index or template, skipping.');
@@ -400,8 +429,7 @@ class IndexManager {
         headerPropertiesTurtle = turtle.encode(headerGraph);
       }
 
-      // Save index entry to database
-      await _storage.saveIndexEntry(
+      requests.add(SaveIndexEntryRequest(
         shardIri: shardIri,
         indexIri: indexIri,
         resourceIri: resourceIri,
@@ -410,8 +438,10 @@ class IndexManager {
         headerProperties: headerPropertiesTurtle,
         updatedAt: updatedAt,
         ourPhysicalClock: physicalTime,
-      );
+      ));
     }
+
+    return requests;
   }
 
   /// Extracts header properties from resource data for specified properties.
@@ -485,20 +515,21 @@ class IndexManager {
   /// - [resourceIri]: The resource whose shard entries should be cleaned up
   /// - [crdtDocument]: The saved CRDT document containing potential tombstones
   /// - [documentIri]: The document IRI to search for tombstones
-  Future<void> _removeTombstonedShardEntries(
+  Future<List<SaveIndexEntryRequest>> _buildTombstonedShardEntryWrites(
     IriTerm resourceIri,
     IriTerm resourceType,
     RdfGraph crdtDocument,
     IriTerm documentIri,
     int ourPhysicalClock,
     int updatedAt,
+    Map<IriTerm, IndexProperties> indexedPropertiesByShardDocumentIri,
   ) async {
     // Find all reified statements with crdt:deletedAt for idx:belongsToIndexShard
     final reifiedStmts =
         crdtDocument.findTriples(predicate: Rdf.subject, object: documentIri);
 
     if (reifiedStmts.isEmpty) {
-      return; // No reified statements, nothing to clean up
+      return const []; // No reified statements, nothing to clean up
     }
 
     final tombstones = <Triple>[];
@@ -528,11 +559,13 @@ class IndexManager {
     }
 
     if (tombstones.isEmpty) {
-      return; // No tombstones found, nothing to clean up
+      return const []; // No tombstones found, nothing to clean up
     }
 
     _log.info(
         'Found ${tombstones.length} tombstoned shard references for $resourceIri');
+
+    final requests = <SaveIndexEntryRequest>[];
 
     // For each tombstoned shard reference, remove the entry
     for (final tombstone in tombstones) {
@@ -556,7 +589,8 @@ class IndexManager {
       // Resolve index IRI for this shard
       final shardDocumentIri = shardIri.getDocumentIri();
       final (indexIri, _) =
-          await _propertyResolver.resolveIndexedProperties(shardDocumentIri);
+          indexedPropertiesByShardDocumentIri[shardDocumentIri] ??
+              (null, const <IriTerm>{});
 
       if (indexIri == null) {
         _log.warning(
@@ -564,9 +598,7 @@ class IndexManager {
         continue;
       }
 
-      // Mark entry as deleted in database
-      // We use empty clockHash and no headerProperties for deleted entries
-      await _storage.saveIndexEntry(
+      requests.add(SaveIndexEntryRequest(
         shardIri: shardIri,
         indexIri: indexIri,
         resourceIri: resourceIri,
@@ -577,8 +609,43 @@ class IndexManager {
         isDeleted: true,
         ourPhysicalClock: ourPhysicalClock,
         updatedAt: updatedAt,
-      );
+      ));
     }
+
+    return requests;
+  }
+
+  Set<IriTerm> _collectTombstonedShards(
+      RdfGraph crdtDocument, IriTerm documentIri) {
+    final reifiedStmts =
+        crdtDocument.findTriples(predicate: Rdf.subject, object: documentIri);
+    if (reifiedStmts.isEmpty) {
+      return const {};
+    }
+
+    final tombstonedShards = <IriTerm>{};
+    for (final reifiedStmt in reifiedStmts) {
+      if (reifiedStmt.subject is! IriTerm) continue;
+      final stmtIri = reifiedStmt.subject as IriTerm;
+
+      final deletedAt =
+          crdtDocument.findMaxDateTimeObject(stmtIri, Crdt.deletedAt);
+      if (deletedAt == null) continue;
+
+      final reifiedPredicate =
+          crdtDocument.findSingleObject<IriTerm>(stmtIri, Rdf.predicate);
+      if (reifiedPredicate != SyncManagedDocument.idxBelongsToIndexShard) {
+        continue;
+      }
+
+      final shardIri =
+          crdtDocument.findSingleObject<IriTerm>(stmtIri, Rdf.object);
+      if (shardIri != null) {
+        tombstonedShards.add(shardIri);
+      }
+    }
+
+    return tombstonedShards;
   }
 }
 

@@ -26,6 +26,15 @@ void main() {
       return properties;
     }
 
+    Future<Map<IriTerm, Set<IriTerm>>> resolveIndexedPropertiesBatch(
+        Iterable<IriTerm> shardDocumentIris) async {
+      final results =
+          await resolver.resolveIndexedPropertiesBatch(shardDocumentIris);
+      return {
+        for (final entry in results.entries) entry.key: entry.value.$2,
+      };
+    }
+
     /// Helper to create a document with minimal metadata
     DocumentMetadata _createMetadata() {
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -220,6 +229,64 @@ void main() {
         final properties = await resolveIndexedProperties(shardDocIri);
 
         expect(properties, isEmpty);
+      });
+
+      test('should resolve multiple shards via batch API', () async {
+        final shard1DocIri = IriTerm('http://example.org/shard1/doc');
+        final shard2DocIri = IriTerm('http://example.org/shard2/doc');
+        final index1DocIri = IriTerm('http://example.org/index1');
+        final index2DocIri = IriTerm('http://example.org/index2');
+
+        final shard1Doc = '''
+    @base <http://example.org/shard1/doc#> .
+    @prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+
+    <#shard> a idx:Shard;
+      idx:isShardOf <http://example.org/index1#it> .
+    ''';
+        final shard2Doc = '''
+    @base <http://example.org/shard2/doc#> .
+    @prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+
+    <#shard> a idx:Shard;
+      idx:isShardOf <http://example.org/index2#it> .
+    ''';
+
+        await _saveDocument(
+            shard1DocIri, IdxShard.classIri, turtle.decode(shard1Doc));
+        await _saveDocument(
+            shard2DocIri, IdxShard.classIri, turtle.decode(shard2Doc));
+
+        final index1Doc = '''
+    @base <http://example.org/index1#> .
+    @prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+    @prefix sc: <http://schema.org/> .
+
+    <#it> a idx:FullIndex;
+      idx:indexedProperty [ idx:trackedProperty sc:name ] .
+    ''';
+        final index2Doc = '''
+    @base <http://example.org/index2#> .
+    @prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+    @prefix sc: <http://schema.org/> .
+
+    <#it> a idx:FullIndex;
+      idx:indexedProperty [ idx:trackedProperty sc:keywords ] .
+    ''';
+
+        await _saveDocument(
+            index1DocIri, IdxFullIndex.classIri, turtle.decode(index1Doc));
+        await _saveDocument(
+            index2DocIri, IdxFullIndex.classIri, turtle.decode(index2Doc));
+
+        final result =
+            await resolveIndexedPropertiesBatch([shard1DocIri, shard2DocIri]);
+
+        expect(result, hasLength(2));
+        expect(
+            result[shard1DocIri], contains(IriTerm('http://schema.org/name')));
+        expect(result[shard2DocIri],
+            contains(IriTerm('http://schema.org/keywords')));
       });
     });
 

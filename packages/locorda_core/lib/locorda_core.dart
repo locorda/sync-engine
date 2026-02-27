@@ -126,6 +126,8 @@ export 'src/storage/storage_interface.dart'
         StoredDocument,
         DocumentMetadata,
         PropertyChange,
+        SaveDocumentRequest,
+        SaveIndexEntryRequest,
         SaveDocumentResult,
         DocumentsResult,
         IndexEntriesPage,

@@ -66,6 +66,109 @@ class IndexPropertyResolver {
     return properties;
   }
 
+  /// Resolves indexed properties for multiple shard documents in one pass.
+  ///
+  /// Uses batched storage reads for shard, index, and template documents and
+  /// updates the resolver cache with all freshly resolved results.
+  Future<Map<IriTerm, IndexProperties>> resolveIndexedPropertiesBatch(
+      Iterable<IriTerm> shardDocumentIris) async {
+    final uniqueShardDocs = shardDocumentIris.toSet();
+    if (uniqueShardDocs.isEmpty) {
+      return const {};
+    }
+
+    final results = <IriTerm, IndexProperties>{};
+    final uncachedShardDocs = <IriTerm>{};
+
+    for (final shardDocumentIri in uniqueShardDocs) {
+      final cacheKey = shardDocumentIri.value;
+      final cached = _cache[cacheKey];
+      if (cached != null) {
+        results[shardDocumentIri] = cached;
+      } else {
+        uncachedShardDocs.add(shardDocumentIri);
+      }
+    }
+
+    if (uncachedShardDocs.isEmpty) {
+      return results;
+    }
+
+    final shardDocsByIri = await _storage.getDocumentsByIri(uncachedShardDocs);
+
+    final indexIriByShardDoc = <IriTerm, IriTerm?>{};
+    for (final shardDocumentIri in uncachedShardDocs) {
+      final shardDoc = shardDocsByIri[shardDocumentIri];
+      if (shardDoc != null) {
+        final shardResourceIri = shardDoc.document.expectSingleObject<IriTerm>(
+            shardDocumentIri, SyncManagedDocument.foafPrimaryTopic);
+        indexIriByShardDoc[shardDocumentIri] = shardResourceIri == null
+            ? null
+            : shardDoc.document.findSingleObject<IriTerm>(
+                shardResourceIri, IdxShard.isShardOf);
+      } else {
+        indexIriByShardDoc[shardDocumentIri] =
+            _inferIndexIriForMissingShard(shardDocumentIri);
+      }
+    }
+
+    final indexIris = indexIriByShardDoc.values.whereType<IriTerm>().toSet();
+    final indexDocsByIri = indexIris.isEmpty
+        ? <IriTerm, StoredDocument?>{}
+        : await _storage
+            .getDocumentsByIri(indexIris.map((iri) => iri.getDocumentIri()));
+
+    final indexOrTemplateByShard = <IriTerm, IriTerm?>{};
+    final templateDocIris = <IriTerm>{};
+    for (final shardDocumentIri in uncachedShardDocs) {
+      final indexIri = indexIriByShardDoc[shardDocumentIri];
+      if (indexIri == null) {
+        indexOrTemplateByShard[shardDocumentIri] = null;
+        continue;
+      }
+      final parentIndexDocumentIri = indexIri.getDocumentIri();
+      final indexDoc = indexDocsByIri[parentIndexDocumentIri];
+      final indexOrTemplateIri =
+          _getIndexOrTemplateIri(indexDoc, parentIndexDocumentIri, indexIri);
+      indexOrTemplateByShard[shardDocumentIri] = indexOrTemplateIri;
+      if (indexOrTemplateIri != indexIri) {
+        templateDocIris.add(indexOrTemplateIri.getDocumentIri());
+      }
+    }
+
+    final templateDocsByIri = templateDocIris.isEmpty
+        ? <IriTerm, StoredDocument?>{}
+        : await _storage.getDocumentsByIri(templateDocIris);
+
+    for (final shardDocumentIri in uncachedShardDocs) {
+      final indexIri = indexIriByShardDoc[shardDocumentIri];
+      final indexOrTemplateIri = indexOrTemplateByShard[shardDocumentIri];
+
+      final resolved = switch ((indexIri, indexOrTemplateIri)) {
+        (null, _) || (_, null) => (null, const <IriTerm>{}),
+        _ => () {
+            final indexDoc = indexDocsByIri[indexIri!.getDocumentIri()];
+            final graph = indexIri == indexOrTemplateIri
+                ? indexDoc?.document
+                : templateDocsByIri[indexOrTemplateIri!.getDocumentIri()]
+                    ?.document;
+            if (graph == null) {
+              return (null, const <IriTerm>{});
+            }
+            return (
+              indexIri,
+              _extractIndexedProperties(graph, indexOrTemplateIri!),
+            );
+          }(),
+      };
+
+      _cache[shardDocumentIri.value] = resolved;
+      results[shardDocumentIri] = resolved;
+    }
+
+    return results;
+  }
+
   /// Resolves indexed properties by loading documents from storage.
   Future<IndexProperties> _resolveFromStorage(IriTerm shardDocumentIri) async {
     IriTerm? indexIri = await _getIndexIriForShardDocumentIri(shardDocumentIri);
@@ -158,11 +261,10 @@ class IndexPropertyResolver {
         IdxShard.isShardOf,
       );
     }
-    // Shard document not found - maybe it is a shard of a foreign index
-    // which we did not download. In this case, we try to infer the index IRI
-    // from the shard IRI structure
-    // Id will be something like `index-full-5f68b5b7/shard-mod-md5-1-0-v1_0_0` for full index
-    // or `index-grouped-e093655c/groups/20_ad221effd73057a647d96bab312c4886/shard-mod-md5-1-0-v1_0_0` for group index
+    return _inferIndexIriForMissingShard(shardDocumentIri);
+  }
+
+  IriTerm? _inferIndexIriForMissingShard(IriTerm shardDocumentIri) {
     if (!_resourceLocator.isIdentifiableIri(shardDocumentIri)) {
       return null;
     }
@@ -176,11 +278,10 @@ class IndexPropertyResolver {
             : null;
 
     if (type != null && shardId.contains('/')) {
-      // ok - this looks good. Continue
       final indexId =
           shardId.substring(0, shardId.lastIndexOf('/') + 1) + 'index';
 
-      return _resourceLocator.toIri(ResourceIdentifier(type, indexId, "index"));
+      return _resourceLocator.toIri(ResourceIdentifier(type, indexId, 'index'));
     }
     return null;
   }

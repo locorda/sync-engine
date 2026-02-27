@@ -114,45 +114,128 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
       core.DocumentMetadata metadata,
       List<core.PropertyChange> changes,
       {int? ifMatchUpdatedAt}) async {
-    return await _database.transaction(() async {
-      // Get previous cursor for this type
-      final previousTimestamp =
-          await documentDao.getMaxUpdatedAtForType(typeIri.value);
-      final previousCursor = previousTimestamp?.toString();
-
-      // Validate that new timestamp is greater than existing max
-      if (previousTimestamp != null && metadata.updatedAt < previousTimestamp) {
-        throw ArgumentError(
-            'New document updatedAt (${metadata.updatedAt}) must be greater than (or equal to) '
-            'existing max updatedAt ($previousTimestamp) for document ${documentIri.debug} of type ${typeIri.value}');
-      }
-
-      // Serialize RDF graph to Turtle
-      final content = _codec.encode(document, baseUri: documentIri.value);
-
-      // Save document with metadata and get the document ID
-      // Throws [ConcurrentUpdateException] on optimistic lock failure
-      final documentId = await documentDao.saveDocument(
-        documentIri: documentIri.value,
-        typeIri: typeIri.value,
-        content: content,
-        ourPhysicalClock: metadata.ourPhysicalClock,
-        updatedAt: metadata.updatedAt,
+    final results = await saveDocuments([
+      core.SaveDocumentRequest(
+        documentIri: documentIri,
+        typeIri: typeIri,
+        document: document,
+        metadata: metadata,
+        changes: changes,
         ifMatchUpdatedAt: ifMatchUpdatedAt,
-      );
+      ),
+    ]);
+    return results.single;
+  }
 
-      // Save property changes in batch
-      if (changes.isNotEmpty) {
-        await propertyChangeDao.recordPropertyChangesBatch(
-          documentId: documentId,
-          changes: changes,
+  @override
+  Future<List<core.SaveDocumentResult>> saveDocuments(
+      Iterable<core.SaveDocumentRequest> requests) async {
+    final requestList = requests.toList(growable: false);
+    if (requestList.isEmpty) {
+      return const [];
+    }
+
+    final documentIriValues = requestList
+        .map((request) => request.documentIri.value)
+        .toList(growable: false);
+    final typeIriValues = requestList
+        .map((request) => request.typeIri.value)
+        .toList(growable: false);
+
+    final allIriValues = {
+      ...documentIriValues,
+      ...typeIriValues,
+    };
+
+    return _database.transaction(() async {
+      final iriIdByValue =
+          await documentDao.getOrCreateIriIdsBatch(allIriValues);
+
+      final documentIriIds = documentIriValues
+          .map((iri) => iriIdByValue[iri]!)
+          .toList(growable: false);
+      final typeIriIds = typeIriValues
+          .map((iri) => iriIdByValue[iri]!)
+          .toList(growable: false);
+
+      final maxUpdatedAtByTypeId =
+          await documentDao.getMaxUpdatedAtForTypeIds(typeIriIds);
+      final runningMaxUpdatedAtByTypeId = <int, int?>{
+        for (final entry in maxUpdatedAtByTypeId.entries)
+          entry.key: entry.value,
+      };
+
+      final results = <core.SaveDocumentResult>[];
+      final operations = <BatchDocumentSaveOperation>[];
+      final changesByDocumentIriId = <int, List<core.PropertyChange>>{};
+
+      for (var index = 0; index < requestList.length; index++) {
+        final request = requestList[index];
+        final typeIriId = typeIriIds[index];
+        final documentIriId = documentIriIds[index];
+        final previousTimestamp = runningMaxUpdatedAtByTypeId[typeIriId];
+
+        if (previousTimestamp != null &&
+            request.metadata.updatedAt < previousTimestamp) {
+          throw ArgumentError(
+              'New document updatedAt (${request.metadata.updatedAt}) must be greater than (or equal to) '
+              'existing max updatedAt ($previousTimestamp) for document ${request.documentIri.debug} of type ${request.typeIri.value}');
+        }
+
+        final content =
+            _codec.encode(request.document, baseUri: request.documentIri.value);
+
+        operations.add(
+          BatchDocumentSaveOperation(
+            documentIriId: documentIriId,
+            typeIriId: typeIriId,
+            content: content,
+            ourPhysicalClock: request.metadata.ourPhysicalClock,
+            updatedAt: request.metadata.updatedAt,
+            ifMatchUpdatedAt: request.ifMatchUpdatedAt,
+          ),
+        );
+
+        if (request.changes.isNotEmpty) {
+          changesByDocumentIriId[documentIriId] = request.changes;
+        }
+
+        final nextMax = previousTimestamp == null
+            ? request.metadata.updatedAt
+            : (request.metadata.updatedAt > previousTimestamp
+                ? request.metadata.updatedAt
+                : previousTimestamp);
+        runningMaxUpdatedAtByTypeId[typeIriId] = nextMax;
+
+        results.add(
+          core.SaveDocumentResult(
+            previousCursor: previousTimestamp?.toString(),
+            currentCursor: request.metadata.updatedAt.toString(),
+          ),
         );
       }
 
-      return core.SaveDocumentResult(
-        previousCursor: previousCursor,
-        currentCursor: metadata.updatedAt.toString(),
-      );
+      await documentDao.saveDocumentsBatch(operations);
+
+      if (changesByDocumentIriId.isNotEmpty) {
+        final persistedByDocumentIriId = await documentDao
+            .getDocumentsByDocumentIriIds(changesByDocumentIriId.keys);
+        final changesByDocumentId = <int, List<core.PropertyChange>>{};
+
+        for (final entry in changesByDocumentIriId.entries) {
+          final persisted = persistedByDocumentIriId[entry.key];
+          if (persisted == null) {
+            throw StateError(
+                'Missing persisted document after batch save for documentIriId=${entry.key}.');
+          }
+          changesByDocumentId[persisted.id] = entry.value;
+        }
+
+        await propertyChangeDao
+            .recordPropertyChangesForDocumentsBatch(changesByDocumentId);
+      }
+
+      return results;
     });
   }
 
@@ -179,6 +262,49 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
         updatedAt: document.updatedAt,
       ),
     );
+  }
+
+  @override
+  Future<Map<IriTerm, core.StoredDocument?>> getDocumentsByIri(
+    Iterable<IriTerm> documentIris, {
+    int? ifChangedSincePhysicalClock,
+  }) async {
+    final iris = documentIris.toList(growable: false);
+    if (iris.isEmpty) {
+      return const {};
+    }
+
+    final documents = await documentDao.getDocumentsByIri(
+      iris.map((iri) => iri.value),
+      ifChangedSincePhysicalClock: ifChangedSincePhysicalClock,
+    );
+
+    final byIri = {
+      for (final document in documents) document.iri: document.document,
+    };
+
+    final result = <IriTerm, core.StoredDocument?>{};
+    for (final documentIri in iris) {
+      final document = byIri[documentIri.value];
+      if (document == null) {
+        result[documentIri] = null;
+        continue;
+      }
+
+      final graph = _codec.decode(document.documentContent,
+          documentUrl: documentIri.value);
+
+      result[documentIri] = core.StoredDocument(
+        documentIri: documentIri,
+        document: graph,
+        metadata: core.DocumentMetadata(
+          ourPhysicalClock: document.ourPhysicalClock,
+          updatedAt: document.updatedAt,
+        ),
+      );
+    }
+
+    return result;
   }
 
   @override
@@ -530,6 +656,43 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   }
 
   @override
+  Future<void> saveIndexEntries(
+      Iterable<core.SaveIndexEntryRequest> requests) async {
+    final requestList = requests.toList(growable: false);
+    if (requestList.isEmpty) {
+      return;
+    }
+
+    final allIris = <String>{};
+    for (final request in requestList) {
+      allIris.add(request.shardIri.value);
+      allIris.add(request.indexIri.value);
+      allIris.add(request.resourceIri.value);
+      allIris.add(request.resourceType.value);
+    }
+
+    final iriIds = await _getOrCreateIriIdsMap(allIris);
+
+    final operations = requestList
+        .map(
+          (request) => BatchIndexEntrySaveOperation(
+            shardIriId: iriIds[request.shardIri.value]!,
+            indexIriId: iriIds[request.indexIri.value]!,
+            resourceIriId: iriIds[request.resourceIri.value]!,
+            resourceTypeIriId: iriIds[request.resourceType.value]!,
+            clockHash: request.clockHash,
+            headerProperties: request.headerProperties,
+            isDeleted: request.isDeleted,
+            ourPhysicalClock: request.ourPhysicalClock,
+            updatedAt: request.updatedAt,
+          ),
+        )
+        .toList(growable: false);
+
+    await indexDao.saveIndexEntriesBatch(operations);
+  }
+
+  @override
   Future<List<core.IndexEntryWithIri>> getActiveIndexEntriesForShard(
       IriTerm shardIri) async {
     // Translate shard IRI to ID
@@ -640,6 +803,34 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   }
 
   @override
+  Future<Map<IriTerm, String?>> getRemoteETags(
+      core.RemoteId remoteId, Iterable<IriTerm> documentIris) async {
+    final iris = documentIris.toList(growable: false);
+    if (iris.isEmpty) {
+      return const {};
+    }
+
+    final iriIdByIriValue = await _getOrCreateIriIdsMap(
+      iris.map((iri) => iri.value),
+    );
+    final remoteIdInt = await remoteSyncStateDao.getOrCreateRemoteId(
+      remoteId.backend,
+      remoteId.id,
+    );
+    final etagByDocumentId = await remoteSyncStateDao.getETags(
+      documentIriIds: iriIdByIriValue.values,
+      remoteId: remoteIdInt,
+    );
+
+    final result = <IriTerm, String?>{};
+    for (final iri in iris) {
+      final iriId = iriIdByIriValue[iri.value]!;
+      result[iri] = etagByDocumentId[iriId];
+    }
+    return result;
+  }
+
+  @override
   Future<void> setRemoteETag(
       core.RemoteId remoteId, IriTerm documentIri, String etag) async {
     final documentIriId = await _getOrCreateIriId(documentIri.value);
@@ -650,6 +841,32 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
       documentIriId: documentIriId,
       remoteId: remoteIdInt,
       etag: etag,
+    );
+  }
+
+  @override
+  Future<void> setRemoteETags(
+      core.RemoteId remoteId, Map<IriTerm, String> etagsByDocument) async {
+    if (etagsByDocument.isEmpty) {
+      return;
+    }
+
+    final iriIdByIriValue = await _getOrCreateIriIdsMap(
+      etagsByDocument.keys.map((iri) => iri.value),
+    );
+    final remoteIdInt = await remoteSyncStateDao.getOrCreateRemoteId(
+      remoteId.backend,
+      remoteId.id,
+    );
+
+    final etagsByDocumentIriId = <int, String>{};
+    for (final entry in etagsByDocument.entries) {
+      etagsByDocumentIriId[iriIdByIriValue[entry.key.value]!] = entry.value;
+    }
+
+    await remoteSyncStateDao.setETags(
+      remoteId: remoteIdInt,
+      etagsByDocumentIriId: etagsByDocumentIriId,
     );
   }
 

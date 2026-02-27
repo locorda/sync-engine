@@ -133,6 +133,21 @@ class InMemoryStorage implements Storage, TransactionalStorage {
     return doc;
   }
 
+  @override
+  Future<Map<IriTerm, StoredDocument?>> getDocumentsByIri(
+    Iterable<IriTerm> documentIris, {
+    int? ifChangedSincePhysicalClock,
+  }) async {
+    final result = <IriTerm, StoredDocument?>{};
+    for (final documentIri in documentIris) {
+      result[documentIri] = await getDocument(
+        documentIri,
+        ifChangedSincePhysicalClock: ifChangedSincePhysicalClock,
+      );
+    }
+    return result;
+  }
+
   /// Get max updatedAt for all documents of a specific type.
   int? _getMaxUpdatedAtForType(IriTerm typeIri) {
     final docsOfType = _documentTypes.entries
@@ -191,6 +206,23 @@ class InMemoryStorage implements Storage, TransactionalStorage {
       previousCursor: previousCursor,
       currentCursor: metadata.updatedAt.toString(),
     );
+  }
+
+  @override
+  Future<List<SaveDocumentResult>> saveDocuments(
+      Iterable<SaveDocumentRequest> requests) async {
+    final results = <SaveDocumentResult>[];
+    for (final request in requests) {
+      results.add(await saveDocument(
+        request.documentIri,
+        request.typeIri,
+        request.document,
+        request.metadata,
+        request.changes,
+        ifMatchUpdatedAt: request.ifMatchUpdatedAt,
+      ));
+    }
+    return results;
   }
 
   /// Emit current documents to all watch streams for a specific type.
@@ -471,6 +503,34 @@ class InMemoryStorage implements Storage, TransactionalStorage {
   }
 
   @override
+  Future<void> saveIndexEntries(
+      Iterable<SaveIndexEntryRequest> requests) async {
+    final allTriggers = <IriTerm>{};
+
+    for (final request in requests) {
+      final key = '${request.shardIri.value}|${request.resourceIri.value}';
+      _indexEntries[key] = _IndexEntry(
+        shardIri: request.shardIri,
+        indexIri: request.indexIri,
+        resourceType: request.resourceType,
+        resourceIri: request.resourceIri,
+        clockHash: request.clockHash,
+        headerProperties: request.headerProperties,
+        isDeleted: request.isDeleted,
+        updatedAt: request.updatedAt,
+        ourPhysicalClock: request.ourPhysicalClock,
+      );
+      allTriggers.add(request.indexIri);
+      allTriggers.add(request.shardIri);
+      allTriggers.add(request.resourceIri);
+    }
+
+    if (allTriggers.isNotEmpty) {
+      await _triggerWatchers(allTriggers);
+    }
+  }
+
+  @override
   Future<List<IndexEntryWithIri>> getActiveIndexEntriesForShard(
       IriTerm shardIri) async {
     _logger.finer(
@@ -612,6 +672,16 @@ class InMemoryStorage implements Storage, TransactionalStorage {
   }
 
   @override
+  Future<Map<IriTerm, String?>> getRemoteETags(
+      RemoteId remoteId, Iterable<IriTerm> documentIris) async {
+    final result = <IriTerm, String?>{};
+    for (final documentIri in documentIris) {
+      result[documentIri] = await getRemoteETag(remoteId, documentIri);
+    }
+    return result;
+  }
+
+  @override
   Future<void> setRemoteETag(
       RemoteId remoteId, IriTerm documentIri, String etag) async {
     _registerRemote(remoteId);
@@ -620,6 +690,14 @@ class InMemoryStorage implements Storage, TransactionalStorage {
     _settings[
             'remote.etag.${remoteId.backend}.${remoteId.id}.${documentIri.value}'] =
         etag;
+  }
+
+  @override
+  Future<void> setRemoteETags(
+      RemoteId remoteId, Map<IriTerm, String> etagsByDocument) async {
+    for (final entry in etagsByDocument.entries) {
+      await setRemoteETag(remoteId, entry.key, entry.value);
+    }
   }
 
   @override
