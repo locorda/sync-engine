@@ -330,7 +330,7 @@ class PerflogRemoteSyncStorage implements RemoteSyncStorage {
           args: [
             'count=${requests.length}',
             if (requests.isNotEmpty)
-              'firstType=${getType(requests.first.documentIri)}/${getType(requests.first.document.graphNames.first as IriTerm)}'
+              'firstType=${getType(requests.first.documentIri)}/${requests.first.document.graphNames.isNotEmpty ? getType(requests.first.document.graphNames.first as IriTerm) : 'empty'}'
           ]);
   @override
   String toString() => 'Perflog(${_inner.toString()})';
