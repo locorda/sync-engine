@@ -130,7 +130,8 @@ class ObjectSyncEngine {
         _config = config,
         _resourceTypeCache = resourceTypeCache,
         _localResourceLocator = localResourceLocator,
-        _perflog = perflog ?? Perflog.root() {
+        _perflog =
+            (perflog ?? Perflog.root()).create('ObjectSyncEngine', syncEngine) {
     _groupKeyConverter = GroupKeyConverter(
       config: _config,
       mapper: _mapper,
