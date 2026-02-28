@@ -104,6 +104,12 @@ typedef _BatchSyncCandidate = ({
   String debugName,
 });
 
+/// DB-only result of [RemoteSyncOrchestrator._collectIndexSpecs].
+typedef _CollectedIndexSpecs = ({
+  List<IndexSyncSpec> allSpecs,
+  Set<IriTerm> groupIndexIris,
+});
+
 typedef _DeferredBatchCommit = ({
   List<SaveDocumentRequest> saveRequests,
   List<SaveIndexEntryRequest> indexEntryRequests,
@@ -203,16 +209,12 @@ class RemoteSyncOrchestrator {
 
   /// Execute complete remote synchronization cycle.
   ///
-  /// Process (per resource type in canonical order):
-  /// 1. Phase A: Sync indices, download shards, build document queue
-  /// 2. Phase B: Process documents, finalize shards
-  ///
-  /// Resource types are processed in order:
-  /// - Index-of-indices first (idx:FullIndex, idx:GroupIndexTemplate)
-  /// - Then other types in alphabetical order
-  ///
-  /// This ensures that indices are fully synced before the resources they
-  /// index, preventing broken references and enabling correct shard determination.
+  /// Sync order:
+  /// 1. Meta-types (idx:FullIndex, idx:GroupIndexTemplate) sequentially via
+  ///    [_syncResourceType] — preserves the index-of-indices-first invariant.
+  /// 2. All remaining content types via [_syncContentResourceTypes], which
+  ///    batches GroupIndex document syncs across all types before processing
+  ///    shards, eliminating the per-document roundtrip storm.
   Future<void> sync(
     DateTime syncTime,
     int lastSyncTimestamp, {
@@ -220,11 +222,29 @@ class RemoteSyncOrchestrator {
   }) async {
     _log.info('Starting remote synchronization cycle');
     try {
-      // Sync each resource type completely before moving to next
-      for (final resourceType
-          in config.resourcesInSyncOrder.map((r) => r.typeIri)) {
-        await _syncResourceType(
-          resourceType,
+      const metaTypes = [IdxFullIndex.classIri, IdxGroupIndexTemplate.classIri];
+      final contentTypes = config.resourcesInSyncOrder
+          .map((r) => r.typeIri)
+          .where((t) => !metaTypes.contains(t))
+          .toList();
+
+      // Phase 1+2: Meta-types sequentially — index-of-indices must precede content.
+      for (final resourceType in metaTypes) {
+        if (config.resources.any((r) => r.typeIri == resourceType)) {
+          await _syncResourceType(
+            resourceType,
+            lastSyncTimestamp,
+            syncTime,
+            remoteSyncStorage: _remoteSyncStorage,
+            config: config,
+          );
+        }
+      }
+
+      // Phase 3+: Content types — flat batched approach.
+      if (contentTypes.isNotEmpty) {
+        await _syncContentResourceTypes(
+          contentTypes,
           lastSyncTimestamp,
           syncTime,
           remoteSyncStorage: _remoteSyncStorage,
@@ -237,6 +257,119 @@ class RemoteSyncOrchestrator {
       // TODO: should we catch the exception per resource type and continue with others?
       _log.severe('Remote synchronization cycle failed', e, st);
       rethrow;
+    }
+  }
+
+  /// Collects all [IndexSyncSpec]s for a content resource type without any
+  /// network I/O — pure DB + config reads.
+  ///
+  /// Separates the spec-collection concern from the network-sync concern so
+  /// that [_syncContentResourceTypes] can batch the GroupIndex document syncs
+  /// across all types before processing shards.
+  Future<_CollectedIndexSpecs> _collectIndexSpecs(
+    IriTerm resourceType,
+    SyncEngineConfig config,
+  ) async {
+    final resourceConfig =
+        config.resources.firstWhere((r) => r.typeIri == resourceType);
+
+    final fullIndices =
+        resourceConfig.indices.whereType<FullIndexData>().map((index) {
+      final iri = _indexRdfGenerator.generateFullIndexIri(index, resourceType);
+      return FullIndexSync(iri, index.rootResourceFetchPolicy);
+    }).toList();
+
+    final groupIndices = await _storage.getSubscribedGroupIndices(resourceType);
+    final groupIndexTuples = groupIndices
+        .map((tuple) => FullIndexSync(tuple.$1,
+            _useShardDatasets ? RootResourceFetchPolicy.prefetch : tuple.$3))
+        .toList();
+    final groupIndexIris = groupIndices.map((tuple) => tuple.$1).toSet();
+
+    final configuredIndices = <IndexSyncSpec>[
+      ...fullIndices,
+      ...groupIndexTuples,
+    ];
+    final configuredIndexIris =
+        configuredIndices.map((spec) => spec.indexIri).toSet();
+
+    final foreignIndices = await _findForeignIndices(
+      resourceType: resourceType,
+      configuredIndexIris: configuredIndexIris,
+    );
+
+    _log.fine(
+        'Collected ${configuredIndices.length} configured and ${foreignIndices.length} foreign indices for ${resourceType.debug}');
+
+    return (
+      allSpecs: [...configuredIndices, ...foreignIndices],
+      groupIndexIris: groupIndexIris,
+    );
+  }
+
+  /// Syncs all content resource types using a flat batch strategy:
+  ///
+  /// 1. **DB phase** — collect [IndexSyncSpec]s for every type in parallel
+  ///    (pure DB reads, no network).
+  /// 2. **Batch GroupIndex sync** — all GroupIndex documents across all types
+  ///    are downloaded and uploaded in a single [syncDocumentsBatch] call
+  ///    wrapped in [retryOnConflict].
+  /// 3. **Shard phase** — shards for each type/index processed as before.
+  ///
+  /// FullIndex documents for content types do not need individual syncs here
+  /// because they were already updated during the meta-type (index-of-indices)
+  /// phase.
+  Future<void> _syncContentResourceTypes(
+    List<IriTerm> resourceTypes,
+    int lastSyncTimestamp,
+    DateTime syncTime, {
+    required RemoteSyncStorage remoteSyncStorage,
+    required SyncEngineConfig config,
+  }) async {
+    // Phase 3a: DB-only — collect specs for all types (parallelisable).
+    final specFutures = resourceTypes
+        .map((t) => _collectIndexSpecs(t, config).then((s) => (t, s)));
+    final specResults = await Future.wait(specFutures);
+    final allSpecsByType =
+        Map.fromEntries(specResults.map((r) => MapEntry(r.$1, r.$2)));
+
+    // Phase 3b: Network — one batch for all GroupIndex documents.
+    final allGroupIndexCandidates = <_BatchSyncCandidate>[];
+    for (final entry in allSpecsByType.entries) {
+      for (final indexIri in entry.value.groupIndexIris) {
+        final documentIri = indexIri.getDocumentIri();
+        allGroupIndexCandidates.add((
+          documentIri: documentIri,
+          debugName: 'GroupIndex ${documentIri.debug}',
+        ));
+      }
+    }
+
+    if (allGroupIndexCandidates.isNotEmpty) {
+      _log.info(
+          'Batch syncing ${allGroupIndexCandidates.length} GroupIndex documents across ${resourceTypes.length} types');
+      await retryOnConflict(
+        () => _docSync.syncDocumentsBatch(
+          allGroupIndexCandidates,
+          lastSyncTimestamp,
+          syncTime,
+          graphSyncStorage: remoteSyncStorage,
+        ),
+        debugOperationName: 'batch syncing GroupIndex documents',
+      );
+    }
+
+    // Phase 3c: Process shards for each type in canonical order.
+    for (final resourceType in resourceTypes) {
+      final specs = allSpecsByType[resourceType]!;
+      _log.info('Syncing shards for resource type: ${resourceType.debug}');
+      await _executeInChunks(
+          specs.allSpecs.map((index) => () => _syncIndex(
+              resourceType, index, lastSyncTimestamp, syncTime,
+              remoteSyncStorage: remoteSyncStorage)),
+          maxConcurrent: remoteSyncStorage.maxConcurrentIndexSyncs);
+      _log.info(
+          'Completed shard sync for resource type: ${resourceType.debug}');
     }
   }
 

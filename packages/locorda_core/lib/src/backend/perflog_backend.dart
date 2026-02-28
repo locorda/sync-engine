@@ -1,10 +1,7 @@
 import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_core/src/backend/backend.dart';
-import 'package:locorda_core/src/config/sync_engine_config.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:locorda_core/src/storage/remote_id.dart';
 import 'package:locorda_core/src/storage/remote_storage.dart';
 import 'package:locorda_rdf_core/src/dataset/rdf_dataset.dart';
 import 'package:locorda_rdf_core/src/graph/rdf_graph.dart';

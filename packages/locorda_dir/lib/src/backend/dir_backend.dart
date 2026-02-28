@@ -34,6 +34,7 @@ class DirBackend implements Backend {
   final String _datasetContentType;
   final bool _useShardDatasets;
   late final BehaviorSubject<List<RemoteStorage>> _remotesChangedSubject;
+  final IriTranslator? _iriTranslator;
 
   DirBackend({
     required DirAuthProvider auth,
@@ -41,11 +42,13 @@ class DirBackend implements Backend {
     required String contentType,
     required String datasetContentType,
     required bool useShardDatasets,
+    IriTranslator? iriTranslator,
   })  : _auth = auth,
         _rdfCore = rdfCore,
         _contentType = contentType,
         _datasetContentType = datasetContentType,
-        _useShardDatasets = useShardDatasets {
+        _useShardDatasets = useShardDatasets,
+        _iriTranslator = iriTranslator {
     _remotesChangedSubject = BehaviorSubject<List<RemoteStorage>>();
     _auth.isAuthenticatedNotifier.addListener(_authStateChanged);
     _authStateChanged();
@@ -75,6 +78,7 @@ class DirBackend implements Backend {
           contentType: _contentType,
           datasetContentType: _datasetContentType,
           useShardDatasets: _useShardDatasets,
+          iriTranslator: _iriTranslator,
         )
       ];
 
@@ -111,6 +115,7 @@ class DirRemoteStorage implements RemoteStorage {
   final String _datasetContentType;
   final RdfCore _rdfCore;
   final bool _useShardDatasets;
+  final IriTranslator? _iriTranslator;
 
   DirRemoteStorage({
     required String directoryPath,
@@ -118,12 +123,14 @@ class DirRemoteStorage implements RemoteStorage {
     required String datasetContentType,
     required RdfCore rdfCore,
     required bool useShardDatasets,
+    required IriTranslator? iriTranslator,
   })  : _directoryPath = directoryPath,
         _contentType = contentType,
         _datasetContentType = datasetContentType,
         _rdfCore = rdfCore,
         _remoteId = RemoteId('local-dir', directoryPath),
-        _useShardDatasets = useShardDatasets;
+        _useShardDatasets = useShardDatasets,
+        _iriTranslator = iriTranslator;
 
   @override
   bool get useShardDatasets => _useShardDatasets;
@@ -155,12 +162,17 @@ class DirRemoteStorage implements RemoteStorage {
       _log.info('Created sync directory: $_directoryPath');
     }
 
-    return DirSyncStorage(
+    final storage = DirSyncStorage(
       directoryPath: _directoryPath,
       rdfCore: _rdfCore,
       contentType: _contentType,
       datasetContentType: _datasetContentType,
     );
+    if (_iriTranslator != null) {
+      return IriTranslatingRemoteSyncStorage(
+          storage: storage, iriTranslator: _iriTranslator);
+    }
+    return storage;
   }
 
   @override
