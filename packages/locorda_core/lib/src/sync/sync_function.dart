@@ -40,6 +40,7 @@ class SyncFunction {
   final List<Backend> _backends;
   final ConfigService _configService;
   final OrchestratorFactory _remoteSyncOrchestratorFactory;
+  final Perflog _perflog = Perflog.root().create('Sync', 'SyncFunction');
 
   SyncFunction({
     required List<Backend> backends,
@@ -55,10 +56,10 @@ class SyncFunction {
 
   Future<void> call(DateTime syncTime) async {
     // Phase 0: Sync Preparation (materialize local shard state)
-    await _prepareSync(syncTime);
+    await _perflog.measure('sync.phase0', () => _prepareSync(syncTime));
 
     // Phase A+B: Remote Synchronization (metadata + documents + shards)
-    await _syncRemote(syncTime);
+    await _perflog.measure('sync.remote', () => _syncRemote(syncTime));
   }
 
   /// Validate that configuration and data support the given backend's dataset mode.
@@ -143,7 +144,11 @@ class SyncFunction {
     try {
       // Generate shard documents for all shards with changes since last sync
       // This materializes current_local_shard_state in the DB
-      await _shardDocumentGenerator(syncTime, lastSyncTimestamp);
+      await _perflog.measure(
+        'prepareSync.generate',
+        () => _shardDocumentGenerator(syncTime, lastSyncTimestamp),
+        minDurationMs: 20,
+      );
 
       // Update last shard sync timestamp
       final now = syncTime.millisecondsSinceEpoch;
