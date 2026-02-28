@@ -1576,44 +1576,52 @@ class _ShardSyncOrchestrator {
           PartialShardSync() => documentQueue.map((e) => e.resourceIri).toSet(),
         };
 
-        final finalEntrySet = await _getFinalEntrySet(
-          shardIri,
-          limitToResourceIris: limitToResources,
-          pendingIndexEntryWrites:
-              deferredLocalCommit?.indexEntryRequests ?? const [],
+        final finalEntrySet = await _perflog.measure(
+          'finalize.getFinalEntrySet',
+          () => _getFinalEntrySet(
+            shardIri,
+            limitToResourceIris: limitToResources,
+            pendingIndexEntryWrites:
+                deferredLocalCommit?.indexEntryRequests ?? const [],
+          ),
+          minDurationMs: 5,
         );
-        //print('Final entry set for shard ${shardIri.debug}: '
-        //    '${finalEntrySet.map((e) => e.resourceIri.debug).toList()}\n limitToResources: ${limitToResources?.map((e) => e.debug).toList()}');
 
         // 2. Generate shard nodes from final entry set
         //
         // For partial sync, we need to merge these with existing remote entries
         // rather than replacing everything
-        final newShardNodes = _shardDocumentGenerator.generateShardNodes(
-            shardDocumentIri: shardDocumentIri,
-            shardResourceIri: shardIri,
-            entries: finalEntrySet);
-
         final RdfGraph updatedShardDocument;
-        final entriesToKeep = _computeEntriesToKeep(
-            limitToResources, merged.mergedDocument, shardIri);
+        updatedShardDocument = await _perflog.measure(
+          'finalize.buildShardGraph',
+          () async {
+            final newShardNodes = _shardDocumentGenerator.generateShardNodes(
+                shardDocumentIri: shardDocumentIri,
+                shardResourceIri: shardIri,
+                entries: finalEntrySet);
 
-        // Build document with kept entries but without the other old ones
-        final withoutEntries = merged.mergedDocument.subgraph(
-          shardDocumentIri,
-          filter: (triple, depth) {
-            if (triple.predicate == IdxShard.containsEntry &&
-                (entriesToKeep == null ||
-                    !entriesToKeep.contains(triple.object))) {
-              return TraversalDecision.skip;
-            }
-            return TraversalDecision.include;
+            final entriesToKeep = _computeEntriesToKeep(
+                limitToResources, merged.mergedDocument, shardIri);
+
+            // Build document with kept entries but without the other old ones
+            final withoutEntries = merged.mergedDocument.subgraph(
+              shardDocumentIri,
+              filter: (triple, depth) {
+                if (triple.predicate == IdxShard.containsEntry &&
+                    (entriesToKeep == null ||
+                        !entriesToKeep.contains(triple.object))) {
+                  return TraversalDecision.skip;
+                }
+                return TraversalDecision.include;
+              },
+            );
+
+            // Add new/current entries
+            return withoutEntries.withNodes(
+                shardIri, IdxShard.containsEntry, newShardNodes);
           },
+          minDurationMs: 5,
         );
-
-        // Add new/current entries
-        updatedShardDocument = withoutEntries.withNodes(
-            shardIri, IdxShard.containsEntry, newShardNodes);
 
         // Determine if we need to increment the clock for this shard.
         // Shard documents contain derived state from index items, but they participate
@@ -1635,20 +1643,26 @@ class _ShardSyncOrchestrator {
             : ourCurrentShardClock;
 
 // FIXME: is this correct?
-        final (oldBlankNodes: _, newBlankNodes: _, metadata: metadata) =
-            _localDocumentMerger.generateMetadata(
-          shardDocumentIri,
-          updatedShardDocument,
-          merged.mergedDocument,
-          merged.mergedDocument,
-          merged.mergeContract,
-          clock,
-          appDataTypeIri: IdxShard.classIri,
-          // optimization: shard documents should not have blank nodes
-          computeCanonicalBlankNodes: false,
+        final finalShardDocument = await _perflog.measure(
+          'finalize.generateMetadata',
+          () async {
+            final (oldBlankNodes: _, newBlankNodes: _, metadata: metadata) =
+                _localDocumentMerger.generateMetadata(
+              shardDocumentIri,
+              updatedShardDocument,
+              merged.mergedDocument,
+              merged.mergedDocument,
+              merged.mergeContract,
+              clock,
+              appDataTypeIri: IdxShard.classIri,
+              // optimization: shard documents should not have blank nodes
+              computeCanonicalBlankNodes: false,
+            );
+            return _applyMetadataToDocument(
+                updatedShardDocument, metadata, shardDocumentIri);
+          },
+          minDurationMs: 5,
         );
-        final finalShardDocument = _applyMetadataToDocument(
-            updatedShardDocument, metadata, shardDocumentIri);
 
         final (_, documentToUpload, clock2, missingGroupIndices) =
             await _docSync.reconcileDocumentShards(
@@ -1660,24 +1674,32 @@ class _ShardSyncOrchestrator {
             documentToUpload,
             graphSyncStorage: graphSyncStorage);
         // 3. Upload with conditional PUT - this might throw ConcurrentUpdateException
-        await _docSync.applyAndStoreMergedDocument(
-          uploadFunction: adapter.uploadShard,
-          extractGraph: adapter.extractGraph,
-          documentIri: shardDocumentIri,
-          clock: clock2,
-          documentToUpload: finalDocumentToUpload,
-          localUpdatedAt: merged.localUpdatedAt,
-          missingGroupIndices: missingGroupIndices,
-          syncTime: syncTime,
-          typeIri: IdxShard.classIri,
-          etag: merged.etag,
-          debugName: debugName,
+        await _perflog.measure(
+          'finalize.applyAndStore',
+          () => _docSync.applyAndStoreMergedDocument(
+            uploadFunction: adapter.uploadShard,
+            extractGraph: adapter.extractGraph,
+            documentIri: shardDocumentIri,
+            clock: clock2,
+            documentToUpload: finalDocumentToUpload,
+            localUpdatedAt: merged.localUpdatedAt,
+            missingGroupIndices: missingGroupIndices,
+            syncTime: syncTime,
+            typeIri: IdxShard.classIri,
+            etag: merged.etag,
+            debugName: debugName,
+          ),
+          minDurationMs: 5,
         );
 
         // In shard-dataset mode we stage local resource/index updates and persist
         // them only after the shard upload succeeded (remote-first semantics).
         if (deferredLocalCommit != null) {
-          await _docSync.commitDeferredBatch(deferredLocalCommit);
+          await _perflog.measure(
+            'finalize.commitBatch',
+            () => _docSync.commitDeferredBatch(deferredLocalCommit),
+            minDurationMs: 5,
+          );
         }
       },
       args: ['shard=${shardIri.debug}'],
