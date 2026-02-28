@@ -16,7 +16,7 @@ dependencies:
   locorda_builder: any
   locorda_mapping_bootstrap_generator: any
   locorda_rdf_core: any
-  locorda_rdf_mapper_generator: ^0.11.8
+  locorda_rdf_mapper_generator: ^0.11.9
   locorda_init_generator: any
 
 dev_dependencies:
