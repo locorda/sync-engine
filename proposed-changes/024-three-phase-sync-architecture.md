@@ -4,6 +4,18 @@
 **Created**: 2026-03-01  
 **Context**: Initial sync takes ~48–54s for Chat Essence app (2015 messages, 62 group shards × 2 types = 124 shard operations, 263 files total). Root cause is sequential per-shard processing where download, merge, upload, and DB commit are interleaved.
 
+## Decision Alignment (026)
+
+This proposal is the mandatory baseline in the performance-first direction defined in `026-recap-sync-direction.md`.
+
+- 024 is required regardless of storage mode.
+- It improves execution order and batching without forcing a storage-format decision.
+- It applies to both profiles:
+  - Dataset/Flat mode (Dir, GDrive default profile).
+  - Linked-Data mode (Solid/interoperability profile).
+
+In short: 024 is phase A of the new strategy, not an optional optimization.
+
 ---
 
 ## Problem Statement

@@ -5,6 +5,17 @@
 **Depends on**: 024 (Three-Phase Sync Architecture)  
 **Context**: Even with three-phase sync (024), the fundamental problem of 263 files for ~2000 documents remains. This proposal reduces file count by consolidating resources into type-level files.
 
+## Decision Alignment (026)
+
+This proposal is aligned with `026-recap-sync-direction.md` as the structural optimization for the Dataset/Flat profile.
+
+- 025 is not a global replacement for all modes.
+- 025 is the default path for performance-first backends (Dir, GDrive).
+- Linked-Data mode remains supported for Solid/interoperability-sensitive use cases.
+- Fetch-policy implication remains explicit: flat mode prioritizes prefetch-style sync and does not target fine-grained `onRequest` semantics.
+
+In short: 025 is phase B of the new strategy for the flat profile, not a full strategic retreat.
+
 ---
 
 ## Problem Statement
