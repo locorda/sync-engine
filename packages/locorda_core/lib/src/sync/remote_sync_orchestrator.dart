@@ -116,6 +116,25 @@ typedef _DeferredBatchCommit = ({
   Map<IriTerm, String> etagUpdates,
 });
 
+/// Merges multiple deferred batch commits into a single commit.
+///
+/// Deduplicates save requests by document IRI (keeps last occurrence).
+/// This handles cross-index overlap where the same resource appears in
+/// multiple shards (e.g., cross-app sync with different index configurations).
+_DeferredBatchCommit _mergeDeferredBatches(List<_DeferredBatchCommit> batches) {
+  final deduplicatedSaves = <IriTerm, SaveDocumentRequest>{};
+  for (final batch in batches) {
+    for (final req in batch.saveRequests) {
+      deduplicatedSaves[req.documentIri] = req;
+    }
+  }
+  return (
+    saveRequests: deduplicatedSaves.values.toList(),
+    indexEntryRequests: [for (final b in batches) ...b.indexEntryRequests],
+    etagUpdates: {for (final b in batches) ...b.etagUpdates},
+  );
+}
+
 /// Entry in the document queue tracking sync metadata for a resource
 final class _DocumentQueueEntry {
   /// Resource IRI (not document IRI)
@@ -376,25 +395,58 @@ class RemoteSyncOrchestrator {
       );
     }
 
-    // Phase 3c: Process shards for each type in canonical order.
+    // Phase 3c: Three-phase shard sync across all content types.
+    // Collect all shard specs, then process with deferred commits and a
+    // single bulk DB commit at the end.
+    final allShardTasks = <(IriTerm, IndexSyncSpec, ShardSyncSpec)>[];
     for (final resourceType in resourceTypes) {
       final specs = allSpecsByType[resourceType]!;
-      _log.info('Syncing shards for resource type: ${resourceType.debug}');
+      for (final index in specs.allSpecs) {
+        final shards = await _buildShardSyncSpecs(index);
+        for (final shard in shards) {
+          allShardTasks.add((resourceType, index, shard));
+        }
+      }
+    }
+
+    if (allShardTasks.isNotEmpty) {
+      _log.info(
+          'Three-phase shard sync: ${allShardTasks.length} shards across ${resourceTypes.length} types');
+      final allDeferred = <_DeferredBatchCommit>[];
+
+      // Phase 1+2: Download, merge, and upload each shard (local commits deferred).
       await _perflog.measure(
-        'content.shardPhase',
+        'content.shardSync',
         () => _executeInChunks(
-            specs.allSpecs.map((index) => () => _syncIndex(
-                resourceType, index, lastSyncTimestamp, syncTime,
-                remoteSyncStorage: remoteSyncStorage)),
-            maxConcurrent: remoteSyncStorage.maxConcurrentIndexSyncs),
+            allShardTasks.map((task) => () async {
+                  final deferred = await _syncShardDeferred(
+                    task.$1,
+                    task.$2,
+                    task.$3,
+                    lastSyncTimestamp,
+                    syncTime,
+                    remoteSyncStorage: remoteSyncStorage,
+                  );
+                  if (deferred != null) allDeferred.add(deferred);
+                }),
+            maxConcurrent: remoteSyncStorage.maxConcurrentShardSyncs),
         args: [
-          'type=${resourceType.debug}',
-          'indices=${specs.allSpecs.length}'
+          'shards=${allShardTasks.length}',
+          'types=${resourceTypes.length}'
         ],
         minDurationMs: 10,
       );
-      _log.info(
-          'Completed shard sync for resource type: ${resourceType.debug}');
+
+      // Phase 3: Single bulk commit for all shard + resource doc changes.
+      if (allDeferred.isNotEmpty) {
+        await _perflog.measure(
+          'content.shardCommit',
+          () =>
+              _docSync.commitDeferredBatch(_mergeDeferredBatches(allDeferred)),
+          args: ['batches=${allDeferred.length}'],
+          minDurationMs: 5,
+        );
+      }
     }
   }
 
@@ -656,6 +708,42 @@ class RemoteSyncOrchestrator {
         adapter: adapter,
         shardIri: shardIri,
         debugName: debugName,
+      );
+    }, debugOperationName: 'syncing ${debugName}');
+  }
+
+  /// Like [_syncShard] but defers all local DB commits and returns
+  /// them as a [_DeferredBatchCommit] for bulk commit at the end.
+  Future<_DeferredBatchCommit?> _syncShardDeferred(
+    IriTerm resourceType,
+    IndexSyncSpec index,
+    ShardSyncSpec shard,
+    int lastSyncTimestamp,
+    DateTime syncTime, {
+    required RemoteSyncStorage remoteSyncStorage,
+  }) async {
+    final shardIri = shard.shardIri;
+    final debugName = 'Shard ${shardIri.debug}';
+    final bool shouldUseShardDataset = _useShardDatasets;
+    _log.fine('Syncing (deferred): ${debugName}');
+    return await retryOnConflict(() async {
+      final _ShardSyncAdapter adapter = shouldUseShardDataset
+          ? FilePerShardShardSyncAdapter(
+              remoteSyncStorage: remoteSyncStorage,
+            )
+          : FilePerResourceShardSyncAdapter(
+              remoteSyncStorage: remoteSyncStorage);
+
+      return await _shardSyncOrchestrator.syncShard(
+        resourceType,
+        index,
+        shard,
+        lastSyncTimestamp,
+        syncTime,
+        adapter: adapter,
+        shardIri: shardIri,
+        debugName: debugName,
+        deferAllCommits: true,
       );
     }, debugOperationName: 'syncing ${debugName}');
   }
@@ -1169,8 +1257,14 @@ class _DocumentSyncHelper {
   }
 
   ///
-  /// Throws [ConcurrentUpdateException] on conflict
-  Future<void> applyAndStoreMergedDocument<T>({
+  /// Throws [ConcurrentUpdateException] on conflict.
+  ///
+  /// When [deferLocalCommit] is true, the remote upload still happens
+  /// immediately but local DB writes (document save, ETag cache, index
+  /// entries) are returned as a [_DeferredBatchCommit] for the caller
+  /// to commit later in bulk. This enables three-phase sync where all
+  /// shard uploads complete before a single local commit.
+  Future<_DeferredBatchCommit?> applyAndStoreMergedDocument<T>({
     required Future<RemoteUploadResult>
             Function(IriTerm documentIri, T document, {String? ifMatch})
         uploadFunction,
@@ -1184,6 +1278,7 @@ class _DocumentSyncHelper {
     required Iterable<MissingGroupIndex> missingGroupIndices,
     required DateTime syncTime,
     String debugName = '',
+    bool deferLocalCommit = false,
   }) async {
     final uploadResult = await uploadFunction(
       documentIri,
@@ -1200,13 +1295,42 @@ class _DocumentSyncHelper {
     final int physicalTime = clock.physicalTime;
     final graph = extractGraph(documentToUpload);
 
+    final updatedAtTimestamp =
+        _physicalTimestampFactory().millisecondsSinceEpoch;
+
+    if (deferLocalCommit) {
+      final entryWrites = await _indexManager.prepareIndexEntryWrites(
+        document: graph,
+        documentIri: documentIri,
+        physicalTime: physicalTime,
+        resourceTypeIri: typeIri,
+        missingGroupIndices: missingGroupIndices,
+        updatedAt: updatedAtTimestamp,
+      );
+      return (
+        saveRequests: [
+          SaveDocumentRequest(
+            documentIri: documentIri,
+            typeIri: typeIri,
+            document: graph,
+            metadata: DocumentMetadata(
+                ourPhysicalClock: physicalTime, updatedAt: updatedAtTimestamp),
+            changes: const <PropertyChange>[],
+            ifMatchUpdatedAt: localUpdatedAt,
+          )
+        ],
+        indexEntryRequests: entryWrites.toList(),
+        etagUpdates: {documentIri: mergedETag},
+      );
+    }
+
+    // Immediate commit path (original behavior)
+
     // Optimistic locking for local save: prevent lost updates from concurrent local changes
     // Use updatedAt as version marker - it's updated on EVERY save (local + remote),
     // unlike ourPhysicalClock which only changes when WE modify the document.
     // This ensures we catch conflicts even if the concurrent change was a remote merge.
     final expectedUpdatedAt = localUpdatedAt;
-    final updatedAtTimestamp =
-        _physicalTimestampFactory().millisecondsSinceEpoch;
     // save locally with optimistic lock - retry if conflict detected
     try {
       await _storage.saveDocument(
@@ -1246,6 +1370,7 @@ class _DocumentSyncHelper {
       updatedAt: updatedAtTimestamp,
     );
     // Success
+    return null;
   }
 }
 
@@ -1501,7 +1626,13 @@ class _ShardSyncOrchestrator {
         _localDocumentMerger = localDocumentMerger,
         _docSync = documentSyncHelper;
 
-  Future<void> syncShard<T, G extends GraphSyncStorage>(
+  /// Sync a single shard: download, merge resources, finalize, and upload.
+  ///
+  /// When [deferAllCommits] is true, all local DB writes are deferred and
+  /// returned as a [_DeferredBatchCommit]. The caller is responsible for
+  /// committing them (enables three-phase sync with a single bulk commit
+  /// across all shards).
+  Future<_DeferredBatchCommit?> syncShard<T, G extends GraphSyncStorage>(
     IriTerm resourceType,
     IndexSyncSpec index,
     ShardSyncSpec shard,
@@ -1510,6 +1641,7 @@ class _ShardSyncOrchestrator {
     required _ShardSyncAdapter<T, G> adapter,
     required IriTerm shardIri,
     required String debugName,
+    bool deferAllCommits = false,
   }) async {
     // Build Document Sync Queue for this type
     final shardDocumentIri = shardIri.getDocumentIri();
@@ -1525,7 +1657,7 @@ class _ShardSyncOrchestrator {
       // we can assume that if there are no changes here, the local and remote shards are
       // already up to date.
       // No changes, nothing to do
-      return;
+      return null;
     }
     final originalRemoteShard = merged.originalRemoteDocument == null
         ? null
@@ -1560,7 +1692,7 @@ class _ShardSyncOrchestrator {
       minDurationMs: 5,
     );
 
-    await _perflog.measure(
+    return await _perflog.measure(
       'shard.finalize',
       () async {
         // Phase B: Document & Shard Finalization for this type
@@ -1674,7 +1806,7 @@ class _ShardSyncOrchestrator {
             documentToUpload,
             graphSyncStorage: graphSyncStorage);
         // 3. Upload with conditional PUT - this might throw ConcurrentUpdateException
-        await _perflog.measure(
+        final shardCommit = await _perflog.measure(
           'finalize.applyAndStore',
           () => _docSync.applyAndStoreMergedDocument(
             uploadFunction: adapter.uploadShard,
@@ -1688,12 +1820,26 @@ class _ShardSyncOrchestrator {
             typeIri: IdxShard.classIri,
             etag: merged.etag,
             debugName: debugName,
+            deferLocalCommit: deferAllCommits,
           ),
           minDurationMs: 5,
         );
 
-        // In shard-dataset mode we stage local resource/index updates and persist
-        // them only after the shard upload succeeded (remote-first semantics).
+        if (deferAllCommits) {
+          // Three-phase mode: commit resource docs per-shard (they need
+          // sequential processing for correct idx:belongsToIndexShard
+          // accumulation), but defer shard doc commit for bulk commit.
+          if (deferredLocalCommit != null) {
+            await _perflog.measure(
+              'finalize.commitBatch',
+              () => _docSync.commitDeferredBatch(deferredLocalCommit),
+              minDurationMs: 5,
+            );
+          }
+          return shardCommit;
+        }
+
+        // Immediate mode: commit resource docs now (shard doc already committed)
         if (deferredLocalCommit != null) {
           await _perflog.measure(
             'finalize.commitBatch',
@@ -1701,6 +1847,7 @@ class _ShardSyncOrchestrator {
             minDurationMs: 5,
           );
         }
+        return null;
       },
       args: ['shard=${shardIri.debug}'],
       minDurationMs: 5,
