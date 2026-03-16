@@ -1,113 +1,93 @@
 
 # 026 - Recap Sync Direction
 
-**Status**: Decision proposal
+**Status**: Decision
 **Created**: 2026-03-09
-**Related**: 024 (Three-Phase Sync Architecture), 025 (Flat File Storage Architecture)
+**Updated**: 2026-03-16
+**Related**: 024 (Three-Phase Sync Architecture), 025 (Backend-Controlled Physical Layout)
 
 ## Problem Statement
 
 Locorda has reached a strategic turning point:
 
 - The API and core sync semantics are good.
-- The current shard/index-heavy execution is too slow for real use.
+- The current execution is too slow for real use.
 - This is true even on local directory backend for chat-essence-scale data.
 
 So performance is not an optional improvement. It is a product requirement.
 
+### Root Cause Analysis
+
+The performance problem is **not** in the logical index/shard model itself. It is in how the model is executed:
+
+1. **Sequential per-shard processing**: Each shard is downloaded, merged, uploaded, and committed individually. 124 shards × ~120ms = 15s just for shard finalization.
+2. **Per-shard DB commits**: 124 separate SQLite transactions where 1 would suffice.
+3. **No I/O parallelism**: Downloads and uploads happen one at a time.
+4. **Serialization overhead**: Every shard is fully re-serialized even when only one document changed.
+
+The logical shard/index model provides real value: partitioning for large types, change detection via clock hashes, partial sync via group indices. These are not the bottleneck and should not be discarded.
+
 ## Decision
 
-Adopt a **performance-first architecture with one canonical core model and two storage profiles**.
+Adopt a **performance-first execution strategy within the existing logical model**, with backend-controlled physical file layout.
 
-1. Make fast sync the default direction for the next months.
-2. Keep one internal model and expose two sync/storage profiles as projections:
-	- **Dataset/Flat mode** (few files, type-level datasets, manifest-driven change detection) for `Dir` and `GDrive` by default.
-	- **Linked-Data mode** (resource/shard-oriented, discoverability-oriented) for `Solid` and interoperability-sensitive deployments.
-3. Implement in sequence:
-	- First: 024 execution-order improvements (three-phase sync).
-	- Then: 025 structural file-count reduction (flat files/chunks).
-4. Define backend/profile switching semantics explicitly:
-	- Same-profile switch: cheap.
-	- Cross-profile switch: explicit projection rebuild/migration step.
-
-This preserves developer simplicity (one API, one mental model) while making backend tradeoffs explicit where they belong.
+1. **Keep the logical index/shard model** — it provides partitioning, change detection, and partial sync capabilities that are genuinely needed (especially for types that grow large, like chat messages).
+2. **Fix the execution** (024) — three-phase sync with parallel I/O and bulk DB commits. This is the primary performance lever.
+3. **Let backends control physical file layout** (025) — the orchestrator works with logical shards; the backend decides whether each logical shard maps to a physical file, whether multiple shards are packed into fewer files, or whether everything goes into a single file.
+4. **No multi-profile architecture** — one model, one orchestrator, one API. The backend adapter is the only variation point.
 
 ## Why This Direction
 
-### 1. Two independent bottlenecks exist
+### 1. The performance problem is execution, not architecture
 
-- **Execution-order bottleneck**: sequential per-shard download/merge/upload/commit loops.
-- **File-count bottleneck**: too many files, too much metadata and request overhead.
+The measured 54s sync time breaks down into sequential I/O (download/upload per shard) and per-shard DB commits. Parallelizing I/O and batching commits addresses the bulk of it without touching the data model.
 
-024 addresses the first. 025 addresses the second. Both are needed.
+### 2. "One file per type" is a dead end
 
-### 2. "One universal storage representation" is the wrong optimization target
+A naive flat-file approach (one file per resource type) fails for types that grow large. Chat Essence has 10,000+ messages — all one type. A single file per type would be 10-20 MB and growing. At some point you need to split it, and then you are re-inventing shards. Better to keep the existing shard infrastructure and fix the execution layer on top of it.
 
-Trying to preserve every capability in one execution model is what keeps performance below acceptable levels.
+### 3. Multi-profile is YAGNI
 
-The goal should be one **canonical sync model**, not one universal file layout.
+The previous version of this document proposed two storage profiles (Dataset/Flat vs. Linked-Data). Analysis shows this would mean:
+- Two orchestrator code paths to maintain and test
+- Profile migration tooling
+- Doubled complexity for a feature whose "flat" profile would eventually need partitioning anyway
 
-### 3. Current codebase already points to profile separation
+The existing `_ShardSyncAdapter` abstraction already separates logical from physical: `FilePerResourceShardSyncAdapter` (1 file per document) vs. `FilePerShardShardSyncAdapter` (all documents of a shard in one TriG dataset). This is the right extension point — not a second orchestrator.
 
-There is already a mode axis (`useShardDatasets`) and fetch-policy constraints that naturally separate:
+### 4. No cloud storage API solves the many-small-files problem
 
-- Prefetch-heavy dataset sync for throughput.
-- Fine-grained linked-data sync for selective retrieval.
+Research shows that no consumer cloud storage (Google Drive, OneDrive, Dropbox, S3) has APIs suited for many small files. Dropbox has batch upload sessions, but is the exception. The universal recommendation from all providers is **client-side file aggregation** — which is exactly what the `FilePerShardShardSyncAdapter` already does at shard level.
 
-The missing piece is to document these as projection profiles over one core model, not as competing product concepts.
+The logical-to-physical mapping via `_ShardSyncAdapter` lets each backend choose its aggregation strategy without changing the sync model.
 
-## Option Review
+### 5. Solid bulk endpoints are on the roadmap
+
+The Solid Community Server has bulk upload/download on their TODO list. If those materialize, a Solid backend could implement `downloadManyDatasets`/`uploadManyDatasets` as actual bulk operations. The three-phase architecture (024) makes this a clean backend-level change. Designing the Dir backend cleanly now (with efficient per-file I/O) means the same logical model works with Solid bulk endpoints when available.
+
+## Option Review (Updated)
 
 ### Opt 1: Give up
 
-Rejected. Does not match project goals.
+Rejected.
 
-### Opt 2: Radical state files + changes files only
+### Opt 2: Radical single-file + changelogs only
 
-Partially valid, but too absolute if applied globally.
+Rejected as primary strategy. Throws away the index/shard model that solves real partitioning needs. For types with unbounded growth (chat messages), you need partitioning. Building a changelog system adds complexity comparable to what we already have.
 
-- Good: maximum performance and simplified sync path.
-- Risk: unnecessary strategic loss if it fully replaces linked-data mode.
+However: A backend *could* implement this under the `_ShardSyncAdapter` abstraction — packing all shards into one physical file with per-installation changelogs. This is a backend implementation detail, not an architectural change.
 
-### Opt 3: Refine current approach only
+### Opt 3: Fix execution within current model (024)
 
-Necessary but not sufficient.
+**Selected as primary strategy.** Three-phase sync with parallel I/O and bulk DB commits. Preserves the logical model, fixes the execution bottleneck.
 
-- 024 alone likely gives meaningful speedup.
-- But 024 alone does not remove file-cardinality overhead.
+### Opt 4: Multi-profile (previous version of this document)
 
-### Opt 4: Recommended hybrid (new)
+Rejected. YAGNI. Doubles complexity for a "flat" profile that would eventually need partitioning anyway. The `_ShardSyncAdapter` provides the necessary variation point at backend level without a second orchestrator.
 
-**Performance-first unified core + projection profiles**:
+### Opt 5: Backend-controlled physical layout (025, revised)
 
-- Apply Opt 3 first (024).
-- Apply Opt 2-style structure where it brings clear value (025 for flat mode).
-- Preserve linked-data mode where interoperability/discoverability matters.
-- Avoid always maintaining both remote representations at runtime.
-
-## Are Opt 2 Tradeoffs Inevitable?
-
-Only if we insist on one universal storage mode.
-
-At product level, they are **not** inevitable:
-
-- In dataset/flat mode, we accept reduced fine-grained linked-data behavior to get required speed.
-- In linked-data mode, we keep semantics and selective capabilities, with a known slower performance envelope.
-- We keep one developer-facing API and one canonical internal semantics layer.
-
-This makes tradeoffs explicit, testable, and backend-dependent rather than ideological.
-
-## Capability Matrix (Target)
-
-| Capability | Dataset/Flat mode (Dir, GDrive default) | Linked-Data mode (Solid default) |
-|---|---|---|
-| Initial sync speed | High | Medium/Low |
-| Incremental sync speed | High | Medium |
-| File count overhead | Low | High |
-| `onRequest`/fine-grained partial fetch | Limited (chunk-level only) | Full |
-| Linked-data discoverability | Limited | Full |
-| Cross-app semantic interoperability | Limited/optional | Strong |
-| Complexity in hot path | Lower | Higher |
+**Selected as secondary strategy.** Extend `_ShardSyncAdapter` so backends can aggregate multiple logical shards into fewer physical files. This is an incremental optimization on top of 024, not a separate architecture.
 
 ## Consequences
 
@@ -115,62 +95,60 @@ This makes tradeoffs explicit, testable, and backend-dependent rather than ideol
 
 - Offline-first CRDT sync.
 - User-owned storage model.
-- Interoperable linked-data path (in linked-data mode).
-- One developer-facing API and one core domain model.
+- The full index/shard model (FullIndex, GroupIndex, ShardDeterminer, etc.).
+- One developer-facing API, one orchestrator, one code path.
 
-### What we accept
+### What we fix
 
-- Not every backend needs every feature in its default mode.
-- Dataset mode prioritizes throughput over fine-grained remote structure.
-- Cross-profile backend switching is a migration operation, not a free runtime toggle.
+- Sequential per-shard execution → three-phase parallel execution (024).
+- Per-shard DB commits → single bulk commit.
+- 1:1 logical-to-physical file mapping → backend-controlled aggregation (025).
 
-### What we avoid
+### What we drop
 
-- Forcing Solid-style linked-data constraints onto backends where this is mostly overhead.
-- Forcing performance backends to always maintain shard/index remote artifacts they do not use.
+- Multi-profile concept (Dataset/Flat vs. Linked-Data).
+- `StorageMode` enum / profile switching / migration tooling.
+- `FlatFileSyncOrchestrator` (proposed in previous 025 version).
+- Any notion of a separate "flat file" sync path.
 
-## Simplicity Guardrails
+### What we defer
 
-To avoid "two products in one codebase", follow these guardrails:
+- Solid support: blocked by Solid's per-resource HTTP overhead. Viable when Solid gets bulk endpoints.
+- Changelog-based incremental sync: a backend-level optimization that can be added later without architectural changes.
 
-1. **One API surface**: app developers configure profile defaults, not low-level index/shard behavior.
-2. **One canonical state contract**: CRDT merge semantics and local persistence stay profile-agnostic.
-3. **Projection adapters**: profile-specific remote serialization lives behind storage adapters.
-4. **No mandatory dual-write**: do not write both profile representations on every sync.
-5. **Explicit migration tooling**: if profile changes, run projection rebuild once with progress/reporting.
-6. **Docs by profile**: keep linked-data details out of flat-profile quickstarts.
+## Execution Plan
 
-## 90-Day Execution Plan
+1. **Phase A (024)**: Three-phase sync within existing orchestrator.
+	- Separate download, merge, upload/commit phases.
+	- Parallelize downloads and uploads via `downloadMany`/`uploadMany`.
+	- Collapse per-shard `commitDeferredBatch` into a single bulk commit.
+	- Benchmark on Dir backend with Chat Essence.
+	- **Target**: Dir initial sync from ~54s to <15s.
 
-1. **Phase A (024)**: three-phase orchestration in production path.
-	- Separate download, merge, upload/commit concerns.
-	- Collapse per-shard commits into bulk commit where safe.
-	- Introduce controlled backend concurrency with deterministic tests.
-2. **Phase B (025)**: flat-file mode hardening.
-	- Per-type datasets + manifest hashes.
-	- Conflict-safe upload (ETag/version compare-and-swap + retry merge).
-	- Benchmarks on Dir and GDrive.
-3. **Phase C**: capability stabilization.
-	- Keep linked-data mode for Solid with explicit performance expectations.
-	- Add deterministic chunking for coarse partial sync in flat mode.
-4. **Phase D**: product defaults.
-	- Default backend presets: `Dir/GDrive => flat`, `Solid => linked`.
-	- Document profile choice as product decision, not low-level tweak.
-	- Provide explicit migration command/process for cross-profile backend switching.
+2. **Phase B (025)**: Backend-controlled physical layout.
+	- Extend `_ShardSyncAdapter` to support bulk shard operations (backend receives all shard data, decides physical layout).
+	- GDrive backend: pack multiple shards into fewer physical files.
+	- Dir backend: likely no change needed (local file I/O is cheap after parallelization).
+	- **Target**: GDrive initial sync acceptable for real use.
 
-## Benchmark Gates (Required)
+3. **Phase C**: Optimize merge performance.
+	- Profile CRDT merge CPU time (~15s for 2015 docs) — is this reducible?
+	- Optimize serialization (avoid re-serializing unchanged shards).
+	- Consider streaming merge for very large types.
 
-Before declaring success, define and enforce targets:
+## Benchmark Gates
 
-1. Initial sync budget (chat-essence-scale dataset) per backend profile.
-2. Incremental sync budget (small daily changes) per backend profile.
-3. Conflict-recovery correctness for concurrent writes to same type dataset.
-4. CRDT convergence checks after partial upload failures and retries.
+Before declaring each phase complete:
+
+1. **024**: Dir initial sync under 15s for Chat Essence scale. Incremental sync under 2s.
+2. **025**: GDrive initial sync under 30s for Chat Essence scale.
+3. CRDT convergence checks after partial upload failures and retries.
+4. No regression in existing test suite.
 
 ## Final Position
 
-We should not abandon the original vision.
+The logical index/shard model is sound. The execution is the problem.
 
-We should stop forcing one remote representation to serve incompatible goals.
+Fix the execution. Let backends control the physical layout. One model, one path, no unnecessary abstractions.
 
-**Direction**: performance-first, one canonical core model, projection-based storage profiles, and explicit defaults by backend/use case.
+**Direction**: performance-first execution, keep the canonical sync model, backend-controlled physical aggregation.

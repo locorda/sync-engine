@@ -1,20 +1,18 @@
 # 024 — Three-Phase Sync Architecture
 
-**Status**: Draft  
-**Created**: 2026-03-01  
+**Status**: Draft
+**Created**: 2026-03-01
+**Updated**: 2026-03-16
 **Context**: Initial sync takes ~48–54s for Chat Essence app (2015 messages, 62 group shards × 2 types = 124 shard operations, 263 files total). Root cause is sequential per-shard processing where download, merge, upload, and DB commit are interleaved.
 
-## Decision Alignment (026)
+## Strategic Context (026)
 
-This proposal is the mandatory baseline in the performance-first direction defined in `026-recap-sync-direction.md`.
+This proposal is the **primary performance lever** in the direction defined by `026-recap-sync-direction.md`.
 
-- 024 is required regardless of storage mode.
-- It improves execution order and batching without forcing a storage-format decision.
-- It applies to both profiles:
-  - Dataset/Flat mode (Dir, GDrive default profile).
-  - Linked-Data mode (Solid/interoperability profile).
-
-In short: 024 is phase A of the new strategy, not an optional optimization.
+- The logical index/shard model is sound and stays unchanged.
+- The performance problem is in **execution**: sequential I/O, per-shard DB commits, no parallelism.
+- This proposal fixes execution without touching the data model or requiring a new orchestrator.
+- It applies to all backends equally (Dir, GDrive, Solid).
 
 ---
 
@@ -292,13 +290,14 @@ Recommend **Option B** as the pragmatic choice — most of the benefit with boun
 
 ### Why Not Faster?
 
-The remaining ~15s is CPU time for CRDT merges across ~2015 documents. To go below that, structural changes (fewer files = less per-file overhead, see Proposal 025) or algorithmic optimizations in the merge logic are needed.
+The remaining ~15s is CPU time for CRDT merges across ~2015 documents. To reduce this further, algorithmic optimizations in the merge logic or reducing per-file serialization overhead (see Proposal 025 for backend-controlled physical layout) would be needed.
 
 ---
 
 ## Relationship to Other Proposals
 
-- **025 (Flat File Storage Architecture)**: Reduces file count from 263 to ~10–15. Three-phase sync is a prerequisite — it provides the download/merge/upload separation that Flat File mode builds on.
+- **025 (Backend-Controlled Physical Layout)**: Extends `_ShardSyncAdapter` so backends can decide how logical shards map to physical files. Three-phase sync is a prerequisite — it provides the download/merge/upload separation that bulk layout backends build on.
+- **026 (Recap Sync Direction)**: Defines the strategic direction. This proposal is the primary performance lever identified there.
 - **015 (Shard-Level File Consolidation)**: Dataset-mode shards. Three-phase sync works with both individual-resource and dataset-mode shards.
 - **014 (GDrive Sync Performance)**: Proposed batch APIs. Three-phase download naturally enables batch/parallel regardless of backend.
 - **013 (Sync Structure Analysis)**: Documented sequential overhead. This proposal directly addresses it.
