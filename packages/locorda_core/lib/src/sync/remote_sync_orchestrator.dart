@@ -93,12 +93,6 @@ typedef _DownloadAndMergeResult<T> = ({
   int? localUpdatedAt
 });
 
-typedef PreparedShardSync<T> = ({
-  IriTerm shardIri,
-  _DownloadAndMergeResult<T> merged,
-  ShardSyncSpec shardSpec,
-});
-
 typedef _BatchSyncCandidate = ({
   IriTerm documentIri,
   String debugName,
@@ -133,6 +127,38 @@ _DeferredBatchCommit _mergeDeferredBatches(List<_DeferredBatchCommit> batches) {
     indexEntryRequests: [for (final b in batches) ...b.indexEntryRequests],
     etagUpdates: {for (final b in batches) ...b.etagUpdates},
   );
+}
+
+/// Intermediate result from Phase 1 of three-phase shard sync.
+///
+/// Contains sync candidates for Phase 2 (global resource merge), optional
+/// dataset named graphs, and a [finalize] closure that runs Phase 3 for this
+/// shard.
+///
+/// The closure captures all generic adapter types internally, allowing
+/// Phase 1 results from different adapter modes to be stored in a single list.
+class _ShardPhase1Result {
+  /// Resource document sync candidates identified for this shard.
+  final List<_BatchSyncCandidate> syncCandidates;
+
+  /// Remote resource graphs from the downloaded shard dataset.
+  ///
+  /// Null in file-per-resource mode.
+  final Map<IriTerm, RdfGraph>? remoteNamedGraphs;
+
+  /// Phase 3 finalize closure. Builds shard metadata using canonical
+  /// DB state from Phase 2, injects canonical resource graphs (dataset mode),
+  /// uploads the shard, and returns a deferred commit.
+  final Future<_DeferredBatchCommit?> Function(
+    DateTime syncTime,
+    Map<IriTerm, RdfGraph> canonicalResourceGraphs,
+  ) finalize;
+
+  _ShardPhase1Result({
+    required this.syncCandidates,
+    required this.remoteNamedGraphs,
+    required this.finalize,
+  });
 }
 
 /// Entry in the document queue tracking sync metadata for a resource
@@ -395,68 +421,195 @@ class RemoteSyncOrchestrator {
       );
     }
 
-    // Phase 3c: Three-phase shard sync across all content types.
-    // Collect all shard specs, then process with deferred commits and a
-    // single bulk DB commit at the end.
-    final allShardTasks = <(IriTerm, IndexSyncSpec, ShardSyncSpec)>[];
+    // Phase 3c: True three-phase shard sync across all content types.
+    //
+    // Phase 1: Download all shard docs + build resource queues (parallel)
+    // Phase 2: Global resource merge — one canonical version per resource
+    //          across ALL shards, then upload + commit to DB
+    // Phase 3: Build shard metadata from canonical DB state, inject
+    //          canonical graphs (dataset mode), upload shards, bulk commit
+    //
+    // This eliminates cross-shard resource divergence: previously, the same
+    // resource processed in shard A could end up with a different version
+    // than in shard B because each shard uploaded its own merge result.
+    final allShardTasks = <ShardSyncSpec>[];
     for (final resourceType in resourceTypes) {
       final specs = allSpecsByType[resourceType]!;
       for (final index in specs.allSpecs) {
         final shards = await _buildShardSyncSpecs(index);
         for (final shard in shards) {
-          allShardTasks.add((resourceType, index, shard));
+          allShardTasks.add(shard);
         }
       }
     }
 
     if (allShardTasks.isNotEmpty) {
-      _log.info(
-          'Three-phase shard sync: ${allShardTasks.length} shards across ${resourceTypes.length} types');
-      final allDeferred = <_DeferredBatchCommit>[];
+      _log.info('Three-phase shard sync: ${allShardTasks.length} shards '
+          'across ${resourceTypes.length} types');
+      final bool shouldUseShardDataset = _useShardDatasets;
 
-      // Phase 1+2: Download, merge, and upload each shard (local commits deferred).
       await _perflog.measure(
-        'content.shardSync',
-        () => _executeInChunks(
-            allShardTasks.map((task) => () async {
-                  final deferred = await _syncShardDeferred(
-                    task.$1,
-                    task.$2,
-                    task.$3,
-                    lastSyncTimestamp,
-                    syncTime,
-                    remoteSyncStorage: remoteSyncStorage,
-                  );
-                  if (deferred != null) allDeferred.add(deferred);
-                }),
-            maxConcurrent: remoteSyncStorage.maxConcurrentShardSyncs),
+        'content.threePhaseSync',
+        () => retryOnConflict(() async {
+          // ── Phase 1: Download all shard docs & build queues ──
+          final phase1Results = <_ShardPhase1Result>[];
+          await _perflog.measure(
+            'content.phase1Download',
+            () => _executeInChunks(
+              allShardTasks.map((shard) => () async {
+                    final result = await _shardSyncOrchestrator.downloadShard(
+                      shard,
+                      lastSyncTimestamp,
+                      remoteSyncStorage: remoteSyncStorage,
+                      useShardDatasets: shouldUseShardDataset,
+                    );
+                    if (result != null) phase1Results.add(result);
+                  }),
+              maxConcurrent: remoteSyncStorage.maxConcurrentShardSyncs,
+            ),
+            args: ['shards=${allShardTasks.length}'],
+            minDurationMs: 10,
+          );
+
+          if (phase1Results.isEmpty) return;
+
+          // ── Phase 2: Global resource merge ──
+          // Deduplicate sync candidates across all shards
+          final uniqueCandidatesMap = <IriTerm, _BatchSyncCandidate>{};
+          for (final result in phase1Results) {
+            for (final c in result.syncCandidates) {
+              uniqueCandidatesMap.putIfAbsent(c.documentIri, () => c);
+            }
+          }
+          final uniqueCandidates = uniqueCandidatesMap.values.toList();
+
+          _DeferredBatchCommit? resourceDeferred;
+          if (uniqueCandidates.isNotEmpty) {
+            final GraphSyncStorage mergeStorage;
+            if (shouldUseShardDataset) {
+              // Pre-merge remote versions from all shard datasets
+              mergeStorage = await _perflog.measure(
+                'content.phase2BuildCombinedStorage',
+                () => _buildCombinedStorage(phase1Results),
+                minDurationMs: 5,
+              );
+            } else {
+              mergeStorage = remoteSyncStorage;
+            }
+
+            resourceDeferred = await _perflog.measure(
+              'content.phase2GlobalMerge',
+              () => _docSync.syncDocumentsBatch(
+                uniqueCandidates,
+                lastSyncTimestamp,
+                syncTime,
+                graphSyncStorage: mergeStorage,
+                deferLocalCommit: true,
+              ),
+              args: ['count=${uniqueCandidates.length}'],
+              minDurationMs: 5,
+            );
+
+            // Commit resources to DB before Phase 3 reads canonical state
+            if (resourceDeferred != null) {
+              await _perflog.measure(
+                'content.phase2Commit',
+                () => _docSync.commitDeferredBatch(resourceDeferred!),
+                args: [
+                  'docs=${resourceDeferred.saveRequests.length}',
+                  'idx=${resourceDeferred.indexEntryRequests.length}',
+                ],
+                minDurationMs: 5,
+              );
+            }
+          }
+
+          // ── Phase 3: Finalize & upload all shards ──
+          // Extract canonical graphs for dataset mode injection
+          final canonicalGraphs = <IriTerm, RdfGraph>{};
+          if (resourceDeferred != null) {
+            for (final req in resourceDeferred.saveRequests) {
+              canonicalGraphs[req.documentIri] = req.document;
+            }
+          }
+
+          final shardDeferred = <_DeferredBatchCommit>[];
+          await _perflog.measure(
+            'content.phase3Finalize',
+            () => _executeInChunks(
+              phase1Results.map((result) => () async {
+                    final deferred = await result.finalize(
+                      syncTime,
+                      canonicalGraphs,
+                    );
+                    if (deferred != null) shardDeferred.add(deferred);
+                  }),
+              maxConcurrent: remoteSyncStorage.maxConcurrentShardSyncs,
+            ),
+            args: ['shards=${phase1Results.length}'],
+            minDurationMs: 10,
+          );
+
+          // Bulk commit all shard documents
+          if (shardDeferred.isNotEmpty) {
+            await _perflog.measure(
+              'content.phase3Commit',
+              () => _docSync
+                  .commitDeferredBatch(_mergeDeferredBatches(shardDeferred)),
+              args: ['batches=${shardDeferred.length}'],
+              minDurationMs: 5,
+            );
+          }
+        }, debugOperationName: 'three-phase shard sync'),
         args: [
           'shards=${allShardTasks.length}',
           'types=${resourceTypes.length}'
         ],
         minDurationMs: 10,
       );
+    }
+  }
 
-      // Phase 3: Single bulk commit for all shard + resource doc changes.
-      if (allDeferred.isNotEmpty) {
-        await _perflog.measure(
-          'content.shardCommit',
-          () =>
-              _docSync.commitDeferredBatch(_mergeDeferredBatches(allDeferred)),
-          args: ['batches=${allDeferred.length}'],
-          minDurationMs: 5,
-        );
+  /// Builds a combined [DatasetBasedGraphSyncStorage] from all shard datasets.
+  ///
+  /// When the same resource appears in multiple shard datasets with different
+  /// versions, performs N-way CRDT merge to produce one pre-merged remote
+  /// version. This allows [syncDocumentsBatch] to merge a single remote
+  /// version with local — preventing cross-shard divergence.
+  Future<DatasetBasedGraphSyncStorage> _buildCombinedStorage(
+      List<_ShardPhase1Result> shardResults) async {
+    final graphsByDocumentIri = <IriTerm, List<RdfGraph>>{};
+    for (final result in shardResults) {
+      final remoteNamedGraphs = result.remoteNamedGraphs;
+      if (remoteNamedGraphs == null) {
+        continue;
+      }
+      for (final entry in remoteNamedGraphs.entries) {
+        (graphsByDocumentIri[entry.key] ??= []).add(entry.value);
       }
     }
+
+    final mergedNamedGraphs = <RdfNamedGraph>[];
+    for (final entry in graphsByDocumentIri.entries) {
+      final versions = entry.value;
+      if (versions.length == 1) {
+        mergedNamedGraphs.add(RdfNamedGraph(entry.key, versions.first));
+      } else {
+        final merged = await _docSync.mergeRemoteVersions(entry.key, versions);
+        mergedNamedGraphs.add(RdfNamedGraph(entry.key, merged));
+      }
+    }
+
+    return DatasetBasedGraphSyncStorage(mergedNamedGraphs);
   }
 
   /// Step A.1: Sync Index Documents for a specific resource type.
   ///
-  /// For each configured index of this type:
+  /// For each relevant index document of this type:
   /// 1. Conditional GET using stored ETag
   /// 2. Handle 200/304/404 responses
   /// 3. Merge if needed
-  /// 4. Upload loop with retry on 412 conflict
+  /// 4. Batch upload with retry on 412 conflict
   ///
   /// Returns list of (indexIri, fetchPolicy) tuples for this type.
   Future<List<IndexSyncSpec>> _syncIndexDocuments(
@@ -531,21 +684,34 @@ class RemoteSyncOrchestrator {
     //    templates are. We need to sync each group index document separately.
     final bool isIndexOfIndices = resourceType == IdxFullIndex.classIri;
 
+    final indexSyncCandidatesByDocumentIri = <IriTerm, _BatchSyncCandidate>{};
     for (final spec in indices) {
-      final documentIri = spec.indexIri.getDocumentIri();
-
       // Sync if:
       // - This is the index-of-indices itself, OR
       // - This is a GroupIndex (detected by presence in groupIndexIris set)
       if (isIndexOfIndices || groupIndexIris.contains(spec.indexIri)) {
-        await _docSync.syncDocument(
+        final documentIri = spec.indexIri.getDocumentIri();
+        indexSyncCandidatesByDocumentIri.putIfAbsent(
           documentIri,
-          lastSyncTimestamp,
-          syncTime,
-          debugName: 'Index ${documentIri.debug}',
-          graphSyncStorage: remoteSyncStorage,
+          () => (
+            documentIri: documentIri,
+            debugName: 'Index ${documentIri.debug}',
+          ),
         );
       }
+    }
+
+    if (indexSyncCandidatesByDocumentIri.isNotEmpty) {
+      await retryOnConflict(
+        () => _docSync.syncDocumentsBatch(
+          indexSyncCandidatesByDocumentIri.values.toList(growable: false),
+          lastSyncTimestamp,
+          syncTime,
+          graphSyncStorage: remoteSyncStorage,
+        ),
+        debugOperationName:
+            'batch syncing index documents for ${resourceType.debug}',
+      );
     }
 
     return indices;
@@ -652,7 +818,7 @@ class RemoteSyncOrchestrator {
     // Step 2: For each index, sync its shards and documents
     await _executeInChunks(
         allIndices.map((index) => () => _syncIndex(
-            resourceType, index, lastSyncTimestamp, syncTime,
+            index, lastSyncTimestamp, syncTime,
             remoteSyncStorage: remoteSyncStorage)),
         maxConcurrent: remoteSyncStorage.maxConcurrentIndexSyncs);
 
@@ -660,7 +826,6 @@ class RemoteSyncOrchestrator {
   }
 
   Future<void> _syncIndex(
-    IriTerm resourceType,
     IndexSyncSpec index,
     int lastSyncTimestamp,
     DateTime syncTime, {
@@ -672,7 +837,7 @@ class RemoteSyncOrchestrator {
 
     await _executeInChunks(
         allShards.map((shard) => () => _syncShard(
-            resourceType, index, shard, lastSyncTimestamp, syncTime,
+            shard, lastSyncTimestamp, syncTime,
             remoteSyncStorage: remoteSyncStorage)),
         maxConcurrent: remoteSyncStorage.maxConcurrentShardSyncs);
 
@@ -680,8 +845,6 @@ class RemoteSyncOrchestrator {
   }
 
   Future<void> _syncShard(
-    IriTerm resourceType,
-    IndexSyncSpec index,
     ShardSyncSpec shard,
     int lastSyncTimestamp,
     DateTime syncTime, {
@@ -692,59 +855,80 @@ class RemoteSyncOrchestrator {
     final bool shouldUseShardDataset = _useShardDatasets;
     _log.fine('Syncing: ${debugName}');
     await retryOnConflict(() async {
-      final _ShardSyncAdapter adapter = shouldUseShardDataset
-          ? FilePerShardShardSyncAdapter(
-              remoteSyncStorage: remoteSyncStorage,
-            )
-          : FilePerResourceShardSyncAdapter(
-              remoteSyncStorage: remoteSyncStorage);
-
-      return await _shardSyncOrchestrator.syncShard(
-        resourceType,
-        index,
-        shard,
-        lastSyncTimestamp,
-        syncTime,
-        adapter: adapter,
-        shardIri: shardIri,
-        debugName: debugName,
+      final phase1Result = await _perflog.measure(
+        'meta.phase1Download',
+        () => _shardSyncOrchestrator.downloadShard(
+          shard,
+          lastSyncTimestamp,
+          remoteSyncStorage: remoteSyncStorage,
+          useShardDatasets: shouldUseShardDataset,
+        ),
+        args: ['shard=${shardIri.debug}'],
+        minDurationMs: 5,
       );
-    }, debugOperationName: 'syncing ${debugName}');
-  }
 
-  /// Like [_syncShard] but defers all local DB commits and returns
-  /// them as a [_DeferredBatchCommit] for bulk commit at the end.
-  Future<_DeferredBatchCommit?> _syncShardDeferred(
-    IriTerm resourceType,
-    IndexSyncSpec index,
-    ShardSyncSpec shard,
-    int lastSyncTimestamp,
-    DateTime syncTime, {
-    required RemoteSyncStorage remoteSyncStorage,
-  }) async {
-    final shardIri = shard.shardIri;
-    final debugName = 'Shard ${shardIri.debug}';
-    final bool shouldUseShardDataset = _useShardDatasets;
-    _log.fine('Syncing (deferred): ${debugName}');
-    return await retryOnConflict(() async {
-      final _ShardSyncAdapter adapter = shouldUseShardDataset
-          ? FilePerShardShardSyncAdapter(
-              remoteSyncStorage: remoteSyncStorage,
-            )
-          : FilePerResourceShardSyncAdapter(
-              remoteSyncStorage: remoteSyncStorage);
+      if (phase1Result == null) {
+        return;
+      }
 
-      return await _shardSyncOrchestrator.syncShard(
-        resourceType,
-        index,
-        shard,
-        lastSyncTimestamp,
-        syncTime,
-        adapter: adapter,
-        shardIri: shardIri,
-        debugName: debugName,
-        deferAllCommits: true,
+      _DeferredBatchCommit? resourceDeferred;
+      if (phase1Result.syncCandidates.isNotEmpty) {
+        resourceDeferred = await _perflog.measure(
+          'meta.phase2GlobalMerge',
+          () async {
+            final GraphSyncStorage mergeStorage;
+            if (shouldUseShardDataset) {
+              mergeStorage = await _buildCombinedStorage([phase1Result]);
+            } else {
+              mergeStorage = remoteSyncStorage;
+            }
+
+            return _docSync.syncDocumentsBatch(
+              phase1Result.syncCandidates,
+              lastSyncTimestamp,
+              syncTime,
+              graphSyncStorage: mergeStorage,
+              deferLocalCommit: true,
+            );
+          },
+          args: ['count=${phase1Result.syncCandidates.length}'],
+          minDurationMs: 5,
+        );
+
+        if (resourceDeferred != null) {
+          await _perflog.measure(
+            'meta.phase2Commit',
+            () => _docSync.commitDeferredBatch(resourceDeferred!),
+            args: ['docs=${resourceDeferred.saveRequests.length}'],
+            minDurationMs: 5,
+          );
+        }
+      }
+
+      final canonicalGraphs = <IriTerm, RdfGraph>{};
+      if (resourceDeferred != null) {
+        for (final request in resourceDeferred.saveRequests) {
+          canonicalGraphs[request.documentIri] = request.document;
+        }
+      }
+
+      final shardDeferred = await _perflog.measure(
+        'meta.phase3Finalize',
+        () => phase1Result.finalize(
+          syncTime,
+          canonicalGraphs,
+        ),
+        args: ['shard=${shardIri.debug}'],
+        minDurationMs: 5,
       );
+      if (shardDeferred != null) {
+        await _perflog.measure(
+          'meta.phase3Commit',
+          () => _docSync.commitDeferredBatch(shardDeferred),
+          args: ['docs=${shardDeferred.saveRequests.length}'],
+          minDurationMs: 5,
+        );
+      }
     }, debugOperationName: 'syncing ${debugName}');
   }
 }
@@ -1256,6 +1440,30 @@ class _DocumentSyncHelper {
     );
   }
 
+  /// N-way CRDT merge of multiple remote versions of the same resource.
+  ///
+  /// Used in three-phase sync for dataset mode where the same resource
+  /// can appear in multiple shard datasets with different versions.
+  /// Exploits CRDT associativity: merge(a, merge(b, c)) == merge(merge(a, b), c).
+  Future<RdfGraph> mergeRemoteVersions(
+      IriTerm documentIri, List<RdfGraph> remoteVersions) async {
+    assert(remoteVersions.length >= 2);
+    final governanceIris = _mergeContractLoader.getMergedGovernanceIris(
+        remoteVersions, documentIri);
+    final mergeContract = await _mergeContractLoader.load(governanceIris);
+    var accumulated = remoteVersions.first;
+    for (var i = 1; i < remoteVersions.length; i++) {
+      final result = await _merger.merge(
+        mergeContract: mergeContract,
+        documentIri: documentIri,
+        localGraph: accumulated,
+        remoteGraph: remoteVersions[i],
+      );
+      accumulated = result.mergedGraph;
+    }
+    return accumulated;
+  }
+
   ///
   /// Throws [ConcurrentUpdateException] on conflict.
   ///
@@ -1626,25 +1834,48 @@ class _ShardSyncOrchestrator {
         _localDocumentMerger = localDocumentMerger,
         _docSync = documentSyncHelper;
 
-  /// Sync a single shard: download, merge resources, finalize, and upload.
+  // =========================================================================
+  // Three-phase shard sync methods
+  // =========================================================================
+
+  /// Phase 1 of three-phase sync: download shard document and build
+  /// the resource document queue.
   ///
-  /// When [deferAllCommits] is true, all local DB writes are deferred and
-  /// returned as a [_DeferredBatchCommit]. The caller is responsible for
-  /// committing them (enables three-phase sync with a single bulk commit
-  /// across all shards).
-  Future<_DeferredBatchCommit?> syncShard<T, G extends GraphSyncStorage>(
-    IriTerm resourceType,
-    IndexSyncSpec index,
+  /// Downloads and merges the shard document, then builds the document queue
+  /// and sync candidates. Does NOT sync individual resources — that happens
+  /// in Phase 2 globally across all shards to prevent cross-shard divergence.
+  ///
+  /// Returns null if the shard has no changes (304 + no local changes).
+  Future<_ShardPhase1Result?> downloadShard(
     ShardSyncSpec shard,
-    int lastSyncTimestamp,
-    DateTime syncTime, {
+    int lastSyncTimestamp, {
+    required RemoteSyncStorage remoteSyncStorage,
+    required bool useShardDatasets,
+  }) async {
+    final _ShardSyncAdapter adapter = useShardDatasets
+        ? FilePerShardShardSyncAdapter(remoteSyncStorage: remoteSyncStorage)
+        : FilePerResourceShardSyncAdapter(remoteSyncStorage: remoteSyncStorage);
+    return _downloadShardTyped(
+      shard,
+      lastSyncTimestamp,
+      adapter: adapter,
+      shardIri: shard.shardIri,
+      shardDocumentIri: shard.shardIri.getDocumentIri(),
+      debugName: 'Shard ${shard.shardIri.debug}',
+    );
+  }
+
+  Future<_ShardPhase1Result?>
+      _downloadShardTyped<T, G extends GraphSyncStorage>(
+    ShardSyncSpec shard,
+    int lastSyncTimestamp, {
     required _ShardSyncAdapter<T, G> adapter,
     required IriTerm shardIri,
+    required IriTerm shardDocumentIri,
     required String debugName,
-    bool deferAllCommits = false,
   }) async {
-    // Build Document Sync Queue for this type
-    final shardDocumentIri = shardIri.getDocumentIri();
+    _log.fine('Phase 1 download: $debugName');
+
     final merged = await _docSync.downloadAndMerge<T>(
       shardDocumentIri,
       lastSyncTimestamp,
@@ -1652,80 +1883,98 @@ class _ShardSyncOrchestrator {
       downloadFunction: adapter.downloadShard,
       extractGraph: adapter.extractGraph,
     );
+
     if (merged == null) {
-      // We do ensure the shards are up to date in Phase 0 of sync function, so
-      // we can assume that if there are no changes here, the local and remote shards are
-      // already up to date.
-      // No changes, nothing to do
       return null;
     }
+
     final originalRemoteShard = merged.originalRemoteDocument == null
         ? null
         : adapter.extractGraph(merged.originalRemoteDocument!);
     final graphSyncStorage =
         adapter.getGraphSyncStorage(merged.originalRemoteDocument);
-    // FIXME: how and when do we make sure that all items of the shard are present locally?
+    final remoteNamedGraphs = graphSyncStorage is DatasetBasedGraphSyncStorage
+        ? <IriTerm, RdfGraph>{
+            for (final entry in graphSyncStorage.namedGraphs.entries)
+              if (entry.key case final IriTerm documentIri)
+                documentIri: entry.value,
+          }
+        : null;
+
     final documentQueue = await _perflog.measure(
-      'shard.buildQueue',
+      'phase1.buildQueue',
       () => _buildDocumentQueue(shard, originalRemoteShard),
       args: ['shard=${shardIri.debug}'],
       minDurationMs: 5,
     );
-    //_log.fine(
-    //    'Document queue for ${shardIri.debug}: ${documentQueue.map((e) => e.resourceIri.debug).join(', ')}');
+
     final syncCandidates = _createSyncCandidates(
       documentQueue,
       shard,
       debugName,
     );
 
-    final deferredLocalCommit = await _perflog.measure(
-      'shard.syncDocsBatch',
-      () => _docSync.syncDocumentsBatch(
-        syncCandidates,
-        lastSyncTimestamp,
-        syncTime,
+    return _ShardPhase1Result(
+      syncCandidates: syncCandidates,
+      remoteNamedGraphs: remoteNamedGraphs,
+      finalize: (syncTime, canonicalGraphs) => _finalizeShard<T, G>(
+        merged: merged,
+        documentQueue: documentQueue,
+        shard: shard,
+        shardIri: shardIri,
+        shardDocumentIri: shardDocumentIri,
+        debugName: debugName,
+        adapter: adapter,
         graphSyncStorage: graphSyncStorage,
-        deferLocalCommit: adapter is FilePerShardShardSyncAdapter,
+        syncTime: syncTime,
+        canonicalResourceGraphs: canonicalGraphs,
       ),
-      args: ['count=${syncCandidates.length}'],
-      minDurationMs: 5,
     );
+  }
 
+  /// Phase 3 of three-phase sync: build shard metadata and upload.
+  ///
+  /// After Phase 2 committed canonical resource versions to DB, this method:
+  /// 1. Reads final entry set from DB (canonical state)
+  /// 2. Builds shard metadata (nodes, clock, CRDT metadata)
+  /// 3. For dataset mode: injects canonical resource graphs as Named Graphs
+  /// 4. Uploads shard with conditional PUT
+  /// 5. Returns deferred commit for bulk shard commit
+  Future<_DeferredBatchCommit?> _finalizeShard<T, G extends GraphSyncStorage>({
+    required _DownloadAndMergeResult<T> merged,
+    required Set<_DocumentQueueEntry> documentQueue,
+    required ShardSyncSpec shard,
+    required IriTerm shardIri,
+    required IriTerm shardDocumentIri,
+    required String debugName,
+    required _ShardSyncAdapter<T, G> adapter,
+    required G graphSyncStorage,
+    required DateTime syncTime,
+    required Map<IriTerm, RdfGraph> canonicalResourceGraphs,
+  }) async {
     return await _perflog.measure(
-      'shard.finalize',
+      'phase3.finalize',
       () async {
-        // Phase B: Document & Shard Finalization for this type
-        // 1. Determine final_entry_set from index items table
-        //
-        // For full shard sync with Prefetch: Use all entries from index items table
-        // For other cases: Only use entries for resources in documentQueue
-        // (resources that exist either locally or remotely)
         final Set<IriTerm>? limitToResources = switch (shard) {
-          FullShardSync(fetchPolicy: Prefetch()) => null, // All entries
+          FullShardSync(fetchPolicy: Prefetch()) => null,
           FullShardSync(fetchPolicy: OnRequest() || PrefetchFiltered()) =>
             documentQueue.map((e) => e.resourceIri).toSet(),
           PartialShardSync() => documentQueue.map((e) => e.resourceIri).toSet(),
         };
 
+        // Resources committed in Phase 2 — no pending writes needed
         final finalEntrySet = await _perflog.measure(
-          'finalize.getFinalEntrySet',
+          'phase3.getFinalEntrySet',
           () => _getFinalEntrySet(
             shardIri,
             limitToResourceIris: limitToResources,
-            pendingIndexEntryWrites:
-                deferredLocalCommit?.indexEntryRequests ?? const [],
           ),
           minDurationMs: 5,
         );
 
-        // 2. Generate shard nodes from final entry set
-        //
-        // For partial sync, we need to merge these with existing remote entries
-        // rather than replacing everything
         final RdfGraph updatedShardDocument;
         updatedShardDocument = await _perflog.measure(
-          'finalize.buildShardGraph',
+          'phase3.buildShardGraph',
           () async {
             final newShardNodes = _shardDocumentGenerator.generateShardNodes(
                 shardDocumentIri: shardDocumentIri,
@@ -1735,7 +1984,6 @@ class _ShardSyncOrchestrator {
             final entriesToKeep = _computeEntriesToKeep(
                 limitToResources, merged.mergedDocument, shardIri);
 
-            // Build document with kept entries but without the other old ones
             final withoutEntries = merged.mergedDocument.subgraph(
               shardDocumentIri,
               filter: (triple, depth) {
@@ -1748,24 +1996,15 @@ class _ShardSyncOrchestrator {
               },
             );
 
-            // Add new/current entries
             return withoutEntries.withNodes(
                 shardIri, IdxShard.containsEntry, newShardNodes);
           },
           minDurationMs: 5,
         );
 
-        // Determine if we need to increment the clock for this shard.
-        // Shard documents contain derived state from index items, but they participate
-        // in CRDT synchronization. We increment our clock when we have local changes
-        // to reflect in the shard - i.e., when any of our local index entries are
-        // newer than the merged shard's current clock.
         final ourCurrentShardClock = _hlcService.getCurrentClock(
             merged.mergedDocument, shardDocumentIri);
 
-        // Check if any of our final entry set items have a higher physical clock
-        // than our current clock entry in the merged shard document.
-        // This indicates we have local changes that need to be reflected.
         final bool hasLocalChanges = finalEntrySet.any((entry) =>
             entry.ourPhysicalClock > ourCurrentShardClock.physicalTime);
 
@@ -1774,9 +2013,8 @@ class _ShardSyncOrchestrator {
                 merged.mergedDocument, shardDocumentIri)
             : ourCurrentShardClock;
 
-// FIXME: is this correct?
         final finalShardDocument = await _perflog.measure(
-          'finalize.generateMetadata',
+          'phase3.generateMetadata',
           () async {
             final (oldBlankNodes: _, newBlankNodes: _, metadata: metadata) =
                 _localDocumentMerger.generateMetadata(
@@ -1787,7 +2025,6 @@ class _ShardSyncOrchestrator {
               merged.mergeContract,
               clock,
               appDataTypeIri: IdxShard.classIri,
-              // optimization: shard documents should not have blank nodes
               computeCanonicalBlankNodes: false,
             );
             return _applyMetadataToDocument(
@@ -1802,12 +2039,41 @@ class _ShardSyncOrchestrator {
           finalShardDocument,
           merged.mergeContract,
         );
+
+        // For dataset mode: inject canonical resource graphs into Named Graphs
+        final G effectiveStorage;
+        if (graphSyncStorage is DatasetBasedGraphSyncStorage) {
+          final originalNamedGraphs = graphSyncStorage.namedGraphs;
+          // Determine which resource document IRIs belong to this shard
+          final shardResourceDocIris =
+              finalEntrySet.map((e) => e.resourceIri.getDocumentIri()).toSet();
+          final updatedNamedGraphs = <RdfNamedGraph>[];
+          // Override existing graphs with canonical versions
+          for (final entry in originalNamedGraphs.entries) {
+            final canonical = canonicalResourceGraphs[entry.key];
+            updatedNamedGraphs
+                .add(RdfNamedGraph(entry.key, canonical ?? entry.value));
+          }
+          // Add new resources that belong to this shard but weren't in the
+          // original dataset (e.g., newly created local resources)
+          for (final entry in canonicalResourceGraphs.entries) {
+            if (!originalNamedGraphs.containsKey(entry.key) &&
+                shardResourceDocIris.contains(entry.key)) {
+              updatedNamedGraphs.add(RdfNamedGraph(entry.key, entry.value));
+            }
+          }
+          effectiveStorage =
+              DatasetBasedGraphSyncStorage(updatedNamedGraphs) as G;
+        } else {
+          effectiveStorage = graphSyncStorage;
+        }
+
         final finalDocumentToUpload = adapter.finalizeDocumentToUpload(
             documentToUpload,
-            graphSyncStorage: graphSyncStorage);
-        // 3. Upload with conditional PUT - this might throw ConcurrentUpdateException
-        final shardCommit = await _perflog.measure(
-          'finalize.applyAndStore',
+            graphSyncStorage: effectiveStorage);
+
+        return await _perflog.measure(
+          'phase3.applyAndStore',
           () => _docSync.applyAndStoreMergedDocument(
             uploadFunction: adapter.uploadShard,
             extractGraph: adapter.extractGraph,
@@ -1820,34 +2086,10 @@ class _ShardSyncOrchestrator {
             typeIri: IdxShard.classIri,
             etag: merged.etag,
             debugName: debugName,
-            deferLocalCommit: deferAllCommits,
+            deferLocalCommit: true,
           ),
           minDurationMs: 5,
         );
-
-        if (deferAllCommits) {
-          // Three-phase mode: commit resource docs per-shard (they need
-          // sequential processing for correct idx:belongsToIndexShard
-          // accumulation), but defer shard doc commit for bulk commit.
-          if (deferredLocalCommit != null) {
-            await _perflog.measure(
-              'finalize.commitBatch',
-              () => _docSync.commitDeferredBatch(deferredLocalCommit),
-              minDurationMs: 5,
-            );
-          }
-          return shardCommit;
-        }
-
-        // Immediate mode: commit resource docs now (shard doc already committed)
-        if (deferredLocalCommit != null) {
-          await _perflog.measure(
-            'finalize.commitBatch',
-            () => _docSync.commitDeferredBatch(deferredLocalCommit),
-            minDurationMs: 5,
-          );
-        }
-        return null;
       },
       args: ['shard=${shardIri.debug}'],
       minDurationMs: 5,

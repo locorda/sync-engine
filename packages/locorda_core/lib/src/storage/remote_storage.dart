@@ -181,17 +181,13 @@ abstract class GraphSyncStorage {
   /// The implementation may transform the internal document IRI and RDF graph
   /// to backend-specific format before uploading.
   ///
-  /// FIXME: Note that the dataset might either be just the default graph
-  /// or a full dataset with named graphs, depending on whether we run in
-  /// file-per-document mode or shard mode. This needs to be documented better.
-  ///
   /// **Conditional Upload Semantics:**
   /// - `ifMatch: null` → Use "If-None-Match: *" (create only, fail if exists)
   /// - `ifMatch: "<etag>"` → Use "If-Match: <etag>" (update only, fail if changed)
   ///
   /// Parameters:
   /// - [documentIri]: Internal Locorda document IRI (tag:locorda.org,2025:l:...)
-  /// - [graph]: RDF dataset using internal IRIs
+  /// - [graph]: RDF graph using internal IRIs
   /// - [ifMatch]: ETag for conditional upload, or null for create-only semantics
   ///
   /// Returns upload result with new ETag, or conflict=true on 409/412.
