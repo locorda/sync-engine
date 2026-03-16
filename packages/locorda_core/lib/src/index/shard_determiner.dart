@@ -209,6 +209,30 @@ class ShardDeterminationResult {
   bool get isComplete => !hasMissingGroupIndices && !hasMissingIndexDocuments;
 }
 
+/// Request-scoped read-through cache for index document lookups during shard determination.
+///
+/// Caches both existing and missing documents to avoid repeated storage reads for
+/// identical index/template/group-index documents within one sync batch.
+class ShardDeterminationLookupCache {
+  final Map<String, StoredDocument?> _documentsByIri =
+      <String, StoredDocument?>{};
+
+  Future<StoredDocument?> getOrLoad(
+    IriTerm documentIri,
+    Future<StoredDocument?> Function(IriTerm documentIri) loader,
+  ) async {
+    final key = documentIri.value;
+    if (_documentsByIri.containsKey(key)) {
+      return _documentsByIri[key];
+    }
+    final loaded = await loader(documentIri);
+    _documentsByIri[key] = loaded;
+    return loaded;
+  }
+
+  void clear() => _documentsByIri.clear();
+}
+
 /// Determines which index shards a resource belongs to (read-only).
 ///
 /// This class uses the index-of-indices from storage to discover which indices
@@ -398,6 +422,7 @@ class ShardDeterminer {
     IriTerm resourceIri,
     RdfGraph internalAppData, {
     required ShardDeterminationMode mode,
+    ShardDeterminationLookupCache? lookupCache,
   }) async {
     final shards = <IriTerm>{};
     final resolvedGroupIndices = <ResolvedGroupIndex>[];
@@ -428,6 +453,7 @@ class ShardDeterminer {
             resourceIri,
             type,
             mode: mode,
+            lookupCache: lookupCache,
           );
           shards.addAll(result.shards);
           resolvedGroupIndices.addAll(result.resolvedGroupIndices);
@@ -440,6 +466,7 @@ class ShardDeterminer {
             type,
             internalAppData,
             mode: mode,
+            lookupCache: lookupCache,
           );
           shards.addAll(result.shards);
           resolvedGroupIndices.addAll(result.resolvedGroupIndices);
@@ -475,6 +502,7 @@ class ShardDeterminer {
     IriTerm resourceIri,
     IriTerm typeIri, {
     required ShardDeterminationMode mode,
+    ShardDeterminationLookupCache? lookupCache,
   }) async {
     final shards = <IriTerm>[];
     final missingIndexDocuments = <MissingIndexDocument>[];
@@ -485,7 +513,10 @@ class ShardDeterminer {
     final indexDocumentIri = indexResourceIri.getDocumentIri();
 
     // Load the index document from storage
-    final storedDoc = await _storage.getDocument(indexDocumentIri);
+    final storedDoc = await _getDocument(
+      indexDocumentIri,
+      lookupCache: lookupCache,
+    );
 
     // Special case: Indices for FullIndex or GroupIndexTemplate themselves
     // cannot exist yet during their own creation
@@ -580,6 +611,7 @@ class ShardDeterminer {
     IriTerm typeIri,
     RdfGraph internalAppData, {
     required ShardDeterminationMode mode,
+    ShardDeterminationLookupCache? lookupCache,
   }) async {
     final shards = <IriTerm>[];
     final resolvedGroupIndices = <ResolvedGroupIndex>[];
@@ -609,7 +641,10 @@ class ShardDeterminer {
 
     // Load template document for sharding configuration (needed for all groups)
     final templateDocumentIri = templateIri.getDocumentIri();
-    final templateDoc = await _storage.getDocument(templateDocumentIri);
+    final templateDoc = await _getDocument(
+      templateDocumentIri,
+      lookupCache: lookupCache,
+    );
     if (templateDoc == null) {
       final missing = MissingIndexDocument(
         indexIri: templateIri,
@@ -666,7 +701,10 @@ class ShardDeterminer {
       );
 
       // Check if GroupIndex exists
-      final groupIndexDoc = await _storage.getDocument(groupIndexDocumentIri);
+      final groupIndexDoc = await _getDocument(
+        groupIndexDocumentIri,
+        lookupCache: lookupCache,
+      );
       if (groupIndexDoc == null) {
         // GroupIndex doesn't exist - report as missing
         // Note: This is different from missing template - GroupIndex instances
@@ -708,5 +746,15 @@ class ShardDeterminer {
       missingGroupIndices: missingGroupIndices,
       missingIndexDocuments: missingIndexDocuments,
     );
+  }
+
+  Future<StoredDocument?> _getDocument(
+    IriTerm documentIri, {
+    ShardDeterminationLookupCache? lookupCache,
+  }) async {
+    if (lookupCache == null) {
+      return _storage.getDocument(documentIri);
+    }
+    return lookupCache.getOrLoad(documentIri, _storage.getDocument);
   }
 }

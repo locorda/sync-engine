@@ -1245,6 +1245,7 @@ class _DocumentSyncHelper {
       String? ifMatch,
       String debugName,
     })>[];
+    final shardLookupCache = ShardDeterminationLookupCache();
 
     await _perflog.measure(
       'batch.mergeLoop',
@@ -1272,6 +1273,7 @@ class _DocumentSyncHelper {
             candidate.documentIri,
             merged.mergedDocument,
             merged.mergeContract,
+            lookupCache: shardLookupCache,
           );
 
           prepared.add((
@@ -1400,8 +1402,9 @@ class _DocumentSyncHelper {
       )> reconcileDocumentShards(
     IriTerm documentIri,
     RdfGraph mergedDocument,
-    MergeContract mergeContract,
-  ) async {
+    MergeContract mergeContract, {
+    ShardDeterminationLookupCache? lookupCache,
+  }) async {
     return _perflog.measure(
       'doc.reconcileShards',
       () async {
@@ -1417,6 +1420,7 @@ class _DocumentSyncHelper {
           mergedDocument,
           // Important: we really have to be able to compute all shards here, better be strict and fail early.
           mode: ShardDeterminationMode.strict,
+          lookupCache: lookupCache,
         );
         final clock = _hlcService.getCurrentClock(mergedDocument, documentIri);
 
