@@ -3,23 +3,23 @@
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
 @prefix mappings: <https://example.org/test/mappings/> .
-@prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:cmVjaXBlMTIz#> .
-@prefix ns2: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1lNjc5ZDcyZi9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=#> .
+@prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1lNjc5ZDcyZi9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=#> .
+@prefix ns2: <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:cmVjaXBlMTIz#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix schema: <https://schema.org/> .
 @prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:cmVjaXBlMTIz> a sync:ManagedDocument;
-    foaf:primaryTopic ns1:it;
+    foaf:primaryTopic ns2:it;
     cm:clockHash "4d9655a766ecf28a61e3491045e7c545";
     cm:createdAt "2024-01-01T00:00:00.000Z"^^xsd:dateTime;
-    cm:hasClockEntry ns1:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
-    idx:belongsToIndexShard ns2:shard;
+    cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
+    idx:belongsToIndexShard ns1:shard;
     sync:isGovernedBy (mappings:recipe-v1-all-unidentified mappings:recipe-v1);
     sync:managedResourceType schema:Recipe .
 
-ns1:it a schema:Recipe;
+ns2:it a schema:Recipe;
     schema:name "Tomato Soup";
     schema:recipeIngredient [
         a schema:Ingredient ;
@@ -39,5 +39,5 @@ ns1:it a schema:Recipe;
         schema:unit "bunch"
     ] .
 
-ns1:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 2;
+ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 2;
     cm:physicalTime 1704074400000 .

@@ -3,31 +3,31 @@
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
 @prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
-@prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZ3JvdXBlZC1mNjE1YmU5MC9ncm91cHMvMTFfYzdiNDc3OGQ5MTgwOWZiM2IwZmM4ZjE2NTJiMzhhYjkvc2hhcmQtbW9kLW1kNS0xLTAtdjFfMF8w#> .
-@prefix ns2: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0dyb3VwSW5kZXg=:aW5kZXgtZ3JvdXBlZC1mNjE1YmU5MC9ncm91cHMvMTFfYzdiNDc3OGQ5MTgwOWZiM2IwZmM4ZjE2NTJiMzhhYjkvaW5kZXg=#> .
+@prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0dyb3VwSW5kZXg=:aW5kZXgtZ3JvdXBlZC1mNjE1YmU5MC9ncm91cHMvMTFfYzdiNDc3OGQ5MTgwOWZiM2IwZmM4ZjE2NTJiMzhhYjkvaW5kZXg=#> .
+@prefix ns2: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZ3JvdXBlZC1mNjE1YmU5MC9ncm91cHMvMTFfYzdiNDc3OGQ5MTgwOWZiM2IwZmM4ZjE2NTJiMzhhYjkvc2hhcmQtbW9kLW1kNS0xLTAtdjFfMF8w#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZ3JvdXBlZC1mNjE1YmU5MC9ncm91cHMvMTFfYzdiNDc3OGQ5MTgwOWZiM2IwZmM4ZjE2NTJiMzhhYjkvc2hhcmQtbW9kLW1kNS0xLTAtdjFfMF8w> a sync:ManagedDocument;
-    foaf:primaryTopic ns1:shard;
+    foaf:primaryTopic ns2:shard;
     cm:clockHash "8ae611d26967694b30e0b3d4051becf1";
     cm:createdAt "2024-01-01T02:00:00.005Z"^^xsd:dateTime;
-    cm:hasClockEntry ns1:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
-    sync:hasStatement ns1:lcrd-stmt-md5-a92367d3059711fe2450cc9327982066, ns1:lcrd-stmt-md5-d1452062ff6a7f2dd333c251d512a566;
+    cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
+    sync:hasStatement ns2:lcrd-stmt-md5-a92367d3059711fe2450cc9327982066, ns2:lcrd-stmt-md5-d1452062ff6a7f2dd333c251d512a566;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
-ns1:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 3;
+ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 3;
     cm:physicalTime 1704081600000 .
 
-ns1:lcrd-stmt-md5-a92367d3059711fe2450cc9327982066 rdf:subject ns1:entry-fae00fbce5441feea6c3fa52203ccb88;
+ns2:lcrd-stmt-md5-a92367d3059711fe2450cc9327982066 rdf:subject ns2:entry-fae00fbce5441feea6c3fa52203ccb88;
     cm:deletedAt "2024-01-01T04:00:00.000Z"^^xsd:dateTime .
 
-ns1:lcrd-stmt-md5-d1452062ff6a7f2dd333c251d512a566 rdf:object ns1:entry-fae00fbce5441feea6c3fa52203ccb88;
+ns2:lcrd-stmt-md5-d1452062ff6a7f2dd333c251d512a566 rdf:object ns2:entry-fae00fbce5441feea6c3fa52203ccb88;
     rdf:predicate idx:containsEntry;
-    rdf:subject ns1:shard;
+    rdf:subject ns2:shard;
     cm:deletedAt "2024-01-01T04:00:00.000Z"^^xsd:dateTime .
 
-ns1:shard a idx:Shard;
-    idx:isShardOf ns2:index .
+ns2:shard a idx:Shard;
+    idx:isShardOf ns1:index .

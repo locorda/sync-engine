@@ -6,8 +6,8 @@
 @prefix ifemm10v: <https://example.com/shard/index-full-e679d72f%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix igemm10v: <https://example.com/shard/index-grouped-e093655c%2Fgroups%2F20_ad221effd73057a647d96bab312c4886%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix igf: <https://example.com/groupindex/index-grouped-f615be90%2Fgroups%2Fdesserts%2Findex#> .
-@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
 @prefix mappings1: <https://example.org/test/mappings/> .
+@prefix mappings2: <https://w3id.org/solid-crdt-sync/mappings/> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix recipe: <https://example.com/recipe/> .
 @prefix schema: <https://schema.org/> .
@@ -19,7 +19,7 @@
     cm:clockHash "3d1289d0668e56649d6cbc5345b95a6f";
     cm:createdAt "2024-01-01T06:00:00.002Z"^^xsd:dateTime;
     cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
-    sync:isGovernedBy (mappings:shard-v1);
+    sync:isGovernedBy (mappings2:shard-v1);
     sync:managedResourceType idx:Shard .
 
 :entry-c93b50159754d7a665032fc90e56af1d cm:clockHash "23c446546a1f047533ce590194fc25e3";

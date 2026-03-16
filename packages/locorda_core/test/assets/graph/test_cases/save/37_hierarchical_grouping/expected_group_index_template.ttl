@@ -3,28 +3,28 @@
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
 @prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
-@prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0dyb3VwSW5kZXhUZW1wbGF0ZQ==:aW5kZXgtZ3JvdXBlZC0zMjI2YWM2MC9pbmRleA==#> .
-@prefix ns2: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC01ZjY4YjViNy9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=#> .
-@prefix ns3: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvY3JkdC1tZWNoYW5pY3MjQ2xpZW50SW5zdGFsbGF0aW9u:dGVzdC1pbnN0YWxsYXRpb24=#> .
+@prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvY3JkdC1tZWNoYW5pY3MjQ2xpZW50SW5zdGFsbGF0aW9u:dGVzdC1pbnN0YWxsYXRpb24=#> .
+@prefix ns2: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0dyb3VwSW5kZXhUZW1wbGF0ZQ==:aW5kZXgtZ3JvdXBlZC0zMjI2YWM2MC9pbmRleA==#> .
+@prefix ns3: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC01ZjY4YjViNy9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix schema: <https://schema.org/> .
 @prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0dyb3VwSW5kZXhUZW1wbGF0ZQ==:aW5kZXgtZ3JvdXBlZC0zMjI2YWM2MC9pbmRleA==> a sync:ManagedDocument;
-    foaf:primaryTopic ns1:groupIndexTemplate;
+    foaf:primaryTopic ns2:groupIndexTemplate;
     cm:clockHash "5945abd2a0bedbe4e12aa4276e7e98b8";
     cm:createdAt "2024-01-01T00:00:00.007Z"^^xsd:dateTime;
-    cm:hasClockEntry ns1:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
-    idx:belongsToIndexShard ns2:shard;
-    sync:hasBlankNodeMapping ns1:lcrd-ibn-md5-5310d3714aca64baaff9578cd7b07721, ns1:lcrd-ibn-md5-23f584f30d7be6740090e60c5f5acca9, ns1:lcrd-ibn-md5-4d42ff7f469e4fb941701bd0c989421e;
+    cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
+    idx:belongsToIndexShard ns3:shard;
+    sync:hasBlankNodeMapping ns2:lcrd-ibn-md5-5310d3714aca64baaff9578cd7b07721, ns2:lcrd-ibn-md5-23f584f30d7be6740090e60c5f5acca9, ns2:lcrd-ibn-md5-4d42ff7f469e4fb941701bd0c989421e;
     sync:isGovernedBy (mappings:index-v1);
     sync:managedResourceType idx:GroupIndexTemplate .
 
-ns1:groupIndexTemplate a idx:GroupIndexTemplate;
+ns2:groupIndexTemplate a idx:GroupIndexTemplate;
     idx:groupedBy _:b1;
     idx:indexesClass schema:Recipe;
-    idx:readBy ns3:installation;
+    idx:readBy ns1:installation;
     idx:shardingAlgorithm [
         a idx:ModuloHashSharding ;
         idx:hashAlgorithm "md5" ;
@@ -33,14 +33,14 @@ ns1:groupIndexTemplate a idx:GroupIndexTemplate;
         idx:autoScaleThreshold 1000
     ] .
 
-ns1:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 1;
+ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 1;
     cm:physicalTime 1704067200006 .
 
-ns1:lcrd-ibn-md5-23f584f30d7be6740090e60c5f5acca9 sync:blankNode _:b2 .
+ns2:lcrd-ibn-md5-23f584f30d7be6740090e60c5f5acca9 sync:blankNode _:b2 .
 
-ns1:lcrd-ibn-md5-4d42ff7f469e4fb941701bd0c989421e sync:blankNode _:b3 .
+ns2:lcrd-ibn-md5-4d42ff7f469e4fb941701bd0c989421e sync:blankNode _:b3 .
 
-ns1:lcrd-ibn-md5-5310d3714aca64baaff9578cd7b07721 sync:blankNode _:b1 .
+ns2:lcrd-ibn-md5-5310d3714aca64baaff9578cd7b07721 sync:blankNode _:b1 .
 
 _:b1 a idx:GroupingRule;
     idx:property _:b2,
