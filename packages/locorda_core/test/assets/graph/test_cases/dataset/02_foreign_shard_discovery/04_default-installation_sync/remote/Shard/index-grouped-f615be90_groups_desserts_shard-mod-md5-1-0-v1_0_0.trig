@@ -22,7 +22,7 @@
     sync:isGovernedBy (mappings2:shard-v1);
     sync:managedResourceType idx:Shard .
 
-:entry-c93b50159754d7a665032fc90e56af1d cm:clockHash "23c446546a1f047533ce590194fc25e3";
+:entry-c93b50159754d7a665032fc90e56af1d cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
     idx:resource </recipe/chocolate-cake#it> .
 
 :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
@@ -35,9 +35,9 @@
 GRAPH </recipe/chocolate-cake> {
   </recipe/chocolate-cake> a sync:ManagedDocument;
       foaf:primaryTopic </recipe/chocolate-cake#it>;
-      cm:clockHash "23c446546a1f047533ce590194fc25e3";
-      cm:createdAt "2024-01-01T06:00:00.001Z"^^xsd:dateTime;
-      cm:hasClockEntry </recipe/chocolate-cake#lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f>;
+      cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
+      cm:createdAt "2024-01-01T06:00:00.001Z"^^xsd:dateTime, "2024-01-01T02:00:00.001Z"^^xsd:dateTime;
+      cm:hasClockEntry </recipe/chocolate-cake#lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f>, </recipe/chocolate-cake#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f>;
       idx:belongsToIndexShard ifemm10v:shard, :shard, igemm10v:shard;
       sync:isGovernedBy (mappings1:recipe-v1);
       sync:managedResourceType schema:Recipe .
@@ -49,6 +49,8 @@ GRAPH </recipe/chocolate-cake> {
       schema:prepTime "PT20M";
       schema:recipeCategory "Desserts";
       schema:recipeYield "8 servings" .
+  </recipe/chocolate-cake#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f> cm:logicalTime 1;
+      cm:physicalTime 1704074400000 .
   </recipe/chocolate-cake#lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f> cm:logicalTime 1;
       cm:physicalTime 1704088800000 .
 }

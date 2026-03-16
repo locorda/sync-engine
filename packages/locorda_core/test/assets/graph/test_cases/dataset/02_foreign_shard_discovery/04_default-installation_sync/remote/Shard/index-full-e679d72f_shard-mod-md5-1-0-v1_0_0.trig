@@ -5,6 +5,7 @@
 @prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
 @prefix ife: <https://example.com/fullindex/index-full-e679d72f%2Findex#> .
 @prefix igemm10v: <https://example.com/shard/index-grouped-e093655c%2Fgroups%2F20_ad221effd73057a647d96bab312c4886%2Fshard-mod-md5-1-0-v1_0_0#> .
+@prefix igfmm10v: <https://example.com/shard/index-grouped-f615be90%2Fgroups%2Fdesserts%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix mappings1: <https://example.org/test/mappings/> .
 @prefix mappings2: <https://w3id.org/solid-crdt-sync/mappings/> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -37,20 +38,22 @@
 GRAPH </recipe/chocolate-cake> {
   </recipe/chocolate-cake> a sync:ManagedDocument;
       foaf:primaryTopic </recipe/chocolate-cake#it>;
-      cm:clockHash "a440f29c704d4aaec880b50db767fa0b";
-      cm:createdAt "2024-01-01T02:00:00.001Z"^^xsd:dateTime;
-      cm:hasClockEntry </recipe/chocolate-cake#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f>;
-      idx:belongsToIndexShard :shard, igemm10v:shard;
+      cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
+      cm:createdAt "2024-01-01T06:00:00.001Z"^^xsd:dateTime, "2024-01-01T02:00:00.001Z"^^xsd:dateTime;
+      cm:hasClockEntry </recipe/chocolate-cake#lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f>, </recipe/chocolate-cake#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f>;
+      idx:belongsToIndexShard :shard, igfmm10v:shard, igemm10v:shard;
       sync:isGovernedBy (mappings1:recipe-v1);
       sync:managedResourceType schema:Recipe .
   </recipe/chocolate-cake#it> a schema:Recipe;
       schema:cookTime "PT30M";
       schema:dateCreated "2024-01-01T02:00:00Z"^^xsd:dateTime;
       schema:description "A delicious chocolate cake recipe";
-      schema:name "Chocolate Cake";
+      schema:name "Updated Chocolate Cake Recipe";
       schema:prepTime "PT20M";
       schema:recipeCategory "Desserts";
       schema:recipeYield "8 servings" .
   </recipe/chocolate-cake#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f> cm:logicalTime 1;
       cm:physicalTime 1704074400000 .
+  </recipe/chocolate-cake#lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f> cm:logicalTime 1;
+      cm:physicalTime 1704088800000 .
 }
