@@ -1604,8 +1604,8 @@ class _DocumentSyncHelper {
       (indexEntriesByDocIri[docIri] ??= []).add(entry);
     }
 
-    final chunkCount =
-        (totalDocs + _maxDocumentsPerCommitChunk - 1) ~/ _maxDocumentsPerCommitChunk;
+    final chunkCount = (totalDocs + _maxDocumentsPerCommitChunk - 1) ~/
+        _maxDocumentsPerCommitChunk;
     _log.fine('Splitting commit into $chunkCount chunks '
         '($totalDocs docs, chunk size $_maxDocumentsPerCommitChunk)');
 
