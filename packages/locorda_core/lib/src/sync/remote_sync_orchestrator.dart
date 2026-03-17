@@ -156,11 +156,75 @@ class _ShardPhase1Result {
     Map<IriTerm, RdfGraph> canonicalResourceGraphs,
   ) finalize;
 
+  /// Phase 3 prepare closure. Computes final shard document and local deferred
+  /// commit data, but does not upload. The orchestrator executes one bulk
+  /// upload call for all prepared shards and then materializes deferred commits
+  /// from returned ETags.
+  final Future<_PreparedShardUpload?> Function(
+    DateTime syncTime,
+    Map<IriTerm, RdfGraph> canonicalResourceGraphs,
+  ) prepareFinalize;
+
   _ShardPhase1Result({
     required this.syncCandidates,
     required this.remoteNamedGraphs,
     required this.finalize,
+    required this.prepareFinalize,
   });
+}
+
+class _PreparedShardUpload {
+  final IriTerm documentIri;
+  final String debugName;
+  final String? ifMatch;
+  final RdfGraph? graphDocument;
+  final RdfDataset? datasetDocument;
+  final Future<_DeferredBatchCommit> Function(String etag) buildDeferredCommit;
+
+  const _PreparedShardUpload._({
+    required this.documentIri,
+    required this.debugName,
+    required this.ifMatch,
+    required this.graphDocument,
+    required this.datasetDocument,
+    required this.buildDeferredCommit,
+  });
+
+  factory _PreparedShardUpload.graph({
+    required IriTerm documentIri,
+    required String debugName,
+    required String? ifMatch,
+    required RdfGraph graphDocument,
+    required Future<_DeferredBatchCommit> Function(String etag)
+        buildDeferredCommit,
+  }) {
+    return _PreparedShardUpload._(
+      documentIri: documentIri,
+      debugName: debugName,
+      ifMatch: ifMatch,
+      graphDocument: graphDocument,
+      datasetDocument: null,
+      buildDeferredCommit: buildDeferredCommit,
+    );
+  }
+
+  factory _PreparedShardUpload.dataset({
+    required IriTerm documentIri,
+    required String debugName,
+    required String? ifMatch,
+    required RdfDataset datasetDocument,
+    required Future<_DeferredBatchCommit> Function(String etag)
+        buildDeferredCommit,
+  }) {
+    return _PreparedShardUpload._(
+      documentIri: documentIri,
+      debugName: debugName,
+      ifMatch: ifMatch,
+      graphDocument: null,
+      datasetDocument: datasetDocument,
+      buildDeferredCommit: buildDeferredCommit,
+    );
+  }
 }
 
 /// Entry in the document queue tracking sync metadata for a resource
@@ -458,18 +522,46 @@ class RemoteSyncOrchestrator {
           await _perflog.measure(
             'content.phase1Download',
             () async {
+              final shardDocumentIris = allShardTasks
+                  .map((shard) => shard.shardIri.getDocumentIri())
+                  .toList(growable: false);
+              final cachedEtagsByIri =
+                  await _storage.getRemoteETags(_remoteId, shardDocumentIris);
+              final localDocumentsByIri =
+                  await _storage.getDocumentsByIri(shardDocumentIris);
+
               if (shouldUseShardDataset) {
                 final adapter = FilePerShardShardSyncAdapter(
                   remoteSyncStorage: remoteSyncStorage,
                 );
+                final downloadRequests = allShardTasks
+                    .map((shard) => RemoteDownloadRequest(
+                          documentIri: shard.shardIri.getDocumentIri(),
+                          ifNoneMatch:
+                              cachedEtagsByIri[shard.shardIri.getDocumentIri()],
+                        ))
+                    .toList(growable: false);
+                final downloadResults =
+                    await remoteSyncStorage.downloadManyDatasets(
+                  downloadRequests,
+                );
                 await _executeInChunks(
-                  allShardTasks.map((shard) => () async {
+                  allShardTasks.indexed.map((indexedShard) => () async {
+                        final index = indexedShard.$1;
+                        final shard = indexedShard.$2;
+                        final shardDocumentIri =
+                            shard.shardIri.getDocumentIri();
                         final result = await _shardSyncOrchestrator
                             .downloadShardWithAdapter<RdfDataset,
                                 DatasetBasedGraphSyncStorage>(
                           shard,
                           lastSyncTimestamp,
                           adapter: adapter,
+                          cachedEtagOverride:
+                              cachedEtagsByIri[shardDocumentIri],
+                          downloadResultOverride: downloadResults[index],
+                          localDocumentOverride:
+                              localDocumentsByIri[shardDocumentIri],
                         );
                         if (result != null) phase1Results.add(result);
                       }),
@@ -479,14 +571,33 @@ class RemoteSyncOrchestrator {
                 final adapter = FilePerResourceShardSyncAdapter(
                   remoteSyncStorage: remoteSyncStorage,
                 );
+                final downloadRequests = allShardTasks
+                    .map((shard) => RemoteDownloadRequest(
+                          documentIri: shard.shardIri.getDocumentIri(),
+                          ifNoneMatch:
+                              cachedEtagsByIri[shard.shardIri.getDocumentIri()],
+                        ))
+                    .toList(growable: false);
+                final downloadResults = await remoteSyncStorage.downloadMany(
+                  downloadRequests,
+                );
                 await _executeInChunks(
-                  allShardTasks.map((shard) => () async {
+                  allShardTasks.indexed.map((indexedShard) => () async {
+                        final index = indexedShard.$1;
+                        final shard = indexedShard.$2;
+                        final shardDocumentIri =
+                            shard.shardIri.getDocumentIri();
                         final result = await _shardSyncOrchestrator
                             .downloadShardWithAdapter<RdfGraph,
                                 RemoteSyncStorage>(
                           shard,
                           lastSyncTimestamp,
                           adapter: adapter,
+                          cachedEtagOverride:
+                              cachedEtagsByIri[shardDocumentIri],
+                          downloadResultOverride: downloadResults[index],
+                          localDocumentOverride:
+                              localDocumentsByIri[shardDocumentIri],
                         );
                         if (result != null) phase1Results.add(result);
                       }),
@@ -560,16 +671,16 @@ class RemoteSyncOrchestrator {
             }
           }
 
-          final shardDeferred = <_DeferredBatchCommit>[];
+          final preparedUploads = <_PreparedShardUpload>[];
           await _perflog.measure(
             'content.phase3Finalize',
             () => _executeInChunks(
               phase1Results.map((result) => () async {
-                    final deferred = await result.finalize(
+                    final prepared = await result.prepareFinalize(
                       syncTime,
                       canonicalGraphs,
                     );
-                    if (deferred != null) shardDeferred.add(deferred);
+                    if (prepared != null) preparedUploads.add(prepared);
                   }),
               maxConcurrent: remoteSyncStorage.maxConcurrentShardSyncs,
             ),
@@ -577,13 +688,66 @@ class RemoteSyncOrchestrator {
             minDurationMs: 10,
           );
 
-          // Bulk commit all shard documents
-          if (shardDeferred.isNotEmpty) {
+          if (preparedUploads.isNotEmpty) {
+            final shardDeferred = <_DeferredBatchCommit>[];
+            await _perflog.measure(
+              'content.phase3Upload',
+              () async {
+                if (shouldUseShardDataset) {
+                  final uploadRequests = preparedUploads
+                      .map((prepared) => RemoteUploadRequest<RdfDataset>(
+                            documentIri: prepared.documentIri,
+                            document: prepared.datasetDocument!,
+                            ifMatch: prepared.ifMatch,
+                          ))
+                      .toList(growable: false);
+                  final uploadResults = await remoteSyncStorage
+                      .uploadManyDatasets(uploadRequests);
+                  for (var i = 0; i < uploadResults.length; i++) {
+                    final uploadResult = uploadResults[i];
+                    if (uploadResult is ConflictUploadResult) {
+                      throw ConcurrentUpdateException(
+                          'Remote document ${preparedUploads[i].debugName} '
+                          'changed during shard batch upload');
+                    }
+                    if (uploadResult is SuccessUploadResult) {
+                      shardDeferred.add(await preparedUploads[i]
+                          .buildDeferredCommit(uploadResult.etag));
+                    }
+                  }
+                } else {
+                  final uploadRequests = preparedUploads
+                      .map((prepared) => RemoteUploadRequest<RdfGraph>(
+                            documentIri: prepared.documentIri,
+                            document: prepared.graphDocument!,
+                            ifMatch: prepared.ifMatch,
+                          ))
+                      .toList(growable: false);
+                  final uploadResults =
+                      await remoteSyncStorage.uploadMany(uploadRequests);
+                  for (var i = 0; i < uploadResults.length; i++) {
+                    final uploadResult = uploadResults[i];
+                    if (uploadResult is ConflictUploadResult) {
+                      throw ConcurrentUpdateException(
+                          'Remote document ${preparedUploads[i].debugName} '
+                          'changed during shard batch upload');
+                    }
+                    if (uploadResult is SuccessUploadResult) {
+                      shardDeferred.add(await preparedUploads[i]
+                          .buildDeferredCommit(uploadResult.etag));
+                    }
+                  }
+                }
+              },
+              args: ['shards=${preparedUploads.length}'],
+              minDurationMs: 10,
+            );
+
             await _perflog.measure(
               'content.phase3Commit',
               () => _docSync
                   .commitDeferredBatch(_mergeDeferredBatches(shardDeferred)),
-              args: ['batches=${shardDeferred.length}'],
+              args: ['docs=${shardDeferred.length}'],
               minDurationMs: 5,
             );
           }
@@ -1495,6 +1659,44 @@ class _DocumentSyncHelper {
     return accumulated;
   }
 
+  Future<_DeferredBatchCommit> buildDeferredCommitForUploadedDocument({
+    required IriTerm typeIri,
+    required IriTerm documentIri,
+    required RdfGraph graph,
+    required String mergedETag,
+    required CurrentCrdtClock clock,
+    required int? localUpdatedAt,
+    required Iterable<MissingGroupIndex> missingGroupIndices,
+  }) async {
+    final updatedAtTimestamp =
+        _physicalTimestampFactory().millisecondsSinceEpoch;
+    final entryWrites = await _indexManager.prepareIndexEntryWrites(
+      document: graph,
+      documentIri: documentIri,
+      physicalTime: clock.physicalTime,
+      resourceTypeIri: typeIri,
+      missingGroupIndices: missingGroupIndices,
+      updatedAt: updatedAtTimestamp,
+    );
+    return (
+      saveRequests: [
+        SaveDocumentRequest(
+          documentIri: documentIri,
+          typeIri: typeIri,
+          document: graph,
+          metadata: DocumentMetadata(
+            ourPhysicalClock: clock.physicalTime,
+            updatedAt: updatedAtTimestamp,
+          ),
+          changes: const <PropertyChange>[],
+          ifMatchUpdatedAt: localUpdatedAt,
+        )
+      ],
+      indexEntryRequests: entryWrites.toList(),
+      etagUpdates: {documentIri: mergedETag},
+    );
+  }
+
   ///
   /// Throws [ConcurrentUpdateException] on conflict.
   ///
@@ -2019,6 +2221,9 @@ class _ShardSyncOrchestrator {
     ShardSyncSpec shard,
     int lastSyncTimestamp, {
     required _ShardSyncAdapter<T, G> adapter,
+    String? cachedEtagOverride,
+    RemoteDownloadResult<T>? downloadResultOverride,
+    StoredDocument? localDocumentOverride,
   }) async {
     return _downloadShardTyped(
       shard,
@@ -2027,6 +2232,9 @@ class _ShardSyncOrchestrator {
       shardIri: shard.shardIri,
       shardDocumentIri: shard.shardIri.getDocumentIri(),
       debugName: 'Shard ${shard.shardIri.debug}',
+      cachedEtagOverride: cachedEtagOverride,
+      downloadResultOverride: downloadResultOverride,
+      localDocumentOverride: localDocumentOverride,
     );
   }
 
@@ -2038,6 +2246,9 @@ class _ShardSyncOrchestrator {
     required IriTerm shardIri,
     required IriTerm shardDocumentIri,
     required String debugName,
+    String? cachedEtagOverride,
+    RemoteDownloadResult<T>? downloadResultOverride,
+    StoredDocument? localDocumentOverride,
   }) async {
     _log.fine('Phase 1 download: $debugName');
 
@@ -2047,6 +2258,9 @@ class _ShardSyncOrchestrator {
       debugName: debugName,
       downloadFunction: adapter.downloadShard,
       extractGraph: adapter.extractGraph,
+      cachedEtagOverride: cachedEtagOverride,
+      downloadResultOverride: downloadResultOverride,
+      localDocumentOverride: localDocumentOverride,
     );
 
     if (merged == null) {
@@ -2083,6 +2297,18 @@ class _ShardSyncOrchestrator {
       syncCandidates: syncCandidates,
       remoteNamedGraphs: remoteNamedGraphs,
       finalize: (syncTime, canonicalGraphs) => _finalizeShard<T, G>(
+        merged: merged,
+        documentQueue: documentQueue,
+        shard: shard,
+        shardIri: shardIri,
+        shardDocumentIri: shardDocumentIri,
+        debugName: debugName,
+        adapter: adapter,
+        graphSyncStorage: graphSyncStorage,
+        syncTime: syncTime,
+        canonicalResourceGraphs: canonicalGraphs,
+      ),
+      prepareFinalize: (syncTime, canonicalGraphs) => _prepareShardUpload<T, G>(
         merged: merged,
         documentQueue: documentQueue,
         shard: shard,
@@ -2253,6 +2479,177 @@ class _ShardSyncOrchestrator {
             debugName: debugName,
             deferLocalCommit: true,
           ),
+          minDurationMs: 5,
+        );
+      },
+      args: ['shard=${shardIri.debug}'],
+      minDurationMs: 5,
+    );
+  }
+
+  Future<_PreparedShardUpload?>
+      _prepareShardUpload<T, G extends GraphSyncStorage>({
+    required _DownloadAndMergeResult<T> merged,
+    required Set<_DocumentQueueEntry> documentQueue,
+    required ShardSyncSpec shard,
+    required IriTerm shardIri,
+    required IriTerm shardDocumentIri,
+    required String debugName,
+    required _ShardSyncAdapter<T, G> adapter,
+    required G graphSyncStorage,
+    required DateTime syncTime,
+    required Map<IriTerm, RdfGraph> canonicalResourceGraphs,
+  }) async {
+    return await _perflog.measure(
+      'phase3.finalize',
+      () async {
+        final Set<IriTerm>? limitToResources = switch (shard) {
+          FullShardSync(fetchPolicy: Prefetch()) => null,
+          FullShardSync(fetchPolicy: OnRequest() || PrefetchFiltered()) =>
+            documentQueue.map((e) => e.resourceIri).toSet(),
+          PartialShardSync() => documentQueue.map((e) => e.resourceIri).toSet(),
+        };
+
+        final finalEntrySet = await _perflog.measure(
+          'phase3.getFinalEntrySet',
+          () => _getFinalEntrySet(
+            shardIri,
+            limitToResourceIris: limitToResources,
+          ),
+          minDurationMs: 5,
+        );
+
+        final updatedShardDocument = await _perflog.measure(
+          'phase3.buildShardGraph',
+          () async {
+            final newShardNodes = _shardDocumentGenerator.generateShardNodes(
+                shardDocumentIri: shardDocumentIri,
+                shardResourceIri: shardIri,
+                entries: finalEntrySet);
+
+            final entriesToKeep = _computeEntriesToKeep(
+                limitToResources, merged.mergedDocument, shardIri);
+
+            final withoutEntries = merged.mergedDocument.subgraph(
+              shardDocumentIri,
+              filter: (triple, depth) {
+                if (triple.predicate == IdxShard.containsEntry &&
+                    (entriesToKeep == null ||
+                        !entriesToKeep.contains(triple.object))) {
+                  return TraversalDecision.skip;
+                }
+                return TraversalDecision.include;
+              },
+            );
+
+            return withoutEntries.withNodes(
+                shardIri, IdxShard.containsEntry, newShardNodes);
+          },
+          minDurationMs: 5,
+        );
+
+        final ourCurrentShardClock = _hlcService.getCurrentClock(
+            merged.mergedDocument, shardDocumentIri);
+
+        final bool hasLocalChanges = finalEntrySet.any((entry) =>
+            entry.ourPhysicalClock > ourCurrentShardClock.physicalTime);
+
+        final clock = hasLocalChanges
+            ? _hlcService.createOrIncrementClock(
+                merged.mergedDocument, shardDocumentIri)
+            : ourCurrentShardClock;
+
+        final finalShardDocument = await _perflog.measure(
+          'phase3.generateMetadata',
+          () async {
+            final (oldBlankNodes: _, newBlankNodes: _, metadata: metadata) =
+                _localDocumentMerger.generateMetadata(
+              shardDocumentIri,
+              updatedShardDocument,
+              merged.mergedDocument,
+              merged.mergedDocument,
+              merged.mergeContract,
+              clock,
+              appDataTypeIri: IdxShard.classIri,
+              computeCanonicalBlankNodes: false,
+            );
+            return _applyMetadataToDocument(
+                updatedShardDocument, metadata, shardDocumentIri);
+          },
+          minDurationMs: 5,
+        );
+
+        final (typeIri, documentToUpload, clock2, missingGroupIndices) =
+            await _docSync.reconcileDocumentShards(
+          shardDocumentIri,
+          finalShardDocument,
+          merged.mergeContract,
+        );
+
+        final G effectiveStorage;
+        if (graphSyncStorage is DatasetBasedGraphSyncStorage) {
+          final originalNamedGraphs = graphSyncStorage.namedGraphs;
+          final shardResourceDocIris =
+              finalEntrySet.map((e) => e.resourceIri.getDocumentIri()).toSet();
+          final updatedNamedGraphs = <RdfNamedGraph>[];
+          for (final entry in originalNamedGraphs.entries) {
+            final canonical = canonicalResourceGraphs[entry.key];
+            updatedNamedGraphs
+                .add(RdfNamedGraph(entry.key, canonical ?? entry.value));
+          }
+          for (final entry in canonicalResourceGraphs.entries) {
+            if (!originalNamedGraphs.containsKey(entry.key) &&
+                shardResourceDocIris.contains(entry.key)) {
+              updatedNamedGraphs.add(RdfNamedGraph(entry.key, entry.value));
+            }
+          }
+          effectiveStorage =
+              DatasetBasedGraphSyncStorage(updatedNamedGraphs) as G;
+        } else {
+          effectiveStorage = graphSyncStorage;
+        }
+
+        final finalDocumentToUpload = adapter.finalizeDocumentToUpload(
+            documentToUpload,
+            graphSyncStorage: effectiveStorage);
+        final extractedGraph = adapter.extractGraph(finalDocumentToUpload);
+
+        return await _perflog.measure(
+          'phase3.applyAndStore',
+          () async {
+            Future<_DeferredBatchCommit> buildDeferredCommit(String etag) {
+              return _docSync.buildDeferredCommitForUploadedDocument(
+                typeIri: typeIri,
+                documentIri: shardDocumentIri,
+                graph: extractedGraph,
+                mergedETag: etag,
+                clock: clock2,
+                localUpdatedAt: merged.localUpdatedAt,
+                missingGroupIndices: missingGroupIndices,
+              );
+            }
+
+            if (finalDocumentToUpload case final RdfDataset dataset) {
+              return _PreparedShardUpload.dataset(
+                documentIri: shardDocumentIri,
+                debugName: debugName,
+                ifMatch: merged.etag,
+                datasetDocument: dataset,
+                buildDeferredCommit: buildDeferredCommit,
+              );
+            }
+            if (finalDocumentToUpload case final RdfGraph graph) {
+              return _PreparedShardUpload.graph(
+                documentIri: shardDocumentIri,
+                debugName: debugName,
+                ifMatch: merged.etag,
+                graphDocument: graph,
+                buildDeferredCommit: buildDeferredCommit,
+              );
+            }
+            throw StateError('Unsupported shard upload payload type '
+                '${finalDocumentToUpload.runtimeType} for ${shardDocumentIri.debug}');
+          },
           minDurationMs: 5,
         );
       },
