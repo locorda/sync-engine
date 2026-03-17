@@ -83,6 +83,12 @@ abstract interface class Storage {
     return result;
   }
 
+  /// Warm up backend-internal IRI resolution caches for frequently accessed IRIs.
+  ///
+  /// Default implementation is a no-op. Backends may override this to pre-resolve
+  /// IRI IDs in one batch and avoid repeated lookups under high contention.
+  Future<void> warmupIriIds(Iterable<IriTerm> iris) async {}
+
   /// Get property changes for a document, optionally filtered by logical clock.
   ///
   /// [sinceLogicalClock] - Only return changes with changeLogicalClock > this value.

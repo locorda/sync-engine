@@ -101,6 +101,11 @@ class InMemoryStorage implements Storage, TransactionalStorage {
   }
 
   @override
+  Future<void> warmupIriIds(Iterable<IriTerm> iris) async {
+    // No-op for in-memory storage.
+  }
+
+  @override
   Future<void> close() async {
     // Close all stream controllers
     for (final controller in _watchControllers) {

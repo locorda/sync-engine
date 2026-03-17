@@ -521,6 +521,15 @@ class RemoteSyncOrchestrator {
       await _perflog.measure(
         'content.threePhaseSync',
         () => retryOnConflict(() async {
+          await _perflog.measure(
+            'content.phase0WarmupShardIriIds',
+            () => _storage.warmupIriIds(
+              allShardTasks.map((shard) => shard.shardIri),
+            ),
+            args: ['shards=${allShardTasks.length}'],
+            minDurationMs: 5,
+          );
+
           // ── Phase 1: Download all shard docs & build queues ──
           final phase1Results = <_ShardPhase1Result>[];
           await _perflog.measure(

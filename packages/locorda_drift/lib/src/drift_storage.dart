@@ -453,6 +453,23 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
         ));
   }
 
+  @override
+  Future<void> warmupIriIds(Iterable<IriTerm> iris) async {
+    final iriValues = iris.map((iri) => iri.value).toSet();
+    if (iriValues.isEmpty) {
+      return;
+    }
+
+    await _perflog.measure(
+      'storage.iri.warmup',
+      () async {
+        await _getOrCreateIriIdsMap(iriValues);
+      },
+      args: ['requestCount=${iriValues.length}'],
+      minDurationMs: 5,
+    );
+  }
+
   // ========================================================================
   // Index Management
   // ========================================================================
