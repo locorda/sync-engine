@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
@@ -48,6 +49,34 @@ class DisabledPerflog extends Perflog {
       action();
 }
 
+class CallStackEntry {
+  final List<String> names;
+  final List<String> targetTypeNames;
+  final String operation;
+  CallStackEntry(this.names, this.targetTypeNames, this.operation);
+}
+
+class CallStackTracker {
+  List<CallStackEntry> _stack = [];
+  CallStackEntry enter(LoggingPerflog perflog, String operation) {
+    final entry =
+        CallStackEntry(perflog._names, perflog._targetTypeNames, operation);
+    _stack.add(entry);
+    return entry;
+  }
+
+  List<CallStackEntry> exit(CallStackEntry entry) {
+    // This might seem a bit unusual, but the idea is, that traced operations
+    // are all async and might be interleaved in any order. Only parents that
+    // were parents during both enter and exit should be considered as parents,
+    // so we don't assume that we are last but simply remove ourselves, returning
+    // the parents we had.
+    final result = _stack.takeWhile((e) => e != entry).toList();
+    _stack.removeWhere((e) => entry == e);
+    return result;
+  }
+}
+
 class LoggingPerflog implements Perflog {
   final List<String> _names;
   final List<String> _targetTypeNames;
@@ -55,6 +84,7 @@ class LoggingPerflog implements Perflog {
   final int contextWidth;
   final int operationWidth;
   final int argsWidth;
+  final CallStackTracker _tracker;
 
   LoggingPerflog._({
     required List<String> names,
@@ -63,9 +93,11 @@ class LoggingPerflog implements Perflog {
     required this.contextWidth,
     required this.operationWidth,
     required this.argsWidth,
+    required CallStackTracker tracker,
   })  : _names = names,
         _targetTypeNames = targetTypeNames,
-        _includeArgs = includeArgs;
+        _includeArgs = includeArgs,
+        _tracker = tracker;
 
   static Perflog root({
     bool includeArgs = true,
@@ -79,7 +111,8 @@ class LoggingPerflog implements Perflog {
           includeArgs: includeArgs,
           contextWidth: contextWidth,
           operationWidth: operationWidth,
-          argsWidth: argsWidth);
+          argsWidth: argsWidth,
+          tracker: CallStackTracker());
 
   static String _toTargetTypeName(Object target) =>
       target is String ? target : target.runtimeType.toString();
@@ -92,6 +125,7 @@ class LoggingPerflog implements Perflog {
         contextWidth: contextWidth,
         operationWidth: operationWidth,
         argsWidth: argsWidth,
+        tracker: _tracker,
       );
 
   /// Shortens a string to maxLength by placing ellipsis in the middle
@@ -128,20 +162,23 @@ class LoggingPerflog implements Perflog {
   Future<T> measure<T>(String operation, Future<T> Function() action,
       {List<String>? args, int? minDurationMs}) async {
     //_operationsLog.info('$contextStr.$opPadded $argsStr');
+    final entry = _tracker.enter(this, operation);
     final stopwatch = Stopwatch()..start();
     try {
       return await action();
     } finally {
       stopwatch.stop();
+      final parentStack = _tracker.exit(entry);
       final elapsedMs = stopwatch.elapsedMilliseconds;
       final threshold = minDurationMs ?? 0;
       if (elapsedMs >= threshold) {
-        final opPadded =
-            _shortenMiddle(operation, operationWidth).padRight(operationWidth);
+        final opPadded = _shortenMiddle(
+                operation.padLeft(parentStack.length, '.'), operationWidth)
+            .padRight(operationWidth);
         final argsStr = _includeArgs ? _formatAndPadList(args, argsWidth) : '';
         final contextStr = _formatAndPadList(_names, contextWidth);
         final duration = '$elapsedMs ms'.padLeft(8);
-        _performanceLog.info('$contextStr.$opPadded $duration $argsStr');
+        _performanceLog.info('$contextStr $opPadded $duration $argsStr');
       }
     }
   }
