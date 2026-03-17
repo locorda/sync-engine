@@ -66,6 +66,7 @@ class DirWorkerHandler implements RemoteWorkerHandler {
       datasetContentType: _datasetContentType,
       rdfCore: _rdfCore,
       useShardDatasets: _useShardDatasets,
+      perflog: context.perflog,
     );
     if (perflog != null) {
       return PerflogBackend(backend, perflog: perflog!);

@@ -40,7 +40,7 @@ class SyncFunction {
   final List<Backend> _backends;
   final ConfigService _configService;
   final OrchestratorFactory _remoteSyncOrchestratorFactory;
-  final Perflog _perflog = Perflog.root().create('Sync', 'SyncFunction');
+  final Perflog _perflog;
 
   SyncFunction({
     required List<Backend> backends,
@@ -48,11 +48,13 @@ class SyncFunction {
     required ConfigService configService,
     required OrchestratorFactory remoteSyncOrchestratorFactory,
     required ShardDocumentGenerator shardDocumentGenerator,
+    required Perflog perflog,
   })  : _backends = backends,
         _storage = storage,
         _configService = configService,
         _shardDocumentGenerator = shardDocumentGenerator,
-        _remoteSyncOrchestratorFactory = remoteSyncOrchestratorFactory;
+        _remoteSyncOrchestratorFactory = remoteSyncOrchestratorFactory,
+        _perflog = perflog.create('SyncFunction', 'sync');
 
   Future<void> call(DateTime syncTime) async {
     // Phase 0: Sync Preparation (materialize local shard state)

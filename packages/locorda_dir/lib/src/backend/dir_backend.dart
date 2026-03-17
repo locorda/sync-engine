@@ -35,6 +35,7 @@ class DirBackend implements Backend {
   final bool _useShardDatasets;
   late final BehaviorSubject<List<RemoteStorage>> _remotesChangedSubject;
   final IriTranslator? _iriTranslator;
+  final Perflog _perflog;
 
   DirBackend({
     required DirAuthProvider auth,
@@ -43,11 +44,13 @@ class DirBackend implements Backend {
     required String datasetContentType,
     required bool useShardDatasets,
     IriTranslator? iriTranslator,
+    required Perflog perflog,
   })  : _auth = auth,
         _rdfCore = rdfCore,
         _contentType = contentType,
         _datasetContentType = datasetContentType,
         _useShardDatasets = useShardDatasets,
+        _perflog = perflog,
         _iriTranslator = iriTranslator {
     _remotesChangedSubject = BehaviorSubject<List<RemoteStorage>>();
     _auth.isAuthenticatedNotifier.addListener(_authStateChanged);
@@ -79,6 +82,7 @@ class DirBackend implements Backend {
           datasetContentType: _datasetContentType,
           useShardDatasets: _useShardDatasets,
           iriTranslator: _iriTranslator,
+          perflog: _perflog,
         )
       ];
 
@@ -116,6 +120,7 @@ class DirRemoteStorage implements RemoteStorage {
   final RdfCore _rdfCore;
   final bool _useShardDatasets;
   final IriTranslator? _iriTranslator;
+  final Perflog _perflog;
 
   DirRemoteStorage({
     required String directoryPath,
@@ -124,13 +129,15 @@ class DirRemoteStorage implements RemoteStorage {
     required RdfCore rdfCore,
     required bool useShardDatasets,
     required IriTranslator? iriTranslator,
+    required Perflog perflog,
   })  : _directoryPath = directoryPath,
         _contentType = contentType,
         _datasetContentType = datasetContentType,
         _rdfCore = rdfCore,
         _remoteId = RemoteId('local-dir', directoryPath),
         _useShardDatasets = useShardDatasets,
-        _iriTranslator = iriTranslator;
+        _iriTranslator = iriTranslator,
+        _perflog = perflog;
 
   @override
   bool get useShardDatasets => _useShardDatasets;
@@ -167,6 +174,7 @@ class DirRemoteStorage implements RemoteStorage {
       rdfCore: _rdfCore,
       contentType: _contentType,
       datasetContentType: _datasetContentType,
+      perflog: _perflog,
     );
     if (_iriTranslator != null) {
       return IriTranslatingRemoteSyncStorage(
@@ -196,11 +204,12 @@ class DirSyncStorage extends RemoteSyncStorage {
     required RdfCore rdfCore,
     required String contentType,
     required String datasetContentType,
+    required Perflog perflog,
   })  : _directoryPath = directoryPath,
         _rdfCore = rdfCore,
         _contentType = contentType,
         _datasetContentType = datasetContentType,
-        _perflog = Perflog.root().create('Backend', 'DirSyncStorage'),
+        _perflog = perflog.create('Backend', 'DirSyncStorage'),
         _resourceLocator =
             LocalResourceLocator(iriTermFactory: IriTerm.validated);
 

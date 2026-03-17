@@ -80,6 +80,7 @@ class TestOrchestratorSetup {
     String? installationId,
     bool useShardDatasets = false,
   }) async {
+    final perflog = Perflog.root();
     // Build effective config with framework-owned resources
     final effectiveConfig = buildEffectiveConfig(config);
 
@@ -218,6 +219,7 @@ class TestOrchestratorSetup {
       shardDocumentGenerator: shardDocumentGenerator,
       physicalTimestampFactory: timestampFactory,
       useShardDatasets: backend.useShardDatasets,
+      perflog: perflog,
     );
 
     return TestOrchestratorSetup(

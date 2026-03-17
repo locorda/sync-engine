@@ -381,8 +381,8 @@ class GDriveBackend implements Backend {
     required http.Client httpClient,
     required String contentType,
     required String datasetContentType,
+    required Perflog perflog,
   }) {
-    final perflog = Perflog.root();
     final client = GDriveClient(
       authProvider: auth,
       httpClient: httpClient,

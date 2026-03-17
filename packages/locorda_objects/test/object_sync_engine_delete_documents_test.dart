@@ -136,6 +136,7 @@ void main() {
         ),
         mapperInitializer: (_) => createTestMapper(),
         syncEngineFactory: (_) async => fakeSyncEngine,
+        perflog: Perflog.root(),
       );
 
       await engine.deleteAll<TestDocument>(['note-1', 'note-2']);

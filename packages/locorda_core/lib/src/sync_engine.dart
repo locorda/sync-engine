@@ -122,6 +122,7 @@ abstract interface class SyncEngine {
   static Future<SyncEngine> create({
     required SyncEngineConfig config,
     required EngineParams engineParams,
+    Perflog? perflog,
   }) async {
     return StandardSyncEngine.create(
       backends: engineParams.backends,
@@ -134,6 +135,7 @@ abstract interface class SyncEngine {
       httpClient: engineParams.httpClient,
       fetcher: engineParams.fetcher,
       mappingBootstrapSources: engineParams.mappingBootstrapSources,
+      perflog: perflog,
     );
   }
 

@@ -41,14 +41,16 @@ class IsolateSender implements WorkerMessageSender {
 }
 
 abstract class WorkerHandlerContext {
+  Perflog get perflog;
   WorkerHandlerChannel createChannel(String name);
 }
 
 class WorkerHandlerContextImpl implements WorkerHandlerContext {
   final WorkerChannel _channel;
+  final Perflog perflog;
   final Set<String> _registeredChannels = {};
 
-  WorkerHandlerContextImpl(this._channel);
+  WorkerHandlerContextImpl(this._channel, {required this.perflog});
 
   WorkerHandlerChannel createChannel(String name) {
     if (_registeredChannels.contains(name)) {
@@ -81,11 +83,13 @@ class WorkerContext {
 
   /// Subscription to sync status stream
   StreamSubscription<SyncState>? _syncStatusSubscription;
+  final Perflog _perflog;
 
-  WorkerContext(this._sender, this._channel);
+  WorkerContext(this._sender, this._channel, {required Perflog perflog})
+      : _perflog = perflog;
 
   late WorkerHandlerContext workerHandlerContext =
-      WorkerHandlerContextImpl(_channel);
+      WorkerHandlerContextImpl(_channel, perflog: _perflog);
 
   /// Send a message back to the main thread (package-visible for web worker).
   void sendMessage(WorkerMessage message) {
@@ -656,6 +660,7 @@ void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
   final context = WorkerContext(
     IsolateSender(mainSendPort),
     channel,
+    perflog: Perflog.root(),
   );
 
   // 4. Wait for InitConfig message with configuration
@@ -728,7 +733,9 @@ void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
         activeStorageId: activeStorageId, activeRemoteIds: activeRemoteIds);
     _log.info('Worker: Step 5c - EngineParams ready, creating SyncEngine...');
     final syncSystem = await SyncEngine.create(
-        config: receivedConfig, engineParams: engineParams);
+        config: receivedConfig,
+        engineParams: engineParams,
+        perflog: context._perflog);
     _log.info('Worker: Step 5d - SyncEngine created, setting sync system...');
     context.setSyncSystem(syncSystem);
     _log.info('Worker: Step 5e - SyncSystem set up successfully');

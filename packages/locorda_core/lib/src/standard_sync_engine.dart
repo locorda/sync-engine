@@ -671,6 +671,7 @@ the streams yourself.''');
           shardDocumentGenerator: shardDocumentGenerator,
           physicalTimestampFactory: timestampFactory,
           useShardDatasets: useShardDatasets,
+          perflog: perflog!,
         );
     final syncFunction = SyncFunction(
       storage: storage,
@@ -678,6 +679,7 @@ the streams yourself.''');
       shardDocumentGenerator: shardDocumentGenerator,
       backends: backends,
       remoteSyncOrchestratorFactory: remoteSyncOrchestratorFactory,
+      perflog: perflog,
     );
     final syncManager = StandardSyncManager(
         syncFunction: (DateTime syncTime) => (perflog ?? Perflog.disabled)

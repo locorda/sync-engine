@@ -276,11 +276,10 @@ class RemoteSyncOrchestrator {
   final RemoteId _remoteId;
   final Storage _storage;
   final IndexRdfGenerator _indexRdfGenerator;
-  final _DocumentSyncHelper _docSync;
+  late final _DocumentSyncHelper _docSync;
   final bool _useShardDatasets;
   late final _ShardSyncOrchestrator _shardSyncOrchestrator;
-  final Perflog _perflog =
-      Perflog.root().create('Orchestrator', 'RemoteSyncOrchestrator');
+  final Perflog _perflog;
 
   RemoteSyncOrchestrator({
     required RemoteSyncStorage remoteSyncStorage,
@@ -296,28 +295,32 @@ class RemoteSyncOrchestrator {
     required ShardDocumentGenerator shardDocumentGenerator,
     required PhysicalTimestampFactory physicalTimestampFactory,
     required bool useShardDatasets,
+    required Perflog perflog,
   })  : _remoteSyncStorage = remoteSyncStorage,
         _remoteId = remoteId,
         _storage = storage,
         _indexRdfGenerator = indexRdfGenerator,
         _useShardDatasets = useShardDatasets,
-        _docSync = _DocumentSyncHelper(
-          storage: storage,
-          remoteId: remoteId,
-          mergeContractLoader: mergeContractLoader,
-          merger: merger,
-          indexManager: indexManager,
-          shardDeterminer: shardDeterminer,
-          hlcService: hlcService,
-          localDocumentMerger: localDocumentMerger,
-          physicalTimestampFactory: physicalTimestampFactory,
-        ) {
+        _perflog = perflog.create('Orchestrator', 'RemoteSyncOrchestrator') {
+    _docSync = _DocumentSyncHelper(
+      storage: storage,
+      remoteId: remoteId,
+      mergeContractLoader: mergeContractLoader,
+      merger: merger,
+      indexManager: indexManager,
+      shardDeterminer: shardDeterminer,
+      hlcService: hlcService,
+      localDocumentMerger: localDocumentMerger,
+      physicalTimestampFactory: physicalTimestampFactory,
+      perflog: _perflog,
+    );
     _shardSyncOrchestrator = _ShardSyncOrchestrator(
       storage: storage,
       hlcService: hlcService,
       shardDocumentGenerator: shardDocumentGenerator,
       localDocumentMerger: localDocumentMerger,
       documentSyncHelper: _docSync,
+      perflog: _perflog,
     );
   }
 
@@ -1147,8 +1150,7 @@ Future<void> _executeInChunks<T>(
 }
 
 class _DocumentSyncHelper {
-  final Perflog _perflog =
-      Perflog.root().create('DocSync', '_DocumentSyncHelper');
+  final Perflog _perflog;
   final Storage _storage;
   final RemoteId _remoteId;
   final MergeContractLoader _mergeContractLoader;
@@ -1169,6 +1171,7 @@ class _DocumentSyncHelper {
     required HlcService hlcService,
     required LocalDocumentMerger localDocumentMerger,
     required PhysicalTimestampFactory physicalTimestampFactory,
+    required Perflog perflog,
   })  : _storage = storage,
         _remoteId = remoteId,
         _mergeContractLoader = mergeContractLoader,
@@ -1177,7 +1180,8 @@ class _DocumentSyncHelper {
         _shardDeterminer = shardDeterminer,
         _hlcService = hlcService,
         _localDocumentMerger = localDocumentMerger,
-        _physicalTimestampFactory = physicalTimestampFactory;
+        _physicalTimestampFactory = physicalTimestampFactory,
+        _perflog = perflog.create('DocSync', '_DocumentSyncHelper');
 
   /// Get local document with metadata from storage
   Future<StoredDocument?> _getLocalDocumentWithMetadata(IriTerm documentIri,
@@ -2177,8 +2181,7 @@ abstract interface class _ShardSyncAdapter<T, G extends GraphSyncStorage> {
 }
 
 class _ShardSyncOrchestrator {
-  final Perflog _perflog =
-      Perflog.root().create('ShardSync', '_ShardSyncOrchestrator');
+  final Perflog _perflog;
   final Storage _storage;
   final HlcService _hlcService;
   final ShardDocumentGenerator _shardDocumentGenerator;
@@ -2191,11 +2194,13 @@ class _ShardSyncOrchestrator {
     required ShardDocumentGenerator shardDocumentGenerator,
     required LocalDocumentMerger localDocumentMerger,
     required _DocumentSyncHelper documentSyncHelper,
+    required Perflog perflog,
   })  : _storage = storage,
         _hlcService = hlcService,
         _shardDocumentGenerator = shardDocumentGenerator,
         _localDocumentMerger = localDocumentMerger,
-        _docSync = documentSyncHelper;
+        _docSync = documentSyncHelper,
+        _perflog = perflog.create('ShardSync', '_ShardSyncOrchestrator');
 
   // =========================================================================
   // Three-phase shard sync methods

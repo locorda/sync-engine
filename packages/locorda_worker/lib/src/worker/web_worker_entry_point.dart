@@ -68,7 +68,7 @@ external void _postMessage(JSAny? message);
 /// and initializes the worker when the first setup message arrives.
 void startWebWorkerLoop(WorkerSetup workerSetup) {
   _log.info('Starting web worker');
-
+  final perflog = Perflog.root();
   // Create WorkerChannel early (like native implementation does)
   final channel = WorkerChannel((message) {
     _postMessage({'__channel': message.channel, 'data': message.data}.jsify());
@@ -118,6 +118,7 @@ void startWebWorkerLoop(WorkerSetup workerSetup) {
         () => isInitializing,
         markAsInitializing,
         resetInitializing,
+        perflog: perflog,
       ).catchError((e, st) {
         // Log error and attempt to send error message to main thread
         _log.severe('Web worker error: $e\n$st');
@@ -147,8 +148,9 @@ Future<void> _handleWorkerMessage(
   WorkerChannel channel,
   bool Function() isInitializing,
   void Function() markInitializing,
-  void Function() resetInitializing,
-) async {
+  void Function() resetInitializing, {
+  required Perflog perflog,
+}) async {
   final context = getContext();
 
   if (context == null) {
@@ -170,18 +172,18 @@ Future<void> _handleWorkerMessage(
 
       // Parse config (recursively convert JsLinkedHashMaps)
       final configMap = data['config'] as Map<String, dynamic>;
-        final activeStorageId = data['activeStorageId'] as String?;
-        final activeRemoteList = data['activeRemoteIds'] as List?;
-        final activeRemoteIds =
+      final activeStorageId = data['activeStorageId'] as String?;
+      final activeRemoteList = data['activeRemoteIds'] as List?;
+      final activeRemoteIds =
           activeRemoteList?.map((id) => id.toString()).toList();
       final config = SyncEngineConfig.fromJson(
           configMap); // Create context and initialize sync system
-      final newContext = WorkerContext(WebWorkerSender(), channel);
+      final newContext =
+          WorkerContext(WebWorkerSender(), channel, perflog: perflog);
       final workerParams = await workerSetup();
-      final engineParams =
-          await toEngineParams(workerParams, newContext, config,
-            activeStorageId: activeStorageId,
-            activeRemoteIds: activeRemoteIds);
+      final engineParams = await toEngineParams(
+          workerParams, newContext, config,
+          activeStorageId: activeStorageId, activeRemoteIds: activeRemoteIds);
       final syncSystem =
           await SyncEngine.create(engineParams: engineParams, config: config);
       newContext.setSyncSystem(syncSystem);

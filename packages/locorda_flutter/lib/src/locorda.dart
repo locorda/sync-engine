@@ -208,7 +208,9 @@ class Locorda {
     IriTermFactory? iriTermFactory,
     RdfCore? rdfCore,
     String? debugName,
+    Perflog? perflog,
   }) async {
+    perflog ??= Perflog.root();
     // Create storage plugin registry if plugins provided
     final uiAdapterRegistry = UiAdapterRegistry.withRemotes(remotes);
 
@@ -217,6 +219,7 @@ class Locorda {
       mapperInitializer: mapperInitializer,
       iriTermFactory: iriTermFactory,
       rdfCore: rdfCore,
+      perflog: perflog,
       syncEngineFactory: (config) => SyncEngineWithWorker.create(
         jsScript: jsScript,
         workerSetup: workerSetup,

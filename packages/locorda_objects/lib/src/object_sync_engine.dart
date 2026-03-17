@@ -124,14 +124,13 @@ class ObjectSyncEngine {
     required LocordaConfig config,
     required ResourceTypeCache resourceTypeCache,
     required ResourceLocator localResourceLocator,
-    Perflog? perflog,
+    required Perflog perflog,
   })  : _syncSystem = syncEngine,
         _mapper = mapper,
         _config = config,
         _resourceTypeCache = resourceTypeCache,
         _localResourceLocator = localResourceLocator,
-        _perflog =
-            (perflog ?? Perflog.root()).create('ObjectSyncEngine', syncEngine) {
+        _perflog = perflog.create('ObjectSyncEngine', syncEngine) {
     _groupKeyConverter = GroupKeyConverter(
       config: _config,
       mapper: _mapper,
@@ -270,6 +269,7 @@ class ObjectSyncEngine {
     RdfCore? rdfCore,
     Perflog? perflog,
   }) async {
+    perflog ??= Perflog.root();
     final (
       :localResourceLocator,
       :resourceTypeCache,
