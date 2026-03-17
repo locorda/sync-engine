@@ -2370,7 +2370,7 @@ class _ShardSyncOrchestrator {
     ShardDeterminationLookupCache? lookupCache,
   }) async {
     return await _perflog.measure(
-      'phase3.finalize',
+      '_finalizeShard.finalize',
       () async {
         final Set<IriTerm>? limitToResources = switch (shard) {
           FullShardSync(fetchPolicy: Prefetch()) => null,
@@ -2381,7 +2381,7 @@ class _ShardSyncOrchestrator {
 
         // Resources committed in Phase 2 — no pending writes needed
         final finalEntrySet = await _perflog.measure(
-          'phase3.getFinalEntrySet',
+          '_finalizeShard.getFinalEntrySet',
           () => _getFinalEntrySet(
             shardIri,
             limitToResourceIris: limitToResources,
@@ -2391,7 +2391,7 @@ class _ShardSyncOrchestrator {
 
         final RdfGraph updatedShardDocument;
         updatedShardDocument = await _perflog.measure(
-          'phase3.buildShardGraph',
+          '_finalizeShard.buildShardGraph',
           () async {
             final newShardNodes = _shardDocumentGenerator.generateShardNodes(
                 shardDocumentIri: shardDocumentIri,
@@ -2431,7 +2431,7 @@ class _ShardSyncOrchestrator {
             : ourCurrentShardClock;
 
         final finalShardDocument = await _perflog.measure(
-          'phase3.generateMetadata',
+          '_finalizeShard.generateMetadata',
           () async {
             final (oldBlankNodes: _, newBlankNodes: _, metadata: metadata) =
                 _localDocumentMerger.generateMetadata(
@@ -2491,7 +2491,7 @@ class _ShardSyncOrchestrator {
             graphSyncStorage: effectiveStorage);
 
         return await _perflog.measure(
-          'phase3.applyAndStore',
+          '_finalizeShard.applyAndStore',
           () => _docSync.applyAndStoreMergedDocument(
             uploadFunction: adapter.uploadShard,
             extractGraph: adapter.extractGraph,
@@ -2529,7 +2529,7 @@ class _ShardSyncOrchestrator {
     ShardDeterminationLookupCache? lookupCache,
   }) async {
     return await _perflog.measure(
-      'phase3.finalize',
+      '_prepareShardUpload.finalize',
       () async {
         final Set<IriTerm>? limitToResources = switch (shard) {
           FullShardSync(fetchPolicy: Prefetch()) => null,
@@ -2539,7 +2539,7 @@ class _ShardSyncOrchestrator {
         };
 
         final finalEntrySet = await _perflog.measure(
-          'phase3.getFinalEntrySet',
+          '_prepareShardUpload.getFinalEntrySet',
           () => _getFinalEntrySet(
             shardIri,
             limitToResourceIris: limitToResources,
@@ -2548,7 +2548,7 @@ class _ShardSyncOrchestrator {
         );
 
         final updatedShardDocument = await _perflog.measure(
-          'phase3.buildShardGraph',
+          '_prepareShardUpload.buildShardGraph',
           () async {
             final newShardNodes = _shardDocumentGenerator.generateShardNodes(
                 shardDocumentIri: shardDocumentIri,
@@ -2588,7 +2588,7 @@ class _ShardSyncOrchestrator {
             : ourCurrentShardClock;
 
         final finalShardDocument = await _perflog.measure(
-          'phase3.generateMetadata',
+          '_prepareShardUpload.generateMetadata',
           () async {
             final (oldBlankNodes: _, newBlankNodes: _, metadata: metadata) =
                 _localDocumentMerger.generateMetadata(
@@ -2644,7 +2644,7 @@ class _ShardSyncOrchestrator {
         final extractedGraph = adapter.extractGraph(finalDocumentToUpload);
 
         return await _perflog.measure(
-          'phase3.applyAndStore',
+          '_prepareShardUpload.applyAndStore',
           () async {
             Future<_DeferredBatchCommit> buildDeferredCommit(String etag) {
               return _docSync.buildDeferredCommitForUploadedDocument(
