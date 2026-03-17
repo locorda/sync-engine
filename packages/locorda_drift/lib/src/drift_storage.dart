@@ -606,18 +606,16 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
     _didLogActiveShardQueryPlan = true;
 
     try {
-      final rows = await _database
-          .customSelect(
-            '''
+      final rows = await _database.customSelect(
+        '''
       EXPLAIN QUERY PLAN
       SELECT e.resource_iri_id
       FROM index_entries e
       JOIN sync_iris i ON i.id = e.resource_iri_id
       WHERE e.shard_iri = ? AND e.is_deleted = 0
       ''',
-            variables: [Variable.withInt(shardIriId)],
-          )
-          .get();
+        variables: [Variable.withInt(shardIriId)],
+      ).get();
 
       final planDetails = rows
           .map((row) => row.data['detail']?.toString() ?? 'unknown')
