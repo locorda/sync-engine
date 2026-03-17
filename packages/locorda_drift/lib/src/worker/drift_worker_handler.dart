@@ -47,6 +47,7 @@ class DriftWorkerHandler extends StorageWorkerHandler {
     final storage = await DriftStorage.create(
       web: webOpts,
       native: nativeOpts,
+      perflog: context.perflog,
     );
     _log.info('DriftWorkerHandler[$id]: DriftStorage created successfully');
     return storage;

@@ -36,7 +36,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
     required this.indexDao,
     required this.remoteSyncStateDao,
     required SyncDatabase database,
-    core.Perflog perflog = core.Perflog.disabled,
+    required core.Perflog perflog,
     IriTermFactory iriTermFactory = IriTerm.validated,
   })  : _database = database,
         _iriTermFactory = iriTermFactory,
@@ -61,7 +61,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   static Future<DriftStorage> create({
     LocordaDriftWebOptions? web,
     LocordaDriftNativeOptions? native,
-    core.Perflog perflog = core.Perflog.disabled,
+    required core.Perflog perflog,
     IriTermFactory iriTermFactory = IriTerm.validated,
   }) async {
     final database = await SyncDatabaseImpl.create(web: web, native: native);
