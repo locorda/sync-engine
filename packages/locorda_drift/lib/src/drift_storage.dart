@@ -489,11 +489,35 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
     }
 
     if (misses.isNotEmpty) {
-      final loaded = await indexDao.getOrCreateIriIdsBatch(misses);
+      final resolveResult = await _perflog.measure(
+        'storage.iri.getOrCreateBatch',
+        () => indexDao.getOrCreateIriIdsBatchWithStats(misses),
+        args: ['requestCount=${misses.length}'],
+        resultArgsBuilder: (stats) => [
+          'existingCount=${stats.existingCount}',
+          'createdCount=${stats.createdCount}',
+        ],
+        minDurationMs: 5,
+      );
+      final loaded = resolveResult.ids;
       for (final entry in loaded.entries) {
         _iriIdCache[entry.key] = entry.value;
       }
       result.addAll(loaded);
+    }
+
+    final hitCount = result.length - misses.length;
+    if (hitCount > 0 || misses.isNotEmpty) {
+      _perflog.measure(
+        'storage.iri.cacheStats',
+        () async => null,
+        args: [
+          'requestCount=${uniqueIris.length}',
+          'cacheHitCount=$hitCount',
+          'cacheMissCount=${misses.length}',
+        ],
+        minDurationMs: 0,
+      );
     }
 
     return result;

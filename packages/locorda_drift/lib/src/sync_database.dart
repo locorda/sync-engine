@@ -318,7 +318,22 @@ mixin IriBatchLoader on DatabaseAccessor<SyncDatabase> {
 
   /// Efficiently get/create multiple IRI IDs in batch
   Future<Map<String, int>> getOrCreateIriIdsBatch(Iterable<String> iris) async {
-    if (iris.isEmpty) return {};
+    final result = await getOrCreateIriIdsBatchWithStats(iris);
+    return result.ids;
+  }
+
+  /// Efficiently get/create multiple IRI IDs in batch with diagnostics.
+  ///
+  /// Returns IRI -> ID map plus counters useful for performance tracing.
+  Future<
+      ({
+        Map<String, int> ids,
+        int existingCount,
+        int createdCount,
+      })> getOrCreateIriIdsBatchWithStats(Iterable<String> iris) async {
+    if (iris.isEmpty) {
+      return (ids: const <String, int>{}, existingCount: 0, createdCount: 0);
+    }
 
     // 1. First try to get all existing IRIs
     final existing = await _getExistingIriIds(iris);
@@ -333,7 +348,11 @@ mixin IriBatchLoader on DatabaseAccessor<SyncDatabase> {
       result.addAll(created);
     }
 
-    return result;
+    return (
+      ids: result,
+      existingCount: existing.length,
+      createdCount: missing.length,
+    );
   }
 
   /// Get existing IRI → ID mappings for the given IRIs
