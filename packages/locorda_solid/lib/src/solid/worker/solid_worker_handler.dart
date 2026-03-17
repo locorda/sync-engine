@@ -61,6 +61,10 @@ class SolidWorkerHandler implements RemoteWorkerHandler {
       datasetContentType: _datasetContentType,
       config: solidConfig,
     );
-    return PerflogBackend(backend, perflog: context.perflog);
+    if (context.perflog != Perflog.disabled) {
+      return PerflogBackend(backend, perflog: context.perflog);
+    } else {
+      return backend;
+    }
   }
 }

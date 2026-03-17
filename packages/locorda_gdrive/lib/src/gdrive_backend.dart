@@ -400,7 +400,10 @@ class GDriveBackend implements Backend {
       rdfCore: rdfCore,
       appFolderProvider: appFolderProvider,
     );
-    return PerflogBackend(backend, perflog: perflog, name: 'gdrive');
+    if (perflog != Perflog.disabled) {
+      return PerflogBackend(backend, perflog: perflog, name: 'gdrive');
+    }
+    return backend;
   }
 
   GDriveBackend._({

@@ -33,7 +33,6 @@ class DirWorkerHandler implements RemoteWorkerHandler {
   final String _contentType;
   final String _datasetContentType;
   final bool _useShardDatasets;
-  final Perflog? perflog;
   @override
   final String id;
 
@@ -45,7 +44,6 @@ class DirWorkerHandler implements RemoteWorkerHandler {
     IriTermFactory? iriTermFactory,
     bool useShardDatasets = false,
     this.id = directoryRemoteHandlerId,
-    this.perflog,
   })  : _rdfCore = rdfCore ??
             RdfCore.withStandardCodecs(
                 iriTermFactory: iriTermFactory ?? IriTerm.validated),
@@ -68,8 +66,8 @@ class DirWorkerHandler implements RemoteWorkerHandler {
       useShardDatasets: _useShardDatasets,
       perflog: context.perflog,
     );
-    if (perflog != null) {
-      return PerflogBackend(backend, perflog: perflog!);
+    if (context.perflog != Perflog.disabled) {
+      return PerflogBackend(backend, perflog: context.perflog);
     } else {
       return backend;
     }
