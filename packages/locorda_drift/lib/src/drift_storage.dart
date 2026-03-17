@@ -164,9 +164,29 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
       ...typeIriValues,
     };
 
+    // Pre-encode all documents BEFORE the transaction —
+    // pure CPU work that shouldn't hold a DB lock
+    final encodedContents = await _perflog.measure(
+      'saveDocuments.encode',
+      () async => requestList
+          .map((r) => _codec.encode(r.document, baseUri: r.documentIri.value))
+          .toList(growable: false),
+      args: ['count=${requestList.length}'],
+      minDurationMs: 5,
+    );
+
     return _database.transaction(() async {
-      final iriIdByValue =
-          await documentDao.getOrCreateIriIdsBatch(allIriValues);
+      final iriIdByValue = await _perflog.measure(
+        'saveDocuments.tx.iriLookup',
+        () => documentDao.getOrCreateIriIdsBatch(allIriValues),
+        args: ['count=${allIriValues.length}'],
+        minDurationMs: 5,
+      );
+
+      // Populate _iriIdCache so subsequent saveIndexEntries gets cache hits
+      for (final entry in iriIdByValue.entries) {
+        _iriIdCache[entry.key] = entry.value;
+      }
 
       final documentIriIds = documentIriValues
           .map((iri) => iriIdByValue[iri]!)
@@ -175,8 +195,12 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
           .map((iri) => iriIdByValue[iri]!)
           .toList(growable: false);
 
-      final maxUpdatedAtByTypeId =
-          await documentDao.getMaxUpdatedAtForTypeIds(typeIriIds);
+      final maxUpdatedAtByTypeId = await _perflog.measure(
+        'saveDocuments.tx.maxUpdatedAt',
+        () => documentDao.getMaxUpdatedAtForTypeIds(typeIriIds),
+        args: ['typeCount=${typeIriIds.toSet().length}'],
+        minDurationMs: 5,
+      );
       final runningMaxUpdatedAtByTypeId = <int, int?>{
         for (final entry in maxUpdatedAtByTypeId.entries)
           entry.key: entry.value,
@@ -199,14 +223,11 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
               'existing max updatedAt ($previousTimestamp) for document ${request.documentIri.debug} of type ${request.typeIri.value}');
         }
 
-        final content =
-            _codec.encode(request.document, baseUri: request.documentIri.value);
-
         operations.add(
           BatchDocumentSaveOperation(
             documentIriId: documentIriId,
             typeIriId: typeIriId,
-            content: content,
+            content: encodedContents[index],
             ourPhysicalClock: request.metadata.ourPhysicalClock,
             updatedAt: request.metadata.updatedAt,
             ifMatchUpdatedAt: request.ifMatchUpdatedAt,
@@ -232,24 +253,36 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
         );
       }
 
-      await documentDao.saveDocumentsBatch(operations);
+      await _perflog.measure(
+        'saveDocuments.tx.batchSave',
+        () => documentDao.saveDocumentsBatch(operations),
+        args: ['count=${operations.length}'],
+        minDurationMs: 5,
+      );
 
       if (changesByDocumentIriId.isNotEmpty) {
-        final persistedByDocumentIriId = await documentDao
-            .getDocumentsByDocumentIriIds(changesByDocumentIriId.keys);
-        final changesByDocumentId = <int, List<core.PropertyChange>>{};
+        await _perflog.measure(
+          'saveDocuments.tx.propertyChanges',
+          () async {
+            final persistedByDocumentIriId = await documentDao
+                .getDocumentsByDocumentIriIds(changesByDocumentIriId.keys);
+            final changesByDocumentId = <int, List<core.PropertyChange>>{};
 
-        for (final entry in changesByDocumentIriId.entries) {
-          final persisted = persistedByDocumentIriId[entry.key];
-          if (persisted == null) {
-            throw StateError(
-                'Missing persisted document after batch save for documentIriId=${entry.key}.');
-          }
-          changesByDocumentId[persisted.id] = entry.value;
-        }
+            for (final entry in changesByDocumentIriId.entries) {
+              final persisted = persistedByDocumentIriId[entry.key];
+              if (persisted == null) {
+                throw StateError(
+                    'Missing persisted document after batch save for documentIriId=${entry.key}.');
+              }
+              changesByDocumentId[persisted.id] = entry.value;
+            }
 
-        await propertyChangeDao
-            .recordPropertyChangesForDocumentsBatch(changesByDocumentId);
+            await propertyChangeDao
+                .recordPropertyChangesForDocumentsBatch(changesByDocumentId);
+          },
+          args: ['count=${changesByDocumentIriId.length}'],
+          minDurationMs: 5,
+        );
       }
 
       return results;

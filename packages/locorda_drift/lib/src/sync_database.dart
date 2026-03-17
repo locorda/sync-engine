@@ -451,13 +451,46 @@ class SyncDocumentDao extends DatabaseAccessor<SyncDatabase>
     return result;
   }
 
+  /// Lightweight existence check — returns only id + updatedAt, no content.
+  /// Avoids transferring document content over Drift isolate boundary.
+  Future<Map<int, ({int id, int updatedAt})>>
+      getDocumentExistenceByDocumentIriIds(Iterable<int> documentIriIds) async {
+    final ids = documentIriIds.toSet();
+    if (ids.isEmpty) return const {};
+
+    const batchSize = 999;
+    final result = <int, ({int id, int updatedAt})>{};
+    final idsList = ids.toList();
+
+    for (int i = 0; i < idsList.length; i += batchSize) {
+      final batchIds =
+          idsList.sublist(i, math.min(i + batchSize, idsList.length));
+      final rows = await customSelect(
+        'SELECT id, document_iri_id, updated_at FROM sync_documents '
+        'WHERE document_iri_id IN (${List.filled(batchIds.length, '?').join(',')})',
+        variables: [for (final id in batchIds) Variable.withInt(id)],
+        readsFrom: {syncDocuments},
+      ).get();
+
+      for (final row in rows) {
+        final iriId = row.read<int>('document_iri_id');
+        result[iriId] = (
+          id: row.read<int>('id'),
+          updatedAt: row.read<int>('updated_at'),
+        );
+      }
+    }
+
+    return result;
+  }
+
   Future<void> saveDocumentsBatch(
       List<BatchDocumentSaveOperation> operations) async {
     if (operations.isEmpty) {
       return;
     }
 
-    final existingByDocumentIriId = await getDocumentsByDocumentIriIds(
+    final existingByDocumentIriId = await getDocumentExistenceByDocumentIriIds(
       operations.map((operation) => operation.documentIriId),
     );
 
