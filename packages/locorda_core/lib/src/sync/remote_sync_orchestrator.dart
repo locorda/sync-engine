@@ -163,6 +163,7 @@ class _ShardPhase1Result {
   final Future<_PreparedShardUpload?> Function(
     DateTime syncTime,
     Map<IriTerm, RdfGraph> canonicalResourceGraphs,
+    ShardDeterminationLookupCache? lookupCache,
   ) prepareFinalize;
 
   _ShardPhase1Result({
@@ -672,6 +673,7 @@ class RemoteSyncOrchestrator {
           }
 
           final preparedUploads = <_PreparedShardUpload>[];
+          final phase3ShardLookupCache = ShardDeterminationLookupCache();
           await _perflog.measure(
             'content.phase3Finalize',
             () => _executeInChunks(
@@ -679,6 +681,7 @@ class RemoteSyncOrchestrator {
                     final prepared = await result.prepareFinalize(
                       syncTime,
                       canonicalGraphs,
+                      phase3ShardLookupCache,
                     );
                     if (prepared != null) preparedUploads.add(prepared);
                   }),
@@ -1568,12 +1571,27 @@ class _DocumentSyncHelper {
 
   Future<void> commitDeferredBatch(_DeferredBatchCommit deferred) async {
     final commit = () async {
-      await _storage.saveDocuments(deferred.saveRequests);
+      await _perflog.measure(
+        'batch.commit.saveDocuments',
+        () => _storage.saveDocuments(deferred.saveRequests),
+        args: ['count=${deferred.saveRequests.length}'],
+        minDurationMs: 5,
+      );
       if (deferred.indexEntryRequests.isNotEmpty) {
-        await _storage.saveIndexEntries(deferred.indexEntryRequests);
+        await _perflog.measure(
+          'batch.commit.saveIndexEntries',
+          () => _storage.saveIndexEntries(deferred.indexEntryRequests),
+          args: ['count=${deferred.indexEntryRequests.length}'],
+          minDurationMs: 5,
+        );
       }
       if (deferred.etagUpdates.isNotEmpty) {
-        await _storage.setRemoteETags(_remoteId, deferred.etagUpdates);
+        await _perflog.measure(
+          'batch.commit.setRemoteEtags',
+          () => _storage.setRemoteETags(_remoteId, deferred.etagUpdates),
+          args: ['count=${deferred.etagUpdates.length}'],
+          minDurationMs: 5,
+        );
       }
     };
 
@@ -2308,7 +2326,8 @@ class _ShardSyncOrchestrator {
         syncTime: syncTime,
         canonicalResourceGraphs: canonicalGraphs,
       ),
-      prepareFinalize: (syncTime, canonicalGraphs) => _prepareShardUpload<T, G>(
+      prepareFinalize: (syncTime, canonicalGraphs, lookupCache) =>
+          _prepareShardUpload<T, G>(
         merged: merged,
         documentQueue: documentQueue,
         shard: shard,
@@ -2319,6 +2338,7 @@ class _ShardSyncOrchestrator {
         graphSyncStorage: graphSyncStorage,
         syncTime: syncTime,
         canonicalResourceGraphs: canonicalGraphs,
+        lookupCache: lookupCache,
       ),
     );
   }
@@ -2342,6 +2362,7 @@ class _ShardSyncOrchestrator {
     required G graphSyncStorage,
     required DateTime syncTime,
     required Map<IriTerm, RdfGraph> canonicalResourceGraphs,
+    ShardDeterminationLookupCache? lookupCache,
   }) async {
     return await _perflog.measure(
       'phase3.finalize',
@@ -2429,6 +2450,7 @@ class _ShardSyncOrchestrator {
           shardDocumentIri,
           finalShardDocument,
           merged.mergeContract,
+          lookupCache: lookupCache,
         );
 
         // For dataset mode: inject canonical resource graphs into Named Graphs
@@ -2499,6 +2521,7 @@ class _ShardSyncOrchestrator {
     required G graphSyncStorage,
     required DateTime syncTime,
     required Map<IriTerm, RdfGraph> canonicalResourceGraphs,
+    ShardDeterminationLookupCache? lookupCache,
   }) async {
     return await _perflog.measure(
       'phase3.finalize',
@@ -2584,6 +2607,7 @@ class _ShardSyncOrchestrator {
           shardDocumentIri,
           finalShardDocument,
           merged.mergeContract,
+          lookupCache: lookupCache,
         );
 
         final G effectiveStorage;
