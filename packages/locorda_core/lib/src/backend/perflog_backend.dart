@@ -19,8 +19,8 @@ abstract interface class Perflog {
 
   static Perflog root({
     bool includeArgs = true,
-    int contextWidth = 30,
-    int operationWidth = 30,
+    int contextWidth = 20,
+    int operationWidth = 40,
     int argsWidth = 150,
   }) =>
       LoggingPerflog.root(
