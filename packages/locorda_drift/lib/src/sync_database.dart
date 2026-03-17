@@ -1746,7 +1746,7 @@ class SyncDatabase extends _$SyncDatabase {
   SyncDatabase.forExecutor(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1794,6 +1794,12 @@ class SyncDatabase extends _$SyncDatabase {
           await m.database.customStatement('''
         CREATE INDEX IF NOT EXISTS idx_index_entries_deleted
         ON index_entries(is_deleted);
+      ''');
+
+          await m.database.customStatement('''
+        CREATE INDEX IF NOT EXISTS idx_index_entries_shard_active
+        ON index_entries(shard_iri)
+        WHERE is_deleted = 0;
       ''');
 
           await m.database.customStatement('''
@@ -1898,6 +1904,13 @@ class SyncDatabase extends _$SyncDatabase {
             await m.database.customStatement('''
               CREATE INDEX IF NOT EXISTS idx_index_instance_sync_states_remote
               ON index_instance_sync_states(remote_setting_id);
+            ''');
+          }
+          if (from < 8) {
+            await m.database.customStatement('''
+              CREATE INDEX IF NOT EXISTS idx_index_entries_shard_active
+              ON index_entries(shard_iri)
+              WHERE is_deleted = 0;
             ''');
           }
         },

@@ -910,10 +910,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
       'storage.getActiveIndexEntriesForShard.contentionProbe',
       () async => null,
       args: [
-        'shardIriId=$shardIriId',
-        'queryMs=${queryStopwatch.elapsedMilliseconds}',
-        'dbProbeBeforeMs=$dbProbeBeforeMs',
-        'dbProbeAfterMs=$dbProbeAfterMs',
+        'shardIriId=$shardIriId|||queryMs=${queryStopwatch.elapsedMilliseconds}|||dbProbeBeforeMs=$dbProbeBeforeMs|||dbProbeAfterMs=$dbProbeAfterMs',
         'resultCount=${driftEntries.length}',
       ],
       minDurationMs: 0,
