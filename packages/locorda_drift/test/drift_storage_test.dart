@@ -6,6 +6,42 @@ import 'package:locorda_rdf_core/core.dart';
 
 import 'test_sync_database.dart';
 
+class _PerflogCall {
+  final String operation;
+  final List<String> args;
+
+  const _PerflogCall({required this.operation, required this.args});
+}
+
+class _RecordingPerflog implements Perflog {
+  final List<_PerflogCall> calls;
+
+  const _RecordingPerflog(this.calls);
+
+  @override
+  Perflog create(String name, Object target, {bool? includeArgs}) => this;
+
+  @override
+  Future<T> measure<T>(
+    String operation,
+    Future<T> Function() action, {
+    List<String>? args,
+    int? minDurationMs,
+    List<String> Function(T)? resultArgsBuilder,
+  }) async {
+    final result = await action();
+    final mergedArgs = <String>[...?args];
+    if (resultArgsBuilder != null) {
+      mergedArgs.addAll(resultArgsBuilder(result));
+    }
+    calls.add(_PerflogCall(operation: operation, args: mergedArgs));
+    return result;
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
+
 void main() {
   // Disable drift's multiple database warning for tests
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -483,6 +519,46 @@ void main() {
         expect(entries, hasLength(2));
         expect(entries.map((entry) => entry.clockHash), contains('hash-1'));
         expect(entries.map((entry) => entry.clockHash), contains('hash-2'));
+      });
+
+      testWidgets('uses shard cache for shard lookup after warmup',
+          (tester) async {
+        final perflogCalls = <_PerflogCall>[];
+        final testDatabase = TestSyncDatabase.memory();
+        final cacheAwareStorage = DriftStorage.withDatabase(
+          testDatabase,
+          perflog: _RecordingPerflog(perflogCalls),
+        );
+        await cacheAwareStorage.initialize();
+
+        final shardIri = const IriTerm('https://example.com/shard-cached#it');
+        final indexIri = const IriTerm('https://example.com/index-cached#it');
+        final resourceType = const IriTerm('https://example.com/CachedType');
+
+        await cacheAwareStorage.warmupIriIds([shardIri]);
+        await cacheAwareStorage.saveIndexEntry(
+          shardIri: shardIri,
+          indexIri: indexIri,
+          resourceIri: const IriTerm('https://example.com/resource-cached#it'),
+          resourceType: resourceType,
+          clockHash: 'hash-cached',
+          ourPhysicalClock: 10,
+          updatedAt: 20,
+        );
+
+        final entries =
+            await cacheAwareStorage.getActiveIndexEntriesForShard(shardIri);
+
+        expect(entries, hasLength(1));
+        final resolveCalls = perflogCalls
+            .where((call) =>
+                call.operation ==
+                'storage.getActiveIndexEntriesForShard.resolveShardIriId')
+            .toList(growable: false);
+        expect(resolveCalls, isNotEmpty);
+        expect(resolveCalls.last.args, contains('cacheSource=shardCache'));
+
+        await cacheAwareStorage.close();
       });
     });
 

@@ -29,8 +29,10 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   final IriTermFactory _iriTermFactory;
   final core.Perflog _perflog;
   final LRUCache<String, int> _iriIdCache;
+  final LRUCache<String, int> _shardIriIdCache;
 
   static const int _iriIdCacheSize = 20000;
+  static const int _shardIriIdCacheSize = 50000;
 
   bool _initialized = false;
 
@@ -46,6 +48,8 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
         _iriTermFactory = iriTermFactory,
         _perflog = perflog.create('Storage', 'DriftStorage'),
         _iriIdCache = LRUCache<String, int>(maxCacheSize: _iriIdCacheSize),
+        _shardIriIdCache =
+            LRUCache<String, int>(maxCacheSize: _shardIriIdCacheSize),
         _codec = TurtleCodec(iriTermFactory: iriTermFactory);
 
   /// Create DriftStorage with automatic platform detection.
@@ -460,14 +464,21 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
       return;
     }
 
-    await _perflog.measure(
+    final resolveResult = await _perflog.measure(
       'storage.iri.warmup',
-      () async {
-        await _getOrCreateIriIdsMap(iriValues);
-      },
+      () => indexDao.getOrCreateIriIdsBatchWithStats(iriValues),
       args: ['requestCount=${iriValues.length}'],
+      resultArgsBuilder: (stats) => [
+        'existingCount=${stats.existingCount}',
+        'createdCount=${stats.createdCount}',
+      ],
       minDurationMs: 5,
     );
+
+    for (final entry in resolveResult.ids.entries) {
+      _iriIdCache[entry.key] = entry.value;
+      _shardIriIdCache[entry.key] = entry.value;
+    }
   }
 
   // ========================================================================
@@ -538,6 +549,53 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
     }
 
     return result;
+  }
+
+  Future<({int shardIriId, bool fromShardCache})> _resolveShardIriId(
+      IriTerm shardIri) async {
+    final shardIriValue = shardIri.value;
+    final cachedShardId = _shardIriIdCache[shardIriValue];
+    if (cachedShardId != null) {
+      _perflog.measure(
+        'storage.iri.shard.cacheStats',
+        () async => null,
+        args: const [
+          'requestCount=1',
+          'cacheHitCount=1',
+          'cacheMissCount=0',
+        ],
+        minDurationMs: 0,
+      );
+      return (shardIriId: cachedShardId, fromShardCache: true);
+    }
+
+    final resolveResult = await _perflog.measure(
+      'storage.iri.shard.getOrCreateBatch',
+      () => indexDao.getOrCreateIriIdsBatchWithStats([shardIriValue]),
+      args: const ['requestCount=1'],
+      resultArgsBuilder: (stats) => [
+        'existingCount=${stats.existingCount}',
+        'createdCount=${stats.createdCount}',
+      ],
+      minDurationMs: 5,
+    );
+
+    final shardIriId = resolveResult.ids[shardIriValue]!;
+    _shardIriIdCache[shardIriValue] = shardIriId;
+    _iriIdCache[shardIriValue] = shardIriId;
+
+    _perflog.measure(
+      'storage.iri.shard.cacheStats',
+      () async => null,
+      args: const [
+        'requestCount=1',
+        'cacheHitCount=0',
+        'cacheMissCount=1',
+      ],
+      minDurationMs: 0,
+    );
+
+    return (shardIriId: shardIriId, fromShardCache: false);
   }
 
   /// Internal helper: Batch get IRIs from IDs
@@ -774,16 +832,17 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   @override
   Future<List<core.IndexEntryWithIri>> getActiveIndexEntriesForShard(
       IriTerm shardIri) async {
-    final shardIriId = await _perflog.measure(
+    final shardResolution = await _perflog.measure(
       'storage.getActiveIndexEntriesForShard.resolveShardIriId',
-      () async {
-        final iriIds = await _getOrCreateIriIdsMap([shardIri.value]);
-        return iriIds[shardIri.value]!;
-      },
+      () => _resolveShardIriId(shardIri),
       args: ['shard=${shardIri.debug}'],
-      resultArgsBuilder: (id) => ['shardIriId=$id'],
+      resultArgsBuilder: (resolution) => [
+        'shardIriId=${resolution.shardIriId}',
+        'cacheSource=${resolution.fromShardCache ? 'shardCache' : 'db'}',
+      ],
       minDurationMs: 5,
     );
+    final shardIriId = shardResolution.shardIriId;
 
     final driftEntries = await _perflog.measure(
       'storage.getActiveIndexEntriesForShard.query',
