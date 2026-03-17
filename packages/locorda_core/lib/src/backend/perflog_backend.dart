@@ -32,7 +32,9 @@ abstract interface class Perflog {
   Perflog create(String name, Object target, {bool? includeArgs});
 
   Future<T> measure<T>(String operation, Future<T> Function() action,
-      {List<String>? args, int? minDurationMs});
+      {List<String>? args,
+      int? minDurationMs,
+      List<String> Function(T)? resultArgsBuilder});
 
   Future<void> dispose() => Future.value();
 }
@@ -44,7 +46,9 @@ class DisabledPerflog extends Perflog {
 
   @override
   Future<T> measure<T>(String operation, Future<T> Function() action,
-          {List<String>? args, int? minDurationMs}) =>
+          {List<String>? args,
+          int? minDurationMs,
+          List<String> Function(T)? resultArgsBuilder}) =>
       action();
 }
 
@@ -159,12 +163,17 @@ class LoggingPerflog implements Perflog {
   }
 
   Future<T> measure<T>(String operation, Future<T> Function() action,
-      {List<String>? args, int? minDurationMs}) async {
+      {List<String>? args,
+      int? minDurationMs,
+      List<String> Function(T)? resultArgsBuilder}) async {
     //_operationsLog.info('$contextStr.$opPadded $argsStr');
     final entry = _tracker.enter(this, operation);
     final stopwatch = Stopwatch()..start();
+    T? result;
     try {
-      return await action();
+      final r = await action();
+      result = r;
+      return r;
     } finally {
       stopwatch.stop();
       final parentStack = _tracker.exit(entry);
@@ -174,7 +183,16 @@ class LoggingPerflog implements Perflog {
         final opPadded = _shortenMiddle(
                 ('.' * parentStack.length) + operation, operationWidth)
             .padRight(operationWidth);
-        final argsStr = _includeArgs ? _formatAndPadList(args, argsWidth) : '';
+        final resultArgs = resultArgsBuilder != null && result != null
+            ? resultArgsBuilder(result)
+            : [];
+        final argsStr = _includeArgs
+            ? _formatAndPadList(
+                resultArgs.isEmpty
+                    ? args
+                    : [if (args != null) ...args, ...resultArgs],
+                argsWidth)
+            : '';
         final contextStr = _formatAndPadList(_names, contextWidth);
         final duration = '$elapsedMs ms'.padLeft(8);
         _performanceLog.info('$contextStr $opPadded $duration $argsStr');

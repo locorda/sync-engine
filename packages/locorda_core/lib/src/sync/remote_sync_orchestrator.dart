@@ -2545,6 +2545,11 @@ class _ShardSyncOrchestrator {
             limitToResourceIris: limitToResources,
           ),
           minDurationMs: 5,
+          args: limitToResources != null
+              ? ['limitTo=${limitToResources.length}']
+              : ['limitTo=all'],
+          resultArgsBuilder: (finalEntrySet) =>
+              ['finalEntryCount=${finalEntrySet.length}'],
         );
 
         final updatedShardDocument = await _perflog.measure(
