@@ -5,6 +5,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 import 'package:locorda_core/locorda_core.dart' as core;
+import 'package:locorda_core/src/util/lru_cache.dart';
 //import 'package:locorda_core/src/storage/storage_interface.dart' as storage;
 import 'rdf/rdf_extensions.dart';
 import 'package:locorda_rdf_core/core.dart';
@@ -27,6 +28,9 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   final RdfGraphCodec _codec;
   final IriTermFactory _iriTermFactory;
   final core.Perflog _perflog;
+  final LRUCache<String, int> _iriIdCache;
+
+  static const int _iriIdCacheSize = 20000;
 
   bool _initialized = false;
 
@@ -41,6 +45,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   })  : _database = database,
         _iriTermFactory = iriTermFactory,
         _perflog = perflog.create('Storage', 'DriftStorage'),
+        _iriIdCache = LRUCache<String, int>(maxCacheSize: _iriIdCacheSize),
         _codec = TurtleCodec(iriTermFactory: iriTermFactory);
 
   /// Create DriftStorage with automatic platform detection.
@@ -455,17 +460,43 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   /// Internal helper: Get or create IRI ID from SyncIris table
   /// IndexDao has IriBatchLoader mixin which provides these methods
   Future<int> _getOrCreateIriId(String iri) async {
-    return (await indexDao.getOrCreateIriIdsBatch({iri}))[iri]!;
+    final result = await _getOrCreateIriIdsMap([iri]);
+    return result[iri]!;
   }
 
   /// Internal helper: Batch get IRI IDs
 
   Future<Set<int>> _getOrCreateIriIds(Iterable<String> iris) async {
-    return (await indexDao.getOrCreateIriIdsBatch(iris)).values.toSet();
+    return (await _getOrCreateIriIdsMap(iris)).values.toSet();
   }
 
   Future<Map<String, int>> _getOrCreateIriIdsMap(Iterable<String> iris) async {
-    return (await indexDao.getOrCreateIriIdsBatch(iris));
+    final uniqueIris = iris.toSet();
+    if (uniqueIris.isEmpty) {
+      return const {};
+    }
+
+    final result = <String, int>{};
+    final misses = <String>{};
+
+    for (final iri in uniqueIris) {
+      final cached = _iriIdCache[iri];
+      if (cached != null) {
+        result[iri] = cached;
+      } else {
+        misses.add(iri);
+      }
+    }
+
+    if (misses.isNotEmpty) {
+      final loaded = await indexDao.getOrCreateIriIdsBatch(misses);
+      for (final entry in loaded.entries) {
+        _iriIdCache[entry.key] = entry.value;
+      }
+      result.addAll(loaded);
+    }
+
+    return result;
   }
 
   /// Internal helper: Batch get IRIs from IDs
