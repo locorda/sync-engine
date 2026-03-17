@@ -35,6 +35,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   static const int _shardIriIdCacheSize = 50000;
 
   bool _initialized = false;
+  bool _didLogActiveShardQueryPlan = false;
 
   DriftStorage._({
     required this.documentDao,
@@ -598,6 +599,52 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
     return (shardIriId: shardIriId, fromShardCache: false);
   }
 
+  Future<void> _logActiveShardQueryPlanOnce(int shardIriId) async {
+    if (_didLogActiveShardQueryPlan) {
+      return;
+    }
+    _didLogActiveShardQueryPlan = true;
+
+    try {
+      final rows = await _database
+          .customSelect(
+            '''
+      EXPLAIN QUERY PLAN
+      SELECT e.resource_iri_id
+      FROM index_entries e
+      JOIN sync_iris i ON i.id = e.resource_iri_id
+      WHERE e.shard_iri = ? AND e.is_deleted = 0
+      ''',
+            variables: [Variable.withInt(shardIriId)],
+          )
+          .get();
+
+      final planDetails = rows
+          .map((row) => row.data['detail']?.toString() ?? 'unknown')
+          .join(' || ');
+
+      _perflog.measure(
+        'storage.getActiveIndexEntriesForShard.queryPlan',
+        () async => null,
+        args: [
+          'shardIriId=$shardIriId',
+          'plan=$planDetails',
+        ],
+        minDurationMs: 0,
+      );
+    } catch (_) {
+      _didLogActiveShardQueryPlan = false;
+      rethrow;
+    }
+  }
+
+  Future<int> _measureDbProbeMs() async {
+    final stopwatch = Stopwatch()..start();
+    await _database.customSelect('SELECT 1').getSingle();
+    stopwatch.stop();
+    return stopwatch.elapsedMilliseconds;
+  }
+
   /// Internal helper: Batch get IRIs from IDs
   Future<Map<int, String>> _getIris(Set<int> ids) async {
     return await indexDao.getIrisBatch(ids);
@@ -844,12 +891,34 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
     );
     final shardIriId = shardResolution.shardIriId;
 
+    await _logActiveShardQueryPlanOnce(shardIriId);
+    final dbProbeBeforeMs = await _measureDbProbeMs();
+    final queryStopwatch = Stopwatch()..start();
+
     final driftEntries = await _perflog.measure(
       'storage.getActiveIndexEntriesForShard.query',
       () => indexDao.getActiveIndexEntriesForShard(shardIriId),
-      args: ['shardIriId=$shardIriId'],
+      args: [
+        'shardIriId=$shardIriId',
+        'dbProbeBeforeMs=$dbProbeBeforeMs',
+      ],
       resultArgsBuilder: (entries) => ['resultCount=${entries.length}'],
       minDurationMs: 5,
+    );
+    queryStopwatch.stop();
+    final dbProbeAfterMs = await _measureDbProbeMs();
+
+    _perflog.measure(
+      'storage.getActiveIndexEntriesForShard.contentionProbe',
+      () async => null,
+      args: [
+        'shardIriId=$shardIriId',
+        'queryMs=${queryStopwatch.elapsedMilliseconds}',
+        'dbProbeBeforeMs=$dbProbeBeforeMs',
+        'dbProbeAfterMs=$dbProbeAfterMs',
+        'resultCount=${driftEntries.length}',
+      ],
+      minDurationMs: 0,
     );
 
     return _perflog.measure(
