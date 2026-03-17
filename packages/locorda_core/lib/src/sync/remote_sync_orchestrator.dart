@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' show min;
 
 import 'package:collection/collection.dart';
 import 'package:locorda_core/locorda_core.dart';
@@ -1582,7 +1583,54 @@ class _DocumentSyncHelper {
     return null;
   }
 
+  /// Maximum documents per commit transaction chunk.
+  ///
+  /// Keeps individual transaction durations short (~100-200ms) so the shared
+  /// Drift isolate is not blocked for seconds, which would stall UI queries.
+  static const _maxDocumentsPerCommitChunk = 500;
+
   Future<void> commitDeferredBatch(_DeferredBatchCommit deferred) async {
+    final totalDocs = deferred.saveRequests.length;
+
+    if (totalDocs <= _maxDocumentsPerCommitChunk) {
+      await _commitBatchChunk(deferred);
+      return;
+    }
+
+    // Pre-group index entries by document IRI for efficient chunk assignment.
+    final indexEntriesByDocIri = <IriTerm, List<SaveIndexEntryRequest>>{};
+    for (final entry in deferred.indexEntryRequests) {
+      final docIri = entry.resourceIri.getDocumentIri();
+      (indexEntriesByDocIri[docIri] ??= []).add(entry);
+    }
+
+    final chunkCount =
+        (totalDocs + _maxDocumentsPerCommitChunk - 1) ~/ _maxDocumentsPerCommitChunk;
+    _log.fine('Splitting commit into $chunkCount chunks '
+        '($totalDocs docs, chunk size $_maxDocumentsPerCommitChunk)');
+
+    for (var i = 0; i < totalDocs; i += _maxDocumentsPerCommitChunk) {
+      final end = min(i + _maxDocumentsPerCommitChunk, totalDocs);
+      final docChunk = deferred.saveRequests.sublist(i, end);
+
+      final chunkIndexEntries = <SaveIndexEntryRequest>[];
+      final chunkEtags = <IriTerm, String>{};
+      for (final doc in docChunk) {
+        final entries = indexEntriesByDocIri[doc.documentIri];
+        if (entries != null) chunkIndexEntries.addAll(entries);
+        final etag = deferred.etagUpdates[doc.documentIri];
+        if (etag != null) chunkEtags[doc.documentIri] = etag;
+      }
+
+      await _commitBatchChunk((
+        saveRequests: docChunk,
+        indexEntryRequests: chunkIndexEntries,
+        etagUpdates: chunkEtags,
+      ));
+    }
+  }
+
+  Future<void> _commitBatchChunk(_DeferredBatchCommit deferred) async {
     final commit = () async {
       await _perflog.measure(
         'batch.commit.saveDocuments',
