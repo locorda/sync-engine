@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/hlc_service.dart';
@@ -455,18 +457,43 @@ class RemoteSyncOrchestrator {
           final phase1Results = <_ShardPhase1Result>[];
           await _perflog.measure(
             'content.phase1Download',
-            () => _executeInChunks(
-              allShardTasks.map((shard) => () async {
-                    final result = await _shardSyncOrchestrator.downloadShard(
-                      shard,
-                      lastSyncTimestamp,
-                      remoteSyncStorage: remoteSyncStorage,
-                      useShardDatasets: shouldUseShardDataset,
-                    );
-                    if (result != null) phase1Results.add(result);
-                  }),
-              maxConcurrent: remoteSyncStorage.maxConcurrentShardSyncs,
-            ),
+            () async {
+              if (shouldUseShardDataset) {
+                final adapter = FilePerShardShardSyncAdapter(
+                  remoteSyncStorage: remoteSyncStorage,
+                );
+                await _executeInChunks(
+                  allShardTasks.map((shard) => () async {
+                        final result = await _shardSyncOrchestrator
+                            .downloadShardWithAdapter<RdfDataset,
+                                DatasetBasedGraphSyncStorage>(
+                          shard,
+                          lastSyncTimestamp,
+                          adapter: adapter,
+                        );
+                        if (result != null) phase1Results.add(result);
+                      }),
+                  maxConcurrent: remoteSyncStorage.maxConcurrentShardSyncs,
+                );
+              } else {
+                final adapter = FilePerResourceShardSyncAdapter(
+                  remoteSyncStorage: remoteSyncStorage,
+                );
+                await _executeInChunks(
+                  allShardTasks.map((shard) => () async {
+                        final result = await _shardSyncOrchestrator
+                            .downloadShardWithAdapter<RdfGraph,
+                                RemoteSyncStorage>(
+                          shard,
+                          lastSyncTimestamp,
+                          adapter: adapter,
+                        );
+                        if (result != null) phase1Results.add(result);
+                      }),
+                  maxConcurrent: remoteSyncStorage.maxConcurrentShardSyncs,
+                );
+              }
+            },
             args: ['shards=${allShardTasks.length}'],
             minDurationMs: 10,
           );
@@ -1669,34 +1696,132 @@ class FilePerResourceShardSyncAdapter
 class FilePerShardShardSyncAdapter
     implements _ShardSyncAdapter<RdfDataset, DatasetBasedGraphSyncStorage> {
   final RemoteSyncStorage _remoteSyncStorage;
+  final List<_PendingDatasetDownload> _pendingDownloads =
+      <_PendingDatasetDownload>[];
+  final List<_PendingDatasetUpload> _pendingUploads = <_PendingDatasetUpload>[];
+  bool _downloadFlushScheduled = false;
+  bool _uploadFlushScheduled = false;
+
+  static const int _batchSize = 64;
 
   FilePerShardShardSyncAdapter({
     required RemoteSyncStorage remoteSyncStorage,
   }) : _remoteSyncStorage = remoteSyncStorage;
 
   @override
-  Future<RemoteDownloadResult<RdfDataset>> downloadShard(IriTerm documentIri,
-          {String? ifNoneMatch}) async =>
-      (await _remoteSyncStorage.downloadManyDatasets([
-        RemoteDownloadRequest(
+  Future<RemoteDownloadResult<RdfDataset>> downloadShard(
+    IriTerm documentIri, {
+    String? ifNoneMatch,
+  }) {
+    final completer = Completer<RemoteDownloadResult<RdfDataset>>();
+    _pendingDownloads.add(
+      _PendingDatasetDownload(
+        request: RemoteDownloadRequest(
           documentIri: documentIri,
           ifNoneMatch: ifNoneMatch,
         ),
-      ]))
-          .single;
+        completer: completer,
+      ),
+    );
+    _scheduleDownloadFlush();
+    return completer.future;
+  }
 
   @override
   Future<RemoteUploadResult> uploadShard(
-          IriTerm documentIri, RdfDataset document,
-          {String? ifMatch}) async =>
-      (await _remoteSyncStorage.uploadManyDatasets([
-        RemoteUploadRequest<RdfDataset>(
+      IriTerm documentIri, RdfDataset document,
+      {String? ifMatch}) {
+    final completer = Completer<RemoteUploadResult>();
+    _pendingUploads.add(
+      _PendingDatasetUpload(
+        request: RemoteUploadRequest<RdfDataset>(
           documentIri: documentIri,
           document: document,
           ifMatch: ifMatch,
         ),
-      ]))
-          .single;
+        completer: completer,
+      ),
+    );
+    _scheduleUploadFlush();
+    return completer.future;
+  }
+
+  void _scheduleDownloadFlush() {
+    if (_downloadFlushScheduled) {
+      return;
+    }
+    _downloadFlushScheduled = true;
+    scheduleMicrotask(_flushDownloadQueue);
+  }
+
+  Future<void> _flushDownloadQueue() async {
+    try {
+      while (_pendingDownloads.isNotEmpty) {
+        final take = _pendingDownloads.length > _batchSize
+            ? _batchSize
+            : _pendingDownloads.length;
+        final batch = _pendingDownloads.sublist(0, take);
+        _pendingDownloads.removeRange(0, take);
+        final requests = batch.map((e) => e.request).toList(growable: false);
+
+        try {
+          final results =
+              await _remoteSyncStorage.downloadManyDatasets(requests);
+          assert(results.length == batch.length);
+          for (var i = 0; i < batch.length; i++) {
+            batch[i].completer.complete(results[i]);
+          }
+        } catch (e, st) {
+          for (final pending in batch) {
+            pending.completer.completeError(e, st);
+          }
+        }
+      }
+    } finally {
+      _downloadFlushScheduled = false;
+      if (_pendingDownloads.isNotEmpty) {
+        _scheduleDownloadFlush();
+      }
+    }
+  }
+
+  void _scheduleUploadFlush() {
+    if (_uploadFlushScheduled) {
+      return;
+    }
+    _uploadFlushScheduled = true;
+    scheduleMicrotask(_flushUploadQueue);
+  }
+
+  Future<void> _flushUploadQueue() async {
+    try {
+      while (_pendingUploads.isNotEmpty) {
+        final take = _pendingUploads.length > _batchSize
+            ? _batchSize
+            : _pendingUploads.length;
+        final batch = _pendingUploads.sublist(0, take);
+        _pendingUploads.removeRange(0, take);
+        final requests = batch.map((e) => e.request).toList(growable: false);
+
+        try {
+          final results = await _remoteSyncStorage.uploadManyDatasets(requests);
+          assert(results.length == batch.length);
+          for (var i = 0; i < batch.length; i++) {
+            batch[i].completer.complete(results[i]);
+          }
+        } catch (e, st) {
+          for (final pending in batch) {
+            pending.completer.completeError(e, st);
+          }
+        }
+      }
+    } finally {
+      _uploadFlushScheduled = false;
+      if (_pendingUploads.isNotEmpty) {
+        _scheduleUploadFlush();
+      }
+    }
+  }
 
   @override
   RdfGraph extractGraph(RdfDataset data) => data.defaultGraph;
@@ -1758,6 +1883,20 @@ class FilePerShardShardSyncAdapter
       namedGraphs: graphSyncStorage.namedGraphs,
     );
   }
+}
+
+class _PendingDatasetDownload {
+  final RemoteDownloadRequest request;
+  final Completer<RemoteDownloadResult<RdfDataset>> completer;
+
+  _PendingDatasetDownload({required this.request, required this.completer});
+}
+
+class _PendingDatasetUpload {
+  final RemoteUploadRequest<RdfDataset> request;
+  final Completer<RemoteUploadResult> completer;
+
+  _PendingDatasetUpload({required this.request, required this.completer});
 }
 
 /// Adapter interface for different shard sync modes.
@@ -1856,9 +1995,31 @@ class _ShardSyncOrchestrator {
     required RemoteSyncStorage remoteSyncStorage,
     required bool useShardDatasets,
   }) async {
-    final _ShardSyncAdapter adapter = useShardDatasets
-        ? FilePerShardShardSyncAdapter(remoteSyncStorage: remoteSyncStorage)
-        : FilePerResourceShardSyncAdapter(remoteSyncStorage: remoteSyncStorage);
+    if (useShardDatasets) {
+      final adapter =
+          FilePerShardShardSyncAdapter(remoteSyncStorage: remoteSyncStorage);
+      return downloadShardWithAdapter<RdfDataset, DatasetBasedGraphSyncStorage>(
+        shard,
+        lastSyncTimestamp,
+        adapter: adapter,
+      );
+    }
+
+    final adapter =
+        FilePerResourceShardSyncAdapter(remoteSyncStorage: remoteSyncStorage);
+    return downloadShardWithAdapter<RdfGraph, RemoteSyncStorage>(
+      shard,
+      lastSyncTimestamp,
+      adapter: adapter,
+    );
+  }
+
+  Future<_ShardPhase1Result?>
+      downloadShardWithAdapter<T, G extends GraphSyncStorage>(
+    ShardSyncSpec shard,
+    int lastSyncTimestamp, {
+    required _ShardSyncAdapter<T, G> adapter,
+  }) async {
     return _downloadShardTyped(
       shard,
       lastSyncTimestamp,
