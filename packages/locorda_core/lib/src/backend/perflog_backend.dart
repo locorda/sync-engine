@@ -21,7 +21,7 @@ abstract interface class Perflog {
   static Perflog root({
     bool includeArgs = true,
     int contextWidth = 30,
-    int operationWidth = 20,
+    int operationWidth = 30,
     int argsWidth = 150,
   }) =>
       LoggingPerflog.root(
@@ -173,7 +173,7 @@ class LoggingPerflog implements Perflog {
       final threshold = minDurationMs ?? 0;
       if (elapsedMs >= threshold) {
         final opPadded = _shortenMiddle(
-                operation.padLeft(parentStack.length, '.'), operationWidth)
+                ('.' * parentStack.length) + operation, operationWidth)
             .padRight(operationWidth);
         final argsStr = _includeArgs ? _formatAndPadList(args, argsWidth) : '';
         final contextStr = _formatAndPadList(_names, contextWidth);
