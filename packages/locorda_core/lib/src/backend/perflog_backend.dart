@@ -70,7 +70,7 @@ class LoggingPerflog implements Perflog {
   static Perflog root({
     bool includeArgs = true,
     int contextWidth = 30,
-    int operationWidth = 20,
+    int operationWidth = 30,
     int argsWidth = 50,
   }) =>
       LoggingPerflog._(
