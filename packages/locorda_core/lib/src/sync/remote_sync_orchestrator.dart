@@ -1630,36 +1630,39 @@ class _DocumentSyncHelper {
     }
   }
 
+  /// Commits a batch chunk without an outer transaction wrapper.
+  ///
+  /// Each operation handles its own atomicity internally:
+  /// - [Storage.saveDocuments] runs encoding outside its inner transaction
+  /// - [Storage.saveIndexEntries] uses batch writes
+  /// - [Storage.setRemoteETags] uses batch writes
+  ///
+  /// Removing the outer transaction is safe because sync data is
+  /// self-healing: partial commits are corrected on the next sync cycle.
+  /// This avoids holding the DB lock during CPU-heavy Turtle encoding
+  /// (~100ms per 500 docs), keeping individual lock durations short.
   Future<void> _commitBatchChunk(_DeferredBatchCommit deferred) async {
-    final commit = () async {
+    await _perflog.measure(
+      'batch.commit.saveDocuments',
+      () => _storage.saveDocuments(deferred.saveRequests),
+      args: ['count=${deferred.saveRequests.length}'],
+      minDurationMs: 5,
+    );
+    if (deferred.indexEntryRequests.isNotEmpty) {
       await _perflog.measure(
-        'batch.commit.saveDocuments',
-        () => _storage.saveDocuments(deferred.saveRequests),
-        args: ['count=${deferred.saveRequests.length}'],
+        'batch.commit.saveIndexEntries',
+        () => _storage.saveIndexEntries(deferred.indexEntryRequests),
+        args: ['count=${deferred.indexEntryRequests.length}'],
         minDurationMs: 5,
       );
-      if (deferred.indexEntryRequests.isNotEmpty) {
-        await _perflog.measure(
-          'batch.commit.saveIndexEntries',
-          () => _storage.saveIndexEntries(deferred.indexEntryRequests),
-          args: ['count=${deferred.indexEntryRequests.length}'],
-          minDurationMs: 5,
-        );
-      }
-      if (deferred.etagUpdates.isNotEmpty) {
-        await _perflog.measure(
-          'batch.commit.setRemoteEtags',
-          () => _storage.setRemoteETags(_remoteId, deferred.etagUpdates),
-          args: ['count=${deferred.etagUpdates.length}'],
-          minDurationMs: 5,
-        );
-      }
-    };
-
-    if (_storage case final TransactionalStorage txStorage) {
-      await txStorage.inTransaction(commit);
-    } else {
-      await commit();
+    }
+    if (deferred.etagUpdates.isNotEmpty) {
+      await _perflog.measure(
+        'batch.commit.setRemoteEtags',
+        () => _storage.setRemoteETags(_remoteId, deferred.etagUpdates),
+        args: ['count=${deferred.etagUpdates.length}'],
+        minDurationMs: 5,
+      );
     }
   }
 
