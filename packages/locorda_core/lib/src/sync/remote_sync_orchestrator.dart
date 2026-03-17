@@ -2887,8 +2887,13 @@ class _ShardSyncOrchestrator {
       {Set<IriTerm>? limitToResourceIris,
       Iterable<SaveIndexEntryRequest> pendingIndexEntryWrites =
           const <SaveIndexEntryRequest>[]}) async {
-    final activeEntries =
-        await _storage.getActiveIndexEntriesForShard(shardIri);
+    final activeEntries = await _perflog.measure(
+      '_getFinalEntrySet.getActiveIndexEntriesForShard',
+      () => _storage.getActiveIndexEntriesForShard(shardIri),
+      args: ['shard=${shardIri.debug}'],
+      resultArgsBuilder: (entries) => ['activeEntryCount=${entries.length}'],
+      minDurationMs: 5,
+    );
 
     final entriesByResource = <IriTerm, IndexEntryWithIri>{
       for (final entry in activeEntries) entry.resourceIri: entry,

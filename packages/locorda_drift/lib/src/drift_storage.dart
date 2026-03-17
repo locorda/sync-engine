@@ -26,6 +26,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   final SyncDatabase _database;
   final RdfGraphCodec _codec;
   final IriTermFactory _iriTermFactory;
+  final core.Perflog _perflog;
 
   bool _initialized = false;
 
@@ -35,9 +36,11 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
     required this.indexDao,
     required this.remoteSyncStateDao,
     required SyncDatabase database,
+    core.Perflog perflog = core.Perflog.disabled,
     IriTermFactory iriTermFactory = IriTerm.validated,
   })  : _database = database,
         _iriTermFactory = iriTermFactory,
+        _perflog = perflog.create('Storage', 'DriftStorage'),
         _codec = TurtleCodec(iriTermFactory: iriTermFactory);
 
   /// Create DriftStorage with automatic platform detection.
@@ -58,6 +61,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   static Future<DriftStorage> create({
     LocordaDriftWebOptions? web,
     LocordaDriftNativeOptions? native,
+    core.Perflog perflog = core.Perflog.disabled,
     IriTermFactory iriTermFactory = IriTerm.validated,
   }) async {
     final database = await SyncDatabaseImpl.create(web: web, native: native);
@@ -68,12 +72,14 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
         indexDao: database.indexDao,
         remoteSyncStateDao: database.remoteSyncStateDao,
         database: database,
+        perflog: perflog,
         iriTermFactory: iriTermFactory);
   }
 
   /// Create DriftStorage with custom database instance (for testing)
   factory DriftStorage.withDatabase(
     SyncDatabase database, {
+    core.Perflog perflog = core.Perflog.disabled,
     IriTermFactory iriTermFactory = IriTerm.validated,
   }) {
     return DriftStorage._(
@@ -82,6 +88,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
       indexDao: database.indexDao,
       remoteSyncStateDao: database.remoteSyncStateDao,
       database: database,
+      perflog: perflog,
       iriTermFactory: iriTermFactory,
     );
   }
@@ -695,25 +702,40 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   @override
   Future<List<core.IndexEntryWithIri>> getActiveIndexEntriesForShard(
       IriTerm shardIri) async {
-    // Translate shard IRI to ID
-    final iriIds = await _getOrCreateIriIdsMap([shardIri.value]);
-    final shardIriId = iriIds[shardIri.value]!;
+    final shardIriId = await _perflog.measure(
+      'storage.getActiveIndexEntriesForShard.resolveShardIriId',
+      () async {
+        final iriIds = await _getOrCreateIriIdsMap([shardIri.value]);
+        return iriIds[shardIri.value]!;
+      },
+      args: ['shard=${shardIri.debug}'],
+      resultArgsBuilder: (id) => ['shardIriId=$id'],
+      minDurationMs: 5,
+    );
 
-    // Get entries from DAO
-    final driftEntries =
-        await indexDao.getActiveIndexEntriesForShard(shardIriId);
+    final driftEntries = await _perflog.measure(
+      'storage.getActiveIndexEntriesForShard.query',
+      () => indexDao.getActiveIndexEntriesForShard(shardIriId),
+      args: ['shardIriId=$shardIriId'],
+      resultArgsBuilder: (entries) => ['resultCount=${entries.length}'],
+      minDurationMs: 5,
+    );
 
-    // Convert to Storage interface type
-    return driftEntries
-        .map((driftEntry) => core.IndexEntryWithIri(
-              resourceIri: _iriTermFactory(driftEntry.resourceIri),
-              clockHash: driftEntry.entry.clockHash,
-              headerProperties: driftEntry.entry.headerProperties,
-              updatedAt: driftEntry.entry.updatedAt,
-              ourPhysicalClock: driftEntry.entry.ourPhysicalClock,
-              isDeleted: driftEntry.entry.isDeleted,
-            ))
-        .toList();
+    return _perflog.measure(
+      'storage.getActiveIndexEntriesForShard.mapResults',
+      () async => driftEntries
+          .map((driftEntry) => core.IndexEntryWithIri(
+                resourceIri: _iriTermFactory(driftEntry.resourceIri),
+                clockHash: driftEntry.entry.clockHash,
+                headerProperties: driftEntry.entry.headerProperties,
+                updatedAt: driftEntry.entry.updatedAt,
+                ourPhysicalClock: driftEntry.entry.ourPhysicalClock,
+                isDeleted: driftEntry.entry.isDeleted,
+              ))
+          .toList(growable: false),
+      resultArgsBuilder: (entries) => ['resultCount=${entries.length}'],
+      minDurationMs: 5,
+    );
   }
 
   @override
