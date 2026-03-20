@@ -2803,8 +2803,7 @@ class _ShardSyncOrchestrator {
     for (final entry in localIndexEntries) {
       final Set<RdfObject>? filterValues;
       if (filter != null && entry.headerProperties != null) {
-        final graph = turtle.decode(entry.headerProperties!);
-        filterValues = graph.getMultiValueObjects(
+        filterValues = entry.headerProperties!.getMultiValueObjects(
             entry.resourceIri, filter.filterPredicate);
       } else {
         filterValues = null;

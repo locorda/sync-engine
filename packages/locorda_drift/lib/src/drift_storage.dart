@@ -6,7 +6,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:locorda_core/locorda_core.dart' as core;
 import 'package:locorda_core/src/util/lru_cache.dart';
-//import 'package:locorda_core/src/storage/storage_interface.dart' as storage;
+import 'package:locorda_rdf_jelly/jelly.dart';
 import 'rdf/rdf_extensions.dart';
 import 'package:locorda_rdf_core/core.dart';
 
@@ -25,7 +25,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   final IndexDao indexDao;
   final RemoteSyncStateDao remoteSyncStateDao;
   final SyncDatabase _database;
-  final RdfGraphCodec _codec;
+  final RdfBinaryGraphCodec _codec;
   final IriTermFactory _iriTermFactory;
   final core.Perflog _perflog;
   final LRUCache<String, int> _iriIdCache;
@@ -51,7 +51,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
         _iriIdCache = LRUCache<String, int>(maxCacheSize: _iriIdCacheSize),
         _shardIriIdCache =
             LRUCache<String, int>(maxCacheSize: _shardIriIdCacheSize),
-        _codec = TurtleCodec(iriTermFactory: iriTermFactory);
+        _codec = JellyGraphCodec(/*iriTermFactory: iriTermFactory*/);
 
   /// Create DriftStorage with automatic platform detection.
   ///
@@ -169,7 +169,8 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
     final encodedContents = await _perflog.measure(
       'saveDocuments.encode',
       () async => requestList
-          .map((r) => _codec.encode(r.document, baseUri: r.documentIri.value))
+          .map((r) =>
+              _codec.encode(r.document /*, baseUri: r.documentIri.value*/))
           .toList(growable: false),
       args: ['count=${requestList.length}'],
       minDurationMs: 5,
@@ -301,8 +302,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
     if (document == null) return null;
 
     // Parse RDF content
-    final graph =
-        _codec.decode(document.documentContent, documentUrl: documentIri.value);
+    final graph = _codec.decode(document.documentContent);
 
     return core.StoredDocument(
       documentIri: documentIri,
@@ -341,8 +341,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
         continue;
       }
 
-      final graph = _codec.decode(document.documentContent,
-          documentUrl: documentIri.value);
+      final graph = _codec.decode(document.documentContent);
 
       result[documentIri] = core.StoredDocument(
         documentIri: documentIri,
@@ -704,7 +703,8 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
           .map((e) => core.IndexEntryWithIri(
                 resourceIri: _iriTermFactory(e.resourceIri),
                 clockHash: e.entry.clockHash,
-                headerProperties: e.entry.headerProperties,
+                headerProperties:
+                    _decodeHeaderProperties(e.entry.headerProperties),
                 updatedAt: e.entry.updatedAt,
                 isDeleted: e.entry.isDeleted,
                 ourPhysicalClock: e.entry.ourPhysicalClock,
@@ -735,7 +735,8 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
             .map((e) => core.IndexEntryWithIri(
                   resourceIri: _iriTermFactory(e.resourceIri),
                   clockHash: e.entry.clockHash,
-                  headerProperties: e.entry.headerProperties,
+                  headerProperties:
+                      _decodeHeaderProperties(e.entry.headerProperties),
                   updatedAt: e.entry.updatedAt,
                   ourPhysicalClock: e.entry.ourPhysicalClock,
                   isDeleted: e.entry.isDeleted,
@@ -838,7 +839,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
     required IriTerm resourceIri,
     required IriTerm resourceType,
     required String clockHash,
-    String? headerProperties,
+    RdfGraph? headerProperties,
     bool isDeleted = false,
     required int ourPhysicalClock,
     required int updatedAt,
@@ -863,7 +864,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
       resourceIriId: resourceIriId,
       resourceTypeIriId: resourceTypeIriId,
       clockHash: clockHash,
-      headerProperties: headerProperties,
+      headerProperties: _encodeHeaderProperties(headerProperties),
       isDeleted: isDeleted,
       ourPhysicalClock: ourPhysicalClock,
       updatedAt: updatedAt,
@@ -896,7 +897,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
             resourceIriId: iriIds[request.resourceIri.value]!,
             resourceTypeIriId: iriIds[request.resourceType.value]!,
             clockHash: request.clockHash,
-            headerProperties: request.headerProperties,
+            headerProperties: _encodeHeaderProperties(request.headerProperties),
             isDeleted: request.isDeleted,
             ourPhysicalClock: request.ourPhysicalClock,
             updatedAt: request.updatedAt,
@@ -955,7 +956,8 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
           .map((driftEntry) => core.IndexEntryWithIri(
                 resourceIri: _iriTermFactory(driftEntry.resourceIri),
                 clockHash: driftEntry.entry.clockHash,
-                headerProperties: driftEntry.entry.headerProperties,
+                headerProperties:
+                    _decodeHeaderProperties(driftEntry.entry.headerProperties),
                 updatedAt: driftEntry.entry.updatedAt,
                 ourPhysicalClock: driftEntry.entry.ourPhysicalClock,
                 isDeleted: driftEntry.entry.isDeleted,
@@ -1136,8 +1138,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   List<core.StoredDocument> _convertToStoredDocuments(
       List<DocumentWithIri> documents) {
     return documents.map((doc) {
-      final graph =
-          _codec.decode(doc.document.documentContent, documentUrl: doc.iri);
+      final graph = _codec.decode(doc.document.documentContent);
 
       return core.StoredDocument(
         documentIri: _iriTermFactory(doc.iri),
@@ -1333,5 +1334,19 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
               .map((row) => core.RemoteId(row.remoteType, row.remoteId))
               .toSet(),
         );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Header properties encoding/decoding helpers
+  // ---------------------------------------------------------------------------
+
+  Uint8List? _encodeHeaderProperties(RdfGraph? graph) {
+    if (graph == null) return null;
+    return _codec.encode(graph);
+  }
+
+  RdfGraph? _decodeHeaderProperties(Uint8List? bytes) {
+    if (bytes == null) return null;
+    return _codec.decode(bytes);
   }
 }

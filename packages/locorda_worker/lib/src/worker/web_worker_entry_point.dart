@@ -6,6 +6,7 @@ library;
 import 'dart:js_interop';
 
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_worker/src/shared/worker_params.dart';
 import 'package:locorda_worker/src/worker/worker_params_to_engine_params.dart';
 import 'package:logging/logging.dart';
@@ -178,8 +179,14 @@ Future<void> _handleWorkerMessage(
           activeRemoteList?.map((id) => id.toString()).toList();
       final config = SyncEngineConfig.fromJson(
           configMap); // Create context and initialize sync system
-      final newContext =
-          WorkerContext(WebWorkerSender(), channel, perflog: perflog);
+      // Web workers use turtle (text) codec since postMessage can't transfer Uint8List efficiently
+      final newContext = WorkerContext(
+        WebWorkerSender(),
+        channel,
+        encodeGraph: (graph) => turtle.encode(graph),
+        decodeGraph: (encoded) => turtle.decode(encoded as String),
+        perflog: perflog,
+      );
       final workerParams = await workerSetup();
       final engineParams = await toEngineParams(
           workerParams, newContext, config,

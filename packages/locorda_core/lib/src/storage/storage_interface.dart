@@ -300,7 +300,7 @@ abstract interface class Storage {
   /// - [indexIri]: The index this entry belongs to (immutable)
   /// - [resourceIri]: The resource this entry points to
   /// - [clockHash]: CRDT clock hash from the resource
-  /// - [headerProperties]: Turtle-encoded indexed properties (nullable)
+  /// - [headerProperties]: Indexed properties as RDF graph (nullable)
   /// - [isDeleted]: Whether this entry is marked as deleted (tombstone)
   ///
   /// Timestamps (updatedAt, ourPhysicalClock) are set automatically by storage.
@@ -310,7 +310,7 @@ abstract interface class Storage {
     required IriTerm resourceIri,
     required IriTerm resourceType,
     required String clockHash,
-    String? headerProperties,
+    RdfGraph? headerProperties,
     bool isDeleted = false,
     required int ourPhysicalClock,
     required int updatedAt,
@@ -668,10 +668,10 @@ class IndexEntryWithIri {
   /// Clock hash from the resource's CRDT metadata
   final String clockHash;
 
-  /// Turtle-encoded header properties as RDF triples.
+  /// Indexed properties as RDF graph.
   /// Contains the indexed properties for this entry (e.g., schema:title, schema:datePublished).
   /// null if no header properties configured for this index.
-  final String? headerProperties;
+  final RdfGraph? headerProperties;
 
   /// Timestamp when this entry was last updated (milliseconds since epoch, for cursor-based pagination)
   final int updatedAt;
@@ -753,7 +753,7 @@ class SaveIndexEntryRequest {
   final IriTerm resourceIri;
   final IriTerm resourceType;
   final String clockHash;
-  final String? headerProperties;
+  final RdfGraph? headerProperties;
   final bool isDeleted;
   final int ourPhysicalClock;
   final int updatedAt;

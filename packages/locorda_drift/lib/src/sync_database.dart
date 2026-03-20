@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:drift/drift.dart';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_jelly/jelly.dart';
 
 part 'sync_database.g.dart';
 
@@ -24,7 +25,7 @@ class SyncDocuments extends Table {
   @ReferenceName('typeIri')
   IntColumn get typeIriId => integer().references(SyncIris, #id)();
 
-  TextColumn get documentContent => text()();
+  BlobColumn get documentContent => blob()();
   IntColumn get ourPhysicalClock => integer()();
   IntColumn get updatedAt => integer()();
 }
@@ -80,8 +81,8 @@ class IndexEntries extends Table {
   /// Clock hash from the resource's CRDT metadata
   TextColumn get clockHash => text()();
 
-  /// application specific RDF payload in turtle format
-  TextColumn get headerProperties => text().nullable()();
+  /// application specific RDF payload in jelly binary format
+  BlobColumn get headerProperties => blob().nullable()();
 
   /// When this entry was last updated (milliseconds since epoch)
   IntColumn get updatedAt => integer()();
@@ -548,7 +549,7 @@ class SyncDocumentDao extends DatabaseAccessor<SyncDatabase>
   Future<int> saveDocument({
     required String documentIri,
     required String typeIri,
-    required String content,
+    required Uint8List content,
     required int ourPhysicalClock,
     required int updatedAt,
     int? ifMatchUpdatedAt,
@@ -610,7 +611,7 @@ class SyncDocumentDao extends DatabaseAccessor<SyncDatabase>
   }
 
   /// Get document content by IRI
-  Future<String?> getDocumentContent(String documentIri) async {
+  Future<Uint8List?> getDocumentContent(String documentIri) async {
     // For read operations, we should only get existing IRIs, not create them
     final documentIriId = await _getExistingIriId(documentIri);
     if (documentIriId == null) return null;
@@ -1193,7 +1194,7 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
     required int resourceIriId,
     required int resourceTypeIriId,
     required String clockHash,
-    String? headerProperties,
+    Uint8List? headerProperties,
     bool isDeleted = false,
     required int ourPhysicalClock,
     required int updatedAt,
@@ -1716,7 +1717,7 @@ class DocumentWithIri {
 class BatchDocumentSaveOperation {
   final int documentIriId;
   final int typeIriId;
-  final String content;
+  final Uint8List content;
   final int ourPhysicalClock;
   final int updatedAt;
   final int? ifMatchUpdatedAt;
@@ -1737,7 +1738,7 @@ class BatchIndexEntrySaveOperation {
   final int resourceIriId;
   final int resourceTypeIriId;
   final String clockHash;
-  final String? headerProperties;
+  final Uint8List? headerProperties;
   final bool isDeleted;
   final int ourPhysicalClock;
   final int updatedAt;
@@ -1779,7 +1780,7 @@ class SyncDatabase extends _$SyncDatabase {
   SyncDatabase.forExecutor(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1946,6 +1947,173 @@ class SyncDatabase extends _$SyncDatabase {
               WHERE is_deleted = 0;
             ''');
           }
+          if (from < 9) {
+            // Migrate document content from TEXT (turtle) to BLOB (jelly binary).
+            // SQLite doesn't support ALTER COLUMN, so we recreate the tables.
+            await _migrateDocumentsToBlob(m);
+            await _migrateIndexEntriesToBlob(m);
+          }
         },
       );
+
+  /// Migrate sync_documents.document_content from TEXT (turtle) to BLOB (jelly).
+  Future<void> _migrateDocumentsToBlob(Migrator m) async {
+    final db = m.database;
+
+    // 1. Add new blob column
+    await db.customStatement('''
+      ALTER TABLE sync_documents ADD COLUMN document_content_blob BLOB;
+    ''');
+
+    // 2. Re-encode each row: turtle text → RdfGraph → jelly binary
+    final rows = await db
+        .customSelect(
+          'SELECT id, document_content, document_iri_id FROM sync_documents',
+        )
+        .get();
+
+    final turtleDecoder = TurtleCodec();
+    for (final row in rows) {
+      final turtleText = row.read<String>('document_content');
+      // Look up the IRI for baseUri context
+      final iriId = row.read<int>('document_iri_id');
+      final iriRow = await db.customSelect(
+        'SELECT iri FROM sync_iris WHERE id = ?',
+        variables: [Variable.withInt(iriId)],
+      ).getSingleOrNull();
+      final documentUrl = iriRow?.read<String>('iri');
+
+      final graph = turtleDecoder.decode(turtleText, documentUrl: documentUrl);
+      final jellyBytes = jellyGraph.encoder.convert(graph);
+
+      await db.customStatement(
+        'UPDATE sync_documents SET document_content_blob = ? WHERE id = ?',
+        [jellyBytes, row.read<int>('id')],
+      );
+    }
+
+    // 3. Recreate table with blob column replacing text column.
+    //    SQLite doesn't support DROP COLUMN on all versions, so recreate.
+    await db.customStatement('''
+      CREATE TABLE sync_documents_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        document_iri_id INTEGER NOT NULL UNIQUE REFERENCES sync_iris(id),
+        type_iri_id INTEGER REFERENCES sync_iris(id),
+        document_content BLOB NOT NULL,
+        our_physical_clock INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+    ''');
+
+    await db.customStatement('''
+      INSERT INTO sync_documents_new (id, document_iri_id, type_iri_id, document_content, our_physical_clock, updated_at)
+      SELECT id, document_iri_id, type_iri_id, document_content_blob, our_physical_clock, updated_at
+      FROM sync_documents;
+    ''');
+
+    await db.customStatement('DROP TABLE sync_documents;');
+    await db.customStatement(
+        'ALTER TABLE sync_documents_new RENAME TO sync_documents;');
+
+    // 4. Recreate indices
+    await db.customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_sync_documents_iri
+      ON sync_documents(document_iri_id);
+    ''');
+    await db.customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_sync_documents_type_updated
+      ON sync_documents(type_iri_id, updated_at);
+    ''');
+  }
+
+  /// Migrate index_entries.header_properties from TEXT (turtle) to BLOB (jelly).
+  Future<void> _migrateIndexEntriesToBlob(Migrator m) async {
+    final db = m.database;
+
+    // 1. Add new blob column
+    await db.customStatement('''
+      ALTER TABLE index_entries ADD COLUMN header_properties_blob BLOB;
+    ''');
+
+    // 2. Re-encode non-null header properties: turtle text → RdfGraph → jelly binary
+    final rows = await db
+        .customSelect(
+          'SELECT shard_iri, resource_iri_id, header_properties FROM index_entries WHERE header_properties IS NOT NULL',
+        )
+        .get();
+
+    final turtleDecoder = TurtleCodec();
+    for (final row in rows) {
+      final turtleText = row.read<String>('header_properties');
+      final graph = turtleDecoder.decode(turtleText);
+      final jellyBytes = jellyGraph.encoder.convert(graph);
+
+      await db.customStatement(
+        'UPDATE index_entries SET header_properties_blob = ? WHERE shard_iri = ? AND resource_iri_id = ?',
+        [
+          jellyBytes,
+          row.read<int>('shard_iri'),
+          row.read<int>('resource_iri_id')
+        ],
+      );
+    }
+
+    // 3. Recreate table with blob column replacing text column
+    await db.customStatement('''
+      CREATE TABLE index_entries_new (
+        shard_iri INTEGER NOT NULL REFERENCES sync_iris(id),
+        index_iri_id INTEGER NOT NULL REFERENCES sync_iris(id),
+        resource_iri_id INTEGER NOT NULL REFERENCES sync_iris(id),
+        resource_type_iri_id INTEGER REFERENCES sync_iris(id),
+        clock_hash TEXT NOT NULL,
+        header_properties BLOB,
+        updated_at INTEGER NOT NULL,
+        our_physical_clock INTEGER NOT NULL,
+        is_deleted INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (shard_iri, resource_iri_id)
+      );
+    ''');
+
+    await db.customStatement('''
+      INSERT INTO index_entries_new (shard_iri, index_iri_id, resource_iri_id, resource_type_iri_id, clock_hash, header_properties, updated_at, our_physical_clock, is_deleted)
+      SELECT shard_iri, index_iri_id, resource_iri_id, resource_type_iri_id, clock_hash, header_properties_blob, updated_at, our_physical_clock, is_deleted
+      FROM index_entries;
+    ''');
+
+    await db.customStatement('DROP TABLE index_entries;');
+    await db.customStatement(
+        'ALTER TABLE index_entries_new RENAME TO index_entries;');
+
+    // 4. Recreate all indices
+    await db.customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_index_entries_shard
+      ON index_entries(shard_iri);
+    ''');
+    await db.customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_index_entries_resource
+      ON index_entries(resource_iri_id);
+    ''');
+    await db.customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_index_entries_clock
+      ON index_entries(our_physical_clock);
+    ''');
+    await db.customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_index_entries_deleted
+      ON index_entries(is_deleted);
+    ''');
+    await db.customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_index_entries_shard_active
+      ON index_entries(shard_iri)
+      WHERE is_deleted = 0;
+    ''');
+    await db.customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_index_entries_resource_type
+      ON index_entries(resource_type_iri_id);
+    ''');
+    await db.customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_index_entries_index_updated
+      ON index_entries(index_iri_id, updated_at)
+      WHERE is_deleted = 0;
+    ''');
+  }
 }

@@ -221,9 +221,8 @@ class IndexDiscovery {
             'Index entry missing headerProperties (idx:indexesClass is tracked): ${indexIri.debug}');
       }
 
-      final headerProperties = turtle.decode(entry.headerProperties!);
       final indexedClassTriples =
-          headerProperties.findTriples(predicate: Idx.indexesClass);
+          entry.headerProperties!.findTriples(predicate: Idx.indexesClass);
 
       // Strict: indexesClass must be present and unique
       if (indexedClassTriples.isEmpty) {

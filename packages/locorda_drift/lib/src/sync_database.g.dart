@@ -298,9 +298,9 @@ class $SyncDocumentsTable extends SyncDocuments
   static const VerificationMeta _documentContentMeta =
       const VerificationMeta('documentContent');
   @override
-  late final GeneratedColumn<String> documentContent = GeneratedColumn<String>(
-      'document_content', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+  late final GeneratedColumn<Uint8List> documentContent =
+      GeneratedColumn<Uint8List>('document_content', aliasedName, false,
+          type: DriftSqlType.blob, requiredDuringInsert: true);
   static const VerificationMeta _ourPhysicalClockMeta =
       const VerificationMeta('ourPhysicalClock');
   @override
@@ -388,8 +388,8 @@ class $SyncDocumentsTable extends SyncDocuments
           .read(DriftSqlType.int, data['${effectivePrefix}document_iri_id'])!,
       typeIriId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}type_iri_id'])!,
-      documentContent: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}document_content'])!,
+      documentContent: attachedDatabase.typeMapping
+          .read(DriftSqlType.blob, data['${effectivePrefix}document_content'])!,
       ourPhysicalClock: attachedDatabase.typeMapping.read(
           DriftSqlType.int, data['${effectivePrefix}our_physical_clock'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -407,7 +407,7 @@ class SyncDocument extends DataClass implements Insertable<SyncDocument> {
   final int id;
   final int documentIriId;
   final int typeIriId;
-  final String documentContent;
+  final Uint8List documentContent;
   final int ourPhysicalClock;
   final int updatedAt;
   const SyncDocument(
@@ -423,7 +423,7 @@ class SyncDocument extends DataClass implements Insertable<SyncDocument> {
     map['id'] = Variable<int>(id);
     map['document_iri_id'] = Variable<int>(documentIriId);
     map['type_iri_id'] = Variable<int>(typeIriId);
-    map['document_content'] = Variable<String>(documentContent);
+    map['document_content'] = Variable<Uint8List>(documentContent);
     map['our_physical_clock'] = Variable<int>(ourPhysicalClock);
     map['updated_at'] = Variable<int>(updatedAt);
     return map;
@@ -447,7 +447,7 @@ class SyncDocument extends DataClass implements Insertable<SyncDocument> {
       id: serializer.fromJson<int>(json['id']),
       documentIriId: serializer.fromJson<int>(json['documentIriId']),
       typeIriId: serializer.fromJson<int>(json['typeIriId']),
-      documentContent: serializer.fromJson<String>(json['documentContent']),
+      documentContent: serializer.fromJson<Uint8List>(json['documentContent']),
       ourPhysicalClock: serializer.fromJson<int>(json['ourPhysicalClock']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
@@ -459,7 +459,7 @@ class SyncDocument extends DataClass implements Insertable<SyncDocument> {
       'id': serializer.toJson<int>(id),
       'documentIriId': serializer.toJson<int>(documentIriId),
       'typeIriId': serializer.toJson<int>(typeIriId),
-      'documentContent': serializer.toJson<String>(documentContent),
+      'documentContent': serializer.toJson<Uint8List>(documentContent),
       'ourPhysicalClock': serializer.toJson<int>(ourPhysicalClock),
       'updatedAt': serializer.toJson<int>(updatedAt),
     };
@@ -469,7 +469,7 @@ class SyncDocument extends DataClass implements Insertable<SyncDocument> {
           {int? id,
           int? documentIriId,
           int? typeIriId,
-          String? documentContent,
+          Uint8List? documentContent,
           int? ourPhysicalClock,
           int? updatedAt}) =>
       SyncDocument(
@@ -511,8 +511,8 @@ class SyncDocument extends DataClass implements Insertable<SyncDocument> {
   }
 
   @override
-  int get hashCode => Object.hash(id, documentIriId, typeIriId, documentContent,
-      ourPhysicalClock, updatedAt);
+  int get hashCode => Object.hash(id, documentIriId, typeIriId,
+      $driftBlobEquality.hash(documentContent), ourPhysicalClock, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -520,7 +520,8 @@ class SyncDocument extends DataClass implements Insertable<SyncDocument> {
           other.id == this.id &&
           other.documentIriId == this.documentIriId &&
           other.typeIriId == this.typeIriId &&
-          other.documentContent == this.documentContent &&
+          $driftBlobEquality.equals(
+              other.documentContent, this.documentContent) &&
           other.ourPhysicalClock == this.ourPhysicalClock &&
           other.updatedAt == this.updatedAt);
 }
@@ -529,7 +530,7 @@ class SyncDocumentsCompanion extends UpdateCompanion<SyncDocument> {
   final Value<int> id;
   final Value<int> documentIriId;
   final Value<int> typeIriId;
-  final Value<String> documentContent;
+  final Value<Uint8List> documentContent;
   final Value<int> ourPhysicalClock;
   final Value<int> updatedAt;
   const SyncDocumentsCompanion({
@@ -544,7 +545,7 @@ class SyncDocumentsCompanion extends UpdateCompanion<SyncDocument> {
     this.id = const Value.absent(),
     required int documentIriId,
     required int typeIriId,
-    required String documentContent,
+    required Uint8List documentContent,
     required int ourPhysicalClock,
     required int updatedAt,
   })  : documentIriId = Value(documentIriId),
@@ -556,7 +557,7 @@ class SyncDocumentsCompanion extends UpdateCompanion<SyncDocument> {
     Expression<int>? id,
     Expression<int>? documentIriId,
     Expression<int>? typeIriId,
-    Expression<String>? documentContent,
+    Expression<Uint8List>? documentContent,
     Expression<int>? ourPhysicalClock,
     Expression<int>? updatedAt,
   }) {
@@ -574,7 +575,7 @@ class SyncDocumentsCompanion extends UpdateCompanion<SyncDocument> {
       {Value<int>? id,
       Value<int>? documentIriId,
       Value<int>? typeIriId,
-      Value<String>? documentContent,
+      Value<Uint8List>? documentContent,
       Value<int>? ourPhysicalClock,
       Value<int>? updatedAt}) {
     return SyncDocumentsCompanion(
@@ -600,7 +601,7 @@ class SyncDocumentsCompanion extends UpdateCompanion<SyncDocument> {
       map['type_iri_id'] = Variable<int>(typeIriId.value);
     }
     if (documentContent.present) {
-      map['document_content'] = Variable<String>(documentContent.value);
+      map['document_content'] = Variable<Uint8List>(documentContent.value);
     }
     if (ourPhysicalClock.present) {
       map['our_physical_clock'] = Variable<int>(ourPhysicalClock.value);
@@ -1258,9 +1259,9 @@ class $IndexEntriesTable extends IndexEntries
   static const VerificationMeta _headerPropertiesMeta =
       const VerificationMeta('headerProperties');
   @override
-  late final GeneratedColumn<String> headerProperties = GeneratedColumn<String>(
-      'header_properties', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
+  late final GeneratedColumn<Uint8List> headerProperties =
+      GeneratedColumn<Uint8List>('header_properties', aliasedName, true,
+          type: DriftSqlType.blob, requiredDuringInsert: false);
   static const VerificationMeta _updatedAtMeta =
       const VerificationMeta('updatedAt');
   @override
@@ -1384,8 +1385,8 @@ class $IndexEntriesTable extends IndexEntries
           DriftSqlType.int, data['${effectivePrefix}resource_type_iri_id'])!,
       clockHash: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}clock_hash'])!,
-      headerProperties: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}header_properties']),
+      headerProperties: attachedDatabase.typeMapping
+          .read(DriftSqlType.blob, data['${effectivePrefix}header_properties']),
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}updated_at'])!,
       ourPhysicalClock: attachedDatabase.typeMapping.read(
@@ -1417,8 +1418,8 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
   /// Clock hash from the resource's CRDT metadata
   final String clockHash;
 
-  /// application specific RDF payload in turtle format
-  final String? headerProperties;
+  /// application specific RDF payload in jelly binary format
+  final Uint8List? headerProperties;
 
   /// When this entry was last updated (milliseconds since epoch)
   final int updatedAt;
@@ -1447,7 +1448,7 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
     map['resource_type_iri_id'] = Variable<int>(resourceTypeIriId);
     map['clock_hash'] = Variable<String>(clockHash);
     if (!nullToAbsent || headerProperties != null) {
-      map['header_properties'] = Variable<String>(headerProperties);
+      map['header_properties'] = Variable<Uint8List>(headerProperties);
     }
     map['updated_at'] = Variable<int>(updatedAt);
     map['our_physical_clock'] = Variable<int>(ourPhysicalClock);
@@ -1480,7 +1481,8 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
       resourceIriId: serializer.fromJson<int>(json['resourceIriId']),
       resourceTypeIriId: serializer.fromJson<int>(json['resourceTypeIriId']),
       clockHash: serializer.fromJson<String>(json['clockHash']),
-      headerProperties: serializer.fromJson<String?>(json['headerProperties']),
+      headerProperties:
+          serializer.fromJson<Uint8List?>(json['headerProperties']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       ourPhysicalClock: serializer.fromJson<int>(json['ourPhysicalClock']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
@@ -1495,7 +1497,7 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
       'resourceIriId': serializer.toJson<int>(resourceIriId),
       'resourceTypeIriId': serializer.toJson<int>(resourceTypeIriId),
       'clockHash': serializer.toJson<String>(clockHash),
-      'headerProperties': serializer.toJson<String?>(headerProperties),
+      'headerProperties': serializer.toJson<Uint8List?>(headerProperties),
       'updatedAt': serializer.toJson<int>(updatedAt),
       'ourPhysicalClock': serializer.toJson<int>(ourPhysicalClock),
       'isDeleted': serializer.toJson<bool>(isDeleted),
@@ -1508,7 +1510,7 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
           int? resourceIriId,
           int? resourceTypeIriId,
           String? clockHash,
-          Value<String?> headerProperties = const Value.absent(),
+          Value<Uint8List?> headerProperties = const Value.absent(),
           int? updatedAt,
           int? ourPhysicalClock,
           bool? isDeleted}) =>
@@ -1571,7 +1573,7 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
       resourceIriId,
       resourceTypeIriId,
       clockHash,
-      headerProperties,
+      $driftBlobEquality.hash(headerProperties),
       updatedAt,
       ourPhysicalClock,
       isDeleted);
@@ -1584,7 +1586,8 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
           other.resourceIriId == this.resourceIriId &&
           other.resourceTypeIriId == this.resourceTypeIriId &&
           other.clockHash == this.clockHash &&
-          other.headerProperties == this.headerProperties &&
+          $driftBlobEquality.equals(
+              other.headerProperties, this.headerProperties) &&
           other.updatedAt == this.updatedAt &&
           other.ourPhysicalClock == this.ourPhysicalClock &&
           other.isDeleted == this.isDeleted);
@@ -1596,7 +1599,7 @@ class IndexEntriesCompanion extends UpdateCompanion<IndexEntry> {
   final Value<int> resourceIriId;
   final Value<int> resourceTypeIriId;
   final Value<String> clockHash;
-  final Value<String?> headerProperties;
+  final Value<Uint8List?> headerProperties;
   final Value<int> updatedAt;
   final Value<int> ourPhysicalClock;
   final Value<bool> isDeleted;
@@ -1637,7 +1640,7 @@ class IndexEntriesCompanion extends UpdateCompanion<IndexEntry> {
     Expression<int>? resourceIriId,
     Expression<int>? resourceTypeIriId,
     Expression<String>? clockHash,
-    Expression<String>? headerProperties,
+    Expression<Uint8List>? headerProperties,
     Expression<int>? updatedAt,
     Expression<int>? ourPhysicalClock,
     Expression<bool>? isDeleted,
@@ -1663,7 +1666,7 @@ class IndexEntriesCompanion extends UpdateCompanion<IndexEntry> {
       Value<int>? resourceIriId,
       Value<int>? resourceTypeIriId,
       Value<String>? clockHash,
-      Value<String?>? headerProperties,
+      Value<Uint8List?>? headerProperties,
       Value<int>? updatedAt,
       Value<int>? ourPhysicalClock,
       Value<bool>? isDeleted,
@@ -1701,7 +1704,7 @@ class IndexEntriesCompanion extends UpdateCompanion<IndexEntry> {
       map['clock_hash'] = Variable<String>(clockHash.value);
     }
     if (headerProperties.present) {
-      map['header_properties'] = Variable<String>(headerProperties.value);
+      map['header_properties'] = Variable<Uint8List>(headerProperties.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<int>(updatedAt.value);
@@ -4592,7 +4595,7 @@ typedef $$SyncDocumentsTableCreateCompanionBuilder = SyncDocumentsCompanion
   Value<int> id,
   required int documentIriId,
   required int typeIriId,
-  required String documentContent,
+  required Uint8List documentContent,
   required int ourPhysicalClock,
   required int updatedAt,
 });
@@ -4601,7 +4604,7 @@ typedef $$SyncDocumentsTableUpdateCompanionBuilder = SyncDocumentsCompanion
   Value<int> id,
   Value<int> documentIriId,
   Value<int> typeIriId,
-  Value<String> documentContent,
+  Value<Uint8List> documentContent,
   Value<int> ourPhysicalClock,
   Value<int> updatedAt,
 });
@@ -4672,7 +4675,7 @@ class $$SyncDocumentsTableFilterComposer
   ColumnFilters<int> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get documentContent => $composableBuilder(
+  ColumnFilters<Uint8List> get documentContent => $composableBuilder(
       column: $table.documentContent,
       builder: (column) => ColumnFilters(column));
 
@@ -4757,7 +4760,7 @@ class $$SyncDocumentsTableOrderingComposer
   ColumnOrderings<int> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get documentContent => $composableBuilder(
+  ColumnOrderings<Uint8List> get documentContent => $composableBuilder(
       column: $table.documentContent,
       builder: (column) => ColumnOrderings(column));
 
@@ -4821,7 +4824,7 @@ class $$SyncDocumentsTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get documentContent => $composableBuilder(
+  GeneratedColumn<Uint8List> get documentContent => $composableBuilder(
       column: $table.documentContent, builder: (column) => column);
 
   GeneratedColumn<int> get ourPhysicalClock => $composableBuilder(
@@ -4921,7 +4924,7 @@ class $$SyncDocumentsTableTableManager extends RootTableManager<
             Value<int> id = const Value.absent(),
             Value<int> documentIriId = const Value.absent(),
             Value<int> typeIriId = const Value.absent(),
-            Value<String> documentContent = const Value.absent(),
+            Value<Uint8List> documentContent = const Value.absent(),
             Value<int> ourPhysicalClock = const Value.absent(),
             Value<int> updatedAt = const Value.absent(),
           }) =>
@@ -4937,7 +4940,7 @@ class $$SyncDocumentsTableTableManager extends RootTableManager<
             Value<int> id = const Value.absent(),
             required int documentIriId,
             required int typeIriId,
-            required String documentContent,
+            required Uint8List documentContent,
             required int ourPhysicalClock,
             required int updatedAt,
           }) =>
@@ -5629,7 +5632,7 @@ typedef $$IndexEntriesTableCreateCompanionBuilder = IndexEntriesCompanion
   required int resourceIriId,
   required int resourceTypeIriId,
   required String clockHash,
-  Value<String?> headerProperties,
+  Value<Uint8List?> headerProperties,
   required int updatedAt,
   required int ourPhysicalClock,
   Value<bool> isDeleted,
@@ -5642,7 +5645,7 @@ typedef $$IndexEntriesTableUpdateCompanionBuilder = IndexEntriesCompanion
   Value<int> resourceIriId,
   Value<int> resourceTypeIriId,
   Value<String> clockHash,
-  Value<String?> headerProperties,
+  Value<Uint8List?> headerProperties,
   Value<int> updatedAt,
   Value<int> ourPhysicalClock,
   Value<bool> isDeleted,
@@ -5726,7 +5729,7 @@ class $$IndexEntriesTableFilterComposer
   ColumnFilters<String> get clockHash => $composableBuilder(
       column: $table.clockHash, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get headerProperties => $composableBuilder(
+  ColumnFilters<Uint8List> get headerProperties => $composableBuilder(
       column: $table.headerProperties,
       builder: (column) => ColumnFilters(column));
 
@@ -5833,7 +5836,7 @@ class $$IndexEntriesTableOrderingComposer
   ColumnOrderings<String> get clockHash => $composableBuilder(
       column: $table.clockHash, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get headerProperties => $composableBuilder(
+  ColumnOrderings<Uint8List> get headerProperties => $composableBuilder(
       column: $table.headerProperties,
       builder: (column) => ColumnOrderings(column));
 
@@ -5940,7 +5943,7 @@ class $$IndexEntriesTableAnnotationComposer
   GeneratedColumn<String> get clockHash =>
       $composableBuilder(column: $table.clockHash, builder: (column) => column);
 
-  GeneratedColumn<String> get headerProperties => $composableBuilder(
+  GeneratedColumn<Uint8List> get headerProperties => $composableBuilder(
       column: $table.headerProperties, builder: (column) => column);
 
   GeneratedColumn<int> get updatedAt =>
@@ -6065,7 +6068,7 @@ class $$IndexEntriesTableTableManager extends RootTableManager<
             Value<int> resourceIriId = const Value.absent(),
             Value<int> resourceTypeIriId = const Value.absent(),
             Value<String> clockHash = const Value.absent(),
-            Value<String?> headerProperties = const Value.absent(),
+            Value<Uint8List?> headerProperties = const Value.absent(),
             Value<int> updatedAt = const Value.absent(),
             Value<int> ourPhysicalClock = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
@@ -6089,7 +6092,7 @@ class $$IndexEntriesTableTableManager extends RootTableManager<
             required int resourceIriId,
             required int resourceTypeIriId,
             required String clockHash,
-            Value<String?> headerProperties = const Value.absent(),
+            Value<Uint8List?> headerProperties = const Value.absent(),
             required int updatedAt,
             required int ourPhysicalClock,
             Value<bool> isDeleted = const Value.absent(),

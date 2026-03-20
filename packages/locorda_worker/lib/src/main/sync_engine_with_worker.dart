@@ -10,6 +10,8 @@ import '../shared/worker_params.dart';
 import 'locorda_worker.dart';
 import 'locorda_worker_impl_native.dart'
     if (dart.library.html) 'locorda_worker_impl_web.dart' as impl;
+import 'platform_codec_native.dart'
+    if (dart.library.html) 'platform_codec_web.dart' as codec;
 import 'remote_main_handler.dart';
 import 'storage_main_handler.dart';
 import 'proxy_sync_engine.dart';
@@ -65,6 +67,8 @@ class SyncEngineWithWorker {
     // Create proxy that forwards operations to worker
     final syncEngine = await ProxySyncEngine.create(
       workerHandle: workerHandle,
+      encodeGraph: codec.platformEncodeGraph,
+      decodeGraph: codec.platformDecodeGraph,
       closeFunctions: closeFunctions,
     );
     _log.info(

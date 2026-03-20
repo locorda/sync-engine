@@ -441,12 +441,11 @@ class IndexManager {
         propertiesToExtract: indexedProperties,
       );
 
-      // Serialize header properties to Turtle if present
-      String? headerPropertiesTurtle;
+      // Build header properties graph if present
+      RdfGraph? headerPropertiesGraph;
       if (headerProperties != null) {
-        final headerGraph = RdfGraph.fromTriples(headerProperties.entries
+        headerPropertiesGraph = RdfGraph.fromTriples(headerProperties.entries
             .expand((e) => e.value.map((v) => Triple(resourceIri, e.key, v))));
-        headerPropertiesTurtle = turtle.encode(headerGraph);
       }
 
       requests.add(SaveIndexEntryRequest(
@@ -455,7 +454,7 @@ class IndexManager {
         resourceIri: resourceIri,
         resourceType: type,
         clockHash: clockHash,
-        headerProperties: headerPropertiesTurtle,
+        headerProperties: headerPropertiesGraph,
         updatedAt: updatedAt,
         ourPhysicalClock: physicalTime,
       ));

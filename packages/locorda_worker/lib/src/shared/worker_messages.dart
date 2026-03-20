@@ -25,23 +25,23 @@ sealed class WorkerResponse extends WorkerMessage {
 /// Save request
 class SaveRequest extends WorkerRequest {
   final String typeIri; // Serialized IriTerm
-  final String appDataTurtle; // Serialized RdfGraph in Turtle format
+  final Object encodedGraph; // Serialized RdfGraph (String or Uint8List)
 
-  SaveRequest(super.requestId, this.typeIri, this.appDataTurtle);
+  SaveRequest(super.requestId, this.typeIri, this.encodedGraph);
 
   @override
   Map<String, dynamic> toJson() => {
         'type': 'SaveRequest',
         'requestId': requestId,
         'typeIri': typeIri,
-        'appDataTurtle': appDataTurtle,
+        'encodedGraph': encodedGraph,
       };
 
   factory SaveRequest.fromJson(Map<String, dynamic> json) {
     return SaveRequest(
       json['requestId'] as String,
       json['typeIri'] as String,
-      json['appDataTurtle'] as String,
+      json['encodedGraph'],
     );
   }
 }
@@ -71,7 +71,7 @@ class SaveResponse extends WorkerResponse {
 
 /// SaveAll request
 class SaveAllRequest extends WorkerRequest {
-  final List<(String typeIri, String appDataTurtle)> items;
+  final List<(String typeIri, Object encodedGraph)> items;
 
   SaveAllRequest(super.requestId, this.items);
 
@@ -80,7 +80,7 @@ class SaveAllRequest extends WorkerRequest {
         'type': 'SaveAllRequest',
         'requestId': requestId,
         'items': items
-            .map((item) => {'typeIri': item.$1, 'appDataTurtle': item.$2})
+            .map((item) => {'typeIri': item.$1, 'encodedGraph': item.$2})
             .toList(),
       };
 
@@ -89,7 +89,7 @@ class SaveAllRequest extends WorkerRequest {
         .cast<Map<String, dynamic>>()
         .map((item) => (
               item['typeIri'] as String,
-              item['appDataTurtle'] as String,
+              item['encodedGraph'] as Object,
             ))
         .toList();
     return SaveAllRequest(
@@ -253,23 +253,23 @@ class EnsureRequest extends WorkerRequest {
 }
 
 class EnsureResponse extends WorkerResponse {
-  final String? graphTurtle; // null if not found
+  final Object? encodedGraph; // null if not found
   final String? error;
 
-  EnsureResponse(super.requestId, {this.graphTurtle, this.error});
+  EnsureResponse(super.requestId, {this.encodedGraph, this.error});
 
   @override
   Map<String, dynamic> toJson() => {
         'type': 'EnsureResponse',
         'requestId': requestId,
-        if (graphTurtle != null) 'graphTurtle': graphTurtle,
+        if (encodedGraph != null) 'encodedGraph': encodedGraph,
         if (error != null) 'error': error,
       };
 
   factory EnsureResponse.fromJson(Map<String, dynamic> json) {
     return EnsureResponse(
       json['requestId'] as String,
-      graphTurtle: json['graphTurtle'] as String?,
+      encodedGraph: json['encodedGraph'],
       error: json['error'] as String?,
     );
   }
@@ -278,7 +278,7 @@ class EnsureResponse extends WorkerResponse {
 /// Ensure group index subscription request.
 class EnsureGroupIndexSubscriptionRequest extends WorkerRequest {
   final String indexName;
-  final String groupKeyGraphTurtle;
+  final Object encodedGroupKeyGraph;
 
   /// `null` means: use the policy configured on the GroupIndexData in the engine.
   final Map<String, dynamic>? rootResourceFetchPolicyMap;
@@ -287,7 +287,7 @@ class EnsureGroupIndexSubscriptionRequest extends WorkerRequest {
   EnsureGroupIndexSubscriptionRequest(
     super.requestId,
     this.indexName,
-    this.groupKeyGraphTurtle,
+    this.encodedGroupKeyGraph,
     this.rootResourceFetchPolicyMap,
     this.triggerSync,
   );
@@ -297,7 +297,7 @@ class EnsureGroupIndexSubscriptionRequest extends WorkerRequest {
         'type': 'EnsureGroupIndexSubscriptionRequest',
         'requestId': requestId,
         'indexName': indexName,
-        'groupKeyGraphTurtle': groupKeyGraphTurtle,
+        'encodedGroupKeyGraph': encodedGroupKeyGraph,
         if (rootResourceFetchPolicyMap != null)
           'rootResourceFetchPolicyMap': rootResourceFetchPolicyMap,
         'triggerSync': triggerSync,
@@ -309,7 +309,7 @@ class EnsureGroupIndexSubscriptionRequest extends WorkerRequest {
     return EnsureGroupIndexSubscriptionRequest(
       json['requestId'] as String,
       json['indexName'] as String,
-      json['groupKeyGraphTurtle'] as String,
+      json['encodedGroupKeyGraph'],
       policyMap != null ? (policyMap as Map).cast<String, dynamic>() : null,
       json['triggerSync'] as bool? ?? true,
     );
@@ -345,14 +345,14 @@ class EnsureGroupIndexSubscriptionResponse extends WorkerResponse {
 class WatchIndexInstanceSyncStateRequest extends WorkerRequest {
   final String watchKind; // 'group' | 'type'
   final String? indexName;
-  final String? groupKeyGraphTurtle;
+  final Object? encodedGroupKeyGraph;
   final String? typeIri;
 
   WatchIndexInstanceSyncStateRequest(
     super.requestId, {
     required this.watchKind,
     this.indexName,
-    this.groupKeyGraphTurtle,
+    this.encodedGroupKeyGraph,
     this.typeIri,
   });
 
@@ -362,8 +362,8 @@ class WatchIndexInstanceSyncStateRequest extends WorkerRequest {
         'requestId': requestId,
         'watchKind': watchKind,
         if (indexName != null) 'indexName': indexName,
-        if (groupKeyGraphTurtle != null)
-          'groupKeyGraphTurtle': groupKeyGraphTurtle,
+        if (encodedGroupKeyGraph != null)
+          'encodedGroupKeyGraph': encodedGroupKeyGraph,
         if (typeIri != null) 'typeIri': typeIri,
       };
 
@@ -373,7 +373,7 @@ class WatchIndexInstanceSyncStateRequest extends WorkerRequest {
       json['requestId'] as String,
       watchKind: json['watchKind'] as String,
       indexName: json['indexName'] as String?,
-      groupKeyGraphTurtle: json['groupKeyGraphTurtle'] as String?,
+      encodedGroupKeyGraph: json['encodedGroupKeyGraph'],
       typeIri: json['typeIri'] as String?,
     );
   }
@@ -499,8 +499,8 @@ class HydrateStreamRequest extends WorkerRequest {
 
 /// Hydration batch message (streaming response)
 class HydrationBatchMessage extends WorkerResponse {
-  final List<(String id, String turtleGraph)> updates;
-  final List<(String id, String turtleGraph)> deletions;
+  final List<(String id, Object encodedGraph)> updates;
+  final List<(String id, Object encodedGraph)> deletions;
   final String? cursor;
   final bool isComplete; // true for final batch
 
@@ -527,12 +527,12 @@ class HydrationBatchMessage extends WorkerResponse {
   factory HydrationBatchMessage.fromJson(Map<String, dynamic> json) {
     final updatesJson = json['updates'] as List<dynamic>;
     final updates = updatesJson
-        .map((item) => (item['id'] as String, item['graph'] as String))
+        .map((item) => (item['id'] as String, item['graph'] as Object))
         .toList();
 
     final deletionsJson = json['deletions'] as List<dynamic>;
     final deletions = deletionsJson
-        .map((item) => (item['id'] as String, item['graph'] as String))
+        .map((item) => (item['id'] as String, item['graph'] as Object))
         .toList();
 
     return HydrationBatchMessage(

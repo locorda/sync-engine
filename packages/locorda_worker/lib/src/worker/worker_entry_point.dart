@@ -6,15 +6,18 @@ library;
 
 import 'dart:async';
 import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_worker/src/shared/worker_params.dart';
 import 'package:locorda_worker/src/worker/worker_channel.dart';
 //import 'package:locorda_worker/src/main/locorda_worker.dart';
+import 'package:locorda_worker/src/shared/worker_graph_codec.dart';
 import 'package:locorda_worker/src/shared/worker_messages.dart';
 import 'package:locorda_worker/src/worker/worker_params_to_engine_params.dart';
 import 'package:logging/logging.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_jelly/jelly.dart';
 
 // Conditional import for web worker implementation
 import 'web_worker_entry_point_stub.dart'
@@ -67,7 +70,8 @@ class WorkerHandlerContextImpl implements WorkerHandlerContext {
 /// Manages the SyncEngine instance and message routing within the worker.
 class WorkerContext {
   final WorkerMessageSender _sender;
-  final RdfGraphCodec _codec = TurtleCodec();
+  final WorkerGraphEncoder _encodeGraph;
+  final WorkerGraphDecoder _decodeGraph;
 
   /// Communication channel for cross-thread operations (e.g., auth)
   final WorkerChannel _channel;
@@ -85,8 +89,13 @@ class WorkerContext {
   StreamSubscription<SyncState>? _syncStatusSubscription;
   final Perflog _perflog;
 
-  WorkerContext(this._sender, this._channel, {required Perflog perflog})
-      : _perflog = perflog;
+  WorkerContext(this._sender, this._channel,
+      {required WorkerGraphEncoder encodeGraph,
+      required WorkerGraphDecoder decodeGraph,
+      required Perflog perflog})
+      : _encodeGraph = encodeGraph,
+        _decodeGraph = decodeGraph,
+        _perflog = perflog;
 
   late WorkerHandlerContext workerHandlerContext =
       WorkerHandlerContextImpl(_channel, perflog: _perflog);
@@ -174,7 +183,7 @@ class WorkerContext {
       }
 
       final typeIri = IriTerm(request.typeIri);
-      final appData = _codec.decode(request.appDataTurtle);
+      final appData = _decodeGraph(request.encodedGraph);
 
       await _syncSystem!.save(typeIri, appData);
 
@@ -197,7 +206,7 @@ class WorkerContext {
       final items = request.items
           .map((item) => (
                 IriTerm(item.$1),
-                _codec.decode(item.$2),
+                _decodeGraph(item.$2),
               ))
           .toList();
 
@@ -263,7 +272,7 @@ class WorkerContext {
         throw StateError('Sync system not initialized');
       }
 
-      final groupKeyGraph = _codec.decode(request.groupKeyGraphTurtle);
+      final groupKeyGraph = _decodeGraph(request.encodedGroupKeyGraph);
 
       await _syncSystem!.ensureGroupIndexSubscription(
         indexName: request.indexName,
@@ -306,13 +315,12 @@ class WorkerContext {
       // Subscribe to stream and forward batches to main thread
       final subscription = stream.listen(
         (batch) {
-          // Serialize graphs to Turtle
           final updates = batch.updates
-              .map((item) => (item.$1.value, _codec.encode(item.$2)))
+              .map((item) => (item.$1.value, _encodeGraph(item.$2)))
               .toList();
 
           final deletions = batch.deletions
-              .map((item) => (item.$1.value, _codec.encode(item.$2)))
+              .map((item) => (item.$1.value, _encodeGraph(item.$2)))
               .toList();
 
           _sendMessage(HydrationBatchMessage(
@@ -367,7 +375,7 @@ class WorkerContext {
       final stream = switch (request.watchKind) {
         'group' => _syncSystem!.watchGroupIndexSyncState(
             indexName: request.indexName!,
-            groupKeyGraph: _codec.decode(request.groupKeyGraphTurtle!)),
+            groupKeyGraph: _decodeGraph(request.encodedGroupKeyGraph!)),
         'type' => _syncSystem!.watchSyncState(
             typeIri: IriTerm(request.typeIri!), indexName: request.indexName),
         _ => throw ArgumentError('Unknown watch kind: ${request.watchKind}'),
@@ -656,10 +664,12 @@ void startWorkerIsolate(SendPort mainSendPort, WorkerSetup workerSetup) async {
     mainSendPort.send({'__channel': message.channel, 'data': message.data});
   });
 
-  // 3. Create WorkerContext
+  // 3. Create WorkerContext (native: use jelly binary codec for performance)
   final context = WorkerContext(
     IsolateSender(mainSendPort),
     channel,
+    encodeGraph: (graph) => jellyGraph.encode(graph),
+    decodeGraph: (encoded) => jellyGraph.decode(encoded as Uint8List),
     perflog: Perflog.root(),
   );
 

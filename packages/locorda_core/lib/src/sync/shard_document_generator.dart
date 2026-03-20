@@ -177,13 +177,11 @@ class ShardDocumentGenerator {
         // Skip deleted entries - they are handled by DocumentManager tombstones
         continue;
       }
-      // Deserialize header properties if present
+      // Extract header properties from graph if present
       Map<IriTerm, List<RdfObject>>? headerProperties;
       if (entry.headerProperties != null) {
-        final headerGraph = turtle.decode(entry.headerProperties!);
-        // Extract properties for the resource IRI
         headerProperties = {};
-        for (final triple in headerGraph.triples) {
+        for (final triple in entry.headerProperties!.triples) {
           if (triple.subject == entry.resourceIri) {
             headerProperties.putIfAbsent(triple.predicate as IriTerm, () => []);
             headerProperties[triple.predicate as IriTerm]!.add(triple.object);

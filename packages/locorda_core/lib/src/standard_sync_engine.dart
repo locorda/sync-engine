@@ -1190,10 +1190,8 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
       final triples = <Triple>[];
 
       // Add header properties if present
-      // Header properties are stored as Turtle-encoded triples in the DB
       if (entry.headerProperties != null) {
-        final headerGraph = turtle.decode(entry.headerProperties!);
-        triples.addAll(headerGraph.triples);
+        triples.addAll(entry.headerProperties!.triples);
       }
 
       final graph = RdfGraph.fromTriples(triples);

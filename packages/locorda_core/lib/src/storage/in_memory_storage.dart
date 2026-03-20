@@ -483,7 +483,7 @@ class InMemoryStorage implements Storage, TransactionalStorage {
     required IriTerm resourceIri,
     required IriTerm resourceType,
     required String clockHash,
-    String? headerProperties,
+    RdfGraph? headerProperties,
     bool isDeleted = false,
     required int updatedAt,
     required int ourPhysicalClock,
@@ -791,7 +791,7 @@ class _IndexEntry {
   final IriTerm resourceIri;
   final IriTerm resourceType;
   final String clockHash;
-  final String? headerProperties;
+  final RdfGraph? headerProperties;
   final bool isDeleted;
   final int updatedAt;
   final int ourPhysicalClock;

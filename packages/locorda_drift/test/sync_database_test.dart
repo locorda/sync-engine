@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:locorda_core/locorda_core.dart';
@@ -5,6 +7,9 @@ import 'package:locorda_drift/src/sync_database.dart';
 import 'package:locorda_rdf_core/core.dart';
 
 import 'test_sync_database.dart';
+
+/// Helper to convert test strings to Uint8List for blob content columns.
+Uint8List _bytes(String s) => Uint8List.fromList(utf8.encode(s));
 
 const IriTerm typeIri = IriTerm('https://example.com/TestType');
 
@@ -123,8 +128,8 @@ void main() {
       testWidgets('saves and retrieves document content', (tester) async {
         // Arrange
         const documentIri = 'https://example.com/doc1';
-        const content =
-            '<https://example.com/doc1#it> <https://schema.org/name> "Test" .';
+        final content = _bytes(
+            '<https://example.com/doc1#it> <https://schema.org/name> "Test" .');
 
         // Act
         final documentId = await dao.saveDocument(
@@ -152,10 +157,10 @@ void main() {
       testWidgets('updates existing document on conflict', (tester) async {
         // Arrange
         const documentIri = 'https://example.com/doc1';
-        const content1 =
-            '<https://example.com/doc1#it> <https://schema.org/name> "First" .';
-        const content2 =
-            '<https://example.com/doc1#it> <https://schema.org/name> "Second" .';
+        final content1 = _bytes(
+            '<https://example.com/doc1#it> <https://schema.org/name> "First" .');
+        final content2 = _bytes(
+            '<https://example.com/doc1#it> <https://schema.org/name> "Second" .');
 
         // Act
         final firstId = await dao.saveDocument(
@@ -203,21 +208,21 @@ void main() {
         await dao.saveDocument(
           documentIri: 'https://example.com/doc1',
           typeIri: typeIri.value,
-          content: 'content1',
+          content: _bytes('content1'),
           ourPhysicalClock: 1000,
           updatedAt: 2000,
         );
         await dao.saveDocument(
           documentIri: 'https://example.com/doc2',
           typeIri: typeIri.value,
-          content: 'content2',
+          content: _bytes('content2'),
           ourPhysicalClock: 1100,
           updatedAt: 2500,
         );
         await dao.saveDocument(
           documentIri: 'https://example.com/doc3',
           typeIri: typeIri.value,
-          content: 'content3',
+          content: _bytes('content3'),
           ourPhysicalClock: 1200,
           updatedAt: 3000,
         );
@@ -243,21 +248,21 @@ void main() {
         await dao.saveDocument(
           documentIri: 'https://example.com/doc1',
           typeIri: typeIri.value,
-          content: 'content1',
+          content: _bytes('content1'),
           ourPhysicalClock: 1000,
           updatedAt: 2000,
         );
         await dao.saveDocument(
           documentIri: 'https://example.com/doc2',
           typeIri: typeIri.value,
-          content: 'content2',
+          content: _bytes('content2'),
           ourPhysicalClock: 1500,
           updatedAt: 2500,
         );
         await dao.saveDocument(
           documentIri: 'https://example.com/doc3',
           typeIri: typeIri.value,
-          content: 'content3',
+          content: _bytes('content3'),
           ourPhysicalClock: 2000,
           updatedAt: 3000,
         );
@@ -283,7 +288,7 @@ void main() {
           await dao.saveDocument(
             documentIri: 'https://example.com/doc$i',
             typeIri: typeIri.value,
-            content: 'content$i',
+            content: _bytes('content$i'),
             ourPhysicalClock: 1000 + i,
             updatedAt: 2000 + i,
           );
@@ -318,7 +323,7 @@ void main() {
         final documentId = await documentDao.saveDocument(
           documentIri: 'https://example.com/doc1',
           typeIri: typeIri.value,
-          content: 'content',
+          content: _bytes('content'),
           ourPhysicalClock: 1000,
           updatedAt: 2000,
         );
@@ -370,7 +375,7 @@ void main() {
         final documentId = await documentDao.saveDocument(
           documentIri: 'https://example.com/doc1',
           typeIri: typeIri.value,
-          content: 'content',
+          content: _bytes('content'),
           ourPhysicalClock: 1000,
           updatedAt: 2000,
         );
@@ -393,7 +398,7 @@ void main() {
         final documentId = await documentDao.saveDocument(
           documentIri: 'https://example.com/doc1',
           typeIri: typeIri.value,
-          content: 'content',
+          content: _bytes('content'),
           ourPhysicalClock: 1000,
           updatedAt: 2000,
         );
@@ -449,7 +454,7 @@ void main() {
         final documentId = await documentDao.saveDocument(
           documentIri: 'https://example.com/doc1',
           typeIri: typeIri.value,
-          content: 'content',
+          content: _bytes('content'),
           ourPhysicalClock: 1000,
           updatedAt: 2000,
         );
@@ -516,7 +521,7 @@ void main() {
         final documentId = await documentDao.saveDocument(
           documentIri: 'https://example.com/doc1',
           typeIri: typeIri.value,
-          content: 'content',
+          content: _bytes('content'),
           ourPhysicalClock: 1000,
           updatedAt: 2000,
         );
@@ -565,7 +570,7 @@ void main() {
             await documentDao.saveDocument(
               documentIri: 'https://example.com/doc1',
               typeIri: typeIri.value,
-              content: 'content',
+              content: _bytes('content'),
               ourPhysicalClock: 1000,
               updatedAt: 2000,
             );

@@ -10,6 +10,7 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 
+import '../shared/worker_graph_codec.dart';
 import '../shared/worker_messages.dart';
 import 'locorda_worker.dart';
 
@@ -27,7 +28,8 @@ final _log = Logger('ProxySyncEngine');
 /// with this class directly.
 class ProxySyncEngine implements SyncEngine {
   final LocordaWorker _workerHandle;
-  final RdfGraphCodec _codec;
+  final WorkerGraphEncoder _encodeGraph;
+  final WorkerGraphDecoder _decodeGraph;
 
   /// Request counter for generating unique IDs
   int _requestCounter = 0;
@@ -47,8 +49,11 @@ class ProxySyncEngine implements SyncEngine {
   final List<Future<void> Function()> _closeFunctions;
 
   ProxySyncEngine._(this._workerHandle,
-      {required List<Future<void> Function()> closeFunctions})
-      : _codec = TurtleCodec(),
+      {required WorkerGraphEncoder encodeGraph,
+      required WorkerGraphDecoder decodeGraph,
+      required List<Future<void> Function()> closeFunctions})
+      : _encodeGraph = encodeGraph,
+        _decodeGraph = decodeGraph,
         _closeFunctions = closeFunctions {
     // Listen to worker messages and route to pending operations
     _messageSubscription = _workerHandle.messages.listen(_handleWorkerMessage);
@@ -63,10 +68,14 @@ class ProxySyncEngine implements SyncEngine {
   /// is called, so we just need to fetch the initial sync state.
   static Future<ProxySyncEngine> create({
     required LocordaWorker workerHandle,
+    required WorkerGraphEncoder encodeGraph,
+    required WorkerGraphDecoder decodeGraph,
     required List<Future<void> Function()> closeFunctions,
   }) async {
-    final proxy =
-        ProxySyncEngine._(workerHandle, closeFunctions: closeFunctions);
+    final proxy = ProxySyncEngine._(workerHandle,
+        encodeGraph: encodeGraph,
+        decodeGraph: decodeGraph,
+        closeFunctions: closeFunctions);
 
     // Fetch initial sync state from already-initialized worker
     await proxy._syncManager._fetchInitialState();
@@ -144,13 +153,13 @@ class ProxySyncEngine implements SyncEngine {
       return;
     }
 
-    // Deserialize graphs from Turtle
+    // Deserialize graphs from encoded format
     final updates = batch.updates
-        .map((item) => (IriTerm(item.$1), _codec.decode(item.$2)))
+        .map((item) => (IriTerm(item.$1), _decodeGraph(item.$2)))
         .toList();
 
     final deletions = batch.deletions
-        .map((item) => (IriTerm(item.$1), _codec.decode(item.$2)))
+        .map((item) => (IriTerm(item.$1), _decodeGraph(item.$2)))
         .toList();
 
     final hydrationBatch = (
@@ -208,9 +217,9 @@ class ProxySyncEngine implements SyncEngine {
     ));
   }
 
-  /// Serialize RDF graph to Turtle format for transmission
-  String _serializeGraph(RdfGraph graph) {
-    return _codec.encode(graph);
+  /// Serialize RDF graph for worker transmission
+  Object _serializeGraph(RdfGraph graph) {
+    return _encodeGraph(graph);
   }
 
   @override
@@ -226,7 +235,7 @@ class ProxySyncEngine implements SyncEngine {
       requestId,
       watchKind: 'group',
       indexName: indexName,
-      groupKeyGraphTurtle: _serializeGraph(groupKeyGraph),
+      encodedGroupKeyGraph: _serializeGraph(groupKeyGraph),
     );
     _workerHandle.sendMessage(request.toJson());
 
