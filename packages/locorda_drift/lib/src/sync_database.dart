@@ -1960,160 +1960,199 @@ class SyncDatabase extends _$SyncDatabase {
   Future<void> _migrateDocumentsToBlob(Migrator m) async {
     final db = m.database;
 
-    // 1. Add new blob column
-    await db.customStatement('''
-      ALTER TABLE sync_documents ADD COLUMN document_content_blob BLOB;
-    ''');
+    // Step 1: Read all rows + their document IRIs in a single query (no write lock yet).
+    final rows = await db.customSelect('''
+      SELECT d.id, d.document_content, d.document_iri_id, d.type_iri_id,
+             d.our_physical_clock, d.updated_at, i.iri AS document_iri
+      FROM sync_documents d
+      JOIN sync_iris i ON d.document_iri_id = i.id
+    ''').get();
 
-    // 2. Re-encode each row: turtle text → RdfGraph → jelly binary
-    final rows = await db
-        .customSelect(
-          'SELECT id, document_content, document_iri_id FROM sync_documents',
-        )
-        .get();
-
+    // Step 2: Re-encode all content synchronously in memory (CPU, no DB interaction).
     final turtleDecoder = TurtleCodec();
-    for (final row in rows) {
-      final turtleText = row.read<String>('document_content');
-      // Look up the IRI for baseUri context
-      final iriId = row.read<int>('document_iri_id');
-      final iriRow = await db.customSelect(
-        'SELECT iri FROM sync_iris WHERE id = ?',
-        variables: [Variable.withInt(iriId)],
-      ).getSingleOrNull();
-      final documentUrl = iriRow?.read<String>('iri');
+    final reencoded = rows.map((row) {
+      final text = row.read<String>('document_content');
+      final documentIri = row.read<String>('document_iri');
+      final graph = turtleDecoder.decode(text, documentUrl: documentIri);
+      final bytes = jellyGraph.encoder.convert(graph);
+      return (
+        id: row.read<int>('id'),
+        documentIriId: row.read<int>('document_iri_id'),
+        typeIriId: row.read<int?>('type_iri_id'),
+        ourPhysicalClock: row.read<int>('our_physical_clock'),
+        updatedAt: row.read<int>('updated_at'),
+        bytes: bytes,
+      );
+    }).toList();
 
-      final graph = turtleDecoder.decode(turtleText, documentUrl: documentUrl);
-      final jellyBytes = jellyGraph.encoder.convert(graph);
-
+    // Step 3: Recreate table atomically inside a SAVEPOINT.
+    //   - SAVEPOINT works correctly whether or not we're already in a transaction.
+    //   - DROP TABLE IF EXISTS sync_documents_new handles residue from a previous
+    //     failed migration attempt (avoids "duplicate column" on retry).
+    await db.customStatement('SAVEPOINT mig_v9_documents;');
+    try {
       await db.customStatement(
-        'UPDATE sync_documents SET document_content_blob = ? WHERE id = ?',
-        [jellyBytes, row.read<int>('id')],
-      );
+          'DROP TABLE IF EXISTS sync_documents_new;');
+      await db.customStatement('''
+        CREATE TABLE sync_documents_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          document_iri_id INTEGER NOT NULL UNIQUE REFERENCES sync_iris(id),
+          type_iri_id INTEGER REFERENCES sync_iris(id),
+          document_content BLOB NOT NULL,
+          our_physical_clock INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+      ''');
+
+      for (final row in reencoded) {
+        await db.customStatement(
+          'INSERT INTO sync_documents_new'
+          ' (id, document_iri_id, type_iri_id, document_content, our_physical_clock, updated_at)'
+          ' VALUES (?, ?, ?, ?, ?, ?)',
+          [
+            row.id,
+            row.documentIriId,
+            row.typeIriId,
+            row.bytes,
+            row.ourPhysicalClock,
+            row.updatedAt,
+          ],
+        );
+      }
+
+      await db.customStatement('DROP TABLE sync_documents;');
+      await db.customStatement(
+          'ALTER TABLE sync_documents_new RENAME TO sync_documents;');
+      await db.customStatement('''
+        CREATE INDEX IF NOT EXISTS idx_sync_documents_iri
+        ON sync_documents(document_iri_id);
+      ''');
+      await db.customStatement('''
+        CREATE INDEX IF NOT EXISTS idx_sync_documents_type_updated
+        ON sync_documents(type_iri_id, updated_at);
+      ''');
+
+      await db.customStatement('RELEASE mig_v9_documents;');
+    } catch (e) {
+      await db.customStatement('ROLLBACK TO mig_v9_documents;');
+      await db.customStatement('RELEASE mig_v9_documents;');
+      rethrow;
     }
-
-    // 3. Recreate table with blob column replacing text column.
-    //    SQLite doesn't support DROP COLUMN on all versions, so recreate.
-    await db.customStatement('''
-      CREATE TABLE sync_documents_new (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        document_iri_id INTEGER NOT NULL UNIQUE REFERENCES sync_iris(id),
-        type_iri_id INTEGER REFERENCES sync_iris(id),
-        document_content BLOB NOT NULL,
-        our_physical_clock INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-    ''');
-
-    await db.customStatement('''
-      INSERT INTO sync_documents_new (id, document_iri_id, type_iri_id, document_content, our_physical_clock, updated_at)
-      SELECT id, document_iri_id, type_iri_id, document_content_blob, our_physical_clock, updated_at
-      FROM sync_documents;
-    ''');
-
-    await db.customStatement('DROP TABLE sync_documents;');
-    await db.customStatement(
-        'ALTER TABLE sync_documents_new RENAME TO sync_documents;');
-
-    // 4. Recreate indices
-    await db.customStatement('''
-      CREATE INDEX IF NOT EXISTS idx_sync_documents_iri
-      ON sync_documents(document_iri_id);
-    ''');
-    await db.customStatement('''
-      CREATE INDEX IF NOT EXISTS idx_sync_documents_type_updated
-      ON sync_documents(type_iri_id, updated_at);
-    ''');
   }
 
   /// Migrate index_entries.header_properties from TEXT (turtle) to BLOB (jelly).
   Future<void> _migrateIndexEntriesToBlob(Migrator m) async {
     final db = m.database;
 
-    // 1. Add new blob column
-    await db.customStatement('''
-      ALTER TABLE index_entries ADD COLUMN header_properties_blob BLOB;
-    ''');
+    // Step 1: Read all rows with non-null header_properties (no write lock yet).
+    final allRows = await db.customSelect('''
+      SELECT shard_iri, index_iri_id, resource_iri_id, resource_type_iri_id,
+             clock_hash, header_properties, updated_at, our_physical_clock, is_deleted
+      FROM index_entries
+    ''').get();
 
-    // 2. Re-encode non-null header properties: turtle text → RdfGraph → jelly binary
-    final rows = await db
-        .customSelect(
-          'SELECT shard_iri, resource_iri_id, header_properties FROM index_entries WHERE header_properties IS NOT NULL',
-        )
-        .get();
-
+    // Step 2: Re-encode non-null header_properties synchronously in memory.
     final turtleDecoder = TurtleCodec();
-    for (final row in rows) {
-      final turtleText = row.read<String>('header_properties');
-      final graph = turtleDecoder.decode(turtleText);
-      final jellyBytes = jellyGraph.encoder.convert(graph);
+    final reencoded = allRows.map((row) {
+      final turtleText = row.read<String?>('header_properties');
+      final Uint8List? bytes;
+      if (turtleText != null) {
+        final graph = turtleDecoder.decode(turtleText);
+        bytes = jellyGraph.encoder.convert(graph);
+      } else {
+        bytes = null;
+      }
+      return (
+        shardIri: row.read<int>('shard_iri'),
+        indexIriId: row.read<int>('index_iri_id'),
+        resourceIriId: row.read<int>('resource_iri_id'),
+        resourceTypeIriId: row.read<int?>('resource_type_iri_id'),
+        clockHash: row.read<String>('clock_hash'),
+        headerProperties: bytes,
+        updatedAt: row.read<int>('updated_at'),
+        ourPhysicalClock: row.read<int>('our_physical_clock'),
+        isDeleted: row.read<int>('is_deleted'),
+      );
+    }).toList();
 
+    // Step 3: Recreate table atomically inside a SAVEPOINT.
+    await db.customStatement('SAVEPOINT mig_v9_index_entries;');
+    try {
+      await db.customStatement('DROP TABLE IF EXISTS index_entries_new;');
+      await db.customStatement('''
+        CREATE TABLE index_entries_new (
+          shard_iri INTEGER NOT NULL REFERENCES sync_iris(id),
+          index_iri_id INTEGER NOT NULL REFERENCES sync_iris(id),
+          resource_iri_id INTEGER NOT NULL REFERENCES sync_iris(id),
+          resource_type_iri_id INTEGER REFERENCES sync_iris(id),
+          clock_hash TEXT NOT NULL,
+          header_properties BLOB,
+          updated_at INTEGER NOT NULL,
+          our_physical_clock INTEGER NOT NULL,
+          is_deleted INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (shard_iri, resource_iri_id)
+        );
+      ''');
+
+      for (final row in reencoded) {
+        await db.customStatement(
+          'INSERT INTO index_entries_new'
+          ' (shard_iri, index_iri_id, resource_iri_id, resource_type_iri_id,'
+          '  clock_hash, header_properties, updated_at, our_physical_clock, is_deleted)'
+          ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            row.shardIri,
+            row.indexIriId,
+            row.resourceIriId,
+            row.resourceTypeIriId,
+            row.clockHash,
+            row.headerProperties,
+            row.updatedAt,
+            row.ourPhysicalClock,
+            row.isDeleted,
+          ],
+        );
+      }
+
+      await db.customStatement('DROP TABLE index_entries;');
       await db.customStatement(
-        'UPDATE index_entries SET header_properties_blob = ? WHERE shard_iri = ? AND resource_iri_id = ?',
-        [
-          jellyBytes,
-          row.read<int>('shard_iri'),
-          row.read<int>('resource_iri_id')
-        ],
-      );
+          'ALTER TABLE index_entries_new RENAME TO index_entries;');
+      await db.customStatement('''
+        CREATE INDEX IF NOT EXISTS idx_index_entries_shard
+        ON index_entries(shard_iri);
+      ''');
+      await db.customStatement('''
+        CREATE INDEX IF NOT EXISTS idx_index_entries_resource
+        ON index_entries(resource_iri_id);
+      ''');
+      await db.customStatement('''
+        CREATE INDEX IF NOT EXISTS idx_index_entries_clock
+        ON index_entries(our_physical_clock);
+      ''');
+      await db.customStatement('''
+        CREATE INDEX IF NOT EXISTS idx_index_entries_deleted
+        ON index_entries(is_deleted);
+      ''');
+      await db.customStatement('''
+        CREATE INDEX IF NOT EXISTS idx_index_entries_shard_active
+        ON index_entries(shard_iri)
+        WHERE is_deleted = 0;
+      ''');
+      await db.customStatement('''
+        CREATE INDEX IF NOT EXISTS idx_index_entries_resource_type
+        ON index_entries(resource_type_iri_id);
+      ''');
+      await db.customStatement('''
+        CREATE INDEX IF NOT EXISTS idx_index_entries_index_updated
+        ON index_entries(index_iri_id, updated_at)
+        WHERE is_deleted = 0;
+      ''');
+
+      await db.customStatement('RELEASE mig_v9_index_entries;');
+    } catch (e) {
+      await db.customStatement('ROLLBACK TO mig_v9_index_entries;');
+      await db.customStatement('RELEASE mig_v9_index_entries;');
+      rethrow;
     }
-
-    // 3. Recreate table with blob column replacing text column
-    await db.customStatement('''
-      CREATE TABLE index_entries_new (
-        shard_iri INTEGER NOT NULL REFERENCES sync_iris(id),
-        index_iri_id INTEGER NOT NULL REFERENCES sync_iris(id),
-        resource_iri_id INTEGER NOT NULL REFERENCES sync_iris(id),
-        resource_type_iri_id INTEGER REFERENCES sync_iris(id),
-        clock_hash TEXT NOT NULL,
-        header_properties BLOB,
-        updated_at INTEGER NOT NULL,
-        our_physical_clock INTEGER NOT NULL,
-        is_deleted INTEGER NOT NULL DEFAULT 0,
-        PRIMARY KEY (shard_iri, resource_iri_id)
-      );
-    ''');
-
-    await db.customStatement('''
-      INSERT INTO index_entries_new (shard_iri, index_iri_id, resource_iri_id, resource_type_iri_id, clock_hash, header_properties, updated_at, our_physical_clock, is_deleted)
-      SELECT shard_iri, index_iri_id, resource_iri_id, resource_type_iri_id, clock_hash, header_properties_blob, updated_at, our_physical_clock, is_deleted
-      FROM index_entries;
-    ''');
-
-    await db.customStatement('DROP TABLE index_entries;');
-    await db.customStatement(
-        'ALTER TABLE index_entries_new RENAME TO index_entries;');
-
-    // 4. Recreate all indices
-    await db.customStatement('''
-      CREATE INDEX IF NOT EXISTS idx_index_entries_shard
-      ON index_entries(shard_iri);
-    ''');
-    await db.customStatement('''
-      CREATE INDEX IF NOT EXISTS idx_index_entries_resource
-      ON index_entries(resource_iri_id);
-    ''');
-    await db.customStatement('''
-      CREATE INDEX IF NOT EXISTS idx_index_entries_clock
-      ON index_entries(our_physical_clock);
-    ''');
-    await db.customStatement('''
-      CREATE INDEX IF NOT EXISTS idx_index_entries_deleted
-      ON index_entries(is_deleted);
-    ''');
-    await db.customStatement('''
-      CREATE INDEX IF NOT EXISTS idx_index_entries_shard_active
-      ON index_entries(shard_iri)
-      WHERE is_deleted = 0;
-    ''');
-    await db.customStatement('''
-      CREATE INDEX IF NOT EXISTS idx_index_entries_resource_type
-      ON index_entries(resource_type_iri_id);
-    ''');
-    await db.customStatement('''
-      CREATE INDEX IF NOT EXISTS idx_index_entries_index_updated
-      ON index_entries(index_iri_id, updated_at)
-      WHERE is_deleted = 0;
-    ''');
   }
 }
