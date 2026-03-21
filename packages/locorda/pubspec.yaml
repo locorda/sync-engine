@@ -21,9 +21,9 @@ dependencies:
   locorda_annotations: any
   
   # RDF mapping
-  locorda_rdf_core: ^0.11.10
-  locorda_rdf_mapper: ^0.11.10
-  locorda_rdf_mapper_annotations: ^0.11.10
+  locorda_rdf_core: ^0.11.11
+  locorda_rdf_mapper: ^0.11.11
+  locorda_rdf_mapper_annotations: ^0.11.11
 
   # Web Worker support (modern API)
   web: ^1.1.0
