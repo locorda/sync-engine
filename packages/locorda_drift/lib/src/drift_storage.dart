@@ -978,6 +978,14 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
             int maxPhysicalClock
           })>> getShardsToUpdate(int sinceTimestamp) async {
     final shardIris = await indexDao.getShardsToUpdate(sinceTimestamp);
+    // Pre-warm the shard IRI→ID cache with the integer IDs already returned by
+    // the query. Without this, getActiveIndexEntriesForShard would trigger a
+    // separate DB round-trip (~150 ms via the drift background isolate) per
+    // shard just to resolve the same IRI string back to its integer ID.
+    for (final row in shardIris) {
+      _shardIriIdCache[row.shardIri] = row.shardIriId;
+      _iriIdCache[row.shardIri] = row.shardIriId;
+    }
     return shardIris
         .map((iri) => (
               shardIri: _iriTermFactory(iri.shardIri),

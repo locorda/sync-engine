@@ -1275,18 +1275,24 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
   /// Uses max(ourPhysicalClock) per shard to find shards with changes since the last sync.
   /// This ensures deletions are properly detected using the item's timestamp,
   /// not the deletion operation's timestamp.
+  ///
+  /// Also returns [shardIriId] (the integer PK from sync_iris) so callers can
+  /// warm their IRI→ID caches without an extra round-trip per shard.
   Future<
       List<
           ({
+            int shardIriId,
             String shardIri,
             String resourceTypeIri,
             String indexIri,
             int maxPhysicalClock
           })>> getShardsToUpdate(int sinceTimestamp) async {
-    // Use raw SQL with HAVING clause for efficient filtering on DB level
+    // Use raw SQL with HAVING clause for efficient filtering on DB level.
+    // e.shard_iri is already the integer FK into sync_iris — expose it so
+    // the storage layer can pre-warm its IRI→ID cache without extra queries.
     final results = await customSelect(
       '''
-      SELECT s.iri as shard_iri, t.iri as resource_type_iri, i.iri as index_iri, MAX(e.our_physical_clock) as max_clock
+      SELECT e.shard_iri as shard_iri_id, s.iri as shard_iri, t.iri as resource_type_iri, i.iri as index_iri, MAX(e.our_physical_clock) as max_clock
       FROM index_entries e
       JOIN sync_iris s ON s.id = e.shard_iri
       JOIN sync_iris t ON t.id = e.resource_type_iri_id
@@ -1300,6 +1306,7 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
 
     return results
         .map((row) => (
+              shardIriId: row.read<int>('shard_iri_id'),
               shardIri: row.read<String>('shard_iri'),
               resourceTypeIri: row.read<String>('resource_type_iri'),
               indexIri: row.read<String>('index_iri'),
