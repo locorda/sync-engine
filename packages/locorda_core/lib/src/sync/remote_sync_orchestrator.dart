@@ -2422,9 +2422,9 @@ class _ShardSyncOrchestrator {
         syncTime: syncTime,
         canonicalResourceGraphs: canonicalGraphs,
       ),
-      prepareFinalize: (syncTime, canonicalGraphs, lookupCache,
-              preloadedActiveEntries) =>
-          _prepareShardUpload<T, G>(
+      prepareFinalize:
+          (syncTime, canonicalGraphs, lookupCache, preloadedActiveEntries) =>
+              _prepareShardUpload<T, G>(
         merged: merged,
         documentQueue: documentQueue,
         shard: shard,
@@ -2835,8 +2835,8 @@ class _ShardSyncOrchestrator {
     for (final entry in localIndexEntries) {
       final Set<RdfObject>? filterValues;
       if (filter != null && entry.headerProperties != null) {
-        filterValues = entry.headerProperties!.getMultiValueObjects(
-            entry.resourceIri, filter.filterPredicate);
+        filterValues = entry.headerProperties!
+            .getMultiValueObjects(entry.resourceIri, filter.filterPredicate);
       } else {
         filterValues = null;
       }
