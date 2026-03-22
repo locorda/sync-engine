@@ -1655,16 +1655,15 @@ class _DocumentSyncHelper {
     // Pipeline: pre-encode chunk 0, then for each chunk start the DB commit
     // and encode the next chunk in parallel on the main isolate while the
     // Drift isolate processes the transaction.
-    var preEncoded = _storage.preEncodeDocuments(
-        chunks.first.saveRequests.toList());
+    var preEncoded =
+        _storage.preEncodeDocuments(chunks.first.saveRequests.toList());
     for (var i = 0; i < chunks.length; i++) {
       final commitFuture = _commitBatchChunk(
         chunks[i],
         preEncodedContents: preEncoded,
       );
       preEncoded = (i + 1 < chunks.length)
-          ? _storage.preEncodeDocuments(
-              chunks[i + 1].saveRequests.toList())
+          ? _storage.preEncodeDocuments(chunks[i + 1].saveRequests.toList())
           : null;
       await commitFuture;
     }
