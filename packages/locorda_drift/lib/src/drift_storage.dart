@@ -668,13 +668,6 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
     }
   }
 
-  Future<int> _measureDbProbeMs() async {
-    final stopwatch = Stopwatch()..start();
-    await _database.customSelect('SELECT 1').getSingle();
-    stopwatch.stop();
-    return stopwatch.elapsedMilliseconds;
-  }
-
   /// Internal helper: Batch get IRIs from IDs
   Future<Map<int, String>> _getIris(Set<int> ids) async {
     return await indexDao.getIrisBatch(ids);
@@ -924,30 +917,13 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
     final shardIriId = shardResolution.shardIriId;
 
     await _logActiveShardQueryPlanOnce(shardIriId);
-    final dbProbeBeforeMs = await _measureDbProbeMs();
-    final queryStopwatch = Stopwatch()..start();
 
     final driftEntries = await _perflog.measure(
       'storage.getActiveIndexEntriesForShard.query',
       () => indexDao.getActiveIndexEntriesForShard(shardIriId),
-      args: [
-        'shardIriId=$shardIriId',
-        'dbProbeBeforeMs=$dbProbeBeforeMs',
-      ],
+      args: ['shardIriId=$shardIriId'],
       resultArgsBuilder: (entries) => ['resultCount=${entries.length}'],
       minDurationMs: 5,
-    );
-    queryStopwatch.stop();
-    final dbProbeAfterMs = await _measureDbProbeMs();
-
-    _perflog.measure(
-      'storage.getActiveIndexEntriesForShard.contentionProbe',
-      () async => null,
-      args: [
-        'shardIriId=$shardIriId|||queryMs=${queryStopwatch.elapsedMilliseconds}|||dbProbeBeforeMs=$dbProbeBeforeMs|||dbProbeAfterMs=$dbProbeAfterMs',
-        'resultCount=${driftEntries.length}',
-      ],
-      minDurationMs: 0,
     );
 
     return _perflog.measure(

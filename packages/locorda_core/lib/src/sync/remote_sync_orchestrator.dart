@@ -141,6 +141,9 @@ _DeferredBatchCommit _mergeDeferredBatches(List<_DeferredBatchCommit> batches) {
 /// The closure captures all generic adapter types internally, allowing
 /// Phase 1 results from different adapter modes to be stored in a single list.
 class _ShardPhase1Result {
+  /// IRI of this shard, used for batch pre-fetching active index entries in phase 3.
+  final IriTerm shardIri;
+
   /// Resource document sync candidates identified for this shard.
   final List<_BatchSyncCandidate> syncCandidates;
 
@@ -161,13 +164,18 @@ class _ShardPhase1Result {
   /// commit data, but does not upload. The orchestrator executes one bulk
   /// upload call for all prepared shards and then materializes deferred commits
   /// from returned ETags.
+  ///
+  /// [preloadedActiveEntries] is the pre-fetched list of active index entries
+  /// for this shard, eliminating an individual DB roundtrip per shard.
   final Future<_PreparedShardUpload?> Function(
     DateTime syncTime,
     Map<IriTerm, RdfGraph> canonicalResourceGraphs,
     ShardDeterminationLookupCache? lookupCache,
+    List<IndexEntryWithIri>? preloadedActiveEntries,
   ) prepareFinalize;
 
   _ShardPhase1Result({
+    required this.shardIri,
     required this.syncCandidates,
     required this.remoteNamedGraphs,
     required this.finalize,
@@ -532,6 +540,10 @@ class RemoteSyncOrchestrator {
           );
 
           // ── Phase 1: Download all shard docs & build queues ──
+          // Pre-fetch all shard index entries in one batch to avoid 132 individual Drift roundtrips.
+          final preloadedPhase1IndexEntries =
+              await _storage.getActiveIndexEntriesForShards(
+                  allShardTasks.map((s) => s.shardIri));
           final phase1Results = <_ShardPhase1Result>[];
           await _perflog.measure(
             'content.phase1Download',
@@ -576,6 +588,8 @@ class RemoteSyncOrchestrator {
                           downloadResultOverride: downloadResults[index],
                           localDocumentOverride:
                               localDocumentsByIri[shardDocumentIri],
+                          localIndexEntriesOverride:
+                              preloadedPhase1IndexEntries[shard.shardIri],
                         );
                         if (result != null) phase1Results.add(result);
                       }),
@@ -612,6 +626,8 @@ class RemoteSyncOrchestrator {
                           downloadResultOverride: downloadResults[index],
                           localDocumentOverride:
                               localDocumentsByIri[shardDocumentIri],
+                          localIndexEntriesOverride:
+                              preloadedPhase1IndexEntries[shard.shardIri],
                         );
                         if (result != null) phase1Results.add(result);
                       }),
@@ -685,6 +701,11 @@ class RemoteSyncOrchestrator {
             }
           }
 
+          // Pre-fetch all phase-3 shard index entries in one batch to avoid
+          // individual DB roundtrips inside each _prepareShardUpload call.
+          final preloadedPhase3IndexEntries =
+              await _storage.getActiveIndexEntriesForShards(
+                  phase1Results.map((r) => r.shardIri));
           final preparedUploads = <_PreparedShardUpload>[];
           final phase3ShardLookupCache = ShardDeterminationLookupCache();
           await _perflog.measure(
@@ -695,6 +716,7 @@ class RemoteSyncOrchestrator {
                       syncTime,
                       canonicalGraphs,
                       phase3ShardLookupCache,
+                      preloadedPhase3IndexEntries[result.shardIri],
                     );
                     if (prepared != null) preparedUploads.add(prepared);
                   }),
@@ -1587,7 +1609,7 @@ class _DocumentSyncHelper {
   ///
   /// Keeps individual transaction durations short (~100-200ms) so the shared
   /// Drift isolate is not blocked for seconds, which would stall UI queries.
-  static const _maxDocumentsPerCommitChunk = 500;
+  static const _maxDocumentsPerCommitChunk = 2000;
 
   Future<void> commitDeferredBatch(_DeferredBatchCommit deferred) async {
     final totalDocs = deferred.saveRequests.length;
@@ -2311,6 +2333,7 @@ class _ShardSyncOrchestrator {
     String? cachedEtagOverride,
     RemoteDownloadResult<T>? downloadResultOverride,
     StoredDocument? localDocumentOverride,
+    List<IndexEntryWithIri>? localIndexEntriesOverride,
   }) async {
     return _downloadShardTyped(
       shard,
@@ -2322,6 +2345,7 @@ class _ShardSyncOrchestrator {
       cachedEtagOverride: cachedEtagOverride,
       downloadResultOverride: downloadResultOverride,
       localDocumentOverride: localDocumentOverride,
+      localIndexEntriesOverride: localIndexEntriesOverride,
     );
   }
 
@@ -2336,6 +2360,7 @@ class _ShardSyncOrchestrator {
     String? cachedEtagOverride,
     RemoteDownloadResult<T>? downloadResultOverride,
     StoredDocument? localDocumentOverride,
+    List<IndexEntryWithIri>? localIndexEntriesOverride,
   }) async {
     _log.fine('Phase 1 download: $debugName');
 
@@ -2369,7 +2394,8 @@ class _ShardSyncOrchestrator {
 
     final documentQueue = await _perflog.measure(
       'phase1.buildQueue',
-      () => _buildDocumentQueue(shard, originalRemoteShard),
+      () => _buildDocumentQueue(shard, originalRemoteShard,
+          localIndexEntriesOverride: localIndexEntriesOverride),
       args: ['shard=${shardIri.debug}'],
       minDurationMs: 5,
     );
@@ -2381,6 +2407,7 @@ class _ShardSyncOrchestrator {
     );
 
     return _ShardPhase1Result(
+      shardIri: shardIri,
       syncCandidates: syncCandidates,
       remoteNamedGraphs: remoteNamedGraphs,
       finalize: (syncTime, canonicalGraphs) => _finalizeShard<T, G>(
@@ -2395,7 +2422,8 @@ class _ShardSyncOrchestrator {
         syncTime: syncTime,
         canonicalResourceGraphs: canonicalGraphs,
       ),
-      prepareFinalize: (syncTime, canonicalGraphs, lookupCache) =>
+      prepareFinalize: (syncTime, canonicalGraphs, lookupCache,
+              preloadedActiveEntries) =>
           _prepareShardUpload<T, G>(
         merged: merged,
         documentQueue: documentQueue,
@@ -2408,6 +2436,7 @@ class _ShardSyncOrchestrator {
         syncTime: syncTime,
         canonicalResourceGraphs: canonicalGraphs,
         lookupCache: lookupCache,
+        preloadedActiveEntries: preloadedActiveEntries,
       ),
     );
   }
@@ -2591,6 +2620,7 @@ class _ShardSyncOrchestrator {
     required DateTime syncTime,
     required Map<IriTerm, RdfGraph> canonicalResourceGraphs,
     ShardDeterminationLookupCache? lookupCache,
+    List<IndexEntryWithIri>? preloadedActiveEntries,
   }) async {
     return await _perflog.measure(
       '_prepareShardUpload.finalize',
@@ -2607,6 +2637,7 @@ class _ShardSyncOrchestrator {
           () => _getFinalEntrySet(
             shardIri,
             limitToResourceIris: limitToResources,
+            preloadedActiveEntries: preloadedActiveEntries,
           ),
           minDurationMs: 5,
           args: limitToResources != null
@@ -2765,8 +2796,9 @@ class _ShardSyncOrchestrator {
   /// 3. Detecting deletions (present remotely but not locally, or vice versa)
   Future<Set<_DocumentQueueEntry>> _buildDocumentQueue(
     ShardSyncSpec shard,
-    RdfGraph? originalRemoteShard,
-  ) async {
+    RdfGraph? originalRemoteShard, {
+    List<IndexEntryWithIri>? localIndexEntriesOverride,
+  }) async {
     //_log.fine('Building document queue for shard $shard');
     // For PartialShardSync, we already have the local clockHashes from the query
     // Just need to load remote entries
@@ -2798,7 +2830,7 @@ class _ShardSyncOrchestrator {
       String clockHash,
       Set<RdfObject>? filterValues
     )>{}; // resourceIri -> (clockHash, filterValues)
-    final localIndexEntries =
+    final localIndexEntries = localIndexEntriesOverride ??
         await _storage.getActiveIndexEntriesForShard(shardIri);
     for (final entry in localIndexEntries) {
       final Set<RdfObject>? filterValues;
@@ -2949,14 +2981,17 @@ class _ShardSyncOrchestrator {
   Future<Set<IndexEntryWithIri>> _getFinalEntrySet(IriTerm shardIri,
       {Set<IriTerm>? limitToResourceIris,
       Iterable<SaveIndexEntryRequest> pendingIndexEntryWrites =
-          const <SaveIndexEntryRequest>[]}) async {
-    final activeEntries = await _perflog.measure(
-      '_getFinalEntrySet.getActiveIndexEntriesForShard',
-      () => _storage.getActiveIndexEntriesForShard(shardIri),
-      args: ['shard=${shardIri.debug}'],
-      resultArgsBuilder: (entries) => ['activeEntryCount=${entries.length}'],
-      minDurationMs: 5,
-    );
+          const <SaveIndexEntryRequest>[],
+      List<IndexEntryWithIri>? preloadedActiveEntries}) async {
+    final activeEntries = preloadedActiveEntries ??
+        await _perflog.measure<List<IndexEntryWithIri>>(
+          '_getFinalEntrySet.getActiveIndexEntriesForShard',
+          () => _storage.getActiveIndexEntriesForShard(shardIri),
+          args: ['shard=${shardIri.debug}'],
+          resultArgsBuilder: (entries) =>
+              ['activeEntryCount=${entries.length}'],
+          minDurationMs: 5,
+        );
 
     final entriesByResource = <IriTerm, IndexEntryWithIri>{
       for (final entry in activeEntries) entry.resourceIri: entry,
