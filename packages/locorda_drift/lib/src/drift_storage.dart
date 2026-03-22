@@ -991,8 +991,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
     }
 
     if (uncachedIriValues.isNotEmpty) {
-      final resolved =
-          await indexDao.getOrCreateIriIdsBatch(uncachedIriValues);
+      final resolved = await indexDao.getOrCreateIriIdsBatch(uncachedIriValues);
       for (final shardIri in shardIriList) {
         final id = resolved[shardIri.value];
         if (id != null) {
@@ -1004,8 +1003,7 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
       }
     }
 
-    final grouped =
-        await indexDao.getActiveIndexEntriesForShards(shardIriIds);
+    final grouped = await indexDao.getActiveIndexEntriesForShards(shardIriIds);
 
     // Build result: every requested shard gets an entry (even if empty).
     final result = <IriTerm, List<core.IndexEntryWithIri>>{

@@ -2027,8 +2027,7 @@ class SyncDatabase extends _$SyncDatabase {
     //     failed migration attempt (avoids "duplicate column" on retry).
     await db.customStatement('SAVEPOINT mig_v9_documents;');
     try {
-      await db.customStatement(
-          'DROP TABLE IF EXISTS sync_documents_new;');
+      await db.customStatement('DROP TABLE IF EXISTS sync_documents_new;');
       await db.customStatement('''
         CREATE TABLE sync_documents_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
