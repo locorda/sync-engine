@@ -199,6 +199,10 @@ class DirSyncStorage extends RemoteSyncStorage {
   final ResourceLocator _resourceLocator;
   final Perflog _perflog;
 
+  /// Tracks parent directories already ensured to exist, avoiding redundant
+  /// `Directory.create(recursive: true)` syscalls during bulk uploads.
+  final _ensuredDirectories = <String>{};
+
   DirSyncStorage({
     required String directoryPath,
     required RdfCore rdfCore,
@@ -358,16 +362,20 @@ class DirSyncStorage extends RemoteSyncStorage {
 
     _log.fine('Uploading: $filePath, ifMatch: $ifMatch');
 
-    // Ensure parent directory exists
-    await _perflog.measure(
-      '_upload.ensureParentDir',
-      () => file.parent.create(recursive: true),
-      args: [
-        'kind=$kind',
-        'type=${_resourceLocator.fromIri(documentIri).typeIri.localName}'
-      ],
-      minDurationMs: 2,
-    );
+    // Ensure parent directory exists (cached per session)
+    final parentPath = file.parent.path;
+    if (!_ensuredDirectories.contains(parentPath)) {
+      await _perflog.measure(
+        '_upload.ensureParentDir',
+        () => file.parent.create(recursive: true),
+        args: [
+          'kind=$kind',
+          'type=${_resourceLocator.fromIri(documentIri).typeIri.localName}'
+        ],
+        minDurationMs: 2,
+      );
+      _ensuredDirectories.add(parentPath);
+    }
 
     // Check for create-only semantics (ifMatch: null)
     if (ifMatch == null) {

@@ -4,6 +4,8 @@
 /// that support CRDT synchronization with offline-first capabilities.
 library;
 
+import 'dart:typed_data';
+
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
 
@@ -43,8 +45,13 @@ abstract interface class Storage {
   ///
   /// Default implementation delegates to [saveDocument] per request.
   /// Storage backends may override this with optimized set-based writes.
+  ///
+  /// When [preEncodedContents] is provided, implementations that perform
+  /// binary encoding (e.g., protobuf) can skip the encode step and use
+  /// the pre-encoded bytes directly. See [preEncodeDocuments].
   Future<List<SaveDocumentResult>> saveDocuments(
-      Iterable<SaveDocumentRequest> requests) async {
+      Iterable<SaveDocumentRequest> requests,
+      {List<Uint8List>? preEncodedContents}) async {
     final results = <SaveDocumentResult>[];
     for (final request in requests) {
       results.add(await saveDocument(
@@ -58,6 +65,16 @@ abstract interface class Storage {
     }
     return results;
   }
+
+  /// Pre-encode document contents into binary form for pipeline optimization.
+  ///
+  /// Returns encoded bytes for each request, or `null` if this storage
+  /// backend doesn't support pre-encoding (the default). When non-null,
+  /// the result can be passed to [saveDocuments] via [preEncodedContents]
+  /// to skip the in-method encoding step, enabling encode ∥ DB-write
+  /// pipelining across commit chunks.
+  List<Uint8List>? preEncodeDocuments(List<SaveDocumentRequest> requests) =>
+      null;
 
   /// Get document with content and metadata by IRI.
   Future<StoredDocument?> getDocument(

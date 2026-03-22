@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' show min;
+import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
 import 'package:locorda_core/locorda_core.dart';
@@ -1626,11 +1627,8 @@ class _DocumentSyncHelper {
       (indexEntriesByDocIri[docIri] ??= []).add(entry);
     }
 
-    final chunkCount = (totalDocs + _maxDocumentsPerCommitChunk - 1) ~/
-        _maxDocumentsPerCommitChunk;
-    _log.fine('Splitting commit into $chunkCount chunks '
-        '($totalDocs docs, chunk size $_maxDocumentsPerCommitChunk)');
-
+    // Build all chunks upfront for pipeline access to N+1.
+    final chunks = <_DeferredBatchCommit>[];
     for (var i = 0; i < totalDocs; i += _maxDocumentsPerCommitChunk) {
       final end = min(i + _maxDocumentsPerCommitChunk, totalDocs);
       final docChunk = deferred.saveRequests.sublist(i, end);
@@ -1644,11 +1642,31 @@ class _DocumentSyncHelper {
         if (etag != null) chunkEtags[doc.documentIri] = etag;
       }
 
-      await _commitBatchChunk((
+      chunks.add((
         saveRequests: docChunk,
         indexEntryRequests: chunkIndexEntries,
         etagUpdates: chunkEtags,
       ));
+    }
+
+    _log.fine('Splitting commit into ${chunks.length} chunks '
+        '($totalDocs docs, chunk size $_maxDocumentsPerCommitChunk)');
+
+    // Pipeline: pre-encode chunk 0, then for each chunk start the DB commit
+    // and encode the next chunk in parallel on the main isolate while the
+    // Drift isolate processes the transaction.
+    var preEncoded = _storage.preEncodeDocuments(
+        chunks.first.saveRequests.toList());
+    for (var i = 0; i < chunks.length; i++) {
+      final commitFuture = _commitBatchChunk(
+        chunks[i],
+        preEncodedContents: preEncoded,
+      );
+      preEncoded = (i + 1 < chunks.length)
+          ? _storage.preEncodeDocuments(
+              chunks[i + 1].saveRequests.toList())
+          : null;
+      await commitFuture;
     }
   }
 
@@ -1659,11 +1677,18 @@ class _DocumentSyncHelper {
   /// costs across saveDocuments, saveIndexEntries, and setRemoteETags into
   /// a single commit, and allows saveIndexEntries to reuse IRI IDs cached
   /// by saveDocuments without separate DB round-trips.
-  Future<void> _commitBatchChunk(_DeferredBatchCommit deferred) async {
+  ///
+  /// When [preEncodedContents] is provided, the encode step inside
+  /// saveDocuments is skipped (pipeline optimization).
+  Future<void> _commitBatchChunk(
+    _DeferredBatchCommit deferred, {
+    List<Uint8List>? preEncodedContents,
+  }) async {
     final commit = () async {
       await _perflog.measure(
         'batch.commit.saveDocuments',
-        () => _storage.saveDocuments(deferred.saveRequests),
+        () => _storage.saveDocuments(deferred.saveRequests,
+            preEncodedContents: preEncodedContents),
         args: ['count=${deferred.saveRequests.length}'],
         minDurationMs: 5,
       );
@@ -1684,12 +1709,18 @@ class _DocumentSyncHelper {
         );
       }
     };
-
-    if (_storage case TransactionalStorage txStorage) {
-      await txStorage.inTransaction(commit);
-    } else {
-      await commit();
-    }
+    await _perflog.measure(
+      'batch.commitBatchChunk',
+      () async {
+        if (_storage case TransactionalStorage txStorage) {
+          await txStorage.inTransaction(commit);
+        } else {
+          await commit();
+        }
+      },
+      args: ['count=${deferred.saveRequests.length}'],
+      minDurationMs: 5,
+    );
   }
 
   Future<

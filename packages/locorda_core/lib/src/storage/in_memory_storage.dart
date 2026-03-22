@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
@@ -214,8 +215,13 @@ class InMemoryStorage implements Storage, TransactionalStorage {
   }
 
   @override
+  List<Uint8List>? preEncodeDocuments(List<SaveDocumentRequest> requests) =>
+      null;
+
+  @override
   Future<List<SaveDocumentResult>> saveDocuments(
-      Iterable<SaveDocumentRequest> requests) async {
+      Iterable<SaveDocumentRequest> requests,
+      {List<Uint8List>? preEncodedContents}) async {
     final results = <SaveDocumentResult>[];
     for (final request in requests) {
       results.add(await saveDocument(

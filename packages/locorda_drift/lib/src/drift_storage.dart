@@ -145,8 +145,17 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   }
 
   @override
+  List<Uint8List>? preEncodeDocuments(List<core.SaveDocumentRequest> requests) {
+    if (requests.isEmpty) return const [];
+    return requests
+        .map((r) => _codec.encode(r.document))
+        .toList(growable: false);
+  }
+
+  @override
   Future<List<core.SaveDocumentResult>> saveDocuments(
-      Iterable<core.SaveDocumentRequest> requests) async {
+      Iterable<core.SaveDocumentRequest> requests,
+      {List<Uint8List>? preEncodedContents}) async {
     final requestList = requests.toList(growable: false);
     if (requestList.isEmpty) {
       return const [];
@@ -164,17 +173,18 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
       ...typeIriValues,
     };
 
-    // Pre-encode all documents BEFORE the transaction —
-    // pure CPU work that shouldn't hold a DB lock
-    final encodedContents = await _perflog.measure(
-      'saveDocuments.encode',
-      () async => requestList
-          .map((r) =>
-              _codec.encode(r.document /*, baseUri: r.documentIri.value*/))
-          .toList(growable: false),
-      args: ['count=${requestList.length}'],
-      minDurationMs: 5,
-    );
+    // Use pre-encoded content if available (pipeline optimization),
+    // otherwise encode here before the transaction
+    final List<Uint8List> encodedContents = preEncodedContents ??
+        await _perflog.measure(
+          'saveDocuments.encode',
+          () async => requestList
+              .map((r) =>
+                  _codec.encode(r.document /*, baseUri: r.documentIri.value*/))
+              .toList(growable: false),
+          args: ['count=${requestList.length}'],
+          minDurationMs: 5,
+        );
 
     return _database.transaction(() async {
       final iriIdByValue = await _perflog.measure(
