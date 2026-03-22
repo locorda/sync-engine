@@ -35,6 +35,23 @@ typedef DocumentSaveResult = ({
       MissingGroupIndex> missingGroupIndices // GroupIndices that need to be created
 });
 
+/// Encapsulates the computed state for a deferred document write.
+///
+/// Returned by [CrdtDocumentManager.prepareModify] to enable batching multiple
+/// document writes into a single [Storage.saveDocuments] call. Callers must
+/// pass [request] to [Storage.saveDocuments] to commit the change atomically.
+typedef PreparedDocumentSave = ({
+  IriTerm documentIri,
+  IriTerm resourceIri,
+  RdfGraph crdtDocument,
+  RdfGraph appData,
+  int physicalTime,
+  int updatedAt,
+  List<ResolvedGroupIndex> resolvedGroupIndices,
+  List<MissingGroupIndex> missingGroupIndices,
+  SaveDocumentRequest request,
+});
+
 void _validateResourceGraph(
   IriTerm documentIri,
   IriTerm primaryResourceIri,
@@ -361,6 +378,54 @@ class CrdtDocumentManager {
     );
   }
 
+  /// Like [modify] but accepts a pre-loaded [preloadedDoc] to skip the storage
+  /// read, and returns a [PreparedDocumentSave] without committing to storage.
+  ///
+  /// Enables callers to batch-load all required documents via
+  /// [Storage.getDocumentsByIri] upfront and commit all results in a single
+  /// [Storage.saveDocuments] call instead of one isolate roundtrip per document.
+  ///
+  /// Returns null if no property changes are detected (document unchanged).
+  Future<PreparedDocumentSave?> prepareModify(
+    IriTerm type,
+    IriTerm primaryResourceIri,
+    RdfGraph Function(RdfGraph oldAppData) modifier,
+    StoredDocument? preloadedDoc, {
+    int? physicalTime,
+    bool acceptMissing = false,
+  }) async {
+    final documentIri = primaryResourceIri.getDocumentIri();
+    final oldDocument = preloadedDoc?.document;
+    final oldUpdatedAt = preloadedDoc?.metadata.updatedAt;
+
+    final governedByFiles =
+        _computeIsGovernedBy(oldDocument, documentIri, _config, type);
+    final mergeContract = await _mergeContractLoader.load(governedByFiles);
+
+    final (appGraph: oldAppData, frameworkGraph: oldFrameworkGraph) =
+        oldDocument == null
+            ? (appGraph: null, frameworkGraph: null)
+            : splitDocument(oldDocument, documentIri, mergeContract);
+
+    if (oldAppData == null && !acceptMissing) {
+      throw ArgumentError(
+          'Cannot patch non-existing document ${documentIri.debug} - use save() instead');
+    }
+    final appData = modifier(oldAppData ?? RdfGraph());
+    return _computeSave(
+      type,
+      primaryResourceIri,
+      documentIri,
+      appData,
+      oldAppData,
+      oldFrameworkGraph,
+      mergeContract,
+      governedByFiles,
+      physicalTime: physicalTime,
+      oldUpdatedAt: oldUpdatedAt,
+    );
+  }
+
   Future<
       ({
         RdfGraph? oldAppData,
@@ -402,8 +467,12 @@ class CrdtDocumentManager {
     );
   }
 
-  /// Throws [ConcurrentUpdateException] on optimistic lock failure.
-  Future<DocumentSaveResult?> _save(
+  /// CPU-only CRDT merge and document construction, without a storage write.
+  ///
+  /// Returns null if no property changes are detected (document unchanged).
+  /// Used by [_save] (which adds the storage write) and [prepareModify]
+  /// (which defers the write for batch commits).
+  Future<PreparedDocumentSave?> _computeSave(
     IriTerm type,
     IriTerm resourceIri,
     IriTerm documentIri,
@@ -414,25 +483,20 @@ class CrdtDocumentManager {
     List<IriTerm> governedByFiles, {
     int? physicalTime,
     int? logicalTime,
-    int?
-        oldUpdatedAt, // For optimistic locking - use updatedAt (changes on every save)
+    int? oldUpdatedAt,
   }) async {
-    RdfGraph? oldDocument;
     RdfGraph? crdtDocument;
     RdfGraph? frameworkGraph;
     try {
-      // Validate input parameters
       if (appData.isEmpty) {
         throw ArgumentError('Cannot save empty graph');
       }
 
-      // Validate resource graph structure
       _validateResourceGraph(documentIri, resourceIri, type, appData);
 
       _log.fine(
           'Saving resource ${resourceIri.debug} to document ${documentIri.debug}');
 
-      // 3. Generate latest clock
       final clock = _hlcService.createOrIncrementClock(
         oldFrameworkGraph,
         documentIri,
@@ -441,15 +505,12 @@ class CrdtDocumentManager {
       );
       final physicalTimestamp = clock.physicalTime;
 
-      // We use PhysicalTimestampFactory to get "now" for updatedAt (and createdAt if needed) because
-      // this is about the time the document was created/updated in storage, where
-      // the physical clock of the CRDT is about the time of the change itself.
       final updatedAtTimestamp = _physicalTimestampFactory();
-      // 4. Detect property changes between old and new app graphs and generate CRDT metadata
+
       final (
         metadata: crdtMetadata,
         newBlankNodes: appBlankNodes,
-        oldBlankNodes: oldAppBlankNodes
+        oldBlankNodes: _,
       ) = _localDocumentMerger.generateMetadata(
         documentIri,
         appData,
@@ -465,20 +526,14 @@ class CrdtDocumentManager {
             'No property changes detected for ${resourceIri.debug}, skipping save');
         return null;
       }
-      // crdt:createdAt uses OR_Set semantics (core-v1.ttl): after merging multiple
-      // peers there may be multiple values. The effective createdAt is max() per the
-      // spec lifecycle rule: document deleted if max(deletedAt) > max(createdAt).
-      // We carry forward the maximum (most recent) creation timestamp.
+
       final createdAt = oldFrameworkGraph?.findMaxDateTimeObject(
               documentIri, SyncManagedDocument.crdtCreatedAt) ??
           LiteralTermExtensions.dateTime(updatedAtTimestamp);
 
-      // Calculate new shards based on current appData
-      // Use lenient mode for user-initiated saves - we proceed even if indices
-      // haven't been synced yet. Missing shards will be self-healing on next sync.
       final (
         allShards,
-        removed,
+        _,
         resolvedGroupIndices,
         missingGroupIndices,
         missingIndexDocuments
@@ -498,7 +553,6 @@ class CrdtDocumentManager {
             'shards will be recalculated on next sync: $missingIndexDocuments');
       }
 
-      // 5. Construct complete CRDT document with framework metadata
       final documentTriples = _constructCrdtDocument(
         documentIri,
         oldFrameworkGraph,
@@ -512,8 +566,11 @@ class CrdtDocumentManager {
         allShards,
       );
       frameworkGraph = RdfGraph.fromTriples(documentTriples);
-      final (metadata: frameworkMetadata, oldBlankNodes: _, newBlankNodes: _) =
-          _localDocumentMerger.generateMetadata(
+      final (
+        metadata: frameworkMetadata,
+        oldBlankNodes: _,
+        newBlankNodes: _,
+      ) = _localDocumentMerger.generateMetadata(
         documentIri,
         frameworkGraph,
         oldFrameworkGraph,
@@ -521,71 +578,47 @@ class CrdtDocumentManager {
         mergeContract,
         clock,
         appDataTypeIri: type,
-        isFrameworkData: true, // Mark as framework data
+        isFrameworkData: true,
       );
-      // add framework property changes
       propertyChanges.addAll(frameworkMetadata.propertyChanges);
 
-      // Add all framework metadata triples
       documentTriples.addNodes(documentIri, SyncManagedDocument.hasStatement,
           frameworkMetadata.statements);
 
-      // And cleanup: remove any triples that are marked for removal, e.g. tombstones and statements that need to be removed eg. because their value re-occured.
       crdtMetadata.triplesToRemove.forEach(documentTriples.remove);
       frameworkMetadata.triplesToRemove.forEach(documentTriples.remove);
 
-      // Add all app data triples
       documentTriples.addAll(appData.triples);
 
       crdtDocument = RdfGraph.fromTriples(documentTriples);
 
-      // 6. Create document metadata for storage
       final documentMetadata = DocumentMetadata(
         ourPhysicalClock: physicalTimestamp,
-        updatedAt: updatedAtTimestamp
-            .millisecondsSinceEpoch, // Storage will update this
+        updatedAt: updatedAtTimestamp.millisecondsSinceEpoch,
       );
 
-      // 7. Save to storage atomically (document + metadata + property changes)
-      // Use optimistic locking to prevent lost updates from concurrent modifications
-      late final SaveDocumentResult saveResult;
-      try {
-        saveResult = await _storage.saveDocument(
-          documentIri,
-          type,
-          crdtDocument,
-          documentMetadata,
-          propertyChanges,
-          ifMatchUpdatedAt: oldUpdatedAt,
-        );
-      } on ConcurrentUpdateException {
-        // concurrent update detected, will be retried by caller
-        rethrow;
-      } catch (e) {
-        _log.severe(
-            'Failed to save document ${documentIri.debug} to storage: $e');
-        rethrow; // Don't emit hydration event if storage failed
-      }
-
-      _log.finer(
-          'Successfully saved document ${documentIri.debug} with ${propertyChanges.length} property changes');
       return (
         documentIri: documentIri,
         resourceIri: resourceIri,
         crdtDocument: crdtDocument,
         appData: appData,
-        previousCursor: saveResult.previousCursor,
-        currentCursor: saveResult.currentCursor,
-        resolvedGroupIndices: resolvedGroupIndices,
-        missingGroupIndices: missingGroupIndices,
         physicalTime: clock.physicalTime,
         updatedAt: updatedAtTimestamp.millisecondsSinceEpoch,
+        resolvedGroupIndices: resolvedGroupIndices,
+        missingGroupIndices: missingGroupIndices,
+        request: SaveDocumentRequest(
+          documentIri: documentIri,
+          typeIri: type,
+          document: crdtDocument,
+          metadata: documentMetadata,
+          changes: propertyChanges,
+          ifMatchUpdatedAt: oldUpdatedAt,
+        ),
       );
     } on UnidentifiedBlankNodeException catch (e, stackTrace) {
       _log.severe(
           'Save operation failed for type ${type.debug}', e, stackTrace);
       final blankNode = e.blankNode;
-      _throwIfUsedIn(stackTrace, "Old Document", oldDocument, blankNode);
       _throwIfUsedIn(stackTrace, "New App Data", appData, blankNode);
       _throwIfUsedIn(
           stackTrace, "New Framework Data", frameworkGraph, blankNode);
@@ -596,6 +629,69 @@ class CrdtDocumentManager {
           'Save operation failed for type ${type.debug}', e, stackTrace);
       rethrow;
     }
+  }
+
+  /// Throws [ConcurrentUpdateException] on optimistic lock failure.
+  Future<DocumentSaveResult?> _save(
+    IriTerm type,
+    IriTerm resourceIri,
+    IriTerm documentIri,
+    RdfGraph appData,
+    RdfGraph? oldAppData,
+    RdfGraph? oldFrameworkGraph,
+    MergeContract mergeContract,
+    List<IriTerm> governedByFiles, {
+    int? physicalTime,
+    int? logicalTime,
+    int? oldUpdatedAt,
+  }) async {
+    final prepared = await _computeSave(
+      type,
+      resourceIri,
+      documentIri,
+      appData,
+      oldAppData,
+      oldFrameworkGraph,
+      mergeContract,
+      governedByFiles,
+      physicalTime: physicalTime,
+      logicalTime: logicalTime,
+      oldUpdatedAt: oldUpdatedAt,
+    );
+    if (prepared == null) return null;
+
+    late final SaveDocumentResult saveResult;
+    try {
+      saveResult = await _storage.saveDocument(
+        prepared.request.documentIri,
+        prepared.request.typeIri,
+        prepared.request.document,
+        prepared.request.metadata,
+        prepared.request.changes,
+        ifMatchUpdatedAt: prepared.request.ifMatchUpdatedAt,
+      );
+    } on ConcurrentUpdateException {
+      rethrow;
+    } catch (e) {
+      _log.severe(
+          'Failed to save document ${documentIri.debug} to storage: $e');
+      rethrow;
+    }
+
+    _log.finer(
+        'Successfully saved document ${documentIri.debug} with ${prepared.request.changes.length} property changes');
+    return (
+      documentIri: prepared.documentIri,
+      resourceIri: prepared.resourceIri,
+      crdtDocument: prepared.crdtDocument,
+      appData: prepared.appData,
+      previousCursor: saveResult.previousCursor,
+      currentCursor: saveResult.currentCursor,
+      resolvedGroupIndices: prepared.resolvedGroupIndices,
+      missingGroupIndices: prepared.missingGroupIndices,
+      physicalTime: prepared.physicalTime,
+      updatedAt: prepared.updatedAt,
+    );
   }
 
   void _throwIfUsedIn(StackTrace stackTrace, String context,

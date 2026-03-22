@@ -13,6 +13,13 @@ import 'package:locorda_rdf_core/core.dart';
 
 final _log = Logger('ShardDocumentGenerator');
 
+typedef _ShardInfo = ({
+  IriTerm shardIri,
+  IriTerm indexIri,
+  IriTerm resourceTypeIri,
+  int maxPhysicalClock,
+});
+
 class ShardDocumentGenerator {
   final Storage _storage;
   final CrdtDocumentManager _documentManager;
@@ -28,11 +35,8 @@ class ShardDocumentGenerator {
 
   Future<void> call(DateTime syncTime, int lastSyncTimestamp) async {
     _log.info('Sync triggered - finding shards to update');
-
-    // 1. Get timestamp of last sync
     _log.fine('Last sync timestamp: $lastSyncTimestamp');
 
-    // 2. Find all shards with changes since last sync
     final shardsToUpdate = await _storage.getShardsToUpdate(lastSyncTimestamp);
 
     if (shardsToUpdate.isEmpty) {
@@ -40,23 +44,95 @@ class ShardDocumentGenerator {
       return;
     }
 
-    _log.info('Found ${shardsToUpdate.length} shard(s) to update');
+    _log.info('Found ${shardsToUpdate.length} shard(s) to update, batching');
 
-    // 3. Sync each shard
-    int syncedCount = 0;
-    for (final shardIri in shardsToUpdate) {
-      final result = await syncShard(
-        shardIri.shardIri,
-        shardIri.indexIri,
-        shardIri.resourceTypeIri,
-        shardIri.maxPhysicalClock,
+    await retryOnConflict(
+      () => _syncShardsBatch(shardsToUpdate),
+      debugOperationName: 'batch sync of ${shardsToUpdate.length} shards',
+    );
+  }
+
+  /// Batch-syncs all [shardsToUpdate] in 4 storage roundtrips total.
+  ///
+  /// Phase 1 (2 reads): bulk-fetch shard entries and existing shard documents.
+  /// Phase 2 (CPU): compute CRDT merges for all shards without I/O.
+  /// Phase 3 (2 writes): batch-save all changed documents and their index entries.
+  ///
+  /// Throws [ConcurrentUpdateException] if a shard document was concurrently
+  /// modified between the Phase 1 reads and the Phase 3 write; the caller
+  /// ([retryOnConflict]) will retry the entire batch in that case.
+  Future<void> _syncShardsBatch(List<_ShardInfo> shardsToUpdate) async {
+    final allShardIris = shardsToUpdate.map((s) => s.shardIri).toList();
+    final allShardDocumentIris =
+        allShardIris.map((iri) => iri.getDocumentIri()).toList();
+
+    // Phase 1: two batch reads — replaces 155×1 roundtrips per call type
+    final entriesByShardIri =
+        await _storage.getActiveIndexEntriesForShards(allShardIris);
+    final existingDocsByIri =
+        await _storage.getDocumentsByIri(allShardDocumentIris);
+
+    // Phase 2: CPU-only CRDT merge for each shard (no I/O)
+    final preparedSaves = <(_ShardInfo, PreparedDocumentSave)>[];
+    for (final shardInfo in shardsToUpdate) {
+      final shardDocumentIri = shardInfo.shardIri.getDocumentIri();
+      final entries = entriesByShardIri[shardInfo.shardIri] ?? [];
+      final existingDoc = existingDocsByIri[shardDocumentIri];
+
+      final newTriples = generateShardNodes(
+        shardDocumentIri: shardDocumentIri,
+        shardResourceIri: shardInfo.shardIri,
+        entries: entries,
+      ).expand((node) => [
+            Triple(shardInfo.shardIri, IdxShard.containsEntry, node.$1),
+            ...node.$2.triples,
+          ]);
+
+      final prepared = await _documentManager.prepareModify(
+        IdxShard.classIri,
+        shardInfo.shardIri,
+        (oldAppData) => buildShardAppData(
+            oldAppData, shardInfo.shardIri, shardInfo.indexIri, newTriples),
+        existingDoc,
+        physicalTime: shardInfo.maxPhysicalClock,
+        // shard documents may not exist yet on first write
+        acceptMissing: true,
       );
-      if (result != null) {
-        syncedCount++;
+
+      if (prepared != null) {
+        preparedSaves.add((shardInfo, prepared));
       }
     }
 
-    _log.info('Synced $syncedCount shard(s)');
+    if (preparedSaves.isEmpty) {
+      _log.info('No shard changes detected');
+      return;
+    }
+
+    // Phase 3: two batch writes — replaces 155×2 roundtrips
+    await _storage
+        .saveDocuments(preparedSaves.map((pair) => pair.$2.request).toList());
+
+    // For shard documents, prepareIndexEntryWrites is effectively a no-op
+    // (shards are not themselves indexed), but we call it for correctness.
+    final allIndexRequests = <SaveIndexEntryRequest>[];
+    for (final (shardInfo, prepared) in preparedSaves) {
+      final indexRequests = await _indexManager.prepareIndexEntryWrites(
+        document: prepared.crdtDocument,
+        documentIri: prepared.documentIri,
+        resourceTypeIri: shardInfo.resourceTypeIri,
+        physicalTime: prepared.physicalTime,
+        updatedAt: prepared.updatedAt,
+        missingGroupIndices: prepared.missingGroupIndices,
+      );
+      allIndexRequests.addAll(indexRequests);
+    }
+
+    if (allIndexRequests.isNotEmpty) {
+      await _storage.saveIndexEntries(allIndexRequests);
+    }
+
+    _log.info('Synced ${preparedSaves.length} shard(s)');
   }
 
   /// Synchronizes a single shard by generating its document from DB entries.

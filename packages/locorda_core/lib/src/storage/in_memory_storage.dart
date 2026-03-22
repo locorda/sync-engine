@@ -564,6 +564,27 @@ class InMemoryStorage implements Storage, TransactionalStorage {
   }
 
   @override
+  Future<Map<IriTerm, List<IndexEntryWithIri>>> getActiveIndexEntriesForShards(
+      Iterable<IriTerm> shardIris) async {
+    final shardSet = shardIris.toSet();
+    final result = <IriTerm, List<IndexEntryWithIri>>{
+      for (final shardIri in shardSet) shardIri: [],
+    };
+    for (final entry in _indexEntries.values) {
+      if (entry.isDeleted || !shardSet.contains(entry.shardIri)) continue;
+      result[entry.shardIri]!.add(IndexEntryWithIri(
+        resourceIri: entry.resourceIri,
+        clockHash: entry.clockHash,
+        headerProperties: entry.headerProperties,
+        updatedAt: entry.updatedAt,
+        ourPhysicalClock: entry.ourPhysicalClock,
+        isDeleted: entry.isDeleted,
+      ));
+    }
+    return result;
+  }
+
+  @override
   Future<List<IriTerm>> getMissingDocumentsForIndexEntries(
       {IriTerm? resourceType}) async {
     final missingIris = <IriTerm>{};

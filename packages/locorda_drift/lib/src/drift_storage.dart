@@ -969,6 +969,67 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   }
 
   @override
+  Future<Map<IriTerm, List<core.IndexEntryWithIri>>>
+      getActiveIndexEntriesForShards(Iterable<IriTerm> shardIris) async {
+    final shardIriList = shardIris.toList(growable: false);
+    if (shardIriList.isEmpty) return {};
+
+    // Resolve shard IRI strings → integer IDs. The cache is pre-warmed by
+    // getShardsToUpdate(), so all IDs are typically already present.
+    final shardIriIds = <int>[];
+    final shardIdToIri = <int, IriTerm>{};
+    final uncachedIriValues = <String>[];
+
+    for (final shardIri in shardIriList) {
+      final cached = _shardIriIdCache[shardIri.value];
+      if (cached != null) {
+        shardIriIds.add(cached);
+        shardIdToIri[cached] = shardIri;
+      } else {
+        uncachedIriValues.add(shardIri.value);
+      }
+    }
+
+    if (uncachedIriValues.isNotEmpty) {
+      final resolved =
+          await indexDao.getOrCreateIriIdsBatch(uncachedIriValues);
+      for (final shardIri in shardIriList) {
+        final id = resolved[shardIri.value];
+        if (id != null) {
+          _shardIriIdCache[shardIri.value] = id;
+          _iriIdCache[shardIri.value] = id;
+          shardIriIds.add(id);
+          shardIdToIri[id] = shardIri;
+        }
+      }
+    }
+
+    final grouped =
+        await indexDao.getActiveIndexEntriesForShards(shardIriIds);
+
+    // Build result: every requested shard gets an entry (even if empty).
+    final result = <IriTerm, List<core.IndexEntryWithIri>>{
+      for (final shardIri in shardIriList) shardIri: const [],
+    };
+    for (final entry in grouped.entries) {
+      final shardIri = shardIdToIri[entry.key];
+      if (shardIri == null) continue;
+      result[shardIri] = entry.value
+          .map((driftEntry) => core.IndexEntryWithIri(
+                resourceIri: _iriTermFactory(driftEntry.resourceIri),
+                clockHash: driftEntry.entry.clockHash,
+                headerProperties:
+                    _decodeHeaderProperties(driftEntry.entry.headerProperties),
+                updatedAt: driftEntry.entry.updatedAt,
+                ourPhysicalClock: driftEntry.entry.ourPhysicalClock,
+                isDeleted: driftEntry.entry.isDeleted,
+              ))
+          .toList(growable: false);
+    }
+    return result;
+  }
+
+  @override
   Future<
       List<
           ({

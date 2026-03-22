@@ -1265,6 +1265,35 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
         .toList();
   }
 
+  /// Batch variant of [getActiveIndexEntriesForShard] for multiple shards.
+  ///
+  /// Executes a single `WHERE shard_iri IN (...)` query, avoiding one
+  /// isolate roundtrip per shard. Returns a map keyed by shard IRI integer ID.
+  /// Shards with no active entries are not present in the returned map.
+  Future<Map<int, List<DriftIndexEntry>>> getActiveIndexEntriesForShards(
+      List<int> shardIriIds) async {
+    if (shardIriIds.isEmpty) return {};
+
+    final query = select(db.indexEntries).join([
+      innerJoin(
+          db.syncIris, db.syncIris.id.equalsExp(db.indexEntries.resourceIriId))
+    ])
+      ..where(db.indexEntries.shardIri.isIn(shardIriIds) &
+          db.indexEntries.isDeleted.equals(false));
+
+    final results = await query.get();
+
+    final grouped = <int, List<DriftIndexEntry>>{};
+    for (final row in results) {
+      final entry = row.readTable(db.indexEntries);
+      final resourceIri = row.readTable(db.syncIris).iri;
+      grouped
+          .putIfAbsent(entry.shardIri, () => [])
+          .add(DriftIndexEntry(entry: entry, resourceIri: resourceIri));
+    }
+    return grouped;
+  }
+
   /// Get shard IRIs that have entries modified after the given timestamp.
   ///
   /// This includes both new/updated entries and deleted entries (tombstones).

@@ -349,6 +349,23 @@ abstract interface class Storage {
   Future<List<IndexEntryWithIri>> getActiveIndexEntriesForShard(
       IriTerm shardIri);
 
+  /// Batch version of [getActiveIndexEntriesForShard] for multiple shards.
+  ///
+  /// Returns a map from each requested shard IRI to its active (non-deleted) entries.
+  /// Shards with no active entries appear in the map with an empty list.
+  ///
+  /// Default implementation delegates to [getActiveIndexEntriesForShard] per shard.
+  /// Storage backends should override with a single IN-query for efficiency —
+  /// the default incurs one isolate roundtrip per shard.
+  Future<Map<IriTerm, List<IndexEntryWithIri>>> getActiveIndexEntriesForShards(
+      Iterable<IriTerm> shardIris) async {
+    final result = <IriTerm, List<IndexEntryWithIri>>{};
+    for (final shardIri in shardIris) {
+      result[shardIri] = await getActiveIndexEntriesForShard(shardIri);
+    }
+    return result;
+  }
+
   /// Get shard IRIs that have entries modified after the given timestamp.
   ///
   /// Used by SyncFunction to determine which shards need regeneration.
