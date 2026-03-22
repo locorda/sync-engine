@@ -1098,14 +1098,23 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
     lastEmittedCursor = await result.lastCursor;
 
     // Phase 2: Switch to reactive watch for ongoing changes
-    yield* _storage
-        .watchIndexEntries(
-          indexIris: indexIris,
-          cursorTimestamp: lastEmittedCursor,
-        )
-        .where((entries) => entries.isNotEmpty)
-        .map((entries) => _convertIndexEntriesToBatch(
-            entries, entries.last.updatedAt, indexSetVersionId));
+    // Uses sync-aware wrapping to avoid Drift bg isolate contention during sync
+    yield* _syncAwareWatchStream(
+      createWatch: (watchCursor) {
+        final ts = watchCursor != null
+            ? int.tryParse(watchCursor.split('@').first) ?? lastEmittedCursor
+            : lastEmittedCursor;
+        return _storage
+            .watchIndexEntries(
+              indexIris: indexIris,
+              cursorTimestamp: ts,
+            )
+            .where((entries) => entries.isNotEmpty)
+            .map((entries) => _convertIndexEntriesToBatch(
+                entries, entries.last.updatedAt, indexSetVersionId));
+      },
+      initialCursor: _formatCursor(lastEmittedCursor, indexSetVersionId),
+    );
   }
 
   /// Streams index entries in batches and returns the last emitted cursor.
@@ -1264,12 +1273,68 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
     }
 
     // Phase 2: Switch to reactive watch for ongoing changes
-    // This automatically emits updates whenever documents of this type change
-    // watchDocumentsModifiedSince now uses progressive cursor tracking to only emit
-    // documents that have actually changed since the last emission
-    yield* _storage
-        .watchDocumentsModifiedSince(typeIri, cursor)
-        .map((result) => convertResult(result.documents, result.currentCursor));
+    // Uses sync-aware wrapping to avoid Drift bg isolate contention during sync
+    yield* _syncAwareWatchStream(
+      createWatch: (watchCursor) => _storage
+          .watchDocumentsModifiedSince(typeIri, watchCursor)
+          .map((result) =>
+              convertResult(result.documents, result.currentCursor)),
+      initialCursor: cursor,
+    );
+  }
+
+  /// Wraps a watch stream to pause during sync and restart afterward.
+  ///
+  /// During sync, the Drift background isolate is heavily used for batch commits.
+  /// Watch queries compete with those commits for the same isolate, causing
+  /// progressive degradation. This method cancels the watch subscription when
+  /// sync starts and restarts it from the last cursor when sync completes,
+  /// resulting in a single efficient catch-up query instead of many intermediate
+  /// re-queries.
+  Stream<HydrationBatch> _syncAwareWatchStream({
+    required Stream<HydrationBatch> Function(String? cursor) createWatch,
+    required String? initialCursor,
+  }) {
+    final controller = StreamController<HydrationBatch>();
+    var currentCursor = initialCursor;
+    StreamSubscription<HydrationBatch>? watchSub;
+    StreamSubscription<SyncState>? syncSub;
+
+    void cancelWatch() {
+      watchSub?.cancel();
+      watchSub = null;
+    }
+
+    void startWatch() {
+      cancelWatch();
+      watchSub = createWatch(currentCursor).listen(
+        (batch) {
+          if (batch.cursor != null) currentCursor = batch.cursor;
+          controller.add(batch);
+        },
+        onError: controller.addError,
+      );
+    }
+
+    syncSub = _syncManager.statusStream.listen((state) {
+      if (state.status == SyncStatus.syncing) {
+        cancelWatch();
+      } else if (watchSub == null && !controller.isClosed) {
+        startWatch();
+      }
+    });
+
+    // Only start watching if not currently syncing
+    if (!_syncManager.isSyncing) {
+      startWatch();
+    }
+
+    controller.onCancel = () {
+      cancelWatch();
+      syncSub?.cancel();
+    };
+
+    return controller.stream;
   }
 
   /// Close the sync system and free resources.
