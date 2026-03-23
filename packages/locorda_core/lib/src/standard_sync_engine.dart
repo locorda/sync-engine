@@ -1097,15 +1097,22 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
     yield* result.stream;
     lastEmittedCursor = await result.lastCursor;
 
-    // Phase 2: Switch to reactive watch for ongoing changes
-    yield* _storage
-        .watchIndexEntries(
-          indexIris: indexIris,
-          cursorTimestamp: lastEmittedCursor,
-        )
-        .where((entries) => entries.isNotEmpty)
-        .map((entries) => _convertIndexEntriesToBatch(
-            entries, entries.last.updatedAt, indexSetVersionId));
+    // Phase 2: Switch to reactive watch for ongoing changes.
+    // Cursor-reset wrapper prevents the Drift bg isolate from re-scanning an
+    // ever-growing window of already-processed entries on every re-execution.
+    yield* _withCursorReset(
+      createWatch: (watchCursor) {
+        final ts = watchCursor != null
+            ? int.tryParse(watchCursor.split('@').first) ?? lastEmittedCursor
+            : lastEmittedCursor;
+        return _storage
+            .watchIndexEntries(indexIris: indexIris, cursorTimestamp: ts)
+            .where((entries) => entries.isNotEmpty)
+            .map((entries) => _convertIndexEntriesToBatch(
+                entries, entries.last.updatedAt, indexSetVersionId));
+      },
+      initialCursor: _formatCursor(lastEmittedCursor, indexSetVersionId),
+    );
   }
 
   /// Streams index entries in batches and returns the last emitted cursor.
@@ -1263,10 +1270,55 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
       }
     }
 
-    // Phase 2: Switch to reactive watch for ongoing changes
-    yield* _storage
-        .watchDocumentsModifiedSince(typeIri, cursor)
-        .map((result) => convertResult(result.documents, result.currentCursor));
+    // Phase 2: Switch to reactive watch for ongoing changes.
+    // Cursor-reset wrapper prevents the Drift bg isolate from re-scanning an
+    // ever-growing window of already-processed documents on every re-execution.
+    yield* _withCursorReset(
+      createWatch: (watchCursor) => _storage
+          .watchDocumentsModifiedSince(typeIri, watchCursor)
+          .map((result) =>
+              convertResult(result.documents, result.currentCursor)),
+      initialCursor: cursor,
+    );
+  }
+
+  /// Wraps a watch stream with automatic DB-level cursor advancement.
+  ///
+  /// The problem: Drift's reactive watch queries use a static WHERE clause cursor
+  /// (set at subscription time). After bulk sync commits large batches, the watch
+  /// re-executes and scans all rows since the original subscription cursor —
+  /// discarding most of them via the in-memory progressive filter. The scan window
+  /// grows with every committed chunk.
+  ///
+  /// The fix: once accumulated items since the last reset exceed [resetThreshold],
+  /// cancel the current Drift subscription and resubscribe with the advanced
+  /// cursor. The new subscription's WHERE clause starts from the current position,
+  /// keeping the scan window small.
+  ///
+  /// UX-safe: the watch is never paused, so user-initiated changes are always
+  /// reflected immediately. The cancel+resubscribe gap is sub-millisecond and
+  /// any changes during the gap are captured by the new subscription's initial
+  /// query.
+  Stream<HydrationBatch> _withCursorReset({
+    required Stream<HydrationBatch> Function(String? cursor) createWatch,
+    required String? initialCursor,
+    int resetThreshold = 1000,
+  }) async* {
+    var currentCursor = initialCursor;
+    while (true) {
+      var accumulated = 0;
+      var resetTriggered = false;
+      await for (final batch in createWatch(currentCursor)) {
+        if (batch.cursor != null) currentCursor = batch.cursor;
+        yield batch;
+        accumulated += batch.updates.length + batch.deletions.length;
+        if (accumulated >= resetThreshold) {
+          resetTriggered = true;
+          break;
+        }
+      }
+      if (!resetTriggered) break;
+    }
   }
 
   /// Close the sync system and free resources.
