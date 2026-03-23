@@ -153,35 +153,112 @@ class CommittedResource {
 }
 ```
 
-## Pipeline Stage Interfaces
-
-### SourceStage
+## Remote Index Mirror Types
 
 ```dart
-/// Produces sync candidates from shard comparison.
+/// A single entry in the remote index mirror.
 ///
-/// Downloads shard documents, compares entries with local state,
-/// and emits candidates for resources that need synchronization.
-abstract class SourceStage {
-  /// Generate sync candidates from shards.
+/// Represents our last known view of one resource's presence
+/// in one shard on a specific remote.
+class RemoteMirrorEntry {
+  final IriTerm resourceIri;
+  final IriTerm shardIri;
+  final String clockHash;
+
+  const RemoteMirrorEntry({
+    required this.resourceIri,
+    required this.shardIri,
+    required this.clockHash,
+  });
+}
+
+/// Request to upsert a mirror entry during commit.
+class SaveRemoteMirrorEntryRequest {
+  final IriTerm resourceIri;
+  final IriTerm shardIri;
+  final String clockHash;
+
+  const SaveRemoteMirrorEntryRequest({
+    required this.resourceIri,
+    required this.shardIri,
+    required this.clockHash,
+  });
+}
+```
+
+## Remote Discovery Types
+
+```dart
+/// Result of downloading and parsing a single shard document
+/// during remote discovery.
+sealed class RemoteShardResult {
+  IriTerm get shardIri;
+}
+
+/// Shard was downloaded (new ETag) and contains entries.
+class RemoteShardEntries extends RemoteShardResult {
+  @override
+  final IriTerm shardIri;
+  final List<RemoteMirrorEntry> entries;
+  final String etag;
+
+  RemoteShardEntries({
+    required this.shardIri,
+    required this.entries,
+    required this.etag,
+  });
+}
+
+/// Shard returned 404 — no remote data for this shard.
+class RemoteShardEmpty extends RemoteShardResult {
+  @override
+  final IriTerm shardIri;
+
+  RemoteShardEmpty({required this.shardIri});
+}
+```
+
+## Pipeline Stage Interfaces
+
+### DiscoveryAndDiffStage
+
+```dart
+/// Discovers what needs synchronization by traversing the remote
+/// index hierarchy top-down and diffing against local + mirror state.
+///
+/// Replaces the old SourceStage which took a flat list of shards.
+/// Instead, this stage starts from the Index-of-Indices and uses
+/// hierarchical stream unfolding to discover shards on-the-fly.
+abstract class DiscoveryAndDiffStage {
+  /// Discover and diff all resources for a given remote.
   ///
-  /// For each shard:
-  /// 1. Download shard document (or use dataset)
-  /// 2. Extract entries
-  /// 3. Compare with local entries
-  /// 4. Emit candidates for differences
+  /// **Remote Discovery** (network, async):
+  /// 1. Fetch Index-of-Indices (FullIndex + GroupIndexTemplate)
+  ///    with ETag-conditional download
+  /// 2. Hierarchical stream unfold: each index triggers its shard
+  ///    downloads as soon as it's known (no phase barriers)
+  /// 3. Parse entries from changed shards (304 → skip, 404 → empty)
+  ///
+  /// **Local Discovery** (DB-only, fast):
+  /// 1. Query local index entries for discovered shards
+  /// 2. Query remote mirror entries for discovered shards
+  ///
+  /// **Diff / Join**:
+  /// Per-shard set comparison producing SyncCandidate records:
+  /// - Remote entry with no local match → RemoteOnlyCandidate
+  /// - Local entry with no remote match → LocalOnlyCandidate
+  /// - Both exist, different clockHash → ConflictCandidate
+  /// - Both exist, same clockHash → skip (already in sync)
   ///
   /// **Shard-level knowledge propagation:**
-  /// - If shard doc is 404 (empty remote): emit LocalOnlyCandidate for
-  ///   ALL local resources in that shard — no per-resource download needed
-  /// - If shard has remote entries but no local: emit RemoteOnlyCandidate
-  ///   for all remote resources — no per-resource local DB lookup needed
-  /// - LocalOnlyCandidates carry knownShardIris from the index entries
+  /// - Shard 404 (empty remote): all local entries → LocalOnlyCandidate
+  /// - Shard 304 (unchanged): only check for local-only changes
+  ///   (mirror already has correct remote state from previous sync)
   ///
-  /// Candidates are deduplicated across shards (same resource may appear
-  /// in multiple shards). First occurrence wins.
-  Stream<SyncCandidate> source({
-    required List<ShardSyncSpec> shards,
+  /// Candidates are deduplicated across shards (same resource may
+  /// appear in multiple shards). First occurrence wins.
+  Stream<SyncCandidate> discover({
+    required RemoteId remoteId,
     required int lastSyncTimestamp,
     required GraphSyncStorage remoteStorage,
   });
@@ -226,6 +303,11 @@ abstract class MergeStage {
 ///
 /// Uses configurable batch sizes and pipelined encode/commit
 /// for throughput optimization.
+///
+/// **Mirror update**: Each commit transaction atomically updates
+/// the remote index mirror alongside documents, index entries,
+/// and ETags. This guarantees crash safety — the mirror is never
+/// ahead of committed local state.
 abstract class CommitStage {
   /// Consume merged resources and commit in batches.
   ///
@@ -235,6 +317,11 @@ abstract class CommitStage {
   ///
   /// For initial pull (all needsUpload: false): pure DB write, no network.
   /// For initial push (all needsUpload: true): upload + DB write, pipelined.
+  ///
+  /// Each batch transaction includes:
+  /// 1. Save documents + index entries
+  /// 2. Update ETags
+  /// 3. **Update remote index mirror entries** (upsert/delete)
   ///
   /// Returns all committed resources for shard finalization.
   Future<List<CommittedResource>> commit(
@@ -262,6 +349,37 @@ abstract class FinalizeStage {
     required GraphSyncStorage remoteStorage,
     required RemoteId remoteId,
   });
+}
+```
+
+## Remote Index Mirror Interface
+
+```dart
+/// Persists minimal known remote state per shard.
+///
+/// Stores (resourceIri, shardIri, clockHash) per remote — the minimum
+/// needed to know what exists remotely and at what CRDT version.
+/// Updated atomically in the commit transaction for crash safety.
+abstract class RemoteIndexMirror {
+  /// Get mirror entries for multiple shards in a single query.
+  ///
+  /// Returns: Map from shard IRI to list of mirror entries.
+  Future<Map<IriTerm, List<RemoteMirrorEntry>>> getRemoteIndexEntries(
+    RemoteId remoteId,
+    Iterable<IriTerm> shardIris,
+  );
+
+  /// Bulk upsert mirror entries. Called within the commit transaction.
+  Future<void> saveRemoteIndexEntries(
+    RemoteId remoteId,
+    List<SaveRemoteMirrorEntryRequest> entries,
+  );
+
+  /// Remove mirror entries for resources deleted from the remote.
+  Future<void> deleteRemoteIndexEntries(
+    RemoteId remoteId,
+    List<({IriTerm resourceIri, IriTerm shardIri})> entries,
+  );
 }
 ```
 
@@ -304,43 +422,46 @@ abstract class StreamingRemoteSyncStorage extends RemoteSyncStorage {
 ```dart
 /// Main streaming sync pipeline.
 ///
-/// Wires together Source → Merge → Commit → Finalize stages
+/// Wires together Discovery&Diff → Merge → Commit → Finalize stages
 /// with configurable concurrency and batch sizes.
+///
+/// No explicit "list of shards" input — the pipeline discovers what
+/// to sync by traversing the index hierarchy from the top.
 class StreamingSyncPipeline {
-  final SourceStage _source;
+  final DiscoveryAndDiffStage _discovery;
   final MergeStage _merge;
   final CommitStage _commit;
   final FinalizeStage _finalize;
   final Perflog _perflog;
 
   const StreamingSyncPipeline({
-    required SourceStage source,
+    required DiscoveryAndDiffStage discovery,
     required MergeStage merge,
     required CommitStage commit,
     required FinalizeStage finalize,
     required Perflog perflog,
-  }) : _source = source,
+  }) : _discovery = discovery,
        _merge = merge,
        _commit = commit,
        _finalize = finalize,
        _perflog = perflog;
 
-  /// Execute full streaming sync for content resource types.
+  /// Execute full streaming sync.
   ///
-  /// Meta-types (index-of-indices) are still synced sequentially
-  /// before this method is called.
-  Future<void> syncContent({
-    required List<ShardSyncSpec> shards,
+  /// The Discovery stage handles index hierarchy traversal internally
+  /// (Index-of-Indices → Indices → Shards → Entries), so no prior
+  /// meta-type sync phase is required.
+  Future<void> sync({
+    required RemoteId remoteId,
     required int lastSyncTimestamp,
     required DateTime syncTime,
     required GraphSyncStorage remoteStorage,
-    required RemoteId remoteId,
   }) async {
-    // Stage 1: Source
+    // Stage 1: Discovery & Diff
     final candidates = _perflog.measureStream(
-      'streaming.source',
-      _source.source(
-        shards: shards,
+      'streaming.discovery',
+      _discovery.discover(
+        remoteId: remoteId,
         lastSyncTimestamp: lastSyncTimestamp,
         remoteStorage: remoteStorage,
       ),
@@ -356,7 +477,7 @@ class StreamingSyncPipeline {
       ),
     );
 
-    // Stage 3: Commit
+    // Stage 3: Commit (includes mirror update)
     final committed = await _perflog.measure(
       'streaming.commit',
       () => _commit.commit(
@@ -414,10 +535,27 @@ class StreamingSyncConfig {
 Each stage is independently testable with mock inputs:
 
 ```dart
-test('SourceStage emits candidates for changed resources', () async {
+test('DiscoveryAndDiffStage emits RemoteOnlyCandidate for new remote entries', () async {
   // Setup: mock remote with shard containing entries
-  // Setup: local with subset of entries
-  // Verify: stream emits correct candidate types
+  // Setup: empty mirror + empty local index
+  // Verify: stream emits RemoteOnlyCandidate for each remote entry
+});
+
+test('DiscoveryAndDiffStage emits LocalOnlyCandidate for 404 shards', () async {
+  // Setup: mock remote returns 404 for shard
+  // Setup: local index has entries for that shard
+  // Verify: stream emits LocalOnlyCandidate for each local entry
+});
+
+test('DiscoveryAndDiffStage skips unchanged shards (304)', () async {
+  // Setup: mock remote returns 304 for all shards
+  // Setup: mirror matches local index
+  // Verify: stream emits zero candidates
+});
+
+test('DiscoveryAndDiffStage deduplicates across shards', () async {
+  // Setup: same resource in FullIndex shard + GroupIndex shard
+  // Verify: only one candidate emitted for that resource
 });
 
 test('MergeStage takes fast path for remote-only', () async {
@@ -425,9 +563,9 @@ test('MergeStage takes fast path for remote-only', () async {
   // Verify: no full merge invoked, output is accepted remote graph
 });
 
-test('CommitStage batches and pipelines', () async {
+test('CommitStage batches and updates mirror atomically', () async {
   // Setup: stream of 5000 MergedResources
-  // Verify: committed in batches, total count matches
+  // Verify: committed in batches, mirror entries match committed state
 });
 ```
 
@@ -439,6 +577,19 @@ test('StreamingSyncPipeline produces same result as legacy', () async {
   // Run: legacy sync to empty DB A
   // Run: streaming sync to empty DB B
   // Verify: DB A == DB B (document contents, index entries, ETags)
+});
+
+test('Remote index mirror is consistent after sync', () async {
+  // Setup: populate remote with test data
+  // Run: streaming sync
+  // Verify: mirror entries match actual remote shard contents
+});
+
+test('Mirror survives crash and enables correct re-sync', () async {
+  // Setup: partial sync (interrupt after N commits)
+  // Verify: mirror reflects only committed resources
+  // Run: resume sync
+  // Verify: remaining resources synced correctly without duplicates
 });
 ```
 

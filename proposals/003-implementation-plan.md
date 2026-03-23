@@ -40,6 +40,14 @@ Create a benchmark harness for measuring sync performance:
 
 This gives us a baseline and a way to measure each improvement.
 
+### 0.4: Add Remote Index Mirror Table
+
+Add the `remote_index_entries` table to Storage (Drift implementation):
+- Schema: `(remoteId, resourceIri, shardIri, clockHash)`
+- Implement `getRemoteIndexEntries()`, `saveRemoteIndexEntries()`, `deleteRemoteIndexEntries()`
+- **Write-only initially**: Populate during existing sync commit, but don't use for reads yet
+- Verify consistency: compare mirror state with actual remote shard contents in tests
+
 ## Phase 1: Enable Concurrent I/O (Quick Win)
 
 ### 1.1: Implement `downloadMany`/`uploadMany` for DirBackend
@@ -167,36 +175,51 @@ final emptyRemoteShardIris = phase1Results
 
 Before building the full streaming pipeline, integrate `FastPathMerger` into `_DocumentSyncHelper.downloadAndMerge()`. This gives immediate benefit with minimal architectural change.
 
-## Phase 3: Streaming Source Stage
+## Phase 3: Discovery & Diff Stage
 
-### 3.1: Create `ShardSourceStream`
+### 3.1: Create `DiscoveryAndDiffStage`
+
+Replace the flat "list of shards" input with hierarchical discovery:
 
 ```dart
-/// Produces a stream of sync candidates from shard downloads
-class ShardSourceStream {
-  Stream<SyncCandidate> source(
-    List<ShardSyncSpec> shards,
+/// Discovers what needs syncing by combining remote traversal with local state.
+class DiscoveryAndDiffStage {
+  Stream<SyncCandidate> discover(
     int lastSyncTimestamp, {
+    required RemoteId remoteId,
     required StreamingRemoteSyncStorage remote,
     required Storage local,
   }) async* {
-    // Pre-fetch all local index entries
-    final localEntries = await local.getActiveIndexEntriesForShards(
-      shards.map((s) => s.shardIri),
-    );
+    // 1. Remote Discovery: traverse index hierarchy
+    //    Index-of-Indices → Index docs → Shard docs → Entries
+    //    Uses ETag-conditional downloads; only changed shards are parsed
+    final remoteEntries = _remoteDiscovery(remote, lastSyncTimestamp);
 
-    // Download shard documents concurrently
-    for (final shard in shards) {
-      final shardDoc = await remote.download(shard.shardIri.getDocumentIri());
-      if (shardDoc.graph == null) continue;
+    // 2. Local Discovery: batch query
+    //    Local index entries + remote mirror entries from DB
+    //    (fast, DB-only)
 
-      // Extract entries and compare with local
-      final remoteEntries = _extractEntries(shardDoc.graph!);
-      final localShardEntries = localEntries[shard.shardIri] ?? [];
+    // 3. Diff/Join: combine remote entries with local state
+    //    → yield SyncCandidate stream
+    yield* _diffAndJoin(remoteEntries, remoteId, local);
+  }
+}
+```
 
-      for (final entry in _diffEntries(remoteEntries, localShardEntries)) {
-        yield entry;
-      }
+The hierarchical stream unfolding for remote discovery:
+
+```dart
+Stream<RemoteShardResult> _remoteDiscovery(
+  StreamingRemoteSyncStorage remote,
+  int lastSyncTimestamp,
+) async* {
+  // Fetch index-of-indices (FullIndex + GroupIndexTemplate)
+  // Each index doc triggers shard doc fetches immediately
+  // No "wait for all meta" barrier
+  await for (final indexDoc in _fetchIndices(remote, lastSyncTimestamp)) {
+    final shardIris = _extractShardIris(indexDoc);
+    await for (final shardResult in _fetchShards(remote, shardIris)) {
+      yield shardResult; // RemoteShardEntries or RemoteShardEmpty
     }
   }
 }
@@ -204,7 +227,7 @@ class ShardSourceStream {
 
 ### 3.2: Create `StreamingRemoteSyncStorage` Interface
 
-Define the new interface (see [002](002-streaming-sync-architecture.md) for details) and implement for `DirSyncStorage`:
+Define the new interface (see [004](004-interface-design.md) for details) and implement for `DirSyncStorage`:
 
 ```dart
 class StreamingDirSyncStorage extends DirSyncStorage
@@ -214,6 +237,58 @@ class StreamingDirSyncStorage extends DirSyncStorage
     downloadStream(Iterable<RemoteDownloadRequest> requests) async* {
     // Simple implementation: bounded concurrent downloads
     // using async generator with sliding window
+  }
+}
+```
+
+### 3.3: Mirror-Based Diffing
+
+Use the remote index mirror (populated in Phase 0.4) for efficient diffing:
+
+```dart
+Stream<SyncCandidate> _diffAndJoin(
+  Stream<RemoteShardResult> remoteResults,
+  RemoteId remoteId,
+  Storage local,
+) async* {
+  final seen = <IriTerm>{};  // deduplication across shards
+
+  await for (final result in remoteResults) {
+    switch (result) {
+      case RemoteShardEntries(:final shardIri, :final entries):
+        // Load local + mirror for this shard
+        final localEntries = await local.getActiveIndexEntriesForShard(shardIri);
+        final mirrorEntries = await local.getRemoteIndexEntries(remoteId, [shardIri]);
+
+        // Diff remote entries vs local entries
+        for (final entry in entries) {
+          if (!seen.add(entry.resourceIri)) continue; // skip duplicates
+          final localEntry = localEntries.firstWhereOrNull(
+            (l) => l.resourceIri == entry.resourceIri);
+          if (localEntry == null) {
+            yield RemoteOnlyCandidate(...);
+          } else if (localEntry.clockHash != entry.clockHash) {
+            yield ConflictCandidate(...);
+          }
+        }
+        // Local entries not in remote → LocalOnlyCandidate
+        for (final local in localEntries) {
+          if (!seen.contains(local.resourceIri) &&
+              !entries.any((r) => r.resourceIri == local.resourceIri)) {
+            seen.add(local.resourceIri);
+            yield LocalOnlyCandidate(...);
+          }
+        }
+
+      case RemoteShardEmpty(:final shardIri):
+        // All local entries in this shard → LocalOnlyCandidate
+        final localEntries = await local.getActiveIndexEntriesForShard(shardIri);
+        for (final entry in localEntries) {
+          if (seen.add(entry.resourceIri)) {
+            yield LocalOnlyCandidate(...);
+          }
+        }
+    }
   }
 }
 ```
@@ -309,7 +384,7 @@ class StreamingSyncFunction {
     // Phase 0: Same as current (shard generation)
     await _prepareSync(syncTime);
 
-    // Streaming sync
+    // Streaming sync per backend
     for (final backend in _backends) {
       for (final remote in backend.remotes) {
         await _streamingSync(remote, syncTime);
@@ -323,20 +398,21 @@ class StreamingSyncFunction {
     final lastSync = await _storage.getLastRemoteSyncTimestamp(remote.remoteId);
 
     try {
-      // 1. Sync meta-types (index-of-indices) — same as current
-      await _syncMetaTypes(syncStorage, config, lastSync, syncTime);
+      // 1. Discovery & Diff (hierarchical index traversal + mirror-based diff)
+      //    No separate "meta-phase" — index-of-indices are part of the discovery stream
+      final candidates = _discoveryStage.discover(
+        lastSync,
+        remoteId: remote.remoteId,
+        remote: syncStorage,
+        local: _storage,
+      );
 
-      // 2. Collect all shard specs
-      final shardSpecs = await _collectAllShardSpecs(config);
-
-      // 3. Streaming pipeline for content resources
-      final candidates = _sourceStream.source(shardSpecs, lastSync,
-        remote: syncStorage, local: _storage);
-      final merged = _mergeStream(candidates, lastSync);
+      // 2. Streaming pipeline for content resources
+      final merged = _mergeStage(candidates, lastSync);
       final committed = await _batchCommitter.commit(merged, syncTime,
-        remote: syncStorage);
+        remote: syncStorage, remoteId: remote.remoteId);
 
-      // 4. Finalize shards
+      // 3. Finalize shards
       await _finalizeShards(committed, syncTime, syncStorage);
 
       await _storage.updateLastRemoteSyncTimestamp(
@@ -393,10 +469,11 @@ Phase 0 ────────────────────────
   0.1: Extract primitives                              │
   0.2: Fix concurrency guards      ─────────────┐     │
   0.3: Add benchmarks                            │     │
-                                                 │     │
-Phase 1 ◀────────────────────────────────────────┘     │
-  1.1: DirBackend downloadMany/uploadMany              │
-  1.2: Re-enable concurrency                           │
+  0.4: Add remote index mirror table ────────┐   │     │
+                                             │   │     │
+Phase 1 ◀────────────────────────────────────│───┘     │
+  1.1: DirBackend downloadMany/uploadMany    │         │
+  1.2: Re-enable concurrency                 │         │
                                                        │
 Phase 2 ◀──────────────────────────────────────────────┘
   2.1: FastPathMerger (both directions)
@@ -404,11 +481,12 @@ Phase 2 ◀───────────────────────
   2.3: Integrate into existing orchestrator
 
 Phase 3 (can start after Phase 0)
-  3.1: ShardSourceStream
+  3.1: DiscoveryAndDiffStage (hierarchical index traversal + mirror-based diff)
   3.2: StreamingRemoteSyncStorage interface
+  3.3: Mirror-based diffing
 
 Phase 4 (can start after Phase 0)
-  4.1: BatchCommitter
+  4.1: BatchCommitter (with mirror update in transaction)
   4.2: Pipeline encode/commit
 
 Phase 5 (requires Phases 2, 3, 4)
@@ -438,14 +516,17 @@ Phase 6 (after Phase 5 is stable)
 ### New Files
 - `lib/src/sync/streaming_sync_function.dart` — Main streaming orchestrator
 - `lib/src/sync/fast_path_merger.dart` — Fast-path CRDT merge
-- `lib/src/sync/shard_source_stream.dart` — Streaming shard entry extraction
-- `lib/src/sync/batch_committer.dart` — Batched commit with pipelining
+- `lib/src/sync/discovery_and_diff_stage.dart` — Hierarchical index discovery + mirror-based diffing
+- `lib/src/sync/batch_committer.dart` — Batched commit with pipelining and mirror update
 - `lib/src/sync/sync_candidate.dart` — Data types for pipeline
 - `lib/src/storage/streaming_remote_storage.dart` — Extended remote interface
+- `lib/src/storage/remote_index_mirror.dart` — Mirror table interface and data types
 
 ### Modified Files
+- `lib/src/storage/storage_interface.dart` — Add `RemoteIndexMirror` methods
 - `lib/src/storage/remote_storage.dart` — Add `StreamingRemoteSyncStorage`
 - `packages/locorda_dir/lib/src/backend/dir_backend.dart` — Override downloadMany/uploadMany
+- `packages/locorda_drift/` — Implement mirror table in Drift schema
 - `lib/src/sync/remote_document_merger.dart` — Extract fast-path logic
 - `lib/src/standard_sync_engine.dart` — Wire up StreamingSyncFunction option
 - `lib/src/sync_engine.dart` — Configuration for streaming vs. legacy sync
