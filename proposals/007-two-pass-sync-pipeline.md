@@ -6,7 +6,7 @@ A **maximally decomposed streaming sync pipeline** where each stage has exactly 
 
 **Design maxims**: KISS, YAGNI, clarity over cleverness.
 
-**Target**: Sync 15,000 resources in under 3 seconds — in either direction (empty local ← full remote, or full local → empty remote).
+**Target**: Sync 15,000 resources in under 3 seconds for a **full initial sync** (empty local ← full remote, or full local → empty remote) against a **local directory backend** (no network RTT). With a real network backend the bottleneck shifts to network I/O; the 3 s target applies only to local-storage backends where disk I/O and CPU are the limiting factors.
 
 ## Core Model: Single Pipeline with Feedback Loop
 
