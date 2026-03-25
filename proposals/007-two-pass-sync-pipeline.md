@@ -300,14 +300,14 @@ Persist merge results to local DB. Backend state update happens atomically in th
 | **I/O** | DB write (transaction) |
 | **Implementation** | Custom `StreamTransformer` — chunked DB write; `sync: true` internal controller |
 | **Input** | `Stream<UploadResult + ShardComplete>` |
-| **Operation** | Chunked transaction: write documents + metadata + backend mirror callback. |
+| **Operation** | Chunked transaction: write documents + metadata + backend mirror callback. (FIXME)|
 | **Output** | `Stream<CommitResult + ShardComplete>` |
 | **Batching** | Chunked: 500 items per transaction |
 
 **Transaction contents** (per chunk):
 1. Write/update resource document (raw bytes from `encodedForDb`)
 2. Update resource-level sync metadata (clock, ETag, …)
-3. **Backend callback**: `backend.onCommit(batch)` — backend updates mirror within the same transaction
+3. **Backend callback**: `backend.onCommit(batch)` — backend updates mirror within the same transaction (FIXME: backend mirror updates really here? isn't that rather connected to backend uploads? IMHO this does not belong here, stage 9 should be pure core)
 4. **Index document handling**: If the committed resource is an index document → parse `idx:hasShard` → update `index_shards` table. This is how the Feedback Stage can later inject content indices with a pre-populated shard list.
 5. **`index_entries` clockHash update**: For each committed resource, upsert the corresponding `index_entries` row with the **post-merge** clockHash (extracted from the merged document's `sync:crdtClockHash` literal via `IndexManager.prepareIndexEntryWrites()`). This must happen in the same transaction as step 1 — atomicity guarantees that the stored `index_entries.clockHash` always reflects the actual committed state. A stale clockHash in `index_entries` would cause spurious `conflictCandidate` classifications on the next sync cycle. This step is already implemented correctly in `_commitBatchChunk()` / `_DeferredBatchCommit` and must be preserved in any pipeline reimplementation.
 
