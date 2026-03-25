@@ -162,26 +162,28 @@ The backend maintains a persistent per-resource store (e.g., a DB table keyed by
 - (−) **Doubles storage**: every resource graph is stored in both Core's DB and the backend's mirror. For shard-dataset mode with 15,000 resources × ~1–2 KB, this adds ~15–30 MB of redundant data.
 - (−) Adds significant implementation complexity — but this complexity is **borne once by the framework** (see below), not by every transport backend.
 
-#### Option 2: Core Ensures All Resources Flow Through the Pipeline
+#### Option 2: Core Ensures All Resources of Dirty Shards Flow Through the Pipeline
 
-Core knows (via the backend's `BackendStorageMode`) that aggregating modes need complete resource sets. Core changes the pipeline behavior accordingly:
+Core knows (via the backend's `BackendStorageMode`) that aggregating modes need complete resource sets per shard. Core changes the pipeline behavior accordingly:
 
 **Mechanism**:
-- When the backend declares `shardDataset` (or `singleFile`), Core's Stage 4 (classification) does not classify unchanged resources as `skip`. Instead, they flow through the pipeline as a lightweight pass-through category (e.g., `unchanged`) that bypasses CRDT merge (Stage 7) but still reaches Stage 8 so the backend can accumulate them.
-- Alternatively, Core provides all resource graphs — changed and unchanged — as part of an enriched `MergedShard` event at Stage 11/12 boundary, so Stage 12 receives everything it needs.
-- `onRequest` fetch policy is effectively unsupported (all resources of each shard must be processed).
+- Only shards where at least one resource changed — either remotely (200, not 304) or locally (dirty since last sync) — enter the upload path. Shards with 304 + no local changes are silently skipped. This is already the current behavior.
+- For each *dirty* shard, Core ensures **all** resources of that shard flow through the pipeline, not just the changed ones. Unchanged resources within a dirty shard pass through as a lightweight category (e.g., `passThrough`) that bypasses CRDT merge (Stage 7) but still reaches Stage 8 so the backend can accumulate them.
+- Alternatively, Core provides all resource graphs — changed and unchanged — as part of an enriched `MergedShard` event at Stage 11/12 boundary, so Stage 12 receives everything it needs without additional pipeline stages.
+- `onRequest` fetch policy is effectively unsupported (all resources of each dirty shard must flow through).
 
-This is what the **current implementation** does: Core queries the `index_entries` table for the full resource list, loads canonical graphs from the `documents` table, and hands a complete dataset to the backend.
+This is what the **current implementation** does for dirty shards: it loads all named graphs from the downloaded remote shard dataset, uses canonical overrides for changed resources, and passes the rest through verbatim (`_prepareShardUpload`, lines 2748–2768).
 
 **Trade-offs**:
-- (+) **Proven pattern** — this is exactly what the current three-phase architecture does.
+- (+) **Proven pattern** — the per-dirty-shard behavior exactly matches the current three-phase architecture.
 - (+) No storage duplication — Core's DB is the single source of truth.
 - (+) Backend stays passive (simple `StreamTransformer` implementation).
-- (−) Unchanged resources flow through pipeline stages unnecessarily (CPU overhead from Stage 4→8, even if minimal processing).
+- (+) Shards with no changes are never processed — only dirty shards pay the cost.
+- (−) Unchanged resources *within dirty shards* flow through pipeline stages unnecessarily (CPU overhead from Stage 4→8, even if minimal processing).
 - (−) Requires Core to be aware of the backend's storage mode at the pipeline level (breaks the "Core is backend-agnostic" clean split).
 - (−) `onRequest` fetch policy is not supported — must be documented as a mode constraint.
 
-> **[Proposed 007 change]**: If Option 2 is chosen, Stage 4 needs a new classification category (e.g., `passThrough` or `unchanged`) that skips merge but still enters the backend's Stage 8 accumulator. Alternatively, the resource completeness assembly moves to the Stage 10–12 boundary: Core provides a `getCanonicalGraphsForShard(shardIri)` query that Stage 12 can call, and injects the results into the `MergedShard` event.
+> **[Proposed 007 change]**: If Option 2 is chosen, Stage 4 needs a new classification category (e.g., `passThrough`) that skips merge but still enters the backend's Stage 8 accumulator. Alternatively, the resource completeness assembly moves to the Stage 10–12 boundary: Core injects all resource graphs of the dirty shard into the `MergedShard` event, so Stage 12 receives everything without extra pipeline stages.
 
 #### Option 3: Backend Queries Core's DB at Upload Time
 
@@ -205,6 +207,7 @@ Stage 12 receives only *changed* resources from Stage 8's accumulator. For the r
 - (−) Still needs `onRequest` disabled — same constraint as Option 2.
 - (−) Adds a DB read phase inside Stage 12 (I/O stage now does both DB reads and network writes).
 - (−) Core must expose a stable query API for this — tighter coupling between Core internals and backend.
+- (−) **Entry–data clockHash skew**: if the application writes a resource after Stage 10 computes the `MergedShard` entry set but before Stage 12 queries Core’s DB, the uploaded shard will have a stale clockHash in the entry set while the resource graph contains newer data. The CRDT merge is idempotent — no data is corrupted — but the mismatched entry triggers a false-positive shard download in the next sync cycle. The mismatch self-corrects after one additional cycle.
 
 #### Option 4: Core Owns Dataset Assembly (Current Architecture)
 
@@ -248,7 +251,8 @@ Rather than each transport backend (GDrive, Solid, Directory) implementing full 
 ```dart
 // Framework-defined storage interface for Option 1's persistent mirror
 abstract class ShardMirrorStorage {
-  Future<RdfGraph?> readResource(IriTerm resourceIri);
+  /// Returns graphs for all [iris] present in the mirror; absent IRIs are omitted.
+  Future<Map<IriTerm, RdfGraph>> readResources(Set<IriTerm> iris);
   Future<void> writeResources(Map<IriTerm, RdfGraph> graphs);
   Future<String?> readShardEtag(IriTerm shardIri);
   Future<void> writeShardEtag(IriTerm shardIri, String etag);
