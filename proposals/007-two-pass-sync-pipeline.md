@@ -13,7 +13,7 @@ A **maximally decomposed streaming sync pipeline** where each stage has exactly 
 A single pipeline processes all sync work. A **Feedback Stage** at the end injects new items into the input stream based on what was discovered. Meta-sync (index of indices (aka IoI) → index documents) and content-sync (indices → data resources) are distinguished by *what gets injected*, not by separate pipeline instances.
 
 ```
-inputController ──▶ [Pipeline Stages 1–10] ──▶ Feedback Stage ──┐
+inputController ──▶ [Pipeline Stages 1–13] ──▶ Feedback Stage ──┐
       ▲                                                          │
       └──────────────────────────────────────────────────────────┘
       (re-inject IoI or inject discovered indices)
@@ -63,12 +63,14 @@ Each installation creates its own IoI and at least one IoI-Shard on startup, pop
 
 ## Design Principles
 
-1. **Stream across stages, batch within stages**: Resources flow continuously from stage to stage — no phase barriers. Within a single stage, I/O operations are batched/chunked for efficiency (e.g. 10 concurrent downloads, 500–2000 items per DB transaction).
+1. **Stream across stages, batch within stages**: Resources flow continuously from stage to stage — no phase barriers. Within a single stage, I/O operations are batched/chunked for efficiency (e.g. 10 concurrent downloads, 500 items per DB transaction).
 2. **Backend as stream transform**: The backend is a function `Stream<Request> → Stream<Result>`. All backend-specific complexity (file-per-resource vs. file-per-shard vs. aggregated storage) is encapsulated inside the transform.
 3. **Boundary elements for coordination**: Typed sentinel events (`ShardComplete`, `PhaseComplete`) flow inline with data — no external coordinator needed.
 4. **CPU stages only do CPU; I/O stages only do I/O**: No parsing in I/O stages. `EncodedRdfGraphSource` (raw bytes/text) flows through I/O stages untouched. All decoding/encoding happens in CPU stages (3, 7, 11).
 5. **Only sync what changed**: ETags for remote shards, `updatedAt > lastSyncTimestamp` for local. Unchanged items are never processed.
 6. **Backend persists its own remote knowledge**: Each backend maintains its own view of the remote state via a transactional callback within Core's DB commit. Core never accesses mirror data directly.
+7. **Use the right stream operator per stage**: CPU stages (3, 7, 11) use `stream.map()` — synchronous, no controller, zero microtask overhead. 1:N async stages (1, 4) use `asyncExpand`. Concurrent and chunked I/O stages (2, 5, 6, 8, 9, 10, 12, 13) use custom `StreamTransformer`s with `sync: true` internal controllers, so results flow directly into downstream CPU stages without an extra microtask per item. `inputController` stays `sync: false` (added to from synchronous context). Each stage table includes an **Implementation** row specifying the chosen operator.
+8. **Concurrency pools must implement explicit back-pressure**: Pool stages (2, 5, 8, 12) must call `subscription.pause()` when all N slots are occupied and `subscription.resume()` when a slot frees. This bounds in-flight items per pool to N regardless of backend speed — correct for local-directory backends where network RTT is zero. The `pause()`/`resume()` signal propagates automatically through upstream `stream.map()` and `asyncExpand()` stages without additional work. Pool stages must additionally **treat boundary events as flush points**: when a `ShardComplete` or `PhaseComplete` is dequeued from the input while in-flight operations are still pending, the boundary is buffered until all previously-dispatched operations have completed and emitted their results — only then is the boundary forwarded downstream. This preserves the ordering invariant that Stage 10 reads `index_entries` only after all per-shard resources have been emitted through Stage 9 and committed.
 
 ## Implementation Scope
 
@@ -101,12 +103,15 @@ For each `SyncInput` (a batch of index IRIs), issues two bulk DB queries within 
 |---|---|
 | **Owner** | Core |
 | **I/O** | DB read (single read-only transaction, two queries) |
+| **Implementation** | `asyncExpand` — 1:N async; O(1) events per sync cycle |
 | **Input** | `Stream<SyncInput>` — each element contains `List<IriTerm>` |
-| **Operation** | Per `SyncInput`: (1) `SELECT index_iri, shard_iri FROM index_shards WHERE index_iri IN (…)` for **all** index IRIs in the batch — chunked at SQLite's 999-variable limit if needed. (2) `SELECT shard_iri, etag FROM remote_sync_state WHERE shard_iri IN (…)` for **all** shard IRIs from step (1). Emit one `ShardRef` per shard, then one `PhaseComplete` at the end. |
-| **Output** | `Stream<ShardRef(indexIri, shardIri, storedEtag?) + PhaseComplete>` |
+| **Operation** | Per `SyncInput`: (1) bulk query on `index_shards WHERE index_iri IN (…)` for **all** index IRIs in the batch — chunked at SQLite's 999-variable limit if needed; the storage layer provides the `IriStorageId` for each shard IRI directly (for Drift: `index_shards.shard_iri` is already the `sync_iris.id` integer FK, no extra join). (2) `SELECT shard_iri, etag FROM remote_sync_state WHERE shard_iri IN (…)` for **all** shard IRIs from step (1). Emit one `ShardRef` per shard (carrying `shardStorageId: IriStorageId`), then one `PhaseComplete` at the end. |
+| **Output** | `Stream<ShardRef(indexIri, shardIri, shardStorageId: IriStorageId, storedEtag?) + PhaseComplete>` |
 | **Batching** | 2 DB queries total per `SyncInput` (with SQLite chunking at >999 IRIs) |
 
 Index IRIs with no rows in the result are collected in `PhaseComplete.zeroShardIndices`. The Feedback Stage handles these as a safety net (see [Feedback Stage](#stage-14-feedback-stage-orchestration)).
+
+> **ID pass-through**: `ShardRef` carries `shardStorageId: IriStorageId` — the storage-internal identifier for the shard IRI (opaque; consistent with OQ1). This propagates through `FetchedShard` and `ShardResult` so Stage 4 can query `index_entries` without a runtime IRI→ID lookup, and through `ShardComplete` so Stage 10 can call `getActiveIndexEntriesForShard(shardStorageId)`. Resource-level events (`SyncCandidate`, `FetchedCandidate`, `MergeResult`) carry their own resource `IriStorageId`s (see OQ1) — a separate concern. No IRI→ID lookup table and no IRI→ID cache is needed anywhere in the pipeline.
 
 ---
 
@@ -118,15 +123,16 @@ Batched/chunked conditional GETs for shard documents.
 |---|---|
 | **Owner** | Backend |
 | **I/O** | Remote HTTP |
+| **Implementation** | Custom `StreamTransformer` — concurrency pool; `sync: true` internal controller; pauses upstream when all N slots occupied |
 | **Input** | `Stream<ShardRef>` |
 | **Operation** | Conditional GET (`If-None-Match: storedEtag`). No ETag → unconditional GET. |
 | **Output** | `Stream<FetchedShard>` |
 | **Batching** | Chunked: max N concurrent HTTP requests (e.g. 10) |
 
-`FetchedShard` variants:
-- **`ShardContent(shardIri, source: RdfGraphSource, newEtag)`** — 200: raw bytes, no parsing. Backend-specific format (Turtle, Jelly, …). Dataset/single-file backends may emit `DecodedGraphSource` (without encoded original).
-- **`ShardNotModified(shardIri)`** — 304: shard unchanged.
-- **`ShardGone(shardIri)`** — 404/410: shard removed.
+`FetchedShard` variants (all carry `shardStorageId: IriStorageId` from `ShardRef`):
+- **`ShardContent(shardIri, shardStorageId, source: RdfGraphSource, newEtag)`** — 200: raw bytes, no parsing. Backend-specific format (Turtle, Jelly, …). Dataset/single-file backends may emit `DecodedGraphSource` (without encoded original).
+- **`ShardNotModified(shardIri, shardStorageId)`** — 304: shard unchanged.
+- **`ShardGone(shardIri, shardStorageId)`** — 404/410: shard removed.
 
 ---
 
@@ -138,16 +144,17 @@ Decode fetched shard documents and extract resource entries.
 |---|---|
 | **Owner** | Core |
 | **I/O** | None — pure CPU |
+| **Implementation** | `stream.map()` — synchronous, no controller, zero microtask overhead |
 | **Input** | `Stream<FetchedShard>` |
 | **Operation** | Decode `RdfGraphSource` → extract entries. 304/404 → pass through. |
 | **Output** | `Stream<ShardResult>` |
 
 One `ShardResult` per shard — no `ShardComplete` here. Stage 4 introduces `ShardComplete` after the entry fan-out.
 
-`ShardResult` variants:
-- **`ParsedShard(shardIri, entries: List<ShardEntry>, decodedGraph: DecodedGraphSource, newEtag)`** — decoded entries + full parsed graph from 200 response. The `decodedGraph` is carried through to Stage 11 for CRDT-correct shard rebuild.
-- **`ShardNotModified(shardIri)`** — pass-through from Stage 2.
-- **`ShardGone(shardIri)`** — pass-through, shard removed remotely.
+`ShardResult` variants (all carry `shardStorageId: IriStorageId` from `FetchedShard`):
+- **`ParsedShard(shardIri, shardStorageId, entries: List<ShardEntry>, decodedGraph: DecodedGraphSource, newEtag)`** — decoded entries + full parsed graph from 200 response. The `decodedGraph` is carried through to Stage 11 for CRDT-correct shard rebuild.
+- **`ShardNotModified(shardIri, shardStorageId)`** — pass-through from Stage 2.
+- **`ShardGone(shardIri, shardStorageId)`** — pass-through, shard removed remotely.
 
 Each `ShardEntry` carries at minimum `(resourceIri, clockHash)`.
 
@@ -161,8 +168,9 @@ Compare remote shard entries against local `index_entries` to classify each reso
 |---|---|
 | **Owner** | Core |
 | **I/O** | DB read (`index_entries` table) |
+| **Implementation** | `asyncExpand` — 1:N fan-out; O(shards) ≈ 50 events per cycle |
 | **Input** | `Stream<ShardResult>` |
-| **Operation** | Per `ParsedShard`: (1) load local entries from `index_entries WHERE shard_iri = ?`, (2) in-memory diff of local vs. remote entries by `clockHash`, (3) emit N `SyncCandidate` events, (4) remaining-items query for locally-changed resources not in remote, (5) emit `ShardComplete`. `ShardNotModified` → emit `ShardComplete` only. `ShardGone` → all local entries for this shard become `remoteRemoved` → `ShardComplete`. |
+| **Operation** | Per `ParsedShard`: (1) load local entries from `index_entries` using `shardStorageId` (no IRI→ID lookup), (2) in-memory diff by `clockHash` — local entries absent from remote with `updatedAt > lastSyncTimestamp` classify as `localOnly` (no extra query needed; see "Remaining items" below), (3) emit N `SyncCandidate` events, (4) emit `ShardComplete(shardStorageId)`. Per `ShardNotModified`: (1) load local entries using `shardStorageId`, (2) emit `localOnly` for locally-changed entries (`updatedAt > lastSyncTimestamp`), (3) emit `ShardComplete(shardStorageId)`. `ShardGone` → load local entries, emit all as `remoteRemoved`, emit `ShardComplete`. |
 | **Output** | `Stream<SyncCandidate + ShardComplete>` |
 | **Batching** | One DB query per shard (all local entries for this shard) |
 
@@ -196,6 +204,7 @@ Download resource content for candidates that need remote data.
 |---|---|
 | **Owner** | Backend |
 | **I/O** | Remote HTTP |
+| **Implementation** | Custom `StreamTransformer` — concurrency pool; `sync: true` internal controller; pauses upstream when all N slots occupied |
 | **Input** | `Stream<SyncCandidate + ShardComplete>` |
 | **Operation** | `remoteOnly` / `conflictCandidate` → batched download. `localOnly` / `remoteRemoved` → pass through. |
 | **Output** | `Stream<FetchedCandidate(candidate, remoteSource: RdfGraphSource?) + ShardComplete>` |
@@ -213,10 +222,11 @@ Load local graph content for candidates that need the local version.
 |---|---|
 | **Owner** | Core |
 | **I/O** | DB read |
+| **Implementation** | Custom `StreamTransformer` — chunked DB read; `sync: true` internal controller |
 | **Input** | `Stream<FetchedCandidate + ShardComplete>` |
 | **Operation** | `conflictCandidate` / `localOnly` → load local content from DB. `remoteOnly` → pass through. |
 | **Output** | `Stream<LoadedCandidate(candidate, remoteSource?, localSource?) + ShardComplete>` |
-| **Batching** | Chunked DB reads |
+| **Batching** | Chunked: 500 items per `getDocumentsByIri()` IN-query (same bound as Stage 9; avoids SQLite variable limit) |
 
 Local content is loaded as `RdfGraphSource` (typically `BinaryGraphSource` — Jelly bytes from DB). **This stage does not decode.** Both `remoteSource` and `localSource` remain undecoded `RdfGraphSource` values; decoding is deferred to Stage 7.
 
@@ -230,8 +240,11 @@ Decode on demand, merge, encode for DB, pre-encode for upload. **Pure CPU — no
 |---|---|
 | **Owner** | Core |
 | **I/O** | None — pure CPU |
+| **Implementation** | `stream.map()` — synchronous, no controller, zero microtask overhead |
 | **Input** | `Stream<LoadedCandidate + ShardComplete>` |
 | **Output** | `Stream<MergeResult + ShardComplete>` |
+
+> **Isolate note**: Stage 7's synchronous CPU work per resource must remain sub-millisecond to keep the event loop responsive to concurrent I/O callbacks. If heavy documents make this a bottleneck, Stage 7 can be moved to a dedicated isolate — serializing `LoadedCandidate`/`MergeResult` across the port boundary — without changing any other stage or the pipeline architecture.
 
 **Per-direction logic**:
 
@@ -267,6 +280,7 @@ Push resources to remote where local state must be propagated.
 |---|---|
 | **Owner** | Backend |
 | **I/O** | Remote HTTP |
+| **Implementation** | Custom `StreamTransformer` — concurrency pool; `sync: true` internal controller; pauses upstream when all N slots occupied |
 | **Input** | `Stream<MergeResult + ShardComplete>` |
 | **Operation** | `needsUpload == true` → upload to remote using `encodedForUpload` (pre-encoded by Stage 7) if non-null, otherwise encode from `mergedGraph` internally. Otherwise → pass through. |
 | **Output** | `Stream<UploadResult(mergeResult, newRemoteEtag?) + ShardComplete>` |
@@ -284,10 +298,11 @@ Persist merge results to local DB. Backend state update happens atomically in th
 |---|---|
 | **Owner** | Core (with backend callback) |
 | **I/O** | DB write (transaction) |
+| **Implementation** | Custom `StreamTransformer` — chunked DB write; `sync: true` internal controller |
 | **Input** | `Stream<UploadResult + ShardComplete>` |
 | **Operation** | Chunked transaction: write documents + metadata + backend mirror callback. |
 | **Output** | `Stream<CommitResult + ShardComplete>` |
-| **Batching** | Chunked: 500–2000 items per transaction |
+| **Batching** | Chunked: 500 items per transaction |
 
 **Transaction contents** (per chunk):
 1. Write/update resource document (raw bytes from `encodedForDb`)
@@ -306,12 +321,13 @@ Triggered by `ShardComplete` boundary. Reads active index entries **and** the lo
 |---|---|
 | **Owner** | Core |
 | **I/O** | DB read |
+| **Implementation** | Custom `StreamTransformer` — boundary-reactive pass-through; `sync: true` internal controller |
 | **Input** | `ShardComplete` boundaries (pass all other events through) |
-| **Operation** | Per `ShardComplete`: (1) `getActiveIndexEntriesForShard` — canonical local entry set; (2) `getDocument(shardDocumentIri)` — existing local shard graph (may be absent for new shards). Emit `LoadedShardEntries`. All other events pass through. |
+| **Operation** | Per `ShardComplete(shardStorageId, shardIri)`: (1) `getActiveIndexEntriesForShard(shardStorageId)` — canonical local entry set (integer key, no IRI→ID lookup); (2) `getDocument(shardDocumentIri)` — existing local shard graph (may be absent for new shards). `remoteShardGraph` and `newEtag` are propagated directly from the `ShardComplete` boundary event (originating in Stage 2's HTTP response, carried via Stages 3 and 4) — no additional DB fetch for these. Emit `LoadedShardEntries`. All other events pass through. |
 | **Output** | `Stream<LoadedShardEntries + (other events pass-through)>` |
 | **Batching** | Two DB queries per `ShardComplete` (entries + document) |
 
-`LoadedShardEntries` carries `(shardIri, entries: List<IndexEntryWithIri>, localSource: BinaryGraphSource?, remoteShardGraph: DecodedGraphSource?, newEtag: String?)`. Parallel to `LoadedCandidate` from Stage 6.
+`LoadedShardEntries` carries `(shardIri, shardStorageId: IriStorageId, entries: List<IndexEntryWithIri>, localSource: BinaryGraphSource?, remoteShardGraph: DecodedGraphSource?, newEtag: String?)`. `remoteShardGraph` and `newEtag` originate in Stage 2's HTTP response and are carried inline via the `ShardComplete` boundary — Stage 10 does not fetch them from the DB. Parallel to `LoadedCandidate` from Stage 6.
 
 ---
 
@@ -323,6 +339,7 @@ Assembles the new shard graph from local entries, then CRDT-merges with the remo
 |---|---|
 | **Owner** | Core |
 | **I/O** | None — pure CPU |
+| **Implementation** | `stream.map()` — synchronous, no controller, zero microtask overhead |
 | **Input** | `Stream<LoadedShardEntries + (other events pass-through)>` |
 | **Operation** | Per `LoadedShardEntries`: (1) Build candidate shard `RdfGraph` from `entries` (OR-Set of `idx:containsEntry` triples + metadata). (2) Decode `localSource` on demand. (3) CRDT-merge candidate with `localSource` (to pick up HLC/clock state) and then with `remoteShardGraph` (OR-Set merge: entry sets unioned, LWW for metadata). (4) Encode merged result to Jelly for DB. (5) Pre-encode for upload per `backend.preferredUploadContentType` (same logic as Stage 7). All other events pass through. |
 | **Output** | `Stream<MergedShard + (other events pass-through)>` |
@@ -348,6 +365,7 @@ Uploads merged shard documents to remote. **Exact parallel to Stage 8 (Upload) f
 |---|---|
 | **Owner** | Backend |
 | **I/O** | Remote HTTP |
+| **Implementation** | Custom `StreamTransformer` — concurrency pool; `sync: true` internal controller; pauses upstream when all N slots occupied |
 | **Input** | `Stream<MergedShard + (other events pass-through)>` |
 | **Operation** | `needsUpload == true` → upload to remote using `encodedForUpload` (pre-encoded by Stage 11) if non-null, otherwise encode from `mergedGraph` internally → conditional PUT using `newEtag`. On 412 Precondition Failed: surface as conflict (shard changed between Stage 2 fetch and now — next sync cycle corrects). Other events pass through. |
 | **Output** | `Stream<UploadedShard(shardIri, newRemoteEtag?) + (other events pass-through)>` |
@@ -365,10 +383,11 @@ Persists the merged shard document and its remote ETag to the DB. **Exact parall
 |---|---|
 | **Owner** | Core |
 | **I/O** | DB write (transaction) |
+| **Implementation** | Custom `StreamTransformer` — chunked DB write; `sync: true` internal controller |
 | **Input** | `Stream<UploadedShard + (other events pass-through)>` |
 | **Operation** | Chunked transaction per batch: (1) write shard document to `documents` table using `encodedForDb` bytes (type = `IdxShard`); (2) persist new remote ETag to `remote_sync_state`. Other events pass through. Flush remaining buffer on `PhaseComplete`. |
 | **Output** | `Stream<ShardCommitResult + (other events pass-through)>` |
-| **Batching** | Chunked: 500–2000 shards per transaction (same as Stage 9; shard documents are small but the pattern is uniform) |
+| **Batching** | Chunked: 500 shards per transaction (same as Stage 9) |
 
 ---
 
@@ -380,6 +399,7 @@ Receives `PhaseComplete` boundary and decides whether to re-inject, inject new i
 |---|---|
 | **Owner** | Core |
 | **I/O** | DB read (index queries); Remote I/O (safety net only) |
+| **Implementation** | Stream `listen` on Stage 13 output — calls `inputController.add()` / `.close()` directly (no transformer) |
 | **Input** | `Stream<ShardCommitResult + PhaseComplete>` (from Stage 13) |
 | **Operation** | React to `PhaseComplete` event. Inject new `SyncInput` into `inputController`, or close it. |
 | **Output** | Side effect: one item added to `inputController`, or `inputController.close()` |
@@ -436,12 +456,15 @@ sealed class Boundary { const Boundary(); }
 /// Introduced by Stage 4 (Change Detection) after the 1:N fan-out.
 class ShardComplete extends Boundary {
   final IriTerm shardIri;
+  /// Storage-internal identifier for the shard IRI. Propagated from [ShardRef] so
+  /// Stage 10 can call `getActiveIndexEntriesForShard(shardStorageId)` without an IRI→ID lookup.
+  final IriStorageId shardStorageId;
   /// The parsed remote shard graph for CRDT merging in Stage 11 (Shard CRDT Merge).
   /// Null for 304 (not modified) and gone shards — no remote merge needed.
   final DecodedGraphSource? remoteShardGraph;
-  const ShardComplete(this.shardIri, {this.remoteShardGraph});
   /// The new ETag from the remote fetch (for persisting after shard finalize).
   final String? newEtag;
+  const ShardComplete(this.shardIri, this.shardStorageId, {this.remoteShardGraph, this.newEtag});
 }
 
 /// All shards of this SyncInput batch have been emitted / processed.
@@ -508,7 +531,8 @@ RdfGraphSource
 No orchestrator class — the pipeline is the composition of stream transforms:
 
 ```dart
-final pipeline = shardResolution(db)               // Stage 1:  Stream<ShardRef + PhaseComplete>
+final pipeline = inputController.stream
+    .asyncExpand(shardResolution(db))               // Stage 1:  Stream<ShardRef + PhaseComplete>
     .transform(shardFetch(backend))                 // Stage 2:  Stream<FetchedShard>
     .transform(shardParse())                        // Stage 3:  Stream<ShardResult>
     .transform(changeDetection(db, lastSync))       // Stage 4:  Stream<SyncCandidate + ShardComplete>
@@ -536,11 +560,11 @@ final pipeline = shardResolution(db)               // Stage 1:  Stream<ShardRef 
 | 6 | Local Content Load | Core | DB read | chunked reads |
 | 7 | CRDT Merge | Core | CPU | — |
 | 8 | Upload | Backend | Remote I/O | max N concurrent |
-| 9 | DB Commit | Core + Backend | DB write | 500–2000 per tx |
+| 9 | DB Commit | Core + Backend | DB write | 500 per tx |
 | 10 | Shard Entry Load | Core | DB read | 2 queries per shard (entries + document) |
 | 11 | Shard CRDT Merge | Core | CPU | — |
 | 12 | Shard Upload | Backend | Remote I/O | max N concurrent |
-| 13 | Shard DB Commit | Core | DB write | 500–2000 per tx |
+| 13 | Shard DB Commit | Core | DB write | 500 per tx |
 | 14 | Feedback | Core | DB read (+ Remote for safety net) | — |
 
 **I/O type pattern**: DB read → Remote → CPU → DB read → Remote → DB read → CPU → Remote → DB write → DB read → CPU → Remote → DB write → orchestration

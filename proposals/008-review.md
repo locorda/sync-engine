@@ -1,111 +1,85 @@
-Here's a thorough analysis:
+# 008: Review of 007 Pipeline Design
+
+Review of [007-two-pass-sync-pipeline.md](007-two-pass-sync-pipeline.md). Items already applied to 007 are not listed here.
 
 ---
 
-## 1. The Core Dart-Specific Risk: Stream Overhead
+## 1. Stream Operator Selection for Stage Implementation
 
-This is the design's biggest latent problem. **Dart async streams are not zero-cost.** Each `streamController.add()` schedules a microtask — a round-trip through the event loop microtask queue. With 14 `StreamTransformer`s and 15,000 items:
+**Severity: High** — the operator choice determines actual microtask overhead; a naive `StreamController`-per-stage approach incurs measurable overhead at 15k items, the correct choice eliminates it.
 
-$$14 \times 15{,}000 = 210{,}000 \text{ microtask enqueue/dequeue cycles}$$
+The choice of stream operator for each stage determines whether a `StreamController` is involved at all:
 
-This is pure overhead — no useful work done. In a tight sync of 15,000 items, this is measurable wall time, not noise.
+| Stage | Type | Operator | Microtask overhead |
+|---|---|---|---|
+| 1, 4 | 1:N async | `asyncExpand` | O(shards) ≈ 50/cycle — negligible |
+| 3, 7, 11 | CPU 1:1 | `stream.map()` | **Zero** — synchronous, no controller |
+| 2, 5, 8, 12 | Concurrent I/O | Custom `StreamTransformer`, `sync: true` | 1/item at I/O→CPU boundary |
+| 6, 9, 13 | Chunked I/O | Custom `StreamTransformer`, `sync: true` | 1/chunk |
+| 10 | Boundary-reactive | Custom `StreamTransformer`, `sync: true` | 1/boundary |
+| 14 | Orchestration | Direct listener on Stage 13 output | — |
 
-**Mitigation**: Use `sync: true` on `StreamController`s inside *CPU* stages (3, 7, 11). A `sync: true` controller calls listeners synchronously on `add()`, so an event propagates through adjacent CPU stages in a single call stack without yielding to the microtask queue. I/O stages must remain async (because they *need* to yield — that's how Dart's async I/O concurrency works). The practical result: CPU-to-CPU event passing is free; I/O-to-CPU or CPU-to-I/O yields once.
+**`stream.map()` for CPU stages** (3, 7, 11): `map` propagates synchronously in the same call stack — no controller, no microtask, zero overhead. There is no blocking risk: per `map` call, only ~7 µs of CPU work occurs (Jelly decode+merge+encode at Stage 7), well within Dart's event loop responsiveness budget. The 210k-microtask scenario only arises if CPU stages are (mis-)implemented with a `StreamController`.
 
-The document should call this out explicitly — it's not a micro-optimisation, it's correctness of the performance model.
+**`sync: true` for custom `StreamTransformer`s** (Stages 2, 5, 6, 8, 9, 10, 12, 13): these stages emit results from within `async` continuations (after `await`). With `sync: true`, the downstream `onData` runs immediately in the same continuation — results flow directly into the next `stream.map()` without an extra microtask round-trip. Without it, each emission schedules an extra microtask before CPU work can start. At 15k items this is measurable; at 50 shards it is negligible.
 
----
+**`inputController` stays `sync: false`**: added to from synchronous code at pipeline startup, and from the `onData` callback of the Feedback Stage's stream subscription (a synchronous listener context). Using `sync: true` there would fire the entire downstream pipeline synchronously in the caller's call stack, violating Dart's re-entrancy contract for stream listeners.
 
-## 2. Many Async Tasks — Is it a Problem?
+**SDK caveat for `sync: true`**: `controller.add()` must be the **last operation** in the async continuation — any code after `add()` runs concurrently with the listener's synchronous execution.
 
-Yes, but not the way it might seem. Dart is single-threaded; "async tasks" don't run in parallel. The real cost is **event loop round-trips per item**. Each `await`/`yield`/`StreamController.add()` is a scheduling point. For the pass-through CPU stages (e.g., Stage 7 passing a `ShardComplete` through), you pay the scheduling cost for zero I/O benefit.
-
-The concurrency model only pays off at I/O stages: while Stage 8 is awaiting N HTTP responses concurrently, Stage 7 can process the next batch. But between sequential CPU stages (3→4, 7→8 pass-through), the async overhead has no corresponding concurrency benefit.
-
-**Recommendation to add**: Note explicitly that CPU stage `StreamController`s must use `sync: true`. If a CPU stage only passes boundaries through (e.g., Stage 7 passing `ShardComplete` downstream), that passthrough should be synchronous.
-
----
-
-## 3. Back-pressure: Not Addressed
-
-Dart streams support `pause`/`resume`, but composing `StreamTransformer` chains that correctly propagate back-pressure is non-trivial. The document doesn't address this.
-
-**Risk**: If Stage 5 passes 15,000 `localOnly` items through at memory speed (no I/O delay), they flood Stage 6's input buffer. Stage 6 then floods Stage 7, etc. Nothing upstream slows down. In the worst case, all 15,000 items are simultaneously in-flight in the pipeline, each holding an `RdfGraph` ≈ 10KB → ~150MB of in-flight data.
-
-The I/O-chunked stages (2, 5, 8) self-limit naturally because they `await` concurrency slots. But pure pass-through paths have no back-pressure.
-
-**Recommendation**: Either (a) add explicit `pause()` propagation design, or (b) accept that the chunked I/O stages are the natural rate limiters and document that CPU stages are not independently bounded.
+**Action**: Added to Design Principles in 007 as a mandatory implementation requirement; implementation form annotated in each stage table.
 
 ---
 
-## 4. Performance Target: Full Initial Sync Against a Local Directory Backend
+## 2. Back-pressure: Explicit Pool Pause Required
 
-~~*Original concern: network RTT would make 3 s impossible for a full initial sync. Resolved: see below.*~~
+**Severity: Medium** — memory risk on the `localOnly` fast path; resolved by design decision.
 
-The 3-second target is explicitly for a **full initial sync** (empty local ← full remote, or full local → empty remote) against a **local directory backend** where network RTT is zero. The earlier RTT-based calculation does not apply here. The real bottleneck is **disk I/O + CPU**, and 3 s is a realistic target for that scenario.
+**Root cause**: In the `localOnly` scenario (full local → remote), Stage 5 passes all 15,000 items through at memory speed. Without back-pressure, all 15,000 items pile up in Stage 8's pool queue, each carrying an encoded `RdfGraph` ≈ 10 KB → ~150 MB peak in-flight. Relying on network latency as an implicit rate limiter is not acceptable — the pipeline must also be correct against local-directory backends where network RTT is zero.
 
-For a real network backend (Solid Pod over HTTPS) the bottleneck shifts entirely to network I/O and the 3 s figure does not apply — that is a separate dimensioning problem.
+**Decision**: Concurrency pool `StreamTransformer`s (Stages 2, 5, 8, 12) **must** implement explicit pool-based back-pressure:
+- When all N slots are occupied: call `subscription.pause()` — upstream stops emitting
+- When a slot becomes free: call `subscription.resume()` — upstream continues
 
-**CPU budget sanity check with Jelly codec** (see §10 below):
-- Decode 15k resources × ~20 triples: ~**110 ms**
-- Decode ~100 shards (1–2k quads each): ~**55–110 ms**
-- Encode 15k resources for DB + upload (Jelly): ~**270 ms**
-- Total codec CPU: **~435–490 ms** — well under 1 s
+This bounds in-flight items at any pool to exactly N at any moment. The `pause()`/`resume()` signal propagates automatically through `stream.map()` and `asyncExpand()` stages upstream — no additional machinery needed in CPU or fan-out stages.
 
-This leaves ~2.5 s for SQLite batch writes and local file I/O, which is achievable with the chunked batch strategy (Stage 9: 500–2000 per transaction).
+**Effect on memory**: peak in-flight for each pool stage = N items × ~10 KB = ~100 KB at N=10. Total across all four pools ≈ 400 KB — acceptable.
 
----
-
-## 5. ~~Missing:~~ `index_entries` clockHash Update in Stage 9 — **Already Correctly Implemented**
-
-~~*Original concern: `index_entries` may hold a stale clockHash after a CRDT merge, triggering spurious `conflictCandidate` on the next cycle.*~~
-
-**Verified against existing codebase: Option A is already exactly what the code does.**
-
-The existing `_commitBatchChunk()` method in `remote_sync_orchestrator.dart` commits both `documents` and `index_entries` in a single `inTransaction()` call. The clockHash written to `index_entries` is extracted from the **post-merge** document's `sync:crdtClockHash` literal (via `IndexManager.prepareIndexEntryWrites()`), not from the original shard parse. The update is fully batched: a `_DeferredBatchCommit` record collects `saveRequests` (documents) and `indexEntryRequests` side-by-side, flushed together in chunks of up to 2000 items.
-
-Key files:
-- `remote_sync_orchestrator.dart` — `_commitBatchChunk()` wraps both writes in `inTransaction()`; `_DeferredBatchCommit` typedef bundles `saveRequests + indexEntryRequests`
-- `index_manager.dart` — `prepareIndexEntryWrites()` extracts the post-merge clockHash from the merged document
-- `drift_storage.dart` — `saveIndexEntries()` delegates to `IndexDao.saveIndexEntriesBatch()` (batch insert/replace, chunk-safe)
-
-**Action for the proposal**: Stage 9 should explicitly document that `index_entries` is updated in the same batched transaction as `documents`, using the post-merge clockHash. This is not an _additional_ step but a natural consequence of the `_DeferredBatchCommit` pattern that must be preserved when re-implementing Stage 9 in the new pipeline.
+**Action**: Added to Design Principles in 007; pool stages document the pause/resume contract.
 
 ---
 
-## 6. Stage 6 Batching Unspecified
+## 3. Stage 6 Batching ✅ Applied
 
-For the "full local → remote" scenario, all 15,000 items are `localOnly`, so Stage 5 passes through and Stage 6 must load all 15,000 documents from DB. "Chunked DB reads" is stated but not specified. Should use `getDocumentsByIri()` with chunked IN-queries (e.g., 500 per query). This is analogous to Stage 9's 500–2000 per transaction and should be documented at the same level.
-
----
-
-## 7. Should Any Stages be Merged?
-
-**Stages 3+4** (Shard Parse → Change Detection): strongest candidate. They always execute sequentially per shard — Stage 4 immediately consumes Stage 3's output for the same shard. Separating them costs one stream emission per shard (cheap at ~50 shards, negligible). Keep separate for the conceptual clarity.
-
-**Stages 10+11** (Shard Entry Load → Shard CRDT Merge): same argument. One stream emission per `ShardComplete`. ~50 shards = 50 extra emissions. Negligible. Worth keeping separate.
-
-**No merges are necessary** at the target scale. The stream overhead for the ~50 shard boundaries is negligible; the 15,000 resource items are where the overhead matters, and those are governed by the `sync: true` fix above.
+Chunk size documented as 500 items per `getDocumentsByIri()` IN-query in Stage 6's Batching row.
 
 ---
 
-## 8. Missing: IRI Warmup in Pipeline Startup
+## 4. Stage Merging Analysis
 
-`Storage.warmupIriIds()` exists but isn't called in the pipeline. Stage 1 processes all index IRIs and shard IRIs upfront. Warming up the IRI→ID cache at Stage 1 time (before Stages 4, 6, 9 need them) would eliminate repeated lookups in those stages. One call at the start of Stage 1, passing all resolved shard IRIs, costs one isolate round-trip in exchange for eliminating per-item lookups in downstream DB stages.
+**Severity: Low** — no action required at target scale.
 
----
+**Stages 3+4** (Shard Parse → Change Detection): strongest candidate. They always execute sequentially per shard — Stage 4 immediately consumes Stage 3's output. Separating them costs one stream emission per shard (~50 shards total). Overhead negligible. Keep separate for conceptual clarity.
 
-## 9. Design Principle 4 Needs Update
+**Stages 10+11** (Shard Entry Load → Shard CRDT Merge): same argument. One extra emission per `ShardComplete`. ~50 emissions total. Negligible.
 
-> "All decoding/encoding happens in CPU stages (3, 7)"
-
-Stage 11 is also a CPU stage doing encoding. Should read "CPU stages (3, 7, 11)".
+**Conclusion**: No merges are necessary at target scale. The stream overhead for shard boundaries is negligible; the 15,000 resource items are where overhead matters, and that is governed by the `sync: true` requirement above.
 
 ---
 
-## 10. Codec Performance Budget (from BENCHMARKS.md)
+## 5. IRI Warmup in Stage 1 ✅ N/A — superseded by ID pass-through
 
-Benchmarks from `locorda_rdf` (JIT; AOT comparable or faster for encoding):
+~~**Severity: Low** — optimization opportunity.~~
+
+The IRI→ID cache and `Storage.warmupIriIds()` are **not needed** in this pipeline. Stage 1 already fetches the integer PK (`index_shards.id`) in its bulk query and attaches it to `ShardRef`. Downstream events (`SyncCandidate`, `FetchedCandidate`, `MergeResult`) propagate this ID through the pipeline. Stages 4, 6, and 9 use the integer ID directly — zero IRI→ID lookups, zero cache.
+
+**Action**: Documented in Stage 1 as an "ID pass-through" note. `warmupIriIds()` must not be called in the pipeline.
+
+---
+
+## 6. Codec Performance Budget (from BENCHMARKS.md)
+
+Benchmarks from `locorda_rdf` (JIT; AOT comparable or faster for encoding). Informs the 3 s performance target already documented in 007.
 
 **Individual resource decode** (~20 triples, `small` benchmark row):
 
@@ -143,7 +117,53 @@ Pre-encoding is cheap. The Jelly zero-copy shortcut (`encodedForDb` = `encodedFo
 | TriG    | 0.98×  | linear |
 | Jelly   | 1.37×  | sub-linear — best at scale |
 
-**Implication for format choice**: Only TriG and Jelly scale acceptably. Jelly is the clear winner for any shard-heavy workload. The `preferredUploadContentType` decision in OQ5 is strongly supported by these numbers.
+Only TriG and Jelly scale acceptably. Jelly is the clear winner for shard-heavy workloads. Supports the `preferredUploadContentType` decision in OQ5.
+
+---
+
+## 7. Three Issues Found in Pass 2 Review
+
+### C3 — Pool Stages Must Buffer Boundary Events (Correctness)
+
+**Severity: High** — ordering invariant breaks if boundaries are forwarded while I/O slots are occupied.
+
+DP8 documents the `pause()/resume()` back-pressure contract but does not cover what happens when a `ShardComplete` or `PhaseComplete` arrives at a pool stage while I/O slots are still occupied.
+
+**Problem**: A `ShardComplete(A)` that reaches Stage 5 while downloads for shard A's candidates are still in-flight would be forwarded before those downloads complete. Downstream, Stage 10 would read `getActiveIndexEntriesForShard(A)` before Stage 9 has committed those resources — `index_entries.clockHash` values would be stale, causing spurious `conflictCandidate` classifications on the next sync cycle.
+
+**Required rule**: Pool stages (2, 5, 8, 12) must treat boundary events as **flush points**: when a boundary is dequeued from the input, it is buffered until all previously-dispatched in-flight operations have completed and emitted their results; only then is the boundary forwarded downstream.
+
+**Action**: Added to DP8 in 007.
+
+---
+
+### E1 — `ShardComplete` Dart Code Invalid (Syntax Bug)
+
+**Severity: Low** — spec illustration only, but invalid Dart misleads implementers.
+
+```dart
+class ShardComplete extends Boundary {
+  ...
+  const ShardComplete(this.shardIri, this.shardStorageId, {this.remoteShardGraph});
+  final String? newEtag;  // ← declared after constructor, NOT in constructor params
+}
+```
+
+`final` fields of a `const` class must all be initialized in the constructor. `newEtag` is not listed in the constructor → invalid Dart.
+
+**Fix**: move `newEtag` declaration before the constructor; add `this.newEtag` as a named parameter.
+
+**Action**: Fixed in `ShardComplete` Dart block in 007.
+
+---
+
+### E2 — Batch-Size Inconsistency (DP1 and Summary Table)
+
+**Severity: Low** — cosmetic; stage descriptions are already correct.
+
+Stage 9 and 13 descriptions say `500 items/shards per transaction`. DP1 and the Summary Table rows for Stage 9 and 13 still say `500–2000`.
+
+**Action**: DP1 and Summary Table rows 9 and 13 updated to `500` in 007.
 
 ---
 
@@ -151,12 +171,12 @@ Pre-encoding is cheap. The Jelly zero-copy shortcut (`encodedForDb` = `encodedFo
 
 | Concern | Severity | Action |
 |---|---|---|
-| `sync: true` for CPU stage `StreamController`s | **High** — measurable at 15K items | Add to design as mandatory requirement |
-| Back-pressure design | **Medium** — memory risk | Document the rate-limiter model or add explicit pause design |
-| `index_entries` clockHash update | ~~**High** — correctness bug~~ **Resolved** | Already correct: existing `_commitBatchChunk()` atomically writes docs + `index_entries` with post-merge clockHash, batched up to 2000/chunk. Stage 9 must document this invariant. |
-| Stage 6 batching unspecified | **Medium** | Document chunk size (500/batch) |
-| Performance target scope | ~~Medium~~ **Resolved** | 3s = full initial sync against local dir backend; network backend is out of scope for this target — updated in document |
-| IRI warmup in Stage 1 | **Low** | Note as optimization opportunity |
-| Design Principle 4 wording | **Low** | Add Stage 11 to the list |
-
-----
+| `sync: true` for CPU stage `StreamController`s | **High** — measurable at 15k items | Add to Design Principles as mandatory requirement |
+| Back-pressure design | **Medium** — memory risk | Document rate-limiter model or add explicit `pause()` design |
+| Stage 6 chunk size unspecified | **Medium** | Document 500/batch IN-query chunking |
+| Stage merging | **Low** — no action needed | No merges necessary at target scale |
+| IRI warmup in Stage 1 | **N/A** | Superseded by ID pass-through — `warmupIriIds()` not needed |
+| Codec performance budget | Informational | See §6; supports 3 s target and OQ5 format choice |
+| C3: Pool stages must buffer boundary events | **High** — ordering invariant | Added to DP8: boundaries held until pool drains |
+| E1: `ShardComplete` constructor missing `newEtag` | **Low** — invalid Dart | Fixed: `newEtag` moved into constructor params |
+| E2: Batch-size inconsistency (DP1 + Summary Table) | **Low** — cosmetic | DP1 and Summary Table rows 9 + 13 updated to `500` |
