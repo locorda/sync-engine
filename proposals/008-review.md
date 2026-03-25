@@ -56,17 +56,20 @@ This leaves ~2.5 s for SQLite batch writes and local file I/O, which is achievab
 
 ---
 
-## 5. Missing: `index_entries` clockHash Update in Stage 9
+## 5. ~~Missing:~~ `index_entries` clockHash Update in Stage 9 — **Already Correctly Implemented**
 
-After Stage 7 CRDT-merges a resource and Stage 9 commits it to the `documents` table, the merged resource has a new clockHash. But `index_entries` still holds the old clockHash from the last shard parse (Stage 3/4). 
+~~*Original concern: `index_entries` may hold a stale clockHash after a CRDT merge, triggering spurious `conflictCandidate` on the next cycle.*~~
 
-On the **next** sync cycle, Stage 4 will compare the stored `index_entries.clockHash` against the remote shard entry's clockHash. If `index_entries` is stale, this triggers a spurious `conflictCandidate` classification.
+**Verified against existing codebase: Option A is already exactly what the code does.**
 
-The document needs to explicitly state where and when `index_entries` is updated with the post-merge clockHash — either:
-- **Option A**: Stage 9 updates `index_entries` in the same transaction (add as step 5 to Stage 9's transaction list).
-- **Option B**: Stage 13 (shard commit) re-parses `encodedForDb` to extract entries and writes them, treating the committed shard as the authoritative entry source.
+The existing `_commitBatchChunk()` method in `remote_sync_orchestrator.dart` commits both `documents` and `index_entries` in a single `inTransaction()` call. The clockHash written to `index_entries` is extracted from the **post-merge** document's `sync:crdtClockHash` literal (via `IndexManager.prepareIndexEntryWrites()`), not from the original shard parse. The update is fully batched: a `_DeferredBatchCommit` record collects `saveRequests` (documents) and `indexEntryRequests` side-by-side, flushed together in chunks of up to 2000 items.
 
-Option A is simpler and happens atomically with the document write.
+Key files:
+- `remote_sync_orchestrator.dart` — `_commitBatchChunk()` wraps both writes in `inTransaction()`; `_DeferredBatchCommit` typedef bundles `saveRequests + indexEntryRequests`
+- `index_manager.dart` — `prepareIndexEntryWrites()` extracts the post-merge clockHash from the merged document
+- `drift_storage.dart` — `saveIndexEntries()` delegates to `IndexDao.saveIndexEntriesBatch()` (batch insert/replace, chunk-safe)
+
+**Action for the proposal**: Stage 9 should explicitly document that `index_entries` is updated in the same batched transaction as `documents`, using the post-merge clockHash. This is not an _additional_ step but a natural consequence of the `_DeferredBatchCommit` pattern that must be preserved when re-implementing Stage 9 in the new pipeline.
 
 ---
 
@@ -150,7 +153,7 @@ Pre-encoding is cheap. The Jelly zero-copy shortcut (`encodedForDb` = `encodedFo
 |---|---|---|
 | `sync: true` for CPU stage `StreamController`s | **High** — measurable at 15K items | Add to design as mandatory requirement |
 | Back-pressure design | **Medium** — memory risk | Document the rate-limiter model or add explicit pause design |
-| `index_entries` clockHash update missing | **High** — correctness bug | Add as Step 5 to Stage 9 transaction |
+| `index_entries` clockHash update | ~~**High** — correctness bug~~ **Resolved** | Already correct: existing `_commitBatchChunk()` atomically writes docs + `index_entries` with post-merge clockHash, batched up to 2000/chunk. Stage 9 must document this invariant. |
 | Stage 6 batching unspecified | **Medium** | Document chunk size (500/batch) |
 | Performance target scope | ~~Medium~~ **Resolved** | 3s = full initial sync against local dir backend; network backend is out of scope for this target — updated in document |
 | IRI warmup in Stage 1 | **Low** | Note as optimization opportunity |

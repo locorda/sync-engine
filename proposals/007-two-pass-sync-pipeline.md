@@ -66,7 +66,7 @@ Each installation creates its own IoI and at least one IoI-Shard on startup, pop
 1. **Stream across stages, batch within stages**: Resources flow continuously from stage to stage — no phase barriers. Within a single stage, I/O operations are batched/chunked for efficiency (e.g. 10 concurrent downloads, 500–2000 items per DB transaction).
 2. **Backend as stream transform**: The backend is a function `Stream<Request> → Stream<Result>`. All backend-specific complexity (file-per-resource vs. file-per-shard vs. aggregated storage) is encapsulated inside the transform.
 3. **Boundary elements for coordination**: Typed sentinel events (`ShardComplete`, `PhaseComplete`) flow inline with data — no external coordinator needed.
-4. **CPU stages only do CPU; I/O stages only do I/O**: No parsing in I/O stages. `EncodedRdfGraphSource` (raw bytes/text) flows through I/O stages untouched. All decoding/encoding happens in CPU stages (3, 7).
+4. **CPU stages only do CPU; I/O stages only do I/O**: No parsing in I/O stages. `EncodedRdfGraphSource` (raw bytes/text) flows through I/O stages untouched. All decoding/encoding happens in CPU stages (3, 7, 11).
 5. **Only sync what changed**: ETags for remote shards, `updatedAt > lastSyncTimestamp` for local. Unchanged items are never processed.
 6. **Backend persists its own remote knowledge**: Each backend maintains its own view of the remote state via a transactional callback within Core's DB commit. Core never accesses mirror data directly.
 
@@ -294,6 +294,7 @@ Persist merge results to local DB. Backend state update happens atomically in th
 2. Update resource-level sync metadata (clock, ETag, …)
 3. **Backend callback**: `backend.onCommit(batch)` — backend updates mirror within the same transaction
 4. **Index document handling**: If the committed resource is an index document → parse `idx:hasShard` → update `index_shards` table. This is how the Feedback Stage can later inject content indices with a pre-populated shard list.
+5. **`index_entries` clockHash update**: For each committed resource, upsert the corresponding `index_entries` row with the **post-merge** clockHash (extracted from the merged document's `sync:crdtClockHash` literal via `IndexManager.prepareIndexEntryWrites()`). This must happen in the same transaction as step 1 — atomicity guarantees that the stored `index_entries.clockHash` always reflects the actual committed state. A stale clockHash in `index_entries` would cause spurious `conflictCandidate` classifications on the next sync cycle. This step is already implemented correctly in `_commitBatchChunk()` / `_DeferredBatchCommit` and must be preserved in any pipeline reimplementation.
 
 ---
 
