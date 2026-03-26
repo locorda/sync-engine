@@ -117,18 +117,14 @@ Each installation creates its own documents for IoI, IoGI, and at least one shar
 This pipeline is initially designed and implemented for the **file-per-resource** storage model, where each synced resource maps 1:1 to a remote file (in file-per-resource mode, shard documents are index documents only — there are no aggregated resource uploads).
 
 **Shard-dataset and single-file backends** are implemented self-contained within each backend (with helper services provided by Core). Their approach:
-- **Stage 2 (download)**: Backend downloads the aggregate file (shard dataset or single-file) and emits one `ShardContent` per shard it contains. During the **content phase only**, extra shards not in Stage 1's `ShardRef` batch are emitted with `shardStorageId = null` (see [proactive injection](#backend-driven-ingress-allresourcesavailable)). During the meta-index phase Stage 2 emits only the specifically requested IoI/IoGI shard events — no extra injection.
-> **KK** I like how you summarize the approach here - but I think you should also mention that those backends that have already fetched all resources in a shard signal this with a special flag, so that onRequest fetching optimization is disabled and the resources flow through the system, triggered by the backend, even if the app did not ask for fetching of them, because they were downloaded together with the other data anyways
-- **Stage 12 (upload assembly)**: Backend queries Core's `documents` table via `getDocumentGraphsByIri(missingIris)` to retrieve unchanged resources needed for dataset assembly (Option 3 — Core DB Query). No import tables or mirror DB required. A temporary in-memory structure may be used as a RAM optimization, but it is purely an implementation choice and must be discardable after sync.
-> **KK** I don't think we really designed the precise API yet, and I am not sure we know all IRIs in Stage 12  - be more vague please. The method you are suggesting is probably useful for shard dataset mode, but for single-file mode I guess we will need more/others.
+- **Stage 2 (download)**: Backend downloads the aggregate file (shard dataset or single-file) and emits one `ShardContent` per shard it contains. When all resource graphs for a shard were already downloaded as part of the aggregate file, the backend sets `allResourcesAvailable = true` on `ShardContent` — this disables `onRequest` deferral so Core processes all entries immediately, even for resource types the app didn't explicitly request. During the **content phase only**, extra shards not in Stage 1's `ShardRef` batch are additionally emitted with `shardStorageId = null` (see [Backend-Driven Ingress](#backend-driven-ingress-allresourcesavailable)). During the meta-index phase Stage 2 emits only the specifically requested IoI/IoGI shard events — no extra injection.
+- **Stage 12 (upload assembly)**: For aggregating backends, Stage 12 must assemble complete dataset or single-file uploads. Unchanged resources not already in the Stage 12 accumulator are fetched from Core's `documents` table. No import tables or mirror DB required — Core's DB is the single source of truth for unchanged resource graphs.
 
 Core's pipeline stages remain unchanged; all backend-specific aggregation complexity stays inside the backend's stream transforms.
 
 ---
 
-## [Proposed 007 change]: Backend-Driven Ingress (`allResourcesAvailable`)
-
-> **KK** this is not a propsed change any more, we have agreed on it and want this properly integrated into this document.
+## Backend-Driven Ingress: `allResourcesAvailable`
 
 Aggregating backends (shard-dataset, single-file, delta-file) download multiple resources in a single HTTP response. When this happens, the backend must signal to Core that **all resources for a shard are already available locally**, so the pipeline processes them all regardless of the application's configured fetch policy.
 
@@ -225,8 +221,7 @@ Batched/chunked conditional GETs for shard documents.
 | **Batching** | Chunked: max N concurrent HTTP requests (e.g. 10) |
 
 `FetchedShard` variants:
-- **`ShardContent(shardIri, shardStorageId: IriStorageId?, source: RdfGraphSource, newEtag)`** — 200: raw bytes, no parsing. `shardStorageId` is `null` for shards that were not in Stage 1's batch (proactively injected **during the content phase only** by aggregating backends that downloaded extra shards from a single aggregate file); non-null for shards Stage 1 explicitly requested. During the meta-index phase `shardStorageId` is always non-null. Backend-specific format (Turtle, Jelly, …). Dataset/single-file backends may emit `DecodedGraphSource` (without encoded original).
-> **KK** "raw bytes, no parsing" => not necessarily. if the backend has already decoded it for its own reasons it is expected to pass on the decoded data (and the raw encoded data additional if applicable)
+- **`ShardContent(shardIri, shardStorageId: IriStorageId?, source: RdfGraphSource, newEtag)`** — 200: shard data in backend-specific format (Turtle, Jelly, …), or already decoded if the backend parsed it for its own purposes (in which case the encoded original may also be passed through if available). `shardStorageId` is `null` for shards that were not in Stage 1's batch (proactively injected **during the content phase only** by aggregating backends that downloaded extra shards from a single aggregate file); non-null for shards Stage 1 explicitly requested. During the meta-index phase `shardStorageId` is always non-null.
 - **`ShardNotModified(shardIri, shardStorageId: IriStorageId)`** — 304: shard unchanged (always from a Stage 1 `ShardRef`).
 - **`ShardGone(shardIri, shardStorageId: IriStorageId)`** — 404/410: shard removed (always from a Stage 1 `ShardRef`).
 
@@ -286,9 +281,11 @@ Compare remote shard entries against local `index_entries` to classify each reso
 
 **Remaining items**: `localOnly` candidates emerge naturally from the diff itself: `getActiveIndexEntriesForShard` loads all active local entries for the shard; any resource with a local entry but no matching remote entry is classified as `localOnly`. No separate query is needed — shard membership is stored explicitly in `index_entries.shard_iri`.
 
-**Resources in multiple shards**: A resource can appear in more than one shard. In the streaming pipeline there is **no guarantee** that one shard's resources are committed (Stage 9) before the next shard reaches Stage 4 — the pipeline is concurrent. Consequently the same resource may be classified as a sync candidate by multiple shards and processed (merged, uploaded, committed) more than once. This is **harmless**: CRDT merge is idempotent, and uploading the same merged result twice is a no-op from a correctness standpoint.
+**Resources in multiple shards**: A resource can appear in more than one shard (e.g. in a FullIndex and a GroupIndex simultaneously, or temporarily in two GroupIndex shards after being moved between groups). In the streaming pipeline there is **no guarantee** that one shard's resources are committed (Stage 9) before the next shard reaches Stage 4 — the pipeline is concurrent. The same resource may therefore be classified as a sync candidate by multiple shards in the same cycle.
 
-> **KK** I fear this is not quite true: imagine a resource that exists locally and remote in different group indices. First we process the local group index with the local state of the resource and upload it to remote. Then we process the remote group index with the remote state of the resource, merge it and upload it to remote - then we will have two conflicting resource states remotely!!!
+This is correct by construction: the shard that has the resource **remotely** classifies it as `remoteOnly` or `conflictCandidate`, fetches it, merges, and uploads the merged result. A shard that has the resource only **locally** classifies it as `localOnly` and uploads the local-only state. If both run concurrently, the local-only upload is overwritten by the merged upload. The final remote resource state is always the CRDT-merged result. Temporary duplicate index entries (the resource listed in both shards' remote index documents) self-correct in the next sync cycle as the index CRDT merges propagate.
+
+> **KK** no, not for shard dataset backends. Then we will have different states in different files. not good.
 
 The critical invariant is: **a resource must be uploaded to remote (Stage 8) before any shard containing it is finalized and uploaded (Stage 10)**. This is guaranteed by the pipeline order — Stage 8 always completes before Stage 10 processes the `ShardComplete` boundary. After shard finalize, the shard's index on remote reflects the post-merge clockHash for this resource. Other shards that also contain this resource but were finalized *before* the merge may have a stale clockHash in their remote index entry — this is acceptable because the resource itself is the source of truth and the shard index is only used for change detection. The discrepancy self-corrects in the next sync cycle.
 
@@ -393,29 +390,25 @@ From Core's perspective, Stage 8 is a single opaque `StreamTransformer`. The int
 
 ---
 
-### Stage 9: DB Commit (core + backend, DB write)
+### Stage 9: DB Commit (core, DB write)
 
-Persist merge results to local DB. Backend state update happens atomically in the same transaction (crash safety).
-
-> **KK** no backend here, remove the notion of backend.onCommit - we removed that 
+Persist merge results to local DB.
 
 | | |
-|---|---|
-| **Owner** | Core (with backend callback) |
+|---|---------|
+| **Owner** | Core |
 | **I/O** | DB write (transaction) |
 | **Implementation** | Custom `StreamTransformer` — chunked DB write; `sync: true` internal controller |
 | **Input** | `Stream<UploadResult + ShardComplete>` |
-| **Operation** | Chunked transaction: write documents + metadata + backend mirror callback. (FIXME)|
+| **Operation** | Chunked transaction: write documents + metadata. |
 | **Output** | `Stream<CommitResult + ShardComplete>` |
 | **Batching** | Chunked: 500 items per transaction |
 
 **Transaction contents** (per chunk):
 1. Write/update resource document (raw bytes from `encodedForDb`)
 2. Update resource-level sync metadata (clock, ETag, …)
-3. **Backend callback**: `backend.onCommit(batch)` — backend updates mirror within the same transaction
-> **KK** (FIXME: backend mirror updates really here? isn't that rather connected to backend uploads? IMHO this does not belong here, stage 9 should be pure core)
-4. **Index document handling**: If the committed resource is an index document → extract `idx:hasShard` → update `index_shards` table. This is how the Feedback Stage can later inject content indices with a pre-populated shard list.
-5. **`index_entries` clockHash update**: For each committed resource, upsert the corresponding `index_entries` row with the **post-merge** clockHash (extracted from the merged document's `sync:crdtClockHash` literal via `IndexManager.prepareIndexEntryWrites()`). This must happen in the same transaction as step 1 — atomicity guarantees that the stored `index_entries.clockHash` always reflects the actual committed state. A stale clockHash in `index_entries` would cause spurious `conflictCandidate` classifications on the next sync cycle. This step is already implemented correctly in `_commitBatchChunk()` / `_DeferredBatchCommit` and must be preserved in any pipeline reimplementation.
+3. **Index document handling**: If the committed resource is an index document → extract `idx:hasShard` → update `index_shards` table. This is how the Feedback Stage can later inject content indices with a pre-populated shard list.
+4. **`index_entries` clockHash update**: For each committed resource, upsert the corresponding `index_entries` row with the **post-merge** clockHash (extracted from the merged document's `sync:crdtClockHash` literal via `IndexManager.prepareIndexEntryWrites()`). This must happen in the same transaction as step 1 — atomicity guarantees that the stored `index_entries.clockHash` always reflects the actual committed state. A stale clockHash in `index_entries` would cause spurious `conflictCandidate` classifications on the next sync cycle. This step is already implemented correctly in `_commitBatchChunk()` / `_DeferredBatchCommit` and must be preserved in any pipeline reimplementation.
 
 ---
 
@@ -458,9 +451,7 @@ Assembles the new shard graph from local entries, then CRDT-merges with the remo
 - `newEtag: String?` — from remote fetch, used for conditional PUT in Stage 12
 - `needsUpload: bool` — false for 304 (not modified) and gone shards
 
-Parallel to `MergeResult` from Stage 7. Stage 11 does **not** pre-encode for upload — this is the backend's responsibility in Stage 12 (see [OQ5 resolution](#5-upload-encoding--resolved)).
-
-> **KK** maybe we should mention that the shard document building should be very close to the current implementation
+Parallel to `MergeResult` from Stage 7. Stage 11 does **not** pre-encode for upload — this is the backend's responsibility in Stage 12 (see [OQ5 resolution](#5-upload-encoding--resolved)). The shard document building logic (OR-Set merge of entries, clock hash computation, `idx:hasShard` triple generation) should remain very close to the current implementation.
 
 ---
 
@@ -487,9 +478,7 @@ Backend Stage 12 — internal sub-pipeline:
     12b (I/O): HTTP PUT / conditional PUT
 ```
 
-For aggregating backends (shard-dataset, single-file), Stage 12a may additionally pull unchanged resource graphs from a mirror (Option 1) or Core's DB (Option 3) to assemble complete datasets — see 010 for details.
-
-> **KK** no mirror mentioned here, and no options either - just state that it pulls it from core's DB
+For aggregating backends (shard-dataset, single-file), Stage 12a additionally queries Core's `documents` table for unchanged resource graphs to assemble complete datasets — see [010](010-review-backend-storage-models.md) for details.
 
 ---
 
@@ -561,12 +550,10 @@ on PhaseComplete(source, processedShardCount, zeroShardIndices):
       //   = all FullIndex IRIs (from IoI entries)
       //   + subscribed GroupIndex IRIs (from IoGI entries where group is subscribed)
       //
-      // This is ALWAYS subscribed GroupIndex only — never all GroupIndex IRIs.
-      // For single-file backends: unsubscribed GroupIndex data was already
-      // committed via proactive Stage 2 injection; Stage 4 sees the same
-      // clockHash for those shards → skips them without re-fetching.
-      // For shard-dataset backends: only subscribed GroupIndex shards were
-      // ever fetched → no change in behavior.
+      // Feedback Stage always injects subscribed GroupIndex only — never all
+      // GroupIndex IRIs. For single-file backends, unsubscribed GroupIndex
+      // shards will be proactively injected by Stage 2 during the content
+      // phase itself (as extra ShardContent events with shardStorageId = null).
 
       if allIndices.isEmpty:
         inputController.close()
@@ -576,9 +563,6 @@ on PhaseComplete(source, processedShardCount, zeroShardIndices):
     // Content phase complete
     inputController.close()
 ```
-
-> **KK** "unsubscribed GroupIndex data was already" => no! It will be injected in the content phase, but when this code here is executed it was not injected. 
-> **KK** "Stage 4 sees the same clockHash for those shards → skips them without re-fetching" => you said something similar earlier and I neither understood it then nor now. stage 4 does change detection and loads local db. it will not find those locally, but that is fine. Nothint to do with same clockHash. Of course they may have been added before and now updated - but that is completely normal behaviour like all shards. nothing worth mentioning here.
 
 **Meta-index stability detection (OQ3 resolved)**: `SyncInput` for the meta-index phase carries `metaIndexClockHashes` — a map of meta-index document IRIs (IoI, IoGI) to their CRDT clock hashes, read from the `documents` table at injection time. After the iteration, the Feedback Stage reads the current clock hashes from the `documents` table for each meta-index. If **any** hash differs from its snapshot, at least one meta-index was CRDT-merged with new remote content (e.g. new `idx:hasShard` entries, new GroupIndex instances) → re-inject both. Both meta-indices must be stable simultaneously for the content phase transition, because a change to the IoI could reveal new FullIndex documents whose discovery affects the IoGI (and vice versa via transitive index membership).
 
@@ -679,15 +663,18 @@ final pipeline = inputController.stream
     .transform(localLoad(db))                       // Stage 6:  Stream<LoadedCandidate>
     .transform(crdtMerge(merger))                   // Stage 7:  Stream<MergeResult>
     .transform(upload(backend))                     // Stage 8:  Stream<UploadResult>
-    .transform(dbCommit(db, backend))               // Stage 9:  Stream<CommitResult>
+    .transform(dbCommit(db))                        // Stage 9:  Stream<CommitResult>
     .transform(shardEntryLoad(db))                  // Stage 10: Stream<LoadedShardEntries>
     .transform(shardCrdtMerge(merger))              // Stage 11: Stream<MergedShard>        (↔ Stage 7)
-    .transform(shardUpload(backend))                // Stage 12: Stream<UploadedShard>      (↔ Stage 8)
+    .transform(shardUpload(syncSupport))            // Stage 12: Stream<UploadedShard>      (↔ Stage 8)
     .transform(shardDbCommit(db))                   // Stage 13: Stream<ShardCommitResult>  (↔ Stage 9)
     .transform(feedback(inputController, db));      // Stage 14: Side effects → inputController
 ```
-> **KK**   remove backend from stage 9 dbCommit call
-> **KK** The backend stages need to share state somehow, so we need to provide some solution. for example letting backend create some sync support `backend.createSyncSupport` and then use the same sync support instance for creating all the stages like `.transform(syncSupport.shardFetch)`
+
+Backend stages (2, 5, 8, 12) need to share internal state (e.g. the per-shard resource cache populated in Stage 2 and consumed in Stage 5). The recommended pattern is `backend.createSyncSupport()` — the backend instantiates a single sync-scoped support object and uses it to create all its stage transforms: `.transform(syncSupport.shardFetch)`, `.transform(syncSupport.resourceFetch)`, etc. Core has no knowledge of this object.
+
+> **KK** ok - so why didn't you update the dart code snipped above to show this pattern?
+
 ## Summary Table
 
 | Stage | Name | Owner | I/O Type | Batching |
@@ -754,9 +741,9 @@ This approach is strictly superior to the alternatives: it captures any CRDT-vis
 
 2. **`allResourcesAvailable`**: Set to `true` on all `ShardContent` events from an aggregate download. Overrides the configured fetch policy so Stage 4 classifies all `remoteOnly` entries for immediate processing (no deferral). Stage 5 serves graphs from the backend's internal per-shard cache.
 
-3. **Option 3 (Core DB Query) for upload assembly**: Stage 12's CPU sub-stage queries Core's `documents` table via `getDocumentGraphsByIri(missingIris)` to retrieve unchanged resources needed for dataset/single-file assembly. No import tables or mirror DB required. The `ShardComplete`/`PhaseComplete` boundary model works unchanged — extra proactively-injected shards simply appear as additional events before `PhaseComplete`.
+3. **Core DB Query for upload assembly**: Stage 12's CPU sub-stage queries Core's `documents` table to retrieve unchanged resources needed for dataset/single-file assembly. No import tables or mirror DB required. The `ShardComplete`/`PhaseComplete` boundary model works unchanged — extra proactively-injected shards simply appear as additional events before `PhaseComplete`.
 
-> **KK** in single-file/delta modes, the backend will upload on PhaseComplete of the content phase and it needs some helpers to be able to really gather all documents. there is one open detail though: it might need to store the etag of the remote file somewhere (or some other value) and in phase 2 needs to query it in order to know if the data changed and needs download.
+   **Open detail (single-file / delta-file)**: These backends upload on `PhaseComplete` of the content phase and need Core helpers to gather all resource graphs at that point. Additionally, they must persist some remote state across sync cycles (e.g. a file ETag or version token) so Stage 2 can issue a conditional GET in the next cycle and detect whether the remote file changed. The precise API for both the bulk graph query and the remote-state storage is to be designed.
 
 ### 5. Upload Encoding — **Resolved**
 
