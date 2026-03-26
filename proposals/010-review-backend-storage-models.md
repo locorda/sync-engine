@@ -33,7 +33,14 @@ In aggregating modes, the backend's download is an *ingress* operation. Whatever
 ```dart
 class ShardContent extends FetchedShard {
   final IriTerm shardIri;
-  final IriStorageId shardStorageId;
+
+  /// Storage-internal identifier for this shard, or `null` if Stage 1 did not
+  /// know about this shard (proactively injected by an aggregating backend that
+  /// downloaded it as part of a larger aggregate file). Stage 4 handles `null`
+  /// by upserting `shardIri` into `sync_iris` to obtain an `IriStorageId`;
+  /// the new shard has 0 local entries so all remote entries are `remoteOnly`.
+  final IriStorageId? shardStorageId;
+
   final RdfGraphSource source; // shard metadata (default graph)
   final String newEtag;
 
@@ -89,23 +96,12 @@ For **file-per-resource / shard-dataset** backends:
 - Unsubscribed GroupIndex data is never downloaded — exactly what we want
 
 For **single-file** backends:
-- The backend sets `allResourcesAvailable = true` on shard content (including IoGI shards)
-- The `onRequest` override causes ALL GroupIndex documents to be committed during the meta-index phase
-- The Feedback Stage therefore sees ALL GroupIndex instances in the DB → injects all of them into the content phase
-- **No `BackendStorageMode` check needed** — the `allResourcesAvailable` mechanism already ensures completeness
+- Stage 2 downloads the entire file on the first shard request (meta-index phase: IoI or IoGI). For the specifically requested IoI/IoGI shards it emits `ShardContent(allResourcesAvailable: true)` with non-null `shardStorageId`. During the **content phase**, when Stage 1 requests known content shards, Stage 2 additionally emits extra `ShardContent` events with `shardStorageId = null` for content shards it downloaded but Stage 1 didn't ask for. Proactive extra-shard injection is **content-phase only** — no extra events during the meta-index phase.
+- The `onRequest` override causes ALL GroupIndex documents to be committed during the meta-index phase.
+- The Feedback Stage queries **subscribed GroupIndex IRIs only** for the content phase — same as for other backends. The unsubscribed GroupIndex data was already committed via proactive Stage 2 injection; Stage 4 sees the same clockHash for those shards → skips them without re-fetching.
+- **No `BackendStorageMode` check needed** — the `allResourcesAvailable` + proactive injection mechanism together guarantee Core's DB completeness.
 
-Additionally, backends can inject index IRIs that weren't discovered through the IoI/IoGI path via an optional callback in the Feedback Stage. This enables backends to add remaining indices from their cache:
-
-```dart
-// In Stage 14 (Feedback Stage), after meta-index stability:
-allIndices = queryAllContentIndicesFromDb();
-// Backend callback (optional): let the backend add indices it knows about
-// but that weren't in IoI/IoGI (e.g. from the downloaded single-file cache)
-additionalIndices = backend.getAdditionalContentIndices();
-allIndices = allIndices + additionalIndices;
-```
-
-**Why this works**: The single-file backend already has the complete file content in its cache. Through `allResourcesAvailable`, all index documents (FullIndex + GroupIndex) are committed to Core's DB during the meta-index phase. The content phase then processes everything, ensuring Stage 12 can assemble the complete file for upload.
+**Why this works**: The single-file backend downloads everything in Stage 2 (all shards including unsubscribed GroupIndex). Extra shards are proactively injected with `shardStorageId = null`; Stage 4 creates their `sync_iris` entry and processes all remote entries as `remoteOnly`. During the content phase, when the Feedback Stage injects only subscribed GroupIndex, Stage 4 finds the same clockHash for the unsubscribed shards (already committed) → skips them efficiently. Stage 12 assembles the complete single-file upload using the accumulator (changed resources) + Core's DB query for unchanged resources.
 
 ---
 
