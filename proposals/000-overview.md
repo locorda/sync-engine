@@ -17,11 +17,8 @@ The current architecture is **sequential at every level**: sequential file I/O, 
 | # | Document | What it covers |
 |---|----------|---------------|
 | [001](001-performance-analysis.md) | **Performance Analysis** | Deep analysis of current architecture, bottleneck identification, estimated time breakdown |
-| [002](002-streaming-sync-architecture.md) | **Streaming Sync Architecture** | Core design: 4-stage pipeline (Source → Merge → Commit → Finalize) with fast paths |
-| [003](003-implementation-plan.md) | **Implementation Plan** | Phased rollout from quick wins to full streaming, dependency graph, effort estimates |
-| [004](004-interface-design.md) | **Interface Design** | Exact Dart interfaces, data types, pipeline orchestrator, testing strategy |
-| [005](005-dataset-mode-optimization.md) | **Dataset Mode Optimization** | Specialized optimizations for shard-dataset mode (bulk files), byte pass-through |
-| [006](006-quick-wins.md) | **Quick Wins** | Immediate improvements to existing code (concurrent I/O, fast paths, profiling) |
+| [007](007-two-pass-sync-pipeline.md) | **Feedback-Loop Sync Pipeline** | Authoritative pipeline design: 14-stage streaming pipeline with feedback loop, backend storage modes, boundary elements |
+| [008](008-implementation-plan.md) | **Implementation Plan** | Phased rollout: IoGI first, then thin-slice pipeline, backend interfaces, testing strategy |
 
 ## Key Design Decisions
 
@@ -52,7 +49,4 @@ The logical shard/index model is preserved. All proposed changes are in the **ex
 
 ## Recommended Approach
 
-1. Start with **Quick Wins** (document 006) — high impact, low risk
-2. Implement **Fast Path Merge** (Phase 2 of 003) — biggest single improvement
-3. Build **Streaming Pipeline** (Phases 3-5) — if needed after quick wins
-4. **Dataset Optimizations** (005) — for production backends (GDrive)
+See [008 — Implementation Plan](008-implementation-plan.md) for the phased rollout.
