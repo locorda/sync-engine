@@ -281,11 +281,11 @@ Compare remote shard entries against local `index_entries` to classify each reso
 
 **Remaining items**: `localOnly` candidates emerge naturally from the diff itself: `getActiveIndexEntriesForShard` loads all active local entries for the shard; any resource with a local entry but no matching remote entry is classified as `localOnly`. No separate query is needed — shard membership is stored explicitly in `index_entries.shard_iri`.
 
-**Resources in multiple shards**: A resource can appear in more than one shard (e.g. in a FullIndex and a GroupIndex simultaneously, or temporarily in two GroupIndex shards after being moved between groups). In the streaming pipeline there is **no guarantee** that one shard's resources are committed (Stage 9) before the next shard reaches Stage 4 — the pipeline is concurrent. The same resource may therefore be classified as a sync candidate by multiple shards in the same cycle.
+**Resources in multiple shards**: A resource can appear in more than one shard (e.g. in a FullIndex and a GroupIndex simultaneously, or temporarily in two GroupIndex shards after being moved between groups). The same resource may therefore be classified as a sync candidate by multiple shards in the same cycle.
 
-This is correct by construction: the shard that has the resource **remotely** classifies it as `remoteOnly` or `conflictCandidate`, fetches it, merges, and uploads the merged result. A shard that has the resource only **locally** classifies it as `localOnly` and uploads the local-only state. If both run concurrently, the local-only upload is overwritten by the merged upload. The final remote resource state is always the CRDT-merged result. Temporary duplicate index entries (the resource listed in both shards' remote index documents) self-correct in the next sync cycle as the index CRDT merges propagate.
+For **file-per-resource backends** this is benign: Stage 8 uploads each resource to its own URL. If two shards both trigger an upload of resource R concurrently, the last PUT wins and the final remote state is the CRDT-merged result (or whichever upload completes last, but CRDT merge is deterministic). The shard index documents reference the final clockHash; any stale clockHash in another shard's index self-corrects in the next sync cycle.
 
-> **KK** no, not for shard dataset backends. Then we will have different states in different files. not good.
+For **shard-dataset backends** concurrent per-shard uploads are **not safe**: resource R is embedded inside each shard's dataset file, not at its own URL. If shard A and shard B both embed R concurrently, they may capture different states of R from Core's DB, resulting in permanent inconsistency between two remote dataset files. The fix is to defer all dataset writes to `PhaseComplete` (see Stage 12 below), by which point Core's DB is fully consistent for all resources.
 
 The critical invariant is: **a resource must be uploaded to remote (Stage 8) before any shard containing it is finalized and uploaded (Stage 10)**. This is guaranteed by the pipeline order — Stage 8 always completes before Stage 10 processes the `ShardComplete` boundary. After shard finalize, the shard's index on remote reflects the post-merge clockHash for this resource. Other shards that also contain this resource but were finalized *before* the merge may have a stale clockHash in their remote index entry — this is acceptable because the resource itself is the source of truth and the shard index is only used for change detection. The discrepancy self-corrects in the next sync cycle.
 
@@ -386,7 +386,11 @@ Backend Stage 8 — internal sub-pipeline:
     8b (I/O): HTTP PUT wire bytes
 ```
 
-From Core's perspective, Stage 8 is a single opaque `StreamTransformer`. The internal decomposition is the backend's concern. File-per-resource backends (e.g. Solid) encode + PUT one resource per event. Single-file or shard-dataset backends may buffer multiple `mergedGraph` values and compose one combined upload on `ShardComplete` or `PhaseComplete`.
+From Core's perspective, Stage 8 is a single opaque `StreamTransformer`. The internal decomposition is the backend's concern.
+
+**File-per-resource backends** (e.g. Solid) execute the full sub-pipeline (8a + 8b) per event: encode `mergedGraph` → HTTP PUT.
+
+**Shard-dataset and single-file backends** do not encode or upload at Stage 8. Stage 8 simply stores the raw `MergeResult.mergedGraph` into `syncSupport` keyed by resource IRI — no serialization, no HTTP I/O. Encoding (12a) and upload (12b) are deferred to Stage 12 at `PhaseComplete`.
 
 ---
 
@@ -457,19 +461,32 @@ Parallel to `MergeResult` from Stage 7. Stage 11 does **not** pre-encode for upl
 
 ### Stage 12: Shard Upload (backend, remote I/O)
 
-Uploads merged shard documents to remote. **Exact parallel to Stage 8 (Upload) for resources.**
+Uploads merged shard documents to remote.
 
 | | |
 |---|---|
 | **Owner** | Backend |
 | **I/O** | Remote HTTP |
-| **Implementation** | Custom `StreamTransformer` — concurrency pool; `sync: true` internal controller; pauses upstream when all N slots occupied |
+| **Implementation** | Backend-mode dependent (see below) |
 | **Input** | `Stream<MergedShard + (other events pass-through)>` |
-| **Operation** | `needsUpload == true` → encode and upload to remote (see sub-pipeline below) → conditional PUT using `newEtag`. On 412 Precondition Failed: surface as conflict (shard changed between Stage 2 fetch and now — next sync cycle corrects). Other events pass through. |
+| **Operation** | Mode-dependent (see below). On 412 Precondition Failed: surface as conflict — next sync cycle corrects. Other events pass through. |
 | **Output** | `Stream<UploadedShard(shardIri, newRemoteEtag?) + (other events pass-through)>` |
-| **Batching** | Chunked: max N concurrent uploads (same limit as Stage 8) |
+| **Batching** | Mode-dependent (see below) |
 
-Stage 12 is a backend-owned `StreamTransformer`, exact parallel to Stage 8. Same internal sub-pipeline pattern:
+Stage 12 is a backend-owned `StreamTransformer`. Its implementation differs by storage mode:
+
+**File-per-resource backends**: Exact parallel to Stage 8. Concurrent pool, `sync: true` internal controller, pauses upstream when all N slots occupied. Each `MergedShard` is encoded and uploaded immediately (shard index document only — no resource graphs embedded).
+
+**Shard-dataset and single-file backends**: Stage 12 **defers all uploads to `PhaseComplete`**. This is mandatory because resources may appear in multiple dataset shards: if two shard datasets were assembled and uploaded concurrently they could each embed a different state of the same resource, causing permanent inconsistency. By waiting for `PhaseComplete`, all Stage 9 resource commits across every shard are complete — Stage 12 then assembles each dataset from two sources:
+
+1. **Stage 8 accumulator** in `syncSupport`: the merged `RdfGraph` for every resource processed this cycle (changed, merged, or localOnly). Captured at merge time, so immune to subsequent UI writes.
+2. **Core's `documents` table**: queried once for resources Stage 4 skipped (unchanged clockHash, never entered Stages 5–9, absent from the accumulator).
+
+> **Race condition (category 2)**: If the UI writes resource R between Stage 4's skip decision and Stage 12's DB query, the dataset embeds R's updated local state. This is acceptable — the consequence is equivalent to a free upload of that local change, and CRDT resolves any inconsistency on the next sync cycle.
+
+For single-file mode this produces one PUT; for shard-dataset mode, N sequential or concurrent PUTs.
+
+Internal sub-pipeline (applies to the actual upload step regardless of mode):
 
 ```
 Backend Stage 12 — internal sub-pipeline:
@@ -477,8 +494,6 @@ Backend Stage 12 — internal sub-pipeline:
                dataset assembly for aggregating backends, etc.)
     12b (I/O): HTTP PUT / conditional PUT
 ```
-
-For aggregating backends (shard-dataset, single-file), Stage 12a additionally queries Core's `documents` table for unchanged resource graphs to assemble complete datasets — see [010](010-review-backend-storage-models.md) for details.
 
 ---
 
@@ -654,26 +669,25 @@ RdfGraphSource
 No orchestrator class — the pipeline is the composition of stream transforms:
 
 ```dart
+final syncSupport = backend.createSyncSupport();
 final pipeline = inputController.stream
     .asyncExpand(shardResolution(db))               // Stage 1:  Stream<ShardRef + PhaseComplete>
-    .transform(shardFetch(backend))                 // Stage 2:  Stream<FetchedShard>
+    .transform(syncSupport.shardFetch())            // Stage 2:  Stream<FetchedShard>
     .transform(shardParse())                        // Stage 3:  Stream<ShardResult>
     .transform(changeDetection(db, lastSync))       // Stage 4:  Stream<SyncCandidate + ShardComplete>
-    .transform(remoteFetch(backend))                // Stage 5:  Stream<FetchedCandidate>
+    .transform(syncSupport.resourceFetch())         // Stage 5:  Stream<FetchedCandidate>
     .transform(localLoad(db))                       // Stage 6:  Stream<LoadedCandidate>
     .transform(crdtMerge(merger))                   // Stage 7:  Stream<MergeResult>
-    .transform(upload(backend))                     // Stage 8:  Stream<UploadResult>
+    .transform(syncSupport.resourceUpload())        // Stage 8:  Stream<UploadResult>
     .transform(dbCommit(db))                        // Stage 9:  Stream<CommitResult>
     .transform(shardEntryLoad(db))                  // Stage 10: Stream<LoadedShardEntries>
     .transform(shardCrdtMerge(merger))              // Stage 11: Stream<MergedShard>        (↔ Stage 7)
-    .transform(shardUpload(syncSupport))            // Stage 12: Stream<UploadedShard>      (↔ Stage 8)
+    .transform(syncSupport.shardUpload())           // Stage 12: Stream<UploadedShard>      (↔ Stage 8)
     .transform(shardDbCommit(db))                   // Stage 13: Stream<ShardCommitResult>  (↔ Stage 9)
     .transform(feedback(inputController, db));      // Stage 14: Side effects → inputController
 ```
 
-Backend stages (2, 5, 8, 12) need to share internal state (e.g. the per-shard resource cache populated in Stage 2 and consumed in Stage 5). The recommended pattern is `backend.createSyncSupport()` — the backend instantiates a single sync-scoped support object and uses it to create all its stage transforms: `.transform(syncSupport.shardFetch)`, `.transform(syncSupport.resourceFetch)`, etc. Core has no knowledge of this object.
-
-> **KK** ok - so why didn't you update the dart code snipped above to show this pattern?
+Backend stages (2, 5, 8, 12) share internal state (e.g. the per-shard resource cache populated in Stage 2 and consumed in Stage 5) via `syncSupport` — a sync-scoped object created by the backend at pipeline construction time. Core has no knowledge of its internals.
 
 ## Summary Table
 
