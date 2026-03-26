@@ -10,6 +10,7 @@ import 'package:locorda_worker/worker.dart';
 
 import '../backend/dir_backend.dart';
 import 'dir_auth_connector_worker.dart';
+import 'dir_config_connector_worker.dart';
 
 /// Worker-thread [RemoteWorkerHandler] implementation for local directory backend.
 ///
@@ -30,40 +31,34 @@ class DirWorkerHandler implements RemoteWorkerHandler {
 
   final String appName;
   final RdfCore _rdfCore;
-  final String _contentType;
-  final String _datasetContentType;
-  final bool _useShardDatasets;
   @override
   final String id;
 
   DirWorkerHandler({
     this.appName = 'locorda',
-    String? contentType,
-    String? datasetContentType,
     RdfCore? rdfCore,
     IriTermFactory? iriTermFactory,
-    bool useShardDatasets = false,
     this.id = directoryRemoteHandlerId,
-  })  : _rdfCore = rdfCore ??
+  }) : _rdfCore = rdfCore ??
             RdfCore.withStandardCodecs(
-                iriTermFactory: iriTermFactory ?? IriTerm.validated),
-        _contentType = contentType ?? turtle.primaryMimeType,
-        _datasetContentType = datasetContentType ?? trig.primaryMimeType,
-        _useShardDatasets = useShardDatasets;
+                iriTermFactory: iriTermFactory ?? IriTerm.validated);
 
   @override
   Future<Backend> createBackend(
       WorkerHandlerContext context, SyncEngineConfig config) async {
     // Get auth from connector (synced from main thread)
-    // Backend queries syncDirectoryPath from auth when it becomes enabled
     final auth = DirAuthConnectorWorker.receiver(context, id);
+
+    // Get config from connector (synced from main thread)
+    final dirConfigReceiver = DirConfigConnectorWorker.receiver(context, id);
+    final dirConfig = await dirConfigReceiver.getConfig();
 
     final backend = DirBackend(
       auth: auth,
-      contentType: _contentType,
-      datasetContentType: _datasetContentType,
+      contentType: dirConfig.contentType,
+      datasetContentType: dirConfig.datasetContentType,
       rdfCore: _rdfCore,
-      useShardDatasets: _useShardDatasets,
+      useShardDatasets: dirConfig.useShardDatasets,
       perflog: context.perflog,
     );
     if (context.perflog != Perflog.disabled) {

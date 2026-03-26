@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_dir/src/shared/consts.dart';
+import 'package:locorda_dir/src/shared/dir_config.dart';
 import 'package:locorda_flutter_core/locorda_flutter_core.dart';
 import 'package:locorda_worker/worker_main.dart';
 
@@ -19,6 +20,7 @@ class DirMainIntegration implements RemoteIntegration {
     bool initiallyEnabled = false,
     String id = directoryRemoteHandlerId,
     String displayName = 'Local Directory',
+    DirConfig? config,
   }) async {
     throw UnimplementedError(
         'Local directory integration is not supported on this platform.');

@@ -32,11 +32,8 @@ class DirWorkerHandler implements RemoteWorkerHandler {
   final Perflog? perflog;
   DirWorkerHandler({
     this.appName = 'locorda',
-    String? contentType,
-    String? datasetContentType,
     RdfCore? rdfCore,
     IriTermFactory? iriTermFactory,
-    bool useShardDatasets = false,
     this.id = directoryRemoteHandlerId,
     this.perflog,
   });

@@ -11,8 +11,10 @@ import 'package:locorda_worker/worker_main.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../auth/dir_auth.dart';
+import '../shared/dir_config.dart';
 import '../ui/dir_login_screen.dart';
 import 'dir_auth_connector.dart';
+import 'dir_config_connector.dart';
 
 /// Main-thread integration for local directory backend.
 ///
@@ -24,6 +26,7 @@ class DirMainIntegration implements RemoteIntegration {
       Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
   final DirAuth _dirAuth;
+  final DirConfig _config;
 
   @override
   final String id;
@@ -33,9 +36,11 @@ class DirMainIntegration implements RemoteIntegration {
 
   DirMainIntegration._({
     required DirAuth dirAuth,
+    required DirConfig config,
     required this.id,
     required this.displayName,
-  }) : _dirAuth = dirAuth;
+  })  : _dirAuth = dirAuth,
+        _config = config;
 
   /// Creates integration with automatic directory path detection.
   ///
@@ -54,9 +59,10 @@ class DirMainIntegration implements RemoteIntegration {
     bool initiallyEnabled = false,
     String id = directoryRemoteHandlerId,
     String displayName = 'Local Directory',
+    DirConfig? config,
   }) async {
     final syncPath = await _getSyncDirectoryPath(appName, id);
-
+    config ??= DirConfig();
     final dirAuth = await DirAuth.create(
       syncDirectoryPath: syncPath,
       initiallyEnabled: initiallyEnabled,
@@ -65,6 +71,7 @@ class DirMainIntegration implements RemoteIntegration {
 
     return DirMainIntegration._(
       dirAuth: dirAuth,
+      config: config,
       id: id,
       displayName: displayName,
     );
@@ -114,6 +121,7 @@ class DirMainIntegration implements RemoteIntegration {
   @override
   List<MainHandlerFactory> get workerConnectors => [
         DirAuthConnector.sender(_dirAuth, id),
+        DirConfigConnector.sender(_config, id),
       ];
 
   @override

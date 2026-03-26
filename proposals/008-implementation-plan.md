@@ -49,11 +49,14 @@ Verify (via existing test infrastructure or a new test case in `all_tests.json`)
 
 The meta-sync must process IoI first (to discover IoGI and IoGIT), then IoGI and IoGIT (to discover GroupIndex and GroupIndexTemplate documents), before the content phase can process data shards. Verify the existing `RemoteSyncOrchestrator` handles IoGI documents in the correct order — this validates the meta-sync dependency chain independently of the streaming pipeline.
 
+> **KK** really? Actually, I would argue that we have no ordering requirements.  Or did you mean that we have to add IoGI syncing to the meta part of the existing sync implementation? I agree to that. But in our new pipeline, we just do the meta phase with IoI and IoGI , no IoGIT and no need for ordering constraints - all that could happen here is already covered by the feedback loop stage.
 ---
 
 ## Phase 1: Extract Shared Business Logic
 
 Refactor the existing sync code to expose reusable components that both the old and new pipeline can use. **No behavior change** — all existing tests must continue to pass.
+
+> **KK**  Does this make sense as a phase? Shouldn't we rather do those type of refactorings on demand as we go? You could leave this framed as "watch for refactoring potentials where we want to extract reusable components from the current implementation, for example in the following areas"
 
 ### 1.1: CRDT merge primitives
 
@@ -77,6 +80,8 @@ Extract shard-level CRDT merge (index document + shard entries → merged shard 
 ## Phase 2: New Backend Interface
 
 Define new interfaces for the streaming pipeline's backend interactions. These are **separate** from the existing `RemoteSyncStorage` — the old interface continues to work for the old sync path.
+
+> **KK**  Did you do your homework? You need to make sure you fully understand the codebase and then update this entire implementation plan. Your instruction here is basically what we said in the concept, but backend actually is not the right abstraction for this. Our existing Backend contains RemoteStorage and AFAIR for each sync we create a specific RemoteSyncStorage from that RemoteStorage, so that would be the perfect integration point - RemoteSyncStorage probably already is what we meant with SyncSupport. So just add a SyncSupport (or whatever) interface and inmplement it in the dir backends implementation of RemoteSyncStorage (and possibly also in cross-cutting implementations like the profiling implementations or such, but maybe we do not need that). And the name SyncSupport sucks - maybe RemoteSyncPipelineFactory or such?
 
 ### 2.1: SyncBackend interface
 

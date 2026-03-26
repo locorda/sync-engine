@@ -9,6 +9,6 @@ final storages = <StorageWorkerHandler>[];
 
 final remotes = <RemoteWorkerHandler>[
   if (DirWorkerHandler.isPlatformSupported) ...[
-    DirWorkerHandler(id: dirDatasetPerShardRemoteId, useShardDatasets: true),
+    DirWorkerHandler(id: dirDatasetPerShardRemoteId),
   ],
 ];
