@@ -73,16 +73,6 @@ This follows the same sub-pipeline pattern as Mode 1's upload stages (8a CPU →
 
 This means **zero additional HTTP requests** for individual resources — all data was pre-fetched with the shard.
 
-### `RootResourceFetchPolicy.onRequest` in Aggregating Modes
-
-In file-per-resource mode, `onRequest` means: don't download a resource until the app explicitly requests it (via `ensure()`). The current implementation enforces that `onRequest` is **incompatible with dataset mode** — `sync_function.dart` throws a `StateError`, and `remote_sync_orchestrator.dart` forces prefetch when `_useShardDatasets` is true (line 880–882). In other words, Core **automatically overrides** the app's configured fetch policy to eager fetching when the backend signals dataset mode. The reason: you cannot selectively fetch individual resources from within an aggregated dataset file.
-
-For the streaming pipeline, this constraint depends on the completeness option:
-
-- **Option 1 (Backend Mirror)**: `onRequest` is effectively **supported**. The backend's persistent mirror already contains all resource graphs from previous sync cycles. When the app calls `ensure()`, the backend serves the resource from its local mirror — no HTTP call, near-instant. During sync, Stage 2 downloads the full dataset file for changed shards (updating the mirror), but unchanged shards (304) are already in the mirror. The "lazy" aspect applies to Core's CRDT processing, not to data availability.
-
-- **Options 2 & 3**: `onRequest` is **not supported** — same limitation as the current implementation. Without a backend-side mirror, there is no local source for resources that were never processed through the pipeline. All resources of each shard must flow through Stage 4→8 (Option 2) or be queryable from Core's DB (Option 3), which requires them to have been synced at least once.
-
 ### Upload Path: Stage 8 + Stage 12
 
 **Stage 8 (Resource Upload)** does *not* upload individual resources. Instead:
@@ -96,20 +86,9 @@ For the streaming pipeline, this constraint depends on the completeness option:
 - **12a (CPU)**: Assembles the RDF dataset — default graph = merged shard metadata, named graphs = all resource graphs for the shard.
 - **12b (I/O)**: Conditional PUT of the assembled dataset file. Emits `UploadedShard` with the new ETag.
 
-Step 12a requires the *complete* set of resource graphs for the shard — not just the changed ones from Stage 8's accumulator. How the unchanged resources are gathered is the central design challenge addressed in the **Upload Completeness Problem** section below.
+Step 12a requires the *complete* set of resource graphs for the shard — not just the changed ones from Stage 8's accumulator. How the unchanged resources are gathered is addressed in the **Upload Completeness Strategy** section immediately below — it is the central architectural decision for Mode 2 and all aggregating modes.
 
-### State Management
-
-The backend transformer's internal state depends on the chosen completeness option. At minimum, it needs:
-
-- **Upload accumulator**: *Changed* resource graphs from Stage 8, consumed by Stage 12a, evicted after upload. Always needed regardless of completeness option.
-
-Additional state varies by option:
-- **Option 1 (Mirror)**: Persistent storage (e.g., DB table) for the last-uploaded state. Stage 2b writes downloaded resource graphs there; Stage 12a reads from it.
-- **Option 2 (Core pushes all)**: No additional backend state — all resources arrive through the pipeline.
-- **Option 3 (Backend pulls from DB)**: Optionally a transient download cache for Stage 5, evicted per shard. Stage 12a queries Core's DB instead.
-
-### Upload Completeness Problem
+### Upload Completeness Strategy
 
 Stage 12 must assemble a complete RDF dataset containing *all* resources in the shard — not just the ones that changed. This is the central design challenge for all aggregating modes (shard-dataset, single-file, delta-file).
 
@@ -244,6 +223,27 @@ Instead of the backend assembling the RDF dataset in Stage 12, Core itself takes
 
 **Open — no recommendation yet.** Option 2 matches the current proven implementation and is simplest for backends while remaining flexible across all modes. Option 4 is the closest to today's architecture but only works for shard-dataset. Option 3 reduces pipeline traffic but increases coupling. Option 1 is the only option that supports `onRequest` (via its local mirror) but at the cost of doubled storage.
 
+### `RootResourceFetchPolicy.onRequest` in Aggregating Modes
+
+In file-per-resource mode, `onRequest` means: don't download a resource until the app explicitly requests it (via `ensure()`). The current implementation enforces that `onRequest` is **incompatible with dataset mode** — `sync_function.dart` throws a `StateError`, and `remote_sync_orchestrator.dart` forces prefetch when `_useShardDatasets` is true (line 880–882). In other words, Core **automatically overrides** the app's configured fetch policy to eager fetching when the backend signals dataset mode. The reason: you cannot selectively fetch individual resources from within an aggregated dataset file.
+
+For the streaming pipeline, this constraint depends on the completeness option:
+
+- **Option 1 (Backend Mirror)**: `onRequest` is effectively **supported**. The backend's persistent mirror already contains all resource graphs from previous sync cycles. When the app calls `ensure()`, the backend serves the resource from its local mirror — no HTTP call, near-instant. During sync, Stage 2 downloads the full dataset file for changed shards (updating the mirror), but unchanged shards (304) are already in the mirror. The "lazy" aspect applies to Core's CRDT processing, not to data availability.
+
+- **Options 2 & 3**: `onRequest` is **not supported** — same limitation as the current implementation. Without a backend-side mirror, there is no local source for resources that were never processed through the pipeline. All resources of each shard must flow through Stage 4→8 (Option 2) or be queryable from Core's DB (Option 3), which requires them to have been synced at least once.
+
+### State Management
+
+The backend transformer's internal state depends on the chosen completeness option. At minimum, it needs:
+
+- **Upload accumulator**: *Changed* resource graphs from Stage 8, consumed by Stage 12a, evicted after upload. Always needed regardless of completeness option.
+
+Additional state varies by option:
+- **Option 1 (Mirror)**: Persistent storage (e.g., DB table) for the last-uploaded state. Stage 2b writes downloaded resource graphs there; Stage 12a reads from it.
+- **Option 2 (Core pushes all)**: No additional backend state — all resources arrive through the pipeline.
+- **Option 3 (Backend pulls from DB)**: Optionally a transient download cache for Stage 5, evicted per shard. Stage 12a queries Core's DB instead.
+
 ### Framework-Provided Mode Implementations
 
 Rather than each transport backend (GDrive, Solid, Directory) implementing full pipeline logic independently, the framework provides a **standard `StreamTransformer` implementation per storage mode**. Each standard implementation depends on a **mode-specific storage interface** that transport backends implement:
@@ -374,11 +374,23 @@ This is essentially a **read-through cache** at file level. The backend is opaqu
 3. On `PhaseComplete`: Assembles the complete file from all accumulated shard data + unchanged resources.
 4. Uploads one file (or one file per type in the per-type variant).
 
-#### Upload Completeness
+#### Upload Completeness Strategy
 
-The same completeness problem from Mode 2 applies here, but at file scope rather than shard scope: the backend must assemble a file containing *all* resources across *all* shards, not just the changed ones. The same three options (backend mirror, Core pushes all, backend pulls from DB) apply — see [Mode 2: Upload Completeness Problem](#upload-completeness-problem) for the full analysis.
+This is the same central design problem from Mode 2, but **amplified to file scope**: instead of gathering all resources for one dirty shard, the backend must assemble a complete file containing *all* resources across *all* shards — every type, every entity. If even one resource in one shard changed, the upload must include everything.
 
-The problem is amplified in single-file mode because the scope of "unchanged resources needed" is the entire dataset, not just one shard. In shard-dataset mode, a shard with no changes can be skipped entirely (no upload needed). In single-file mode, even if only one resource in one shard changed, the upload must include everything.
+**Why Mode 3 is harder than Mode 2**: In shard-dataset mode, only dirty shards pay the completeness cost — a shard with no local or remote changes is never uploaded. In single-file mode there is no such isolation. A single changed resource anywhere triggers a full-dataset upload, so the backend always needs the complete picture for every sync cycle that touches anything.
+
+The four options from Mode 2 each apply here with Mode-3-specific implications:
+
+**Option 1 (Backend Mirror)**: Works for Mode 3. The mirror stores all resource graphs across all shards rather than per-shard. Stage 2c writes the full file’s contents to the mirror on download; Stage 12a reads everything back for full-file assembly. The ETag lifecycle simplifies: one ETag covers the whole file (cleared on first dirty write in Stage 8, restored in Stage 12c after upload). Storage overhead is still ∼2× — but the mirror boundary is now the complete dataset rather than one shard.
+
+**Option 2 (Core pushes all resources)**: Works for Mode 3 but loses its primary advantage from Mode 2. In Mode 2 only the resources of *dirty* shards flow through the pipeline — clean shards pay nothing. In Mode 3, if any shard is dirty, Stage 12 needs *all* resources from *all* shards. Core must therefore push every resource through the pipeline on every sync cycle that touches anything. The pipeline-traffic advantage over Option 1 disappears, and the “unchanged resources flow through unnecessarily” downside now applies to the entire dataset rather than just one dirty shard.
+
+**Option 3 (Backend pulls from Core DB)**: Works for Mode 3 but coupling and risk are amplified. Stage 12 must query Core for all resources across all shards (not just one shard’s worth), making it one large bulk DB read per sync cycle. The clockHash skew window from Mode 2 now spans the entire sync cycle rather than one shard’s upload window: any application write between Stage 10’s finalization and Stage 12’s DB query can produce an inconsistent file.
+
+**Option 4 (Core assembles dataset)**: **Not applicable**. As noted in Mode 2’s comparison table (“Works for single-file / delta: No”), Core would need to know the backend’s physical file layout to assemble a complete cross-shard dataset — which defeats backend encapsulation.
+
+**Mode 3 recommendation**: Option 1 (Mirror) is the most viable. The amplified pipeline traffic of Option 2 and the amplified DB coupling of Option 3 make both options worse relative to Mode 2 than they already were. Option 1’s storage overhead (∼2×) is the same relative cost regardless of how large the dataset grows.
 
 #### ETag Semantics
 
@@ -412,8 +424,6 @@ A backend should consider the per-type (or per-type-group) variant when:
 This mode extends single-file mode to reduce the frequency at which the large base file must be read and written. Every installation writes its changes to a small, installation-specific **delta file**. Periodically, deltas are compacted into the base.
 
 The same applies to the per-type variant — each type file gets its own deltas.
-
-**Upload completeness**: Delta-file mode *partially* sidesteps the completeness problem from Mode 2/3: Stage 12 only needs the *changed* resources for the delta (not the full dataset). However, for **compaction** (merging deltas into the base file), the complete dataset *is* needed — the same options from Mode 2 apply at compaction time. If compaction is treated as a separate offline process rather than part of the normal sync pipeline, the in-pipeline completeness problem is avoided.
 
 ### Physical Layout
 
@@ -501,6 +511,20 @@ Periodically (e.g., every N sync cycles, or when delta files exceed a size thres
 4. Delete all delta files.
 
 Compaction can run as a background operation after a normal sync cycle. Only one installation should compact at a time — optimistic locking via ETag on the base file prevents concurrent compactions.
+
+### Upload Completeness Strategy
+
+Delta-file mode has a **two-regime approach** to upload completeness that distinguishes it from Modes 2 and 3:
+
+**Normal sync (delta write)**: The completeness problem is **bypassed by design**. Stage 12 writes only the *changed* resources to the local installation’s delta file. No complete dataset is needed and none is assembled. Readers (other installations) combine the base file + all delta files via CRDT merge to reconstruct the full state. The shard metadata entries in the delta cover only the modified entries, not the full entry set.
+
+**Compaction**: When one installation writes a new compacted base file, the complete dataset *is* required — in exactly the same way as Mode 3. The four options from Mode 2 each apply at compaction time:
+- **Option 1 (Mirror)**: The mirror already holds the full post-merge state from the last download; compaction reads from it directly. This is the natural fit and requires no additional work if Option 1 is already chosen for the mode.
+- **Option 2 (Core pushes all)**: Compaction triggers a full pipeline run where Core pushes all resources through; same pipeline traffic cost as Option 2 in Mode 3.
+- **Option 3 (Backend pulls from Core DB)**: Compaction calls the full-shard query service; same DB coupling as Option 3 in Mode 3.
+- **Option 4 (Core assembles dataset)**: Not applicable — same constraint as Mode 3 (single-file layout).
+
+**Recommended approach**: Run normal delta writes without any completeness mechanism in the sync pipeline — only changed resources are needed. Run compaction as a **separate offline process** outside the streaming pipeline, reading from Core’s DB directly. This decouples the pipeline from compaction complexity and means Mode 4’s normal operation is entirely completeness-problem-free. Option 1 (Mirror) is worth adding if `onRequest` support or crash recovery is also needed.
 
 ### Benefits
 
