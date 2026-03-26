@@ -10,11 +10,11 @@
 
 1. **Coexistence**: The new pipeline is an alternative `SyncFunction` implementation. The existing sync code remains as reference implementation and fallback. Both run against the same `Storage` and produce identical results.
 2. **Shared business logic**: Refactor existing code only enough to extract reusable logic (CRDT merge, index management, shard determination). No unnecessary rewrites.
-3. **New backend interfaces**: New `SyncBackend` / `SyncSupport` interfaces for the streaming pipeline. Only the directory backend implements them initially.
+3. **Extend `RemoteSyncStorage`**: A new optional interface (e.g. `RemoteSyncPipelineSupport`) extends the existing `RemoteSyncStorage` contract with the four streaming transformers required by the pipeline. `DirSyncStorage` implements both. No new top-level factory hierarchy needed.
 4. **File-per-resource first**: Shard-dataset, single-file, and delta-file modes are deferred until file-per-resource works correctly end-to-end.
 5. **Directory backend supports all modes**: The directory backend is our development and test workhorse. Its implementation must cleanly support switching between storage modes (file-per-resource, shard-dataset, single-file) via configuration.
 6. **Highest coding standards**: Clean, idiomatic Dart. KISS, YAGNI, DRY, SOLID. No over-engineering.
-
+7. **Always read first**: Always first read the existing codebase before implementing changes, make sure to not break existing semantics that were not supposed to be changed.
 ---
 
 ## Phase 0: IoGI (Index of Group Indices)
@@ -45,89 +45,75 @@ Verify (via existing test infrastructure or a new test case in `all_tests.json`)
 - GroupIndex documents created by `IndexManager._createMissingGroupIndex()` are added as entries in IoGI shards
 - IoGI shards sync correctly between installations (existing sync handles FullIndex resources without changes)
 
-### 0.3: Verify meta-sync order
+### 0.3: Add IoGI to existing meta-sync
 
-The meta-sync must process IoI first (to discover IoGI and IoGIT), then IoGI and IoGIT (to discover GroupIndex and GroupIndexTemplate documents), before the content phase can process data shards. Verify the existing `RemoteSyncOrchestrator` handles IoGI documents in the correct order — this validates the meta-sync dependency chain independently of the streaming pipeline.
+The existing `RemoteSyncOrchestrator` has a dedicated meta-sync phase that processes FullIndex and GroupIndexTemplate resources. Extend it to also sync IoGI shards, so both the old and new pipeline benefit from IoGI being up to date after meta-sync.
 
-> **KK** really? Actually, I would argue that we have no ordering requirements.  Or did you mean that we have to add IoGI syncing to the meta part of the existing sync implementation? I agree to that. But in our new pipeline, we just do the meta phase with IoI and IoGI , no IoGIT and no need for ordering constraints - all that could happen here is already covered by the feedback loop stage.
----
-
-## Phase 1: Extract Shared Business Logic
-
-Refactor the existing sync code to expose reusable components that both the old and new pipeline can use. **No behavior change** — all existing tests must continue to pass.
-
-> **KK**  Does this make sense as a phase? Shouldn't we rather do those type of refactorings on demand as we go? You could leave this framed as "watch for refactoring potentials where we want to extract reusable components from the current implementation, for example in the following areas"
-
-### 1.1: CRDT merge primitives
-
-Extract from `RemoteSyncOrchestrator` / `_DocumentSyncHelper`:
-
-- **`RemoteDocumentMerger`** (likely already extracted): Takes local graph + remote graph + merge contract → produces `MergeResult` with merged graph, needsUpload, encodedForDb
-- **`FastPathDetector`**: Detects trivial cases (null local → accept remote; null remote → upload local; same clockHash → skip) without full CRDT merge
-
-### 1.2: Change detection logic
-
-Extract shard-entry comparison:
-
-- **`ShardEntryDiff`**: Compares local `index_entries` for a shard against remote shard entries. Produces classified candidates: `remoteOnly`, `localOnly`, `conflictCandidate`, `unchanged`
-
-### 1.3: Shard document merge
-
-Extract shard-level CRDT merge (index document + shard entries → merged shard document). This is the shard counterpart to the resource-level CRDT merge.
+The new pipeline has no ordering requirements here — the feedback loop stage in 007 handles any instability discovered during the meta phase. IoGIT is also not needed in the new pipeline's meta phase (it only seeds IoI + IoGI).
 
 ---
 
-## Phase 2: New Backend Interface
+## Note: Opportunistic Refactoring (no separate phase)
 
-Define new interfaces for the streaming pipeline's backend interactions. These are **separate** from the existing `RemoteSyncStorage` — the old interface continues to work for the old sync path.
+Do not pre-emptively refactor existing code before it is needed. As the new pipeline stages are built, extract shared logic on demand when a stage needs it. Likely candidates to watch for:
 
-> **KK**  Did you do your homework? You need to make sure you fully understand the codebase and then update this entire implementation plan. Your instruction here is basically what we said in the concept, but backend actually is not the right abstraction for this. Our existing Backend contains RemoteStorage and AFAIR for each sync we create a specific RemoteSyncStorage from that RemoteStorage, so that would be the perfect integration point - RemoteSyncStorage probably already is what we meant with SyncSupport. So just add a SyncSupport (or whatever) interface and inmplement it in the dir backends implementation of RemoteSyncStorage (and possibly also in cross-cutting implementations like the profiling implementations or such, but maybe we do not need that). And the name SyncSupport sucks - maybe RemoteSyncPipelineFactory or such?
+- **CRDT merge primitives**: `RemoteDocumentMerger` (may already be extracted) — takes local + remote graph + merge contract → `MergeResult`. Pull it out when Stage 7 needs it.
+- **Change detection**: Shard-entry comparison (local `index_entries` vs. remote shard entries) → classified candidates (`remoteOnly`, `localOnly`, `conflictCandidate`, `unchanged`). Extract when Stage 4 needs it.
+- **Shard document merge**: Shard-level CRDT merge for index documents. Extract when Stage 11 needs it.
 
-### 2.1: SyncBackend interface
+All existing tests must continue to pass after any such extraction.
+
+---
+
+## Phase 2: Streaming Pipeline Support Interface
+
+The existing sync lifecycle (in `SyncFunction`) is:
+
+1. For each `RemoteStorage` in each backend's `remotes`: call `remote.createSyncStorage(config)` to obtain a per-sync-session `RemoteSyncStorage`.
+2. Run `RemoteSyncOrchestrator.sync()` with that storage.
+3. Call `syncStorage.finalizeSync()`.
+
+The streaming pipeline reuses this exact lifecycle. The only addition: `RemoteSyncStorage` implementations that support the streaming pipeline additionally implement a new interface providing the four backend-owned stream transformers (Stages 2, 5, 8, 12 in 007).
+
+### 2.1: `RemoteSyncPipelineSupport` interface
+
+Defined in `locorda_core`. Optional — backends only implement it if they support the streaming pipeline:
 
 ```dart
-/// Factory for creating sync-session-scoped support objects.
-/// One implementation per backend type (directory, Solid, GDrive).
-abstract interface class SyncBackend {
-  /// Create a sync-scoped support object that provides the four
-  /// backend-owned stream transformers (Stages 2, 5, 8, 12).
-  SyncSupport createSyncSupport();
-}
-```
-
-### 2.2: SyncSupport interface
-
-```dart
-/// Sync-scoped backend support — provides the four stream transformers
-/// that 007's pipeline delegates to the backend.
+/// Optional extension of [RemoteSyncStorage] for the streaming sync pipeline.
 ///
-/// Implementations may share internal state across transformers
-/// (e.g. a per-shard resource cache populated in Stage 2, consumed in Stage 5).
-abstract interface class SyncSupport {
-  /// Stage 2: Shard Fetch — download shard documents from remote.
+/// Provides the four backend-owned stream transformers for Stages 2, 5, 8, 12.
+/// Implementations may share internal state across transformers (e.g. a
+/// per-shard resource cache populated in Stage 2, consumed in Stage 5).
+abstract interface class RemoteSyncPipelineSupport {
+  /// Stage 2: Shard Fetch — conditionally download shard documents.
   StreamTransformer<ShardRef, FetchedShard> shardFetch();
 
-  /// Stage 5: Resource Fetch — download resource graphs from remote.
+  /// Stage 5: Resource Fetch — download resource graphs.
   StreamTransformer<SyncCandidate, FetchedCandidate> resourceFetch();
 
-  /// Stage 8: Resource Upload — upload merged resources to remote.
+  /// Stage 8: Resource Upload — upload merged resources.
   StreamTransformer<MergeResult, UploadResult> resourceUpload();
 
-  /// Stage 12: Shard Upload — upload merged shard documents to remote.
+  /// Stage 12: Shard Upload — upload merged shard documents.
   StreamTransformer<MergedShard, UploadedShard> shardUpload();
 }
 ```
 
-### 2.3: Directory backend implementation
+### 2.2: `DirSyncStorage` implementation
 
-Implement `SyncBackend` + `SyncSupport` for the directory backend (`locorda_dir`). File-per-resource mode first:
+`DirSyncStorage` (in `locorda_dir`) implements both `RemoteSyncStorage` and `RemoteSyncPipelineSupport`. File-per-resource mode first:
 
-- **Stage 2**: Conditional file read for shard documents
+- **Stage 2**: Conditional file read for shard documents (ETag-based)
 - **Stage 5**: File read per resource
 - **Stage 8**: File write per resource (concurrent pool with backpressure)
 - **Stage 12**: File write per shard document (concurrent pool)
 
-The directory implementation must be structured so shard-dataset and single-file modes can be added cleanly later (Phase 5).
+The implementation must be structured so shard-dataset and single-file modes can be added cleanly later (Phase 6).
+
+### 2.3: `IriTranslatingRemoteSyncStorage` (if needed)
+
+When a `RemoteStorage` wraps its `RemoteSyncStorage` in `IriTranslatingRemoteSyncStorage` (for IRI translation), the translator also needs to implement `RemoteSyncPipelineSupport` by delegating to its inner storage if the inner implements it. Defer this until a backend that uses `IriTranslator` needs streaming support.
 
 ---
 
@@ -190,35 +176,46 @@ Each stage gets its own unit test file. Tests create a mock input stream, pipe i
 
 Wire all stages together as described in 007's "Pipeline Composition" section. The pipeline is a single Dart expression — no orchestrator class.
 
-### 5.2: New SyncFunction
+### 5.2: New `StreamingRemoteSyncOrchestrator`
 
-Create `StreamingSyncFunction` as an alternative implementation alongside `SyncFunction`. It constructs the pipeline, seeds the `inputController` with the initial meta-index `SyncInput`, and awaits pipeline completion.
+Create `StreamingRemoteSyncOrchestrator` alongside the existing `RemoteSyncOrchestrator`. It takes a `RemoteSyncStorage` (which is also a `RemoteSyncPipelineSupport`) and runs the streaming pipeline for one sync session against one remote.
+
+The existing `SyncFunction` already creates an orchestrator per remote via `_orchestratorFactory`. Extend this factory to check the type of `syncStorage` and select the appropriate orchestrator:
 
 ```dart
-class StreamingSyncFunction {
-  final Storage db;
-  final SyncBackend backend;
-  // ...
-
-  Future<void> call(DateTime syncTime) async {
-    final syncSupport = backend.createSyncSupport();
-    final inputController = StreamController<SyncInput>();
-
-    final pipeline = inputController.stream
-        .asyncExpand(shardResolution(db))
-        .transform(syncSupport.shardFetch())
-        // ... (all 14 stages)
-        .transform(feedback(inputController, db));
-
-    inputController.add(SyncInput.metaIndex(/* IoI + IoGI + IoGIT */));
-    await pipeline.drain();
-  }
+// Inside SyncFunction._syncRemote() — only the orchestrator selection changes:
+final syncStorage = await remote.createSyncStorage(config);
+try {
+  final orchestrator = syncStorage is RemoteSyncPipelineSupport
+      ? StreamingRemoteSyncOrchestrator(db, syncStorage, remote.remoteId, ...)
+      : _orchestratorFactory(syncStorage, remote.remoteId, ...);
+  await orchestrator.sync(syncTime, lastSyncTimestamp, config: config);
+} finally {
+  await syncStorage.finalizeSync();
 }
 ```
 
+`StreamingRemoteSyncOrchestrator.sync()` constructs and runs the pipeline:
+
+```dart
+Future<void> sync(DateTime syncTime, DateTime lastSyncTimestamp, ...) async {
+  final inputController = StreamController<SyncInput>();
+  final pipeline = inputController.stream
+      .asyncExpand(shardResolution(db))
+      .transform(_pipelineSupport.shardFetch())
+      // ... (all stages)
+      .transform(feedback(inputController, db));
+
+  inputController.add(SyncInput.metaIndex(ioiIri, iogiIri));
+  await pipeline.drain();
+}
+```
+
+No new `SyncFunction` subclass needed. `_prepareSync()`, backend/remote iteration, `finalizeSync()`, and all surrounding machinery remain in `SyncFunction` unchanged.
+
 ### 5.3: Integration with SyncEngine
 
-Add a configuration option or factory method to `StandardSyncEngine` to select between `SyncFunction` (existing) and `StreamingSyncFunction` (new). Both share the same `Storage`, `CrdtDocumentManager`, `IndexManager`, etc.
+No changes to `StandardSyncEngine` or `SyncEngine` interface are required. The orchestrator selection is entirely internal to `SyncFunction`. Both orchestrators share the same `Storage`, `CrdtDocumentManager`, `IndexManager`, etc.
 
 ### 5.4: Black-box integration tests
 
@@ -283,24 +280,22 @@ Verify the 3-second target from 007 for 15K resources against a local directory 
 ```
 Phase 0: IoGI
     │
-Phase 1: Extract shared logic ─────────────┐
-    │                                       │
-Phase 2: New backend interface              │
-    │                                       │
-Phase 3: Pipeline event types               │
-    │                                       │
-Phase 4: Pipeline stages (uses Phase 1) ◄───┘
+    ├── Phase 2: RemoteSyncPipelineSupport interface
     │
-Phase 5: End-to-end composition (uses Phase 2, 3, 4)
-    │
-Phase 6: Additional storage modes (extends Phase 5)
-    │
-Phase 7: Performance validation
+    └── Phase 3: Pipeline event types
+          │
+          └── Phase 4: Pipeline stages (Core)
+                │
+                └── Phase 5: End-to-end composition (uses Phase 2, 3, 4)
+                      │
+                      └── Phase 6: Additional storage modes
+                            │
+                            └── Phase 7: Performance validation
 ```
 
-Phases 1, 2, 3 can proceed in parallel once Phase 0 is complete.  
-Phase 4 depends on Phases 1 and 3.  
-Phase 5 depends on all of 2, 3, 4.
+Phases 2 and 3 can proceed in parallel once Phase 0 is complete.  
+Phase 4 depends on Phase 3 (event types). Refactorings from existing code happen on demand during Phase 4.  
+Phase 5 depends on Phases 2, 3, and 4.
 
 ---
 
