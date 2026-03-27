@@ -105,7 +105,6 @@ typedef _BatchSyncCandidate = ({
 /// DB-only result of [RemoteSyncOrchestrator._collectIndexSpecs].
 typedef _CollectedIndexSpecs = ({
   List<IndexSyncSpec> allSpecs,
-  Set<IriTerm> groupIndexIris,
 });
 
 typedef _DeferredBatchCommit = ({
@@ -421,7 +420,6 @@ class RemoteSyncOrchestrator {
         .map((tuple) => FullIndexSync(tuple.$1,
             _useShardDatasets ? RootResourceFetchPolicy.prefetch : tuple.$3))
         .toList();
-    final groupIndexIris = groupIndices.map((tuple) => tuple.$1).toSet();
 
     final configuredIndices = <IndexSyncSpec>[
       ...fullIndices,
@@ -440,7 +438,6 @@ class RemoteSyncOrchestrator {
 
     return (
       allSpecs: [...configuredIndices, ...foreignIndices],
-      groupIndexIris: groupIndexIris,
     );
   }
 
@@ -448,14 +445,11 @@ class RemoteSyncOrchestrator {
   ///
   /// 1. **DB phase** — collect [IndexSyncSpec]s for every type in parallel
   ///    (pure DB reads, no network).
-  /// 2. **Batch GroupIndex sync** — all GroupIndex documents across all types
-  ///    are downloaded and uploaded in a single [syncDocumentsBatch] call
-  ///    wrapped in [retryOnConflict].
-  /// 3. **Shard phase** — shards for each type/index processed as before.
+  /// 2. **Shard phase** — shards for each type/index processed as before.
   ///
-  /// FullIndex documents for content types do not need individual syncs here
-  /// because they were already updated during the meta-type (index-of-indices)
-  /// phase.
+  /// FullIndex and GroupIndex documents do not need individual syncs here
+  /// because they were already updated during the meta-type phase (IoI for
+  /// FullIndex, IoGI for GroupIndex).
   Future<void> _syncContentResourceTypes(
     List<IriTerm> resourceTypes,
     int lastSyncTimestamp,
@@ -475,37 +469,7 @@ class RemoteSyncOrchestrator {
       args: ['types=${resourceTypes.length}'],
     );
 
-    // Phase 3b: Network — one batch for all GroupIndex documents.
-    final allGroupIndexCandidates = <_BatchSyncCandidate>[];
-    for (final entry in allSpecsByType.entries) {
-      for (final indexIri in entry.value.groupIndexIris) {
-        final documentIri = indexIri.getDocumentIri();
-        allGroupIndexCandidates.add((
-          documentIri: documentIri,
-          debugName: 'GroupIndex ${documentIri.debug}',
-        ));
-      }
-    }
-
-    if (allGroupIndexCandidates.isNotEmpty) {
-      _log.info(
-          'Batch syncing ${allGroupIndexCandidates.length} GroupIndex documents across ${resourceTypes.length} types');
-      await _perflog.measure(
-        'content.groupIndexBatch',
-        () => retryOnConflict(
-          () => _docSync.syncDocumentsBatch(
-            allGroupIndexCandidates,
-            lastSyncTimestamp,
-            syncTime,
-            graphSyncStorage: remoteSyncStorage,
-          ),
-          debugOperationName: 'batch syncing GroupIndex documents',
-        ),
-        args: ['count=${allGroupIndexCandidates.length}'],
-      );
-    }
-
-    // Phase 3c: True three-phase shard sync across all content types.
+    // Phase 3b: True three-phase shard sync across all content types.
     //
     // Phase 1: Download all shard docs + build resource queues (parallel)
     // Phase 2: Global resource merge — one canonical version per resource
