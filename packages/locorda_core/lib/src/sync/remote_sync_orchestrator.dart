@@ -349,7 +349,11 @@ class RemoteSyncOrchestrator {
   }) async {
     _log.info('Starting remote synchronization cycle');
     try {
-      const metaTypes = [IdxFullIndex.classIri, IdxGroupIndexTemplate.classIri];
+      const metaTypes = [
+        IdxFullIndex.classIri,
+        IdxGroupIndexTemplate.classIri,
+        IdxGroupIndex.classIri,
+      ];
       final contentTypes = config.resourcesInSyncOrder
           .map((r) => r.typeIri)
           .where((t) => !metaTypes.contains(t))

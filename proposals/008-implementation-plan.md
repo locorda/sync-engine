@@ -15,6 +15,7 @@
 5. **Directory backend supports all modes**: The directory backend is our development and test workhorse. Its implementation must cleanly support switching between storage modes (file-per-resource, shard-dataset, single-file) via configuration.
 6. **Highest coding standards**: Clean, idiomatic Dart. KISS, YAGNI, DRY, SOLID. No over-engineering.
 7. **Always read first**: Always first read the existing codebase before implementing changes, make sure to not break existing semantics that were not supposed to be changed.
+8. **Use batching** When doing potentially slow operations like db calls that could be sped up by batching, never iterate over single calls but instead use batching. For example: do not fetch documents individually in  stage 1, but collect all iris and then always do a batch query. If in doubt, chunk the batches to avoid db limits.
 ---
 
 ## Phase 0: IoGI (Index of Group Indices)

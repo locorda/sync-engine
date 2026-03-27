@@ -4,6 +4,7 @@ class IndexNames {
   static const fullIndices = "lcrd-full-indices";
   static const installations = "lcrd-installation-index";
   static const groupIndexTemplates = "lcrd-group-index-templates";
+  static const groupIndices = "lcrd-group-indices";
 }
 
 /// The index item configuration for the index of indices.
@@ -28,20 +29,28 @@ SyncEngineConfig buildEffectiveConfig(SyncEngineConfig config) {
             Uri.parse('https://w3id.org/solid-crdt-sync/mappings/shard-v1'),
         // No indices for shards
         indices: []),
-    ResourceConfigData(
-        typeIri: IdxGroupIndex.classIri,
-        crdtMapping:
-            Uri.parse('https://w3id.org/solid-crdt-sync/mappings/index-v1'),
-        // No indices for indices
-        indices: []),
   ]);
 
   final allResourceIris = intermediateConfig.resources
       .map((r) => r.typeIri)
       .toSet()
-    ..addAll({IdxFullIndex.classIri, IdxGroupIndexTemplate.classIri});
+    ..addAll({
+      IdxFullIndex.classIri,
+      IdxGroupIndexTemplate.classIri,
+      IdxGroupIndex.classIri,
+    });
 
   final effectiveConfig = intermediateConfig.withResourcesAdded([
+    ResourceConfigData(
+        typeIri: IdxGroupIndex.classIri,
+        crdtMapping:
+            Uri.parse('https://w3id.org/solid-crdt-sync/mappings/index-v1'),
+        indices: [
+          FullIndexData(
+              localName: IndexNames.groupIndices,
+              item: indexIndexItemConfig,
+              rootResourceFetchPolicy: RootResourceFetchPolicy.onRequest)
+        ]),
     ResourceConfigData(
         typeIri: IdxFullIndex.classIri,
         crdtMapping:

@@ -31,6 +31,7 @@ import 'package:locorda_core/src/sync/sync_function.dart';
 import 'package:locorda_core/src/util/build_effective_config.dart';
 import 'package:locorda_core/src/util/retry.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_jelly/jelly.dart';
 import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -521,7 +522,9 @@ the streams yourself.''');
     Iterable<String>? mappingBootstrapSources,
     Perflog? perflog,
   }) async {
-    rdfCore ??= RdfCore.withStandardCodecs();
+    rdfCore ??= RdfCore.withStandardCodecs(
+        additionalBinaryDatasetCodecs: [jelly],
+        additionalBinaryGraphCodecs: [jellyGraph]);
     httpClient ??= http.Client();
     fetcher ??= HttpFetcher(httpClient: httpClient);
     iriFactory ??= IriTerm.validated;

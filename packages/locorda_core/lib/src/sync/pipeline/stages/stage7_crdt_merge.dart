@@ -1,0 +1,136 @@
+/// Stage 7: CRDT Merge — decode on demand, merge, reconcile shards, encode.
+///
+/// **Implementation**: `asyncExpand` — merge contract loading and shard
+/// reconciliation are async (though typically served from cache).
+///
+/// **Input**: `Stream<LoadedCandidate | ShardComplete | PhaseComplete>`
+/// **Output**: `Stream<MergeResult | ShardComplete | PhaseComplete>`
+library;
+
+import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
+import 'package:locorda_core/src/rdf/rdf_extensions.dart';
+import 'package:locorda_core/src/sync/pipeline/document_shard_reconciler.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart'
+    hide MergeResult;
+import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart'
+    as pipeline show MergeResult;
+import 'package:locorda_core/src/sync/remote_document_merger.dart'
+    as merger_lib;
+import 'package:locorda_rdf_core/core.dart';
+import 'package:logging/logging.dart';
+
+final _log = Logger('Stage7.CrdtMerge');
+
+/// Returns an asyncExpand function for Stage 7.
+///
+/// Usage: `stream.asyncExpand(crdtMerge(merger, mergeContractLoader, reconciler, rdfCore))`
+///
+/// Boundaries ([ShardComplete], [PhaseComplete]) pass through unchanged.
+Stream<Object> Function(Object) crdtMerge(
+  merger_lib.RemoteDocumentMerger merger,
+  MergeContractLoader mergeContractLoader,
+  DocumentShardReconciler reconciler,
+  RdfCore rdfCore,
+) {
+  return (Object event) async* {
+    if (event is Boundary) {
+      yield event;
+      return;
+    }
+
+    final loaded = event as LoadedCandidate;
+    final candidate = loaded.candidate;
+    final typeIri = candidate.typeIri;
+    final localUpdatedAt = loaded.localUpdatedAt;
+    final documentIri = candidate.resourceIri.getDocumentIri();
+
+    // Decode sources on demand
+    final remoteGraph = loaded.remoteSource?.decodeWith(rdfCore).graph;
+    final localGraph = loaded.localSource?.decodeWith(rdfCore).graph;
+
+    final RdfGraph mergedGraph;
+
+    switch (candidate.direction) {
+      case SyncDirection.remoteOnly:
+        mergedGraph = remoteGraph!;
+
+      case SyncDirection.localOnly:
+        // Local is already correct — upload without DB write
+        mergedGraph = localGraph!;
+
+      case SyncDirection.conflictCandidate:
+        final governanceIris = mergeContractLoader.getMergedGovernanceIris(
+          [if (localGraph != null) localGraph, if (remoteGraph != null) remoteGraph],
+          documentIri,
+        );
+        final mergeContract = await mergeContractLoader.load(governanceIris);
+
+        final mergeResult = await merger.merge(
+          mergeContract: mergeContract,
+          documentIri: documentIri,
+          localGraph: localGraph,
+          remoteGraph: remoteGraph,
+        );
+        mergedGraph = mergeResult.mergedGraph;
+
+      case SyncDirection.remoteRemoved:
+        // TODO: Apply proper deletion semantics
+        if (localGraph == null) {
+          _log.warning(
+              'remoteRemoved but no local graph for ${candidate.resourceIri.debug}');
+          return;
+        }
+        mergedGraph = localGraph;
+    }
+
+    // Reconcile shard assignments in the merged document.
+    // Note: determineShards() calls discoverIndices() which uses cached data
+    // during the content phase (meta-indices synced before content phase).
+    final reconciled = await reconciler.reconcile(documentIri, mergedGraph, typeIri);
+
+    final needsUpload = switch (candidate.direction) {
+      SyncDirection.remoteOnly => false,
+      SyncDirection.localOnly => true,
+      SyncDirection.conflictCandidate =>
+        reconciled.graph != localGraph,
+      SyncDirection.remoteRemoved => true,
+    };
+
+    yield _buildResult(
+      resourceIri: candidate.resourceIri,
+      typeIri: typeIri,
+      reconciled: reconciled,
+      rdfCore: rdfCore,
+      needsUpload: needsUpload,
+      needsDbWrite: candidate.direction != SyncDirection.localOnly,
+      localUpdatedAt: localUpdatedAt,
+    );
+  };
+}
+
+pipeline.MergeResult _buildResult({
+  required IriTerm resourceIri,
+  required IriTerm typeIri,
+  required ReconciledDocument reconciled,
+  required RdfCore rdfCore,
+  required bool needsUpload,
+  required bool needsDbWrite,
+  int? localUpdatedAt,
+}) {
+  final decoded = DecodedGraphSource(reconciled.graph);
+  final encodedBytes = rdfCore.encodeBinary(reconciled.graph);
+  final encoded =
+      BinaryGraphSource(encodedBytes, contentType: 'application/x-jelly-rdf');
+
+  return pipeline.MergeResult(
+    resourceIri,
+    typeIri,
+    decoded,
+    encoded,
+    needsUpload: needsUpload,
+    needsDbWrite: needsDbWrite,
+    clock: reconciled.clock,
+    missingGroupIndices: reconciled.missingGroupIndices,
+    localUpdatedAt: localUpdatedAt,
+  );
+}
