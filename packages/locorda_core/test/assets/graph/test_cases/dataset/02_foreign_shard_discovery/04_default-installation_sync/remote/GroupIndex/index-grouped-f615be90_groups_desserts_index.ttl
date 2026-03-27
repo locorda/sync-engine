@@ -3,6 +3,7 @@
 @prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix ifdmm10v: <https://example.com/shard/index-full-d06ec919%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix igf: <https://example.com/groupindextemplate/index-grouped-f615be90%2Findex#> .
 @prefix igfmm10v: <https://example.com/shard/index-grouped-f615be90%2Fgroups%2Fdesserts%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
@@ -15,6 +16,7 @@
     cm:clockHash "e47da075e07a2fec7dd714916ca403ff";
     cm:createdAt "2024-01-01T06:00:00.004Z"^^xsd:dateTime;
     cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    idx:belongsToIndexShard ifdmm10v:shard;
     sync:isGovernedBy (mappings:index-v1);
     sync:managedResourceType idx:GroupIndex .
 

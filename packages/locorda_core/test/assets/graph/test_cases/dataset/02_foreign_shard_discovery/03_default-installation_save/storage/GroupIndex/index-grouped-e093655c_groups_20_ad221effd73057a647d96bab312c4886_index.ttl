@@ -6,15 +6,17 @@
 @prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0dyb3VwSW5kZXg=:aW5kZXgtZ3JvdXBlZC1lMDkzNjU1Yy9ncm91cHMvMjBfYWQyMjFlZmZkNzMwNTdhNjQ3ZDk2YmFiMzEyYzQ4ODYvaW5kZXg=#> .
 @prefix ns2: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0dyb3VwSW5kZXhUZW1wbGF0ZQ==:aW5kZXgtZ3JvdXBlZC1lMDkzNjU1Yy9pbmRleA==#> .
 @prefix ns3: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZ3JvdXBlZC1lMDkzNjU1Yy9ncm91cHMvMjBfYWQyMjFlZmZkNzMwNTdhNjQ3ZDk2YmFiMzEyYzQ4ODYvc2hhcmQtbW9kLW1kNS0xLTAtdjFfMF8w#> .
+@prefix ns4: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1kMDZlYzkxOS9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0dyb3VwSW5kZXg=:aW5kZXgtZ3JvdXBlZC1lMDkzNjU1Yy9ncm91cHMvMjBfYWQyMjFlZmZkNzMwNTdhNjQ3ZDk2YmFiMzEyYzQ4ODYvaW5kZXg=> a sync:ManagedDocument;
     foaf:primaryTopic ns1:index;
-    cm:clockHash "1203068cee83c5b8a28cb68df793bc96";
-    cm:createdAt "2024-01-01T06:00:00.007Z"^^xsd:dateTime;
-    cm:hasClockEntry ns1:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:clockHash "514e4c99616741433c51bf14165f0da4";
+    cm:createdAt "2024-01-01T02:00:00.004Z"^^xsd:dateTime;
+    cm:hasClockEntry ns1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    idx:belongsToIndexShard ns4:shard;
     sync:isGovernedBy (mappings:index-v1);
     sync:managedResourceType idx:GroupIndex .
 
@@ -22,5 +24,5 @@ ns1:index a idx:GroupIndex;
     idx:basedOn ns2:groupIndexTemplate;
     idx:hasShard ns3:shard .
 
-ns1:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
-    cm:physicalTime 1704088800006 .
+ns1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+    cm:physicalTime 1704074400003 .

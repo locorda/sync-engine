@@ -22,7 +22,7 @@
     idx:resource </clientinstallation/test-installation#installation> .
 
 :lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 2;
-    cm:physicalTime 1704067200013 .
+    cm:physicalTime 1704067200016 .
 
 :shard a idx:Shard;
     idx:containsEntry :entry-280f579d2d6f50b17280de89d7436ede;
@@ -32,15 +32,15 @@ GRAPH </clientinstallation/test-installation> {
   </clientinstallation/test-installation> a sync:ManagedDocument;
       foaf:primaryTopic </clientinstallation/test-installation#installation>;
       cm:clockHash "53a354c16eccc4d98f83c121a84c0991";
-      cm:createdAt "2024-01-01T00:00:00.014Z"^^xsd:dateTime;
+      cm:createdAt "2024-01-01T00:00:00.017Z"^^xsd:dateTime;
       cm:hasClockEntry </clientinstallation/test-installation#lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54>;
       idx:belongsToIndexShard :shard;
       sync:isGovernedBy (mappings:client-installation-v1);
       sync:managedResourceType cm:ClientInstallation .
   </clientinstallation/test-installation#installation> a cm:ClientInstallation;
-      cm:createdAt "2024-01-01T00:00:00.012Z"^^xsd:dateTime;
-      cm:lastActiveAt "2024-01-01T00:00:00.012Z"^^xsd:dateTime;
+      cm:createdAt "2024-01-01T00:00:00.015Z"^^xsd:dateTime;
+      cm:lastActiveAt "2024-01-01T00:00:00.015Z"^^xsd:dateTime;
       cm:maxInactivityPeriod "P6M"^^xsd:duration .
   </clientinstallation/test-installation#lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54> cm:logicalTime 1;
-      cm:physicalTime 1704067200013 .
+      cm:physicalTime 1704067200016 .
 }

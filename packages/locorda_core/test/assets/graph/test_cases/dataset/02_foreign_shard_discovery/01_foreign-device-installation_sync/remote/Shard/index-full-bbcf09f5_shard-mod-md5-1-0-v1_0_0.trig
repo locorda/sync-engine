@@ -8,6 +8,8 @@
 @prefix if3mm10v: <https://example.com/shard/index-full-388036f3%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix if5mm10v: <https://example.com/shard/index-full-5f68b5b7%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix ifb: <https://example.com/fullindex/index-full-bbcf09f5%2Findex#> .
+@prefix ifd: <https://example.com/fullindex/index-full-d06ec919%2Findex#> .
+@prefix ifdmm10v: <https://example.com/shard/index-full-d06ec919%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix ife: <https://example.com/fullindex/index-full-e679d72f%2Findex#> .
 @prefix ifemm10v: <https://example.com/shard/index-full-e679d72f%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
@@ -28,6 +30,10 @@
     idx:indexesClass idx:FullIndex;
     idx:resource ifb:index .
 
+:entry-6532e1cce2063165cab55f9425c47e0d cm:clockHash "febd5ba53d6b6e719d7e6c35f705cc8e";
+    idx:indexesClass idx:GroupIndex;
+    idx:resource ifd:index .
+
 :entry-713129f56a309cabc970f22c7da295cf cm:clockHash "79bb6df0c95c2f218cea76ec98b42893";
     idx:indexesClass cm:ClientInstallation;
     idx:resource if1:index .
@@ -41,10 +47,10 @@
     idx:resource if2:index .
 
 :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
-    cm:physicalTime 1704067200012 .
+    cm:physicalTime 1704067200015 .
 
 :shard a idx:Shard;
-    idx:containsEntry :entry-ce394f730640668924968eddf09c01bc, :entry-a68c1c4f5dda5dbf177113200fb133a0, :entry-713129f56a309cabc970f22c7da295cf, :entry-2e883124d69c377d8daff7f19ee0eaa6;
+    idx:containsEntry :entry-ce394f730640668924968eddf09c01bc, :entry-a68c1c4f5dda5dbf177113200fb133a0, :entry-713129f56a309cabc970f22c7da295cf, :entry-6532e1cce2063165cab55f9425c47e0d, :entry-2e883124d69c377d8daff7f19ee0eaa6;
     idx:isShardOf ifb:index .
 
 GRAPH <https://example.com/fullindex/index-full-5f68b5b7%2Findex> {
@@ -128,6 +134,37 @@ GRAPH <https://example.com/fullindex/index-full-388036f3%2Findex> {
       cm:physicalTime 1704067200012 .
 }
 
+GRAPH <https://example.com/fullindex/index-full-d06ec919%2Findex> {
+  <https://example.com/fullindex/index-full-d06ec919%2Findex> a sync:ManagedDocument;
+      foaf:primaryTopic ifd:index;
+      cm:clockHash "febd5ba53d6b6e719d7e6c35f705cc8e";
+      cm:createdAt "2024-01-01T00:00:00.016Z"^^xsd:dateTime;
+      cm:hasClockEntry ifd:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      idx:belongsToIndexShard :shard;
+      sync:hasBlankNodeMapping ifd:lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6;
+      sync:isGovernedBy (mappings:index-v1);
+      sync:managedResourceType idx:FullIndex .
+  ifd:index a idx:FullIndex;
+      idx:hasShard ifdmm10v:shard;
+      idx:indexedProperty _:b9;
+      idx:indexesClass idx:GroupIndex;
+      idx:populationState "active";
+      idx:readBy </clientinstallation/foreign-device-installation#installation>;
+      idx:shardingAlgorithm [
+          a idx:ModuloHashSharding ;
+          idx:hashAlgorithm "md5" ;
+          idx:numberOfShards 1 ;
+          idx:configVersion "1_0_0" ;
+          idx:autoScaleThreshold 1000
+      ] .
+  ifd:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+      cm:physicalTime 1704067200015 .
+  ifd:lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6 sync:blankNode _:b9 .
+  _:b9 a idx:IndexedProperty;
+      idx:readBy </clientinstallation/foreign-device-installation#installation>;
+      idx:trackedProperty idx:indexesClass .
+}
+
 GRAPH <https://example.com/fullindex/index-full-bbcf09f5%2Findex> {
   <https://example.com/fullindex/index-full-bbcf09f5%2Findex> a sync:ManagedDocument;
       foaf:primaryTopic ifb:index;
@@ -140,7 +177,7 @@ GRAPH <https://example.com/fullindex/index-full-bbcf09f5%2Findex> {
       sync:managedResourceType idx:FullIndex .
   ifb:index a idx:FullIndex;
       idx:hasShard :shard;
-      idx:indexedProperty _:b9;
+      idx:indexedProperty _:b12;
       idx:indexesClass idx:FullIndex;
       idx:populationState "active";
       idx:readBy </clientinstallation/foreign-device-installation#installation>;
@@ -153,8 +190,8 @@ GRAPH <https://example.com/fullindex/index-full-bbcf09f5%2Findex> {
       ] .
   ifb:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
       cm:physicalTime 1704067200001 .
-  ifb:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b sync:blankNode _:b9 .
-  _:b9 a idx:IndexedProperty;
+  ifb:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b sync:blankNode _:b12 .
+  _:b12 a idx:IndexedProperty;
       idx:readBy </clientinstallation/foreign-device-installation#installation>;
       idx:trackedProperty idx:indexesClass .
 }

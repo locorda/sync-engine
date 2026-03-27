@@ -12,16 +12,16 @@
 <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvY3JkdC1tZWNoYW5pY3MjQ2xpZW50SW5zdGFsbGF0aW9u:ZGVmYXVsdC1pbnN0YWxsYXRpb24=> a sync:ManagedDocument;
     foaf:primaryTopic ns1:installation;
     cm:clockHash "e6d45b5423963ad4bfdab0cbab7d4616";
-    cm:createdAt "2024-01-01T02:10:00.013Z"^^xsd:dateTime;
+    cm:createdAt "2024-01-01T02:10:00.016Z"^^xsd:dateTime;
     cm:hasClockEntry ns1:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
     idx:belongsToIndexShard ns2:shard;
     sync:isGovernedBy (mappings:client-installation-v1);
     sync:managedResourceType cm:ClientInstallation .
 
 ns1:installation a cm:ClientInstallation;
-    cm:createdAt "2024-01-01T02:10:00.011Z"^^xsd:dateTime;
-    cm:lastActiveAt "2024-01-01T02:10:00.011Z"^^xsd:dateTime;
+    cm:createdAt "2024-01-01T02:10:00.014Z"^^xsd:dateTime;
+    cm:lastActiveAt "2024-01-01T02:10:00.014Z"^^xsd:dateTime;
     cm:maxInactivityPeriod "P6M"^^xsd:duration .
 
 ns1:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
-    cm:physicalTime 1704075000012 .
+    cm:physicalTime 1704075000015 .

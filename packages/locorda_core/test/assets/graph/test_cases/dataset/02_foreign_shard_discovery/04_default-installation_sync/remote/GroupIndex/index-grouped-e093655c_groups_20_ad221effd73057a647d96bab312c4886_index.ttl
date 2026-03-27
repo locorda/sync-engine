@@ -3,6 +3,7 @@
 @prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix ifdmm10v: <https://example.com/shard/index-full-d06ec919%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix ige: <https://example.com/groupindextemplate/index-grouped-e093655c%2Findex#> .
 @prefix igemm10v: <https://example.com/shard/index-grouped-e093655c%2Fgroups%2F20_ad221effd73057a647d96bab312c4886%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
@@ -12,9 +13,10 @@
 
 <> a sync:ManagedDocument;
     foaf:primaryTopic :index;
-    cm:clockHash "26823e087858420cdfa5e055c21b8634";
-    cm:createdAt "2024-01-01T06:00:00.007Z"^^xsd:dateTime, "2024-01-01T02:00:00.004Z"^^xsd:dateTime;
-    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:clockHash "514e4c99616741433c51bf14165f0da4";
+    cm:createdAt "2024-01-01T02:00:00.004Z"^^xsd:dateTime;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    idx:belongsToIndexShard ifdmm10v:shard;
     sync:isGovernedBy (mappings:index-v1);
     sync:managedResourceType idx:GroupIndex .
 
@@ -24,6 +26,3 @@
 
 :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
     cm:physicalTime 1704074400003 .
-
-:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
-    cm:physicalTime 1704088800006 .
