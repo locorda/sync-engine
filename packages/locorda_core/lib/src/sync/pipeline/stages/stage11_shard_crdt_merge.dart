@@ -60,6 +60,7 @@ Stream<Object> Function(Object) shardCrdtMerge(
         ]);
 
     // 3. CRDT-merge via CrdtDocumentManager — picks up existing HLC clock.
+
     final prepared = await documentManager.prepareModify(
       IdxShard.classIri,
       shardIri,
@@ -71,17 +72,18 @@ Stream<Object> Function(Object) shardCrdtMerge(
 
     if (prepared == null) {
       // No changes — shard is already up-to-date locally.
-      // Emit with needsUpload = false so Stage 12 is a no-op for this shard.
+      // Upload if shard doesn't exist on remote yet (new shard).
       final localGraph = loaded.localDoc?.document;
       if (localGraph == null) return;
 
+      final needsUploadForNew = !loaded.existsOnRemote;
       final encodedBytes = rdfCore.encodeBinary(localGraph);
       yield MergedShard(
         shardIri,
         DecodedGraphSource(localGraph),
         BinaryGraphSource(encodedBytes, contentType: 'application/x-jelly-rdf'),
         newEtag: loaded.newEtag,
-        needsUpload: false,
+        needsUpload: needsUploadForNew,
         ourPhysicalClock: 0,
       );
       return;
@@ -91,8 +93,10 @@ Stream<Object> Function(Object) shardCrdtMerge(
     final mergedGraph = prepared.crdtDocument;
     final encodedBytes = rdfCore.encodeBinary(mergedGraph);
 
-    // needsUpload when there is a new remote ETag (we received a 200 response).
-    final needsUpload = loaded.remoteShardGraph != null;
+    // Always upload when shard content changed — both for new shards (404 →
+    // create) and modified shards (200 → update with ETag).
+    final needsUpload = true;
+
 
     yield MergedShard(
       shardIri,

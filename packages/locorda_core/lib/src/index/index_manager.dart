@@ -9,6 +9,7 @@ import 'package:locorda_core/src/crdt_document_manager.dart';
 import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/index/index_discovery.dart';
+import 'package:locorda_core/src/util/build_effective_config.dart';
 import 'package:locorda_core/src/index/index_property_resolver.dart';
 import 'package:locorda_core/src/index/index_rdf_generator.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart';
@@ -34,6 +35,7 @@ class IndexManager {
   final ConfigService _configService;
   final IriTerm _installationIri;
   final IndexDiscovery _indexDiscovery;
+  final ShardDeterminer _shardDeterminer;
 
   SyncEngineConfig get _config => _configService.currentConfig;
 
@@ -45,6 +47,7 @@ class IndexManager {
     required ConfigService configService,
     required IndexDiscovery indexDiscovery,
     required ResourceLocator resourceLocator,
+    required ShardDeterminer shardDeterminer,
   })  : _documentManager = crdtDocumentManager,
         _rdfGenerator = rdfGenerator,
         _storage = storage,
@@ -52,7 +55,8 @@ class IndexManager {
         _propertyResolver = IndexPropertyResolver(
             storage: storage, resourceLocator: resourceLocator),
         _installationIri = installationIri,
-        _indexDiscovery = indexDiscovery;
+        _indexDiscovery = indexDiscovery,
+        _shardDeterminer = shardDeterminer;
 
   /// Initializes all indices defined in the configuration.
   ///
@@ -63,25 +67,37 @@ class IndexManager {
   /// Returns the number of indices created (useful for testing).
   Future<int> initializeIndices() async {
     var createdCount = 0;
+    var anyCreated = false;
 
     // Make sure to create indices in the correct, deterministic order
     for (final (indexConfig, resourceTypeIri) in _config.allIndicesInOrder) {
       // Create index based on type
-      switch (indexConfig) {
-        case FullIndexData _:
-          await _createFullIndex(indexConfig, resourceTypeIri);
-        case GroupIndexData _:
-          await _createGroupIndexTemplate(indexConfig, resourceTypeIri);
-      }
+      final created = switch (indexConfig) {
+        FullIndexData _ => await _createFullIndex(indexConfig, resourceTypeIri),
+        GroupIndexData _ =>
+          await _createGroupIndexTemplate(indexConfig, resourceTypeIri),
+      };
+      if (created) anyCreated = true;
 
       createdCount++;
+    }
+
+    // Meta-index documents (e.g. the IoI — Index of Indices) cannot determine
+    // their own shard during initial creation because their index document
+    // does not exist yet at that point. Now that all indices are created,
+    // re-save them so shard determination succeeds and they get proper
+    // idx:belongsToIndexShard assignments + index entries in their own shard.
+    if (anyCreated) {
+      await _reconcileMetaIndexShards();
     }
 
     return createdCount;
   }
 
   /// Creates a FullIndex with its initial shard.
-  Future<void> _createFullIndex(
+  ///
+  /// Returns `true` if the index was created, `false` if it already existed.
+  Future<bool> _createFullIndex(
     FullIndexData config,
     IriTerm resourceType,
   ) async {
@@ -92,7 +108,7 @@ class IndexManager {
 
     if (await _documentManager.hasDocument(indexDocumentIri)) {
       // Index already exists, skip creation
-      return;
+      return false;
     }
 
     // Create initial shard
@@ -133,10 +149,13 @@ class IndexManager {
       indexGraph,
       context: 'FullIndex $indexResourceIri',
     );
+    return true;
   }
 
   /// Creates a GroupIndexTemplate.
-  Future<void> _createGroupIndexTemplate(
+  ///
+  /// Returns `true` if the template was created, `false` if it already existed.
+  Future<bool> _createGroupIndexTemplate(
     GroupIndexData config,
     IriTerm resourceType,
   ) async {
@@ -145,7 +164,7 @@ class IndexManager {
     if (await _documentManager
         .hasDocument(templateResourceIri.getDocumentIri())) {
       // Template already exists, skip creation
-      return;
+      return false;
     }
     // Generate template RDF
     final templateGraph = _rdfGenerator.generateGroupIndexTemplate(
@@ -163,6 +182,81 @@ class IndexManager {
       templateGraph,
       context: 'GroupIndexTemplate $templateResourceIri',
     );
+    return true;
+  }
+
+  /// Creates index entries for meta-index documents that could not determine
+  /// their own shard during initial creation.
+  ///
+  /// During initial creation, the IoI (Index of FullIndices) cannot determine
+  /// which shard it belongs to because its own index document does not exist
+  /// yet — `ShardDeterminer` skips shard determination for meta types when
+  /// the index document is absent (the `maySkip` guard). Now that all indices
+  /// are created, we run shard determination again and create the index entry
+  /// directly. The document's `idx:belongsToIndexShard` triple will be added
+  /// later during sync by the CRDT reconciliation step.
+  Future<void> _reconcileMetaIndexShards() async {
+    // Only the IoI (Index of Indices) has a chicken-and-egg problem: it indexes
+    // FullIndex documents and is itself a FullIndex, so it can't find its own
+    // shard during initial creation. All other meta-indices (IoGIT, IoGI) are
+    // also FullIndex documents but can resolve their shard via the IoI (or its
+    // fallback in discoverIndices).
+    final ioiConfig = _config
+        .getResourceConfig(IdxFullIndex.classIri)
+        .getIndexByName(IndexNames.fullIndices) as FullIndexData;
+
+    final indexResourceIri =
+        _rdfGenerator.generateFullIndexIri(ioiConfig, IdxFullIndex.classIri);
+    final indexDocumentIri = indexResourceIri.getDocumentIri();
+
+    final storedDoc = await _storage.getDocument(indexDocumentIri);
+    if (storedDoc == null) {
+      _log.warning('IoI document not found: ${indexDocumentIri.debug}');
+      return;
+    }
+
+    final shardResult = await _shardDeterminer.determineShards(
+      IdxFullIndex.classIri,
+      indexResourceIri,
+      storedDoc.document,
+      mode: ShardDeterminationMode.lenient,
+    );
+
+    if (shardResult.shards.isEmpty) {
+      _log.fine('No shards determined for IoI ${indexResourceIri.debug}');
+      return;
+    }
+
+    final clockHash = storedDoc.document
+        .findSingleObject<LiteralTerm>(
+            indexDocumentIri, SyncManagedDocument.crdtClockHash)
+        ?.value;
+    if (clockHash == null) {
+      _log.warning('IoI ${indexDocumentIri.debug} has no clockHash');
+      return;
+    }
+
+    final shardDocumentIris =
+        shardResult.shards.map((s) => s.getDocumentIri()).toSet();
+    final indexedPropertiesByShardDocumentIri = await _propertyResolver
+        .resolveIndexedPropertiesBatch(shardDocumentIris);
+
+    final entries = await _buildShardIndexEntryWrites(
+      IdxFullIndex.classIri,
+      indexResourceIri,
+      clockHash,
+      storedDoc.document,
+      shardResult.shards,
+      storedDoc.metadata.ourPhysicalClock,
+      storedDoc.metadata.updatedAt,
+      indexedPropertiesByShardDocumentIri,
+    );
+
+    if (entries.isNotEmpty) {
+      await _storage.saveIndexEntries(entries);
+      _log.fine('Created ${entries.length} index entries for IoI '
+          '${indexResourceIri.debug}');
+    }
   }
 
   /// Creates a missing GroupIndex that was detected during shard determination.

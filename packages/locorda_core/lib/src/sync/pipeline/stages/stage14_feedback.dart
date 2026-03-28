@@ -117,12 +117,14 @@ Stream<Object> Function(Object) feedback(
       } else {
         // Meta-indices stable → transition to content phase.
         _log.fine('Meta-indices stable — transitioning to content phase');
+
         final contentIndices = await contentIndicesFactory();
         if (contentIndices.isEmpty) {
           _log.info('No content indices found — closing pipeline');
           inputSink.close();
           return;
         }
+
         inputSink.add(SyncInput(
           contentIndices.keys.toList(),
           indexInfos: contentIndices,

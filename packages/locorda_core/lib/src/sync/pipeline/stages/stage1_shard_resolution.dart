@@ -54,7 +54,6 @@ Stream<Object> Function(SyncInput) shardResolution(
           .getMultiValueObjects<IriTerm>(indexIri, IdxIndex.hasShard);
 
       if (shardIris.isEmpty) {
-        _log.fine('Index ${indexIri.debug} has 0 shards');
         zeroShardIndices.add(indexIri);
         continue;
       }

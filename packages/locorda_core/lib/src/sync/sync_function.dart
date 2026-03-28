@@ -2,6 +2,8 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/storage/sync_timestamp_storage.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
+import 'package:locorda_core/src/sync/pipeline/streaming_remote_sync_orchestrator.dart';
 import 'package:locorda_core/src/sync/remote_sync_orchestrator.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
 import 'package:logging/logging.dart';
@@ -12,6 +14,12 @@ typedef OrchestratorFactory = RemoteSyncOrchestrator Function(
   RemoteId remoteId, {
   required bool useShardDatasets,
 });
+
+typedef StreamingOrchestratorFactory = StreamingRemoteSyncOrchestrator Function(
+  RemoteSyncPipelineSupport pipelineSupport,
+  RemoteId remoteId,
+  SyncEngineConfig config,
+);
 
 /// Synchronization function orchestrating complete sync cycle.
 ///
@@ -40,6 +48,7 @@ class SyncFunction {
   final List<Backend> _backends;
   final ConfigService _configService;
   final OrchestratorFactory _remoteSyncOrchestratorFactory;
+  final StreamingOrchestratorFactory? _streamingOrchestratorFactory;
   final Perflog _perflog;
 
   SyncFunction({
@@ -47,6 +56,7 @@ class SyncFunction {
     required Storage storage,
     required ConfigService configService,
     required OrchestratorFactory remoteSyncOrchestratorFactory,
+    StreamingOrchestratorFactory? streamingOrchestratorFactory,
     required ShardDocumentGenerator shardDocumentGenerator,
     required Perflog perflog,
   })  : _backends = backends,
@@ -54,6 +64,7 @@ class SyncFunction {
         _configService = configService,
         _shardDocumentGenerator = shardDocumentGenerator,
         _remoteSyncOrchestratorFactory = remoteSyncOrchestratorFactory,
+        _streamingOrchestratorFactory = streamingOrchestratorFactory,
         _perflog = perflog.create('SyncFunction', 'sync');
 
   Future<void> call(DateTime syncTime) async {
@@ -198,22 +209,38 @@ class SyncFunction {
               remoteSyncStorage, config);
         }
 
-        final remoteSyncOrchestrator = _remoteSyncOrchestratorFactory(
-          remoteSyncStorage,
-          remote.remoteId,
-          useShardDatasets: remote.useShardDatasets,
-        );
-
         _log.info('Starting Phase A+B: Remote Synchronization');
 
         final lastSyncTimestamp =
             await _storage.getLastRemoteSyncTimestamp(remote.remoteId);
         try {
-          await remoteSyncOrchestrator.sync(
-            syncTime,
-            lastSyncTimestamp,
-            config: config,
-          );
+          // Select streaming or legacy orchestrator based on backend support
+          if (_streamingOrchestratorFactory != null &&
+              remoteSyncStorage is RemoteSyncPipelineSupport) {
+            _log.fine('Using streaming pipeline orchestrator');
+            final orchestrator = _streamingOrchestratorFactory(
+              remoteSyncStorage as RemoteSyncPipelineSupport,
+              remote.remoteId,
+              config,
+            );
+            await orchestrator.sync(
+              syncTime,
+              lastSyncTimestamp,
+              config: config,
+            );
+          } else {
+            _log.fine('Using legacy orchestrator');
+            final orchestrator = _remoteSyncOrchestratorFactory(
+              remoteSyncStorage,
+              remote.remoteId,
+              useShardDatasets: remote.useShardDatasets,
+            );
+            await orchestrator.sync(
+              syncTime,
+              lastSyncTimestamp,
+              config: config,
+            );
+          }
           _log.info('Remote synchronization completed successfully');
           await _storage.updateLastRemoteSyncTimestamp(
               remote.remoteId, syncTime.millisecondsSinceEpoch);

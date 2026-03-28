@@ -109,6 +109,14 @@ Stream<Object> Function(Object) dbCommit(
     final mergeResult = upload.mergeResult;
 
     if (!mergeResult.needsDbWrite) {
+      // Still store ETag even without DB write — needed for subsequent
+      // uploads of the same resource (e.g., localOnly processed through
+      // multiple index shards).
+      final etag = upload.newRemoteEtag ?? mergeResult.resourceEtag;
+      if (etag != null) {
+        final docIri = mergeResult.resourceIri.getDocumentIri();
+        pendingEtags[docIri] = etag;
+      }
       yield CommitResult(mergeResult.resourceIri);
       return;
     }
@@ -143,10 +151,15 @@ Stream<Object> Function(Object) dbCommit(
       _log.warning('prepareIndexEntryWrites failed for $documentIri: $e', e, st);
     }
 
-    // Capture ETag if upload produced one.
-    if (upload.newRemoteEtag != null) {
-      pendingEtags[documentIri] = upload.newRemoteEtag!;
+    // Capture ETag: prefer upload result, fall back to download ETag.
+    // The download ETag (from Stage 5) is needed for remoteOnly resources
+    // so that subsequent localOnly uploads can use If-Match.
+    final etag = upload.newRemoteEtag ?? mergeResult.resourceEtag;
+    if (etag != null) {
+      pendingEtags[documentIri] = etag;
     }
+    print('DEBUG S9: ${mergeResult.resourceIri.debug} uploadEtag=${upload.newRemoteEtag} '
+        'resourceEtag=${mergeResult.resourceEtag} stored=$etag needsUpload=${mergeResult.needsUpload}');
 
     pendingResourceIris.add(mergeResult.resourceIri);
 

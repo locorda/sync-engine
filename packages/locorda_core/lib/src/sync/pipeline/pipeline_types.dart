@@ -105,11 +105,17 @@ class ShardComplete extends Boundary {
   /// The new ETag from the remote fetch (for persisting after shard finalize).
   final String? newEtag;
 
+  /// Whether this shard already exists on the remote (had a stored ETag or
+  /// received a 200 response). Used by Stage 11 to decide whether an unchanged
+  /// shard needs uploading (new shard → yes, existing shard → no).
+  final bool existsOnRemote;
+
   const ShardComplete(
     this.shardIri,
     this.shardStorageId, {
     this.remoteShardGraph,
     this.newEtag,
+    this.existsOnRemote = false,
   });
 }
 
@@ -280,8 +286,12 @@ class ShardNotModified extends FetchedShard {
   final RootResourceFetchPolicy fetchPolicy;
   final IriTerm typeIri;
 
+  /// Whether the shard exists on remote (true for 304, false for 404-never-existed).
+  final bool existsOnRemote;
+
   const ShardNotModified(
-      this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri);
+      this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri,
+      {this.existsOnRemote = true});
 }
 
 /// HTTP 404/410: shard removed.
@@ -348,8 +358,12 @@ class ShardResultNotModified extends ShardResult {
   final RootResourceFetchPolicy fetchPolicy;
   final IriTerm typeIri;
 
+  /// Whether the shard exists on remote (true for 304, false for 404-never-existed).
+  final bool existsOnRemote;
+
   const ShardResultNotModified(
-      this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri);
+      this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri,
+      {this.existsOnRemote = true});
 }
 
 /// Shard gone — pass-through from Stage 2.
@@ -415,7 +429,12 @@ class FetchedCandidate {
   /// Remote graph source — null for [SyncDirection.localOnly].
   final RdfGraphSource? remoteSource;
 
-  const FetchedCandidate(this.candidate, {this.remoteSource});
+  /// ETag of the remote resource, for conditional upload in Stage 8.
+  /// Null for [SyncDirection.localOnly] (no remote fetch performed).
+  final String? remoteEtag;
+
+  const FetchedCandidate(this.candidate,
+      {this.remoteSource, this.remoteEtag});
 }
 
 // ---------------------------------------------------------------------------
@@ -434,11 +453,15 @@ class LoadedCandidate {
   /// Null for [SyncDirection.remoteOnly] (no local document).
   final int? localUpdatedAt;
 
+  /// ETag of the remote resource, for conditional upload in Stage 8.
+  final String? remoteEtag;
+
   const LoadedCandidate(
     this.candidate, {
     this.remoteSource,
     this.localSource,
     this.localUpdatedAt,
+    this.remoteEtag,
   });
 }
 
@@ -541,6 +564,9 @@ class LoadedShardEntries {
   /// New ETag from Stage 2, for conditional PUT in Stage 12.
   final String? newEtag;
 
+  /// Whether this shard already exists on the remote.
+  final bool existsOnRemote;
+
   const LoadedShardEntries(
     this.shardIri,
     this.shardStorageId,
@@ -548,6 +574,7 @@ class LoadedShardEntries {
     this.localDoc,
     this.remoteShardGraph,
     this.newEtag,
+    this.existsOnRemote = false,
   });
 }
 

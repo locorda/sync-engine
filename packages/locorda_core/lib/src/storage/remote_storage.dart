@@ -1,5 +1,13 @@
+import 'dart:async';
+
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_core/src/rdf/rdf_extensions.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:logging/logging.dart';
+
+final _remoteStorageLog = Logger('IriTranslatingRemoteSyncStorage');
 
 /// Result of a remote download operation with ETag support.
 class RemoteDownloadResult<T> {
@@ -525,7 +533,8 @@ Future<T> _retryOnAuthFailure<T>(
   }
 }
 
-class IriTranslatingRemoteSyncStorage extends RemoteSyncStorage {
+class IriTranslatingRemoteSyncStorage extends RemoteSyncStorage
+    implements RemoteSyncPipelineSupport {
   final RemoteSyncStorage _storage;
   final IriTranslator _iriTranslator;
 
@@ -582,8 +591,147 @@ class IriTranslatingRemoteSyncStorage extends RemoteSyncStorage {
         ifMatch: ifMatch,
       );
 
+  // ---------------------------------------------------------------------------
+  // RemoteSyncPipelineSupport — delegates to this.download/upload
+  // (which already translate IRIs)
+  // ---------------------------------------------------------------------------
+
+  @override
+  StreamTransformer<Object, Object> shardFetch() =>
+      _asyncSafeTransformer((event) async* {
+        if (event is Boundary) {
+          yield event;
+          return;
+        }
+        final ref = event as ShardRef;
+        final result = await download(
+          ref.shardIri.getDocumentIri(),
+          ifNoneMatch: ref.storedEtag,
+        );
+
+        if (result.notModified) {
+          yield ShardNotModified(
+              ref.shardIri, ref.shardStorageId, ref.fetchPolicy, ref.typeIri);
+        } else if (result.graph == null && ref.storedEtag != null) {
+          yield ShardGone(
+              ref.shardIri, ref.shardStorageId, ref.fetchPolicy, ref.typeIri);
+        } else if (result.graph == null) {
+          yield ShardNotModified(
+              ref.shardIri, ref.shardStorageId, ref.fetchPolicy, ref.typeIri,
+              existsOnRemote: false);
+        } else {
+          yield ShardContent(
+            ref.shardIri,
+            ref.shardStorageId,
+            ref.fetchPolicy,
+            ref.typeIri,
+            DecodedGraphSource(result.graph!),
+            result.etag!,
+          );
+        }
+      });
+
+  @override
+  StreamTransformer<Object, Object> resourceFetch() =>
+      _asyncSafeTransformer((event) async* {
+        if (event is Boundary) {
+          yield event;
+          return;
+        }
+        final candidate = event as SyncCandidate;
+
+        if (candidate.direction == SyncDirection.localOnly ||
+            candidate.direction == SyncDirection.remoteRemoved) {
+          yield FetchedCandidate(candidate);
+          return;
+        }
+
+        final result = await download(candidate.resourceIri.getDocumentIri());
+        if (result.graph != null) {
+          yield FetchedCandidate(
+            candidate,
+            remoteSource: DecodedGraphSource(result.graph!),
+            remoteEtag: result.etag,
+          );
+        } else {
+          yield FetchedCandidate(candidate);
+        }
+      });
+
+  @override
+  StreamTransformer<Object, Object> resourceUpload() =>
+      _asyncSafeTransformer((event) async* {
+        if (event is Boundary) {
+          yield event;
+          return;
+        }
+        final mergeResult = event as MergeResult;
+
+        if (!mergeResult.needsUpload) {
+          yield UploadResult(mergeResult);
+          return;
+        }
+
+        final documentIri = mergeResult.resourceIri.getDocumentIri();
+        final result = await upload(
+          documentIri,
+          mergeResult.mergedGraph.graph,
+          ifMatch: mergeResult.resourceEtag,
+        );
+
+        if (result is SuccessUploadResult) {
+          yield UploadResult(mergeResult, newRemoteEtag: result.etag);
+        } else {
+          _remoteStorageLog.warning(
+              'Upload conflict for ${documentIri.debug} — skipping');
+          yield UploadResult(mergeResult);
+        }
+      });
+
+  @override
+  StreamTransformer<Object, Object> shardUpload() =>
+      _asyncSafeTransformer((event) async* {
+        if (event is Boundary) {
+          yield event;
+          return;
+        }
+        final merged = event as MergedShard;
+
+        if (!merged.needsUpload) {
+          yield UploadedShard(merged.shardIri, merged);
+          return;
+        }
+
+        final documentIri = merged.shardIri.getDocumentIri();
+        final result = await upload(
+          documentIri,
+          merged.mergedGraph.graph,
+          ifMatch: merged.newEtag,
+        );
+
+        if (result is SuccessUploadResult) {
+          yield UploadedShard(merged.shardIri, merged,
+              newRemoteEtag: result.etag);
+        } else {
+          _remoteStorageLog.warning(
+              'Shard upload conflict for ${documentIri.debug} — skipping');
+          yield UploadedShard(merged.shardIri, merged);
+        }
+      });
+
   @override
   Future<void> finalizeSync() async {
     await _storage.finalizeSync();
   }
+}
+
+/// Creates a [StreamTransformer] from an asyncExpand-style handler.
+///
+/// Unlike [StreamTransformer.fromHandlers] with an async `handleData`,
+/// this ensures each event is fully processed before the next one starts,
+/// preventing boundary events from overtaking pending async results.
+StreamTransformer<Object, Object> _asyncSafeTransformer(
+    Stream<Object> Function(Object event) handler) {
+  return StreamTransformer.fromBind(
+      (stream) => stream.asyncExpand(handler));
 }

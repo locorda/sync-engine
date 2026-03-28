@@ -24,6 +24,9 @@ import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart' as storage;
+import 'package:locorda_core/src/sync/pipeline/document_shard_reconciler.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
+import 'package:locorda_core/src/sync/pipeline/streaming_remote_sync_orchestrator.dart';
 import 'package:locorda_core/src/sync/remote_document_merger.dart';
 import 'package:locorda_core/src/sync/remote_sync_orchestrator.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
@@ -640,6 +643,7 @@ the streams yourself.''');
       configService: configService,
       indexDiscovery: indexDiscovery,
       resourceLocator: localResourceLocator,
+      shardDeterminer: shardDeterminer,
     );
 
     await indexManager.initializeIndices();
@@ -676,12 +680,38 @@ the streams yourself.''');
           useShardDatasets: useShardDatasets,
           perflog: perflog!,
         );
+    final documentShardReconciler = DocumentShardReconciler(
+      shardDeterminer: shardDeterminer,
+      localDocumentMerger: localDocumentMerger,
+      hlcService: hlcService,
+      mergeContractLoader: mergeContractLoader,
+    );
+    final streamingOrchestratorFactory = (
+      RemoteSyncPipelineSupport pipelineSupport,
+      RemoteId remoteId,
+      SyncEngineConfig effectiveConfig,
+    ) =>
+        StreamingRemoteSyncOrchestrator(
+          storage: storage,
+          remoteId: remoteId,
+          pipelineSupport: pipelineSupport,
+          rdfCore: rdfCore!,
+          merger: remoteDocumentMerger,
+          mergeContractLoader: mergeContractLoader,
+          reconciler: documentShardReconciler,
+          indexManager: indexManager,
+          documentManager: crdtDocumentManager,
+          shardDocGen: shardDocumentGenerator,
+          indexRdfGenerator: indexRdfGenerator,
+          config: effectiveConfig,
+        );
     final syncFunction = SyncFunction(
       storage: storage,
       configService: configService,
       shardDocumentGenerator: shardDocumentGenerator,
       backends: backends,
       remoteSyncOrchestratorFactory: remoteSyncOrchestratorFactory,
+      streamingOrchestratorFactory: streamingOrchestratorFactory,
       perflog: perflog,
     );
     final syncManager = StandardSyncManager(

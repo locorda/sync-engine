@@ -85,7 +85,6 @@ Stream<Object> _handleParsedShard(
     ...remoteEntries.keys,
     ...localByResource.keys,
   };
-
   for (final resourceIri in allResources) {
     final remote = remoteEntries[resourceIri];
     final local = localByResource[resourceIri];
@@ -111,6 +110,7 @@ Stream<Object> _handleParsedShard(
     shardStorageId,
     remoteShardGraph: parsed.decodedGraph,
     newEtag: parsed.newEtag,
+    existsOnRemote: true,
   );
 }
 
@@ -122,7 +122,6 @@ Stream<Object> _handleNotModified(
 ) async* {
   final localEntries =
       await storage.getActiveIndexEntriesForShard(result.shardIri);
-
   for (final entry in localEntries) {
     if (entry.updatedAt > lastSyncTimestamp) {
       yield SyncCandidate(
@@ -135,7 +134,8 @@ Stream<Object> _handleNotModified(
     }
   }
 
-  yield ShardComplete(result.shardIri, result.shardStorageId);
+  yield ShardComplete(result.shardIri, result.shardStorageId,
+      existsOnRemote: result.existsOnRemote);
 }
 
 /// ShardGone: emit all local entries as remoteRemoved.

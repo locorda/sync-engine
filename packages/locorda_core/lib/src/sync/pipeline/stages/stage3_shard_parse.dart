@@ -26,7 +26,8 @@ Object Function(Object) shardParse(RdfCore rdfCore) {
       ShardContent() => _parseShardContent(fetched, rdfCore),
       ShardNotModified() => ShardResultNotModified(
           fetched.shardIri, fetched.shardStorageId, fetched.fetchPolicy,
-          fetched.typeIri),
+          fetched.typeIri,
+          existsOnRemote: fetched.existsOnRemote),
       ShardGone() => ShardResultGone(
           fetched.shardIri, fetched.shardStorageId, fetched.fetchPolicy,
           fetched.typeIri),

@@ -36,6 +36,7 @@ Stream<Object> Function(Object) shardEntryLoad(Storage storage) {
       final entries = await storage.getActiveIndexEntriesForShard(shardIri);
       final shardDoc = await storage.getDocument(shardDocumentIri);
 
+
       yield LoadedShardEntries(
         shardIri,
         event.shardStorageId,
@@ -43,6 +44,7 @@ Stream<Object> Function(Object) shardEntryLoad(Storage storage) {
         localDoc: shardDoc,
         remoteShardGraph: event.remoteShardGraph,
         newEtag: event.newEtag,
+        existsOnRemote: event.existsOnRemote,
       );
       return;
     }

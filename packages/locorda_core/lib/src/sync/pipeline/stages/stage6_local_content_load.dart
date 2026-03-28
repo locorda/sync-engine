@@ -7,17 +7,24 @@
 library;
 
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
+import 'package:locorda_core/src/storage/remote_id.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 
 /// Returns an asyncExpand function for Stage 6.
 ///
-/// Usage: `stream.asyncExpand(localContentLoad(storage))`
+/// Usage: `stream.asyncExpand(localContentLoad(storage, remoteId))`
 ///
 /// Loads local document content for candidates that need it
 /// (`conflictCandidate`, `localOnly`). `remoteOnly` candidates pass through
 /// without a DB read. Boundaries pass through unchanged.
-Stream<Object> Function(Object) localContentLoad(Storage storage) {
+///
+/// For `localOnly` candidates, also loads the stored remote ETag so
+/// Stage 8 can perform conditional uploads (If-Match).
+Stream<Object> Function(Object) localContentLoad(
+  Storage storage,
+  RemoteId remoteId,
+) {
   return (Object event) async* {
     if (event is Boundary) {
       yield event;
@@ -27,34 +34,29 @@ Stream<Object> Function(Object) localContentLoad(Storage storage) {
     final fetched = event as FetchedCandidate;
     final candidate = fetched.candidate;
 
+    final documentIri = candidate.resourceIri.getDocumentIri();
+    final doc = await storage.getDocument(documentIri);
+    final RdfGraphSource? localSource =
+        doc != null ? DecodedGraphSource(doc.document) : null;
+
     switch (candidate.direction) {
       case SyncDirection.remoteOnly:
-        // No local content needed
-        yield LoadedCandidate(
-          candidate,
-          remoteSource: fetched.remoteSource,
-        );
-
       case SyncDirection.conflictCandidate:
       case SyncDirection.localOnly:
-        // Load local content from DB
-        final documentIri = candidate.resourceIri.getDocumentIri();
-        final doc = await storage.getDocument(documentIri);
-        final RdfGraphSource? localSource =
-            doc != null ? DecodedGraphSource(doc.document) : null;
+        final storedEtag = await storage.getRemoteETag(remoteId, documentIri);
+        final etag = fetched.remoteEtag ?? storedEtag;
+        print('DEBUG S6: ${candidate.resourceIri.debug} dir=${candidate.direction} '
+            'hasLocal=${localSource != null} hasRemote=${fetched.remoteSource != null} '
+            'etag=$etag');
         yield LoadedCandidate(
           candidate,
           remoteSource: fetched.remoteSource,
           localSource: localSource,
           localUpdatedAt: doc?.metadata.updatedAt,
+          remoteEtag: etag,
         );
 
       case SyncDirection.remoteRemoved:
-        // Load local content — needed for deletion processing
-        final documentIri = candidate.resourceIri.getDocumentIri();
-        final doc = await storage.getDocument(documentIri);
-        final RdfGraphSource? localSource =
-            doc != null ? DecodedGraphSource(doc.document) : null;
         yield LoadedCandidate(
           candidate,
           localSource: localSource,

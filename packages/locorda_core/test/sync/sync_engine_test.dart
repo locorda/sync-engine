@@ -33,7 +33,7 @@ import 'test_physical_timestamp_factory.dart';
 ///
 /// Set via environment variable: RECORD_MODE=true dart test
 const _forceRecordMode =
-    false; // Set to true to enable record mode without env variable
+    true; // Set to true to enable record mode without env variable
 final _recordMode =
     _forceRecordMode || Platform.environment['RECORD_MODE'] == 'true';
 final debug = (dumpSharedBackend: false, logStep: false);
@@ -415,6 +415,7 @@ Future<void> _executeStep({
       configService: SimpleConfigService(effectiveConfig),
       indexDiscovery: indexDiscovery,
       resourceLocator: resourceLocator,
+      shardDeterminer: shardDeterminer,
     );
     final shardDocumentGenerator = ShardDocumentGenerator(
         documentManager: crdtDocumentManager,

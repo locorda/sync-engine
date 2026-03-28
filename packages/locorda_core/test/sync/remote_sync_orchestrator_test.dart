@@ -186,6 +186,7 @@ class TestOrchestratorSetup {
       configService: SimpleConfigService(effectiveConfig),
       indexDiscovery: indexDiscovery,
       resourceLocator: resourceLocator,
+      shardDeterminer: shardDeterminer,
     );
 
     await indexManager.initializeIndices();

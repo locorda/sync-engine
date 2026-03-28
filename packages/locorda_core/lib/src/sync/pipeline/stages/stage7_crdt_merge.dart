@@ -42,6 +42,7 @@ Stream<Object> Function(Object) crdtMerge(
     final candidate = loaded.candidate;
     final typeIri = candidate.typeIri;
     final localUpdatedAt = loaded.localUpdatedAt;
+    final remoteEtag = loaded.remoteEtag;
     final documentIri = candidate.resourceIri.getDocumentIri();
 
     // Decode sources on demand
@@ -50,7 +51,15 @@ Stream<Object> Function(Object) crdtMerge(
 
     final RdfGraph mergedGraph;
 
-    switch (candidate.direction) {
+    // Determine effective direction: if a remoteOnly resource already exists
+    // locally (e.g. modified via a different shard), upgrade to conflictCandidate
+    // so the CRDT merge runs and both versions are compared.
+    final effectiveDirection = candidate.direction == SyncDirection.remoteOnly &&
+            localGraph != null
+        ? SyncDirection.conflictCandidate
+        : candidate.direction;
+
+    switch (effectiveDirection) {
       case SyncDirection.remoteOnly:
         mergedGraph = remoteGraph!;
 
@@ -88,13 +97,21 @@ Stream<Object> Function(Object) crdtMerge(
     // during the content phase (meta-indices synced before content phase).
     final reconciled = await reconciler.reconcile(documentIri, mergedGraph, typeIri);
 
-    final needsUpload = switch (candidate.direction) {
+    final reconciledChanged = reconciled.graph != localGraph;
+    final needsUpload = switch (effectiveDirection) {
       SyncDirection.remoteOnly => false,
       SyncDirection.localOnly => true,
-      SyncDirection.conflictCandidate =>
-        reconciled.graph != localGraph,
+      SyncDirection.conflictCandidate => reconciledChanged,
       SyncDirection.remoteRemoved => true,
     };
+
+    final needsDbWrite = switch (effectiveDirection) {
+      SyncDirection.remoteOnly => true,
+      SyncDirection.localOnly => reconciledChanged,
+      SyncDirection.conflictCandidate => true,
+      SyncDirection.remoteRemoved => true,
+    };
+
 
     yield _buildResult(
       resourceIri: candidate.resourceIri,
@@ -102,8 +119,9 @@ Stream<Object> Function(Object) crdtMerge(
       reconciled: reconciled,
       rdfCore: rdfCore,
       needsUpload: needsUpload,
-      needsDbWrite: candidate.direction != SyncDirection.localOnly,
+      needsDbWrite: needsDbWrite,
       localUpdatedAt: localUpdatedAt,
+      resourceEtag: remoteEtag,
     );
   };
 }
@@ -116,6 +134,7 @@ pipeline.MergeResult _buildResult({
   required bool needsUpload,
   required bool needsDbWrite,
   int? localUpdatedAt,
+  String? resourceEtag,
 }) {
   final decoded = DecodedGraphSource(reconciled.graph);
   final encodedBytes = rdfCore.encodeBinary(reconciled.graph);
@@ -132,5 +151,6 @@ pipeline.MergeResult _buildResult({
     clock: reconciled.clock,
     missingGroupIndices: reconciled.missingGroupIndices,
     localUpdatedAt: localUpdatedAt,
+    resourceEtag: resourceEtag,
   );
 }
