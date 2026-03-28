@@ -5,7 +5,6 @@
 @prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
 @prefix ifd: <https://example.com/fullindex/index-full-d06ec919%2Findex#> .
 @prefix ige: <https://example.com/groupindex/index-grouped-e093655c%2Fgroups%2F20_ad221effd73057a647d96bab312c4886%2Findex#> .
-@prefix igf: <https://example.com/groupindex/index-grouped-f615be90%2Fgroups%2Fdesserts%2Findex#> .
 @prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
@@ -13,33 +12,18 @@
 
 <> a sync:ManagedDocument;
     foaf:primaryTopic :shard;
-    cm:clockHash "75624161520a0034adee8d01eaab8a68";
+    cm:clockHash "ae66df96acd1c3df8263afb47c049b8c";
     cm:createdAt "2024-01-01T02:10:00.011Z"^^xsd:dateTime;
-    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-    sync:hasStatement :lcrd-stmt-md5-5779e5f32213ce4142f01c8b3ddf7d0c, :lcrd-stmt-md5-f8799dd15aaa321957e1f12ecf26fec3;
+    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
-:entry-9c4afa0052fbf6bf78d6bcab30280fa8 cm:clockHash "1203068cee83c5b8a28cb68df793bc96", "26823e087858420cdfa5e055c21b8634";
+:entry-9c4afa0052fbf6bf78d6bcab30280fa8 cm:clockHash "514e4c99616741433c51bf14165f0da4";
     idx:resource ige:index .
 
-:entry-c34a65e8aaabca687ad30dc757ab9ce1 cm:clockHash "e47da075e07a2fec7dd714916ca403ff";
-    idx:resource igf:index .
-
-:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
-    cm:physicalTime 1704074400003 .
-
 :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
-    cm:physicalTime 1704088800006 .
-
-:lcrd-stmt-md5-5779e5f32213ce4142f01c8b3ddf7d0c rdf:subject :entry-9c4afa0052fbf6bf78d6bcab30280fa8;
-    cm:deletedAt "1970-01-01T00:00:00.000Z"^^xsd:dateTime .
-
-:lcrd-stmt-md5-f8799dd15aaa321957e1f12ecf26fec3 rdf:object "2024-01-01T00:00:00.014Z"^^xsd:dateTime;
-    rdf:predicate cm:createdAt;
-    rdf:subject <>;
-    cm:deletedAt "2024-01-01T06:00:00.006Z"^^xsd:dateTime .
+    cm:physicalTime 1704075000023 .
 
 :shard a idx:Shard;
-    idx:containsEntry :entry-c34a65e8aaabca687ad30dc757ab9ce1, :entry-9c4afa0052fbf6bf78d6bcab30280fa8;
+    idx:containsEntry :entry-9c4afa0052fbf6bf78d6bcab30280fa8;
     idx:isShardOf ifd:index .

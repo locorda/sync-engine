@@ -6,8 +6,8 @@
 ///
 /// **Implementation**: `asyncExpand` — 1:N fan-out; O(shards) events per cycle.
 ///
-/// **Input**: `Stream<ShardResult | PhaseComplete>`
-/// **Output**: `Stream<SyncCandidate | ShardComplete | PhaseComplete>`
+/// **Input**: `Stream<ParsedShardEvent>`
+/// **Output**: `Stream<SyncCandidateEvent>`
 library;
 
 import 'package:locorda_core/src/index/index_config_base.dart';
@@ -23,30 +23,26 @@ final _log = Logger('Stage4.ChangeDetection');
 /// Returns an asyncExpand function for Stage 4.
 ///
 /// Usage: `stream.asyncExpand(changeDetection(storage, lastSyncTimestamp))`
-///
-/// Boundaries ([PhaseComplete]) pass through unchanged.
-Stream<Object> Function(Object) changeDetection(
+Stream<SyncCandidateEvent> Function(ParsedShardEvent) changeDetection(
   Storage storage,
   int lastSyncTimestamp,
 ) {
-  return (Object event) async* {
-    if (event is PhaseComplete) {
-      yield event;
-      return;
+  return (ParsedShardEvent event) async* {
+    switch (event) {
+      case ParsedShardBoundary(:final boundary):
+        yield SyncCandidateBoundary(boundary);
+      case ParsedShard():
+        yield* _handleParsedShard(event, storage, lastSyncTimestamp);
+      case ShardResultNotModified():
+        yield* _handleNotModified(event, storage, lastSyncTimestamp);
+      case ShardResultGone():
+        yield* _handleGone(event, storage);
     }
-
-    final result = event as ShardResult;
-    yield* switch (result) {
-      ParsedShard() => _handleParsedShard(result, storage, lastSyncTimestamp),
-      ShardResultNotModified() =>
-        _handleNotModified(result, storage, lastSyncTimestamp),
-      ShardResultGone() => _handleGone(result, storage),
-    };
   };
 }
 
 /// ParsedShard: diff local entries against remote entries, classify each.
-Stream<Object> _handleParsedShard(
+Stream<SyncCandidateEvent> _handleParsedShard(
   ParsedShard parsed,
   Storage storage,
   int lastSyncTimestamp,
@@ -58,7 +54,7 @@ Stream<Object> _handleParsedShard(
   final typeIri = parsed.typeIri;
   if (typeIri == null) {
     _log.warning('ParsedShard ${shardIri.debug} has no typeIri — skipping');
-    yield ShardComplete(shardIri, shardStorageId);
+    yield SyncCandidateBoundary(ShardComplete(shardIri, shardStorageId));
     return;
   }
 
@@ -73,8 +69,7 @@ Stream<Object> _handleParsedShard(
       : null;
 
   // Build remote entry map from parsed entries + shard graph for filter values
-  final remoteEntries =
-      _buildRemoteEntryMap(parsed, filterPredicate);
+  final remoteEntries = _buildRemoteEntryMap(parsed, filterPredicate);
 
   // Load local entries
   final localEntries = await storage.getActiveIndexEntriesForShard(shardIri);
@@ -105,17 +100,17 @@ Stream<Object> _handleParsedShard(
     }
   }
 
-  yield ShardComplete(
+  yield SyncCandidateBoundary(ShardComplete(
     shardIri,
     shardStorageId,
     remoteShardGraph: parsed.decodedGraph,
     newEtag: parsed.newEtag,
     existsOnRemote: true,
-  );
+  ));
 }
 
 /// ShardNotModified: emit localOnly for locally-changed entries.
-Stream<Object> _handleNotModified(
+Stream<SyncCandidateEvent> _handleNotModified(
   ShardResultNotModified result,
   Storage storage,
   int lastSyncTimestamp,
@@ -134,12 +129,13 @@ Stream<Object> _handleNotModified(
     }
   }
 
-  yield ShardComplete(result.shardIri, result.shardStorageId,
-      existsOnRemote: result.existsOnRemote);
+  yield SyncCandidateBoundary(ShardComplete(
+      result.shardIri, result.shardStorageId,
+      existsOnRemote: result.existsOnRemote));
 }
 
 /// ShardGone: emit all local entries as remoteRemoved.
-Stream<Object> _handleGone(
+Stream<SyncCandidateEvent> _handleGone(
   ShardResultGone result,
   Storage storage,
 ) async* {
@@ -156,7 +152,8 @@ Stream<Object> _handleGone(
     );
   }
 
-  yield ShardComplete(result.shardIri, result.shardStorageId);
+  yield SyncCandidateBoundary(
+      ShardComplete(result.shardIri, result.shardStorageId));
 }
 
 // ---------------------------------------------------------------------------

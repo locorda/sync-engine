@@ -6,7 +6,7 @@
 /// **Implementation**: `asyncExpand` — 1:N async; O(1) events per sync cycle.
 ///
 /// **Input**: `Stream<SyncInput>`
-/// **Output**: `Stream<ShardRef | PhaseComplete>`
+/// **Output**: `Stream<ShardRefEvent>`
 library;
 
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
@@ -22,7 +22,7 @@ final _log = Logger('Stage1.ShardResolution');
 /// Returns an asyncExpand function for Stage 1.
 ///
 /// Usage: `inputController.stream.asyncExpand(shardResolution(storage, remoteId))`
-Stream<Object> Function(SyncInput) shardResolution(
+Stream<ShardRefEvent> Function(SyncInput) shardResolution(
   Storage storage,
   RemoteId remoteId,
 ) {
@@ -37,7 +37,8 @@ Stream<Object> Function(SyncInput) shardResolution(
 
     // Collect all shard IRIs across all indices for bulk ETag query
     final allShardIris = <IriTerm>{};
-    final indexShards = <IriTerm, (Set<IriTerm> shardIris, IndexInputInfo info)>{};
+    final indexShards =
+        <IriTerm, (Set<IriTerm> shardIris, IndexInputInfo info)>{};
 
     for (final indexIri in input.indexIris) {
       final documentIri = indexIri.getDocumentIri();
@@ -91,11 +92,11 @@ Stream<Object> Function(SyncInput) shardResolution(
       }
     }
 
-    yield PhaseComplete(
+    yield ShardRefBoundary(PhaseComplete(
       input,
       processedShardCount,
       zeroShardIndices: zeroShardIndices,
-    );
+    ));
   };
 }
 

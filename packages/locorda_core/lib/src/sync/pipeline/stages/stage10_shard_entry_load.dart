@@ -6,8 +6,8 @@
 /// **Implementation**: `asyncExpand` — boundary-reactive; all other events
 /// pass through unchanged.
 ///
-/// **Input**: `Stream<CommitResult | ShardComplete | PhaseComplete>`
-/// **Output**: `Stream<LoadedShardEntries | PhaseComplete>`
+/// **Input**: `Stream<CommittedResourceEvent>`
+/// **Output**: `Stream<LoadedShardEntriesEvent>`
 library;
 
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
@@ -19,37 +19,38 @@ import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 /// Usage: `stream.asyncExpand(shardEntryLoad(storage))`
 ///
 /// Reacts to [ShardComplete] boundaries: loads index entries and existing
-/// shard document from DB. [PhaseComplete] passes through. Other events
-/// (e.g. [CommitResult]) are consumed — they have served their purpose.
-Stream<Object> Function(Object) shardEntryLoad(Storage storage) {
-  return (Object event) async* {
-    if (event is PhaseComplete) {
-      yield event;
-      return;
+/// shard document from DB. [PhaseComplete] passes through. [CommitResult]
+/// events are consumed — they have served their purpose.
+Stream<LoadedShardEntriesEvent> Function(CommittedResourceEvent) shardEntryLoad(
+    Storage storage) {
+  return (CommittedResourceEvent event) async* {
+    switch (event) {
+      case CommitResult():
+        // consumed — doesn't propagate past shard entry load
+        break;
+      case CommittedResourceBoundary(:final boundary):
+        switch (boundary) {
+          case PhaseComplete():
+            yield LoadedShardEntriesBoundary(boundary);
+          case ShardComplete():
+            final shardIri = boundary.shardIri;
+            final shardDocumentIri = shardIri.getDocumentIri();
+
+            // Two DB queries: entries + shard document
+            final entries =
+                await storage.getActiveIndexEntriesForShard(shardIri);
+            final shardDoc = await storage.getDocument(shardDocumentIri);
+
+            yield LoadedShardEntries(
+              shardIri,
+              boundary.shardStorageId,
+              entries,
+              localDoc: shardDoc,
+              remoteShardGraph: boundary.remoteShardGraph,
+              newEtag: boundary.newEtag,
+              existsOnRemote: boundary.existsOnRemote,
+            );
+        }
     }
-
-    if (event is ShardComplete) {
-      final shardIri = event.shardIri;
-      final shardDocumentIri = shardIri.getDocumentIri();
-
-      // Two DB queries: entries + shard document
-      final entries = await storage.getActiveIndexEntriesForShard(shardIri);
-      final shardDoc = await storage.getDocument(shardDocumentIri);
-
-
-      yield LoadedShardEntries(
-        shardIri,
-        event.shardStorageId,
-        entries,
-        localDoc: shardDoc,
-        remoteShardGraph: event.remoteShardGraph,
-        newEtag: event.newEtag,
-        existsOnRemote: event.existsOnRemote,
-      );
-      return;
-    }
-
-    // CommitResult and other events are consumed — they don't propagate
-    // past the shard entry load stage.
   };
 }

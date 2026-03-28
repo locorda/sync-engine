@@ -3,8 +3,8 @@
 /// **Implementation**: `stream.map()` — synchronous, no controller, zero
 /// microtask overhead.
 ///
-/// **Input**: `Stream<FetchedShard | PhaseComplete>`
-/// **Output**: `Stream<ShardResult | PhaseComplete>`
+/// **Input**: `Stream<FetchedShardEvent>`
+/// **Output**: `Stream<ParsedShardEvent>`
 library;
 
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
@@ -15,24 +15,24 @@ import 'package:locorda_rdf_core/core.dart';
 /// Returns a map function for Stage 3 that parses fetched shards.
 ///
 /// Usage: `stream.map(shardParse(rdfCore))`
-///
-/// Boundaries ([PhaseComplete]) pass through unchanged.
-Object Function(Object) shardParse(RdfCore rdfCore) {
-  return (Object event) {
-    if (event is Boundary) return event;
-
-    final fetched = event as FetchedShard;
-    return switch (fetched) {
-      ShardContent() => _parseShardContent(fetched, rdfCore),
-      ShardNotModified() => ShardResultNotModified(
-          fetched.shardIri, fetched.shardStorageId, fetched.fetchPolicy,
-          fetched.typeIri,
-          existsOnRemote: fetched.existsOnRemote),
-      ShardGone() => ShardResultGone(
-          fetched.shardIri, fetched.shardStorageId, fetched.fetchPolicy,
-          fetched.typeIri),
-    };
-  };
+ParsedShardEvent Function(FetchedShardEvent) shardParse(RdfCore rdfCore) {
+  return (FetchedShardEvent event) => switch (event) {
+        FetchedShardBoundary(:final boundary) => ParsedShardBoundary(boundary),
+        ShardContent() => _parseShardContent(event, rdfCore),
+        ShardNotModified() => ShardResultNotModified(
+            event.shardIri,
+            event.shardStorageId,
+            event.fetchPolicy,
+            event.typeIri,
+            existsOnRemote: event.existsOnRemote,
+          ),
+        ShardGone() => ShardResultGone(
+            event.shardIri,
+            event.shardStorageId,
+            event.fetchPolicy,
+            event.typeIri,
+          ),
+      };
 }
 
 ShardResult _parseShardContent(ShardContent content, RdfCore rdfCore) {

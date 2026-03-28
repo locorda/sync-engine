@@ -7,8 +7,8 @@
 /// **Implementation**: `asyncExpand` — reacts to [PhaseComplete]; passes
 /// [ShardCommitResult] through for monitoring. Side-effects on `inputController`.
 ///
-/// **Input**: `Stream<ShardCommitResult | PhaseComplete>`
-/// **Output**: `Stream<ShardCommitResult | PhaseComplete>` (pass-through)
+/// **Input**: `Stream<CommittedShardEvent>`
+/// **Output**: `Stream<CommittedShardEvent>` (pass-through)
 library;
 
 import 'dart:async' show StreamSink;
@@ -36,104 +36,109 @@ const _maxRetries = 4;
 /// The factory is provided by [StreamingRemoteSyncOrchestrator] and
 /// encapsulates the effective config + DB queries needed to enumerate all
 /// FullIndex IRIs (from IoI entries) and subscribed GroupIndex IRIs.
-Stream<Object> Function(Object) feedback(
+Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
   // ignore: close_sinks — closed by feedback logic, not by the caller
   StreamSink<SyncInput> inputSink,
   Storage storage,
   Future<Map<IriTerm, IndexInputInfo>> Function() contentIndicesFactory,
 ) {
-  return (Object event) async* {
-    // ShardCommitResult events pass through for monitoring.
-    if (event is ShardCommitResult) {
-      yield event;
-      return;
-    }
+  return (CommittedShardEvent event) async* {
+    switch (event) {
+      case ShardCommitResult():
+        yield event;
+      case CommittedShardBoundary(:final boundary):
+        yield event; // pass through so caller can monitor
+        switch (boundary) {
+          case ShardComplete():
+            _log.warning(
+                'Unexpected ShardComplete in stage 14 — only PhaseComplete expected');
+          case PhaseComplete():
+            final source = boundary.source;
 
-    final complete = event as PhaseComplete;
-    yield complete; // pass through so caller can monitor
+            // Safety net: re-inject indices that had 0 shards.
+            if (boundary.zeroShardIndices.isNotEmpty) {
+              if (source.retryCount >= _maxRetries) {
+                _log.severe(
+                    'Indices have no shards after $_maxRetries retries: '
+                    '${boundary.zeroShardIndices}');
+                inputSink.close();
+                return;
+              }
+              _log.warning(
+                  '${boundary.zeroShardIndices.length} indices had 0 shards — '
+                  'reinjecting (retry ${source.retryCount + 1})');
+              inputSink.add(SyncInput(
+                boundary.zeroShardIndices,
+                retryCount: source.retryCount + 1,
+                indexInfos: {
+                  for (final iri in boundary.zeroShardIndices)
+                    if (source.indexInfos.containsKey(iri))
+                      iri: source.indexInfos[iri]!,
+                },
+                metaIndexClockHashes: source.metaIndexClockHashes,
+              ));
+              return;
+            }
 
-    final source = complete.source;
+            final isMetaPhase = source.isMetaIndexPhase;
 
-    // Safety net: re-inject indices that had 0 shards.
-    if (complete.zeroShardIndices.isNotEmpty) {
-      if (source.retryCount >= _maxRetries) {
-        _log.severe(
-            'Indices have no shards after $_maxRetries retries: '
-            '${complete.zeroShardIndices}');
-        inputSink.close();
-        return;
-      }
-      _log.warning(
-          '${complete.zeroShardIndices.length} indices had 0 shards — '
-          'reinjecting (retry ${source.retryCount + 1})');
-      // TODO: Fetch and parse missing index documents to repopulate index_shards.
-      // For now, re-inject and hope they recover on the next pass.
-      inputSink.add(SyncInput(
-        complete.zeroShardIndices,
-        retryCount: source.retryCount + 1,
-        indexInfos: {
-          for (final iri in complete.zeroShardIndices)
-            if (source.indexInfos.containsKey(iri)) iri: source.indexInfos[iri]!,
-        },
-        metaIndexClockHashes: source.metaIndexClockHashes,
-      ));
-      return;
-    }
+            if (isMetaPhase) {
+              // Check stability of ALL meta-index documents.
+              final snapshots = source.metaIndexClockHashes!;
+              final newHashes = <IriTerm, String>{};
+              var anyChanged = false;
 
-    final isMetaPhase = source.isMetaIndexPhase;
+              for (final entry in snapshots.entries) {
+                final docIri = entry.key;
+                final snapshot = entry.value;
+                final doc = await storage.getDocument(docIri);
+                final currentHash = doc?.document
+                        .findSingleObject<LiteralTerm>(
+                            docIri, SyncManagedDocument.crdtClockHash)
+                        ?.value ??
+                    '';
+                newHashes[docIri] = currentHash;
+                if (currentHash != snapshot) anyChanged = true;
+              }
 
-    if (isMetaPhase) {
-      // Check stability of ALL meta-index documents.
-      final snapshots = source.metaIndexClockHashes!;
-      final newHashes = <IriTerm, String>{};
-      var anyChanged = false;
+              if (anyChanged) {
+                if (source.retryCount >= _maxRetries) {
+                  _log.severe(
+                      'Meta-indices unstable after $_maxRetries retries');
+                  inputSink.close();
+                  return;
+                }
+                _log.fine(
+                    'Meta-indices changed — re-injecting (retry ${source.retryCount + 1})');
+                inputSink.add(SyncInput(
+                  source.indexIris,
+                  retryCount: source.retryCount + 1,
+                  indexInfos: source.indexInfos,
+                  metaIndexClockHashes: newHashes,
+                ));
+              } else {
+                // Meta-indices stable → transition to content phase.
+                _log.fine(
+                    'Meta-indices stable — transitioning to content phase');
 
-      for (final entry in snapshots.entries) {
-        final docIri = entry.key;
-        final snapshot = entry.value;
-        final doc = await storage.getDocument(docIri);
-        final currentHash = doc?.document
-            .findSingleObject<LiteralTerm>(docIri, SyncManagedDocument.crdtClockHash)
-            ?.value ?? '';
-        newHashes[docIri] = currentHash;
-        if (currentHash != snapshot) anyChanged = true;
-      }
+                final contentIndices = await contentIndicesFactory();
+                if (contentIndices.isEmpty) {
+                  _log.info('No content indices found — closing pipeline');
+                  inputSink.close();
+                  return;
+                }
 
-      if (anyChanged) {
-        if (source.retryCount >= _maxRetries) {
-          _log.severe('Meta-indices unstable after $_maxRetries retries');
-          inputSink.close();
-          return;
+                inputSink.add(SyncInput(
+                  contentIndices.keys.toList(),
+                  indexInfos: contentIndices,
+                ));
+              }
+            } else {
+              // Content phase complete — close the pipeline.
+              _log.fine('Content phase complete — closing pipeline');
+              inputSink.close();
+            }
         }
-        _log.fine(
-            'Meta-indices changed — re-injecting (retry ${source.retryCount + 1})');
-        // Re-inject meta-index phase with updated snapshots.
-        inputSink.add(SyncInput(
-          source.indexIris,
-          retryCount: source.retryCount + 1,
-          indexInfos: source.indexInfos,
-          metaIndexClockHashes: newHashes,
-        ));
-      } else {
-        // Meta-indices stable → transition to content phase.
-        _log.fine('Meta-indices stable — transitioning to content phase');
-
-        final contentIndices = await contentIndicesFactory();
-        if (contentIndices.isEmpty) {
-          _log.info('No content indices found — closing pipeline');
-          inputSink.close();
-          return;
-        }
-
-        inputSink.add(SyncInput(
-          contentIndices.keys.toList(),
-          indexInfos: contentIndices,
-        ));
-      }
-    } else {
-      // Content phase complete — close the pipeline.
-      _log.fine('Content phase complete — closing pipeline');
-      inputSink.close();
     }
   };
 }

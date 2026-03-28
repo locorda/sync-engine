@@ -7,8 +7,8 @@
 /// **Implementation**: `asyncExpand` with mutable batch state captured in
 /// closure — safe because `asyncExpand` processes events sequentially.
 ///
-/// **Input**: `Stream<UploadResult | ShardComplete | PhaseComplete>`
-/// **Output**: `Stream<CommitResult | ShardComplete | PhaseComplete>`
+/// **Input**: `Stream<UploadedResourceEvent>`
+/// **Output**: `Stream<CommittedResourceEvent>`
 library;
 
 import 'package:locorda_core/src/index/index_manager.dart';
@@ -28,7 +28,7 @@ const _chunkSize = 500;
 ///
 /// Flushes the batch on [ShardComplete] (so Stage 10 sees committed index
 /// entries) and on [PhaseComplete] (final flush).
-Stream<Object> Function(Object) dbCommit(
+Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
   Storage storage,
   IndexManager indexManager,
   RemoteId remoteId,
@@ -38,20 +38,27 @@ Stream<Object> Function(Object) dbCommit(
   final pendingEtags = <IriTerm, String>{};
   final pendingResourceIris = <IriTerm>[];
 
-  Future<Iterable<Object>> _flush() async {
+  Future<Iterable<CommitResult>> _flush() async {
     if (pendingSaves.isEmpty && pendingEtags.isEmpty) {
       return const [];
     }
 
-    final results = <Object>[];
+    final results = <CommitResult>[];
 
     // Chunk saves + index entries together (same chunk boundaries).
     // ETag map is usually small — always written atomically at end.
     for (var i = 0; i < pendingSaves.length; i += _chunkSize) {
-      final saveChunk =
-          pendingSaves.sublist(i, i + _chunkSize > pendingSaves.length ? pendingSaves.length : i + _chunkSize);
+      final saveChunk = pendingSaves.sublist(
+          i,
+          i + _chunkSize > pendingSaves.length
+              ? pendingSaves.length
+              : i + _chunkSize);
       final indexChunk = pendingIndexEntries.isNotEmpty
-          ? pendingIndexEntries.sublist(i, i + _chunkSize > pendingIndexEntries.length ? pendingIndexEntries.length : i + _chunkSize)
+          ? pendingIndexEntries.sublist(
+              i,
+              i + _chunkSize > pendingIndexEntries.length
+                  ? pendingIndexEntries.length
+                  : i + _chunkSize)
           : const <SaveIndexEntryRequest>[];
 
       if (storage case TransactionalStorage txStorage) {
@@ -86,88 +93,75 @@ Stream<Object> Function(Object) dbCommit(
     return results;
   }
 
-  return (Object event) async* {
-    if (event is ShardComplete) {
-      // Flush before passing ShardComplete downstream so Stage 10 sees
-      // committed index entries when it calls getActiveIndexEntriesForShard.
-      for (final r in await _flush()) {
-        yield r;
-      }
-      yield event;
-      return;
-    }
+  return (UploadedResourceEvent event) async* {
+    switch (event) {
+      case UploadedResourceBoundary(:final boundary):
+        for (final r in await _flush()) yield r;
+        yield CommittedResourceBoundary(boundary);
+      case UploadResult():
+        final mergeResult = event.mergeResult;
 
-    if (event is PhaseComplete) {
-      for (final r in await _flush()) {
-        yield r;
-      }
-      yield event;
-      return;
-    }
+        if (!mergeResult.needsDbWrite) {
+          // Still store ETag even without DB write — needed for subsequent
+          // uploads of the same resource (e.g., localOnly processed through
+          // multiple index shards).
+          final etag = event.newRemoteEtag ?? mergeResult.resourceEtag;
+          if (etag != null) {
+            final docIri = mergeResult.resourceIri.getDocumentIri();
+            pendingEtags[docIri] = etag;
+          }
+          yield CommitResult(mergeResult.resourceIri);
+          return;
+        }
 
-    final upload = event as UploadResult;
-    final mergeResult = upload.mergeResult;
+        final documentIri = mergeResult.resourceIri.getDocumentIri();
+        final now = DateTime.now().millisecondsSinceEpoch;
 
-    if (!mergeResult.needsDbWrite) {
-      // Still store ETag even without DB write — needed for subsequent
-      // uploads of the same resource (e.g., localOnly processed through
-      // multiple index shards).
-      final etag = upload.newRemoteEtag ?? mergeResult.resourceEtag;
-      if (etag != null) {
-        final docIri = mergeResult.resourceIri.getDocumentIri();
-        pendingEtags[docIri] = etag;
-      }
-      yield CommitResult(mergeResult.resourceIri);
-      return;
-    }
+        pendingSaves.add(SaveDocumentRequest(
+          documentIri: documentIri,
+          typeIri: mergeResult.typeIri,
+          document: mergeResult.mergedGraph.graph,
+          metadata: DocumentMetadata(
+            ourPhysicalClock: mergeResult.clock.physicalTime,
+            updatedAt: now,
+          ),
+          changes: const [],
+          ifMatchUpdatedAt: mergeResult.localUpdatedAt,
+        ));
 
-    final documentIri = mergeResult.resourceIri.getDocumentIri();
-    final now = DateTime.now().millisecondsSinceEpoch;
+        // Update index entries with post-merge clock hash.
+        try {
+          final indexEntries = await indexManager.prepareIndexEntryWrites(
+            document: mergeResult.mergedGraph.graph,
+            documentIri: documentIri,
+            resourceTypeIri: mergeResult.typeIri,
+            physicalTime: mergeResult.clock.physicalTime,
+            updatedAt: now,
+            missingGroupIndices: mergeResult.missingGroupIndices,
+          );
+          pendingIndexEntries.addAll(indexEntries);
+        } catch (e, st) {
+          _log.warning(
+              'prepareIndexEntryWrites failed for $documentIri: $e', e, st);
+        }
 
-    pendingSaves.add(SaveDocumentRequest(
-      documentIri: documentIri,
-      typeIri: mergeResult.typeIri,
-      document: mergeResult.mergedGraph.graph,
-      metadata: DocumentMetadata(
-        ourPhysicalClock: mergeResult.clock.physicalTime,
-        updatedAt: now,
-      ),
-      changes: const [],
-      ifMatchUpdatedAt: mergeResult.localUpdatedAt,
-    ));
+        // Capture ETag: prefer upload result, fall back to download ETag.
+        // The download ETag (from Stage 5) is needed for remoteOnly resources
+        // so that subsequent localOnly uploads can use If-Match.
+        final etag = event.newRemoteEtag ?? mergeResult.resourceEtag;
+        if (etag != null) {
+          pendingEtags[documentIri] = etag;
+        }
+        print(
+            'DEBUG S9: ${mergeResult.resourceIri.debug} uploadEtag=${event.newRemoteEtag} '
+            'resourceEtag=${mergeResult.resourceEtag} stored=$etag needsUpload=${mergeResult.needsUpload}');
 
-    // Update index entries with post-merge clock hash.
-    try {
-      final indexEntries = await indexManager.prepareIndexEntryWrites(
-        document: mergeResult.mergedGraph.graph,
-        documentIri: documentIri,
-        resourceTypeIri: mergeResult.typeIri,
-        physicalTime: mergeResult.clock.physicalTime,
-        updatedAt: now,
-        missingGroupIndices: mergeResult.missingGroupIndices,
-      );
-      pendingIndexEntries.addAll(indexEntries);
-    } catch (e, st) {
-      _log.warning('prepareIndexEntryWrites failed for $documentIri: $e', e, st);
-    }
+        pendingResourceIris.add(mergeResult.resourceIri);
 
-    // Capture ETag: prefer upload result, fall back to download ETag.
-    // The download ETag (from Stage 5) is needed for remoteOnly resources
-    // so that subsequent localOnly uploads can use If-Match.
-    final etag = upload.newRemoteEtag ?? mergeResult.resourceEtag;
-    if (etag != null) {
-      pendingEtags[documentIri] = etag;
-    }
-    print('DEBUG S9: ${mergeResult.resourceIri.debug} uploadEtag=${upload.newRemoteEtag} '
-        'resourceEtag=${mergeResult.resourceEtag} stored=$etag needsUpload=${mergeResult.needsUpload}');
-
-    pendingResourceIris.add(mergeResult.resourceIri);
-
-    // Flush when chunk is full.
-    if (pendingSaves.length >= _chunkSize) {
-      for (final r in await _flush()) {
-        yield r;
-      }
+        // Flush when chunk is full.
+        if (pendingSaves.length >= _chunkSize) {
+          for (final r in await _flush()) yield r;
+        }
     }
   };
 }

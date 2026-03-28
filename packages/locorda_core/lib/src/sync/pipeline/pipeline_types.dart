@@ -211,7 +211,7 @@ class DecodedGraphSource extends RdfGraphSource {
 // ---------------------------------------------------------------------------
 
 /// Reference to a shard to be fetched by Stage 2.
-class ShardRef {
+class ShardRef implements ShardRefEvent {
   final IriTerm indexIri;
   final IriTerm shardIri;
   final IriStorageId shardStorageId;
@@ -240,7 +240,7 @@ class ShardRef {
 // ---------------------------------------------------------------------------
 
 /// Result of fetching a shard document from remote.
-sealed class FetchedShard {
+sealed class FetchedShard implements FetchedShardEvent {
   const FetchedShard();
 }
 
@@ -318,7 +318,7 @@ class ShardEntry {
 }
 
 /// Result of parsing a fetched shard.
-sealed class ShardResult {
+sealed class ShardResult implements ParsedShardEvent {
   const ShardResult();
 }
 
@@ -397,7 +397,7 @@ enum SyncDirection {
 }
 
 /// A resource classified for sync by Stage 4.
-class SyncCandidate {
+class SyncCandidate implements SyncCandidateEvent {
   final IriTerm resourceIri;
   final IriStorageId shardStorageId;
   final SyncDirection direction;
@@ -423,7 +423,7 @@ class SyncCandidate {
 // ---------------------------------------------------------------------------
 
 /// A candidate with its remote graph source fetched.
-class FetchedCandidate {
+class FetchedCandidate implements FetchedCandidateEvent {
   final SyncCandidate candidate;
 
   /// Remote graph source — null for [SyncDirection.localOnly].
@@ -433,8 +433,7 @@ class FetchedCandidate {
   /// Null for [SyncDirection.localOnly] (no remote fetch performed).
   final String? remoteEtag;
 
-  const FetchedCandidate(this.candidate,
-      {this.remoteSource, this.remoteEtag});
+  const FetchedCandidate(this.candidate, {this.remoteSource, this.remoteEtag});
 }
 
 // ---------------------------------------------------------------------------
@@ -442,7 +441,7 @@ class FetchedCandidate {
 // ---------------------------------------------------------------------------
 
 /// A candidate with both remote and local graph sources loaded.
-class LoadedCandidate {
+class LoadedCandidate implements LoadedCandidateEvent {
   final SyncCandidate candidate;
   final RdfGraphSource? remoteSource;
 
@@ -470,7 +469,7 @@ class LoadedCandidate {
 // ---------------------------------------------------------------------------
 
 /// Result of CRDT merging a resource.
-class MergeResult {
+class MergeResult implements MergedResourceEvent {
   final IriTerm resourceIri;
 
   /// Resource type IRI, propagated for Stage 9 DB commit.
@@ -521,7 +520,7 @@ class MergeResult {
 // ---------------------------------------------------------------------------
 
 /// Result of uploading a resource to remote.
-class UploadResult {
+class UploadResult implements UploadedResourceEvent {
   final MergeResult mergeResult;
 
   /// New ETag from remote after successful upload.
@@ -535,7 +534,7 @@ class UploadResult {
 // ---------------------------------------------------------------------------
 
 /// Result of committing a resource to the local DB.
-class CommitResult {
+class CommitResult implements CommittedResourceEvent {
   final IriTerm resourceIri;
 
   const CommitResult(this.resourceIri);
@@ -546,7 +545,7 @@ class CommitResult {
 // ---------------------------------------------------------------------------
 
 /// Loaded shard entries and shard document for CRDT merge in Stage 11.
-class LoadedShardEntries {
+class LoadedShardEntries implements LoadedShardEntriesEvent {
   final IriTerm shardIri;
   final IriStorageId shardStorageId;
   final List<IndexEntryWithIri> entries;
@@ -583,7 +582,7 @@ class LoadedShardEntries {
 // ---------------------------------------------------------------------------
 
 /// Result of CRDT merging a shard document.
-class MergedShard {
+class MergedShard implements MergedShardEvent {
   final IriTerm shardIri;
   final DecodedGraphSource mergedGraph;
 
@@ -615,7 +614,7 @@ class MergedShard {
 // ---------------------------------------------------------------------------
 
 /// Result of uploading a shard document to remote.
-class UploadedShard {
+class UploadedShard implements UploadedShardEvent {
   final IriTerm shardIri;
   final MergedShard mergedShard;
 
@@ -630,19 +629,136 @@ class UploadedShard {
 // ---------------------------------------------------------------------------
 
 /// Result of committing a shard document to the local DB.
-class ShardCommitResult {
+class ShardCommitResult implements CommittedShardEvent {
   final IriTerm shardIri;
 
   const ShardCommitResult(this.shardIri);
 }
 
 // ---------------------------------------------------------------------------
-// Stage 1 output union — ShardRef or PhaseComplete
+// Per-stage sealed event hierarchies
+//
+// Each stage has a dedicated sealed event type for the stream it produces.
+// Data events implement their stage's event type directly (zero overhead).
+// Boundary events ([ShardComplete], [PhaseComplete]) are wrapped in a
+// stage-specific boundary class that carries the original [Boundary] instance,
+// allowing downstream stages to pattern-match exhaustively without casts.
 // ---------------------------------------------------------------------------
 
-/// Events flowing out of Stage 1 (Shard Resolution).
-///
-/// The stream between stages carries both data events and [Boundary] events
-/// inline. Stages that react to boundaries process them; stages that don't
-/// pass them through unchanged. The concrete data type changes at each stage
-/// boundary, but [Boundary] events are always passed through.
+/// Stream elements emitted by Stage 1 (Shard Resolution) — input to Stage 2.
+sealed class ShardRefEvent {}
+
+/// Boundary wrapper for [ShardRefEvent] streams.
+final class ShardRefBoundary implements ShardRefEvent {
+  final Boundary boundary;
+  const ShardRefBoundary(this.boundary);
+}
+
+/// Stream elements emitted by Stage 2 (Shard Fetch) — input to Stage 3.
+sealed class FetchedShardEvent {}
+
+/// Boundary wrapper for [FetchedShardEvent] streams.
+final class FetchedShardBoundary implements FetchedShardEvent {
+  final Boundary boundary;
+  const FetchedShardBoundary(this.boundary);
+}
+
+/// Stream elements emitted by Stage 3 (Shard Parse) — input to Stage 4.
+sealed class ParsedShardEvent {}
+
+/// Boundary wrapper for [ParsedShardEvent] streams.
+final class ParsedShardBoundary implements ParsedShardEvent {
+  final Boundary boundary;
+  const ParsedShardBoundary(this.boundary);
+}
+
+/// Stream elements emitted by Stage 4 (Change Detection) — input to Stage 5.
+sealed class SyncCandidateEvent {}
+
+/// Boundary wrapper for [SyncCandidateEvent] streams.
+final class SyncCandidateBoundary implements SyncCandidateEvent {
+  final Boundary boundary;
+  const SyncCandidateBoundary(this.boundary);
+}
+
+/// Stream elements emitted by Stage 5 (Resource Fetch) — input to Stage 6.
+sealed class FetchedCandidateEvent {}
+
+/// Boundary wrapper for [FetchedCandidateEvent] streams.
+final class FetchedCandidateBoundary implements FetchedCandidateEvent {
+  final Boundary boundary;
+  const FetchedCandidateBoundary(this.boundary);
+}
+
+/// Stream elements emitted by Stage 6 (Local Content Load) — input to Stage 7.
+sealed class LoadedCandidateEvent {}
+
+/// Boundary wrapper for [LoadedCandidateEvent] streams.
+final class LoadedCandidateBoundary implements LoadedCandidateEvent {
+  final Boundary boundary;
+  const LoadedCandidateBoundary(this.boundary);
+}
+
+/// Stream elements emitted by Stage 7 (CRDT Merge) — input to Stage 8.
+sealed class MergedResourceEvent {}
+
+/// Boundary wrapper for [MergedResourceEvent] streams.
+final class MergedResourceBoundary implements MergedResourceEvent {
+  final Boundary boundary;
+  const MergedResourceBoundary(this.boundary);
+}
+
+/// Stream elements emitted by Stage 8 (Resource Upload) — input to Stage 9.
+sealed class UploadedResourceEvent {}
+
+/// Boundary wrapper for [UploadedResourceEvent] streams.
+final class UploadedResourceBoundary implements UploadedResourceEvent {
+  final Boundary boundary;
+  const UploadedResourceBoundary(this.boundary);
+}
+
+/// Stream elements emitted by Stage 9 (DB Commit) — input to Stage 10.
+sealed class CommittedResourceEvent {}
+
+/// Boundary wrapper for [CommittedResourceEvent] streams.
+final class CommittedResourceBoundary implements CommittedResourceEvent {
+  final Boundary boundary;
+  const CommittedResourceBoundary(this.boundary);
+}
+
+/// Stream elements emitted by Stage 10 (Shard Entry Load) — input to Stage 11.
+sealed class LoadedShardEntriesEvent {}
+
+/// Boundary wrapper for [LoadedShardEntriesEvent] streams.
+final class LoadedShardEntriesBoundary implements LoadedShardEntriesEvent {
+  final Boundary boundary;
+  const LoadedShardEntriesBoundary(this.boundary);
+}
+
+/// Stream elements emitted by Stage 11 (Shard CRDT Merge) — input to Stage 12.
+sealed class MergedShardEvent {}
+
+/// Boundary wrapper for [MergedShardEvent] streams.
+final class MergedShardBoundary implements MergedShardEvent {
+  final Boundary boundary;
+  const MergedShardBoundary(this.boundary);
+}
+
+/// Stream elements emitted by Stage 12 (Shard Upload) — input to Stage 13.
+sealed class UploadedShardEvent {}
+
+/// Boundary wrapper for [UploadedShardEvent] streams.
+final class UploadedShardBoundary implements UploadedShardEvent {
+  final Boundary boundary;
+  const UploadedShardBoundary(this.boundary);
+}
+
+/// Stream elements emitted by Stage 13 (Shard DB Commit) — input to Stage 14.
+/// Also the terminal output type of the pipeline (Stage 14 is a pass-through).
+sealed class CommittedShardEvent {}
+
+/// Boundary wrapper for [CommittedShardEvent] streams.
+final class CommittedShardBoundary implements CommittedShardEvent {
+  final Boundary boundary;
+  const CommittedShardBoundary(this.boundary);
+}
