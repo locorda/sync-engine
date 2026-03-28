@@ -15,25 +15,24 @@ import 'package:locorda_rdf_core/core.dart';
 /// Returns a map function for Stage 3 that parses fetched shards.
 ///
 /// Usage: `stream.map(shardParse(rdfCore))`
-ParsedShardEvent Function(FetchedShardEvent) shardParse(RdfCore rdfCore) {
-  return (FetchedShardEvent event) => switch (event) {
-        PhaseComplete() => event,
-        ShardContent() => _parseShardContent(event, rdfCore),
-        ShardNotModified() => ShardResultNotModified(
-            event.shardIri,
-            event.shardStorageId,
-            event.fetchPolicy,
-            event.typeIri,
-            existsOnRemote: event.existsOnRemote,
-          ),
-        ShardGone() => ShardResultGone(
-            event.shardIri,
-            event.shardStorageId,
-            event.fetchPolicy,
-            event.typeIri,
-          ),
-      };
-}
+ParsedShardEvent Function(FetchedShardEvent) shardParse(RdfCore rdfCore) =>
+    (FetchedShardEvent event) => switch (event) {
+          PhaseComplete() => event,
+          ShardContent() => _parseShardContent(event, rdfCore),
+          ShardNotModified() => ShardResultNotModified(
+              event.shardIri,
+              event.shardStorageId,
+              event.fetchPolicy,
+              event.typeIri,
+              existsOnRemote: event.existsOnRemote,
+            ),
+          ShardGone() => ShardResultGone(
+              event.shardIri,
+              event.shardStorageId,
+              event.fetchPolicy,
+              event.typeIri,
+            ),
+        };
 
 ShardResult _parseShardContent(ShardContent content, RdfCore rdfCore) {
   // Decode the graph source
@@ -55,7 +54,7 @@ ShardResult _parseShardContent(ShardContent content, RdfCore rdfCore) {
         ?.value;
 
     if (resourceIri != null && clockHash != null) {
-      entries.add(ShardEntry(resourceIri, clockHash));
+      entries.add(ShardEntry(entryIri, resourceIri, clockHash));
     }
   }
 

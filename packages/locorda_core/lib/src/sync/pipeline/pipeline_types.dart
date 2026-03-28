@@ -334,10 +334,11 @@ class ShardGone extends FetchedShard {
 
 /// Entry within a parsed shard document.
 class ShardEntry {
+  final IriTerm entryIri;
   final IriTerm resourceIri;
   final String clockHash;
 
-  const ShardEntry(this.resourceIri, this.clockHash);
+  const ShardEntry(this.entryIri, this.resourceIri, this.clockHash);
 }
 
 /// Result of parsing a fetched shard.

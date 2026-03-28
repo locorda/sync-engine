@@ -115,7 +115,7 @@ class StreamingRemoteSyncOrchestrator {
         .map(shardParse(_rdfCore)) // Stage 3
         .asyncExpand(changeDetection(_storage, lastSyncTimestamp)) // Stage 4
         .transform(_pipelineSupport.resourceFetch()) // Stage 5
-        .asyncExpand(localContentLoad(_storage, _remoteId)) // Stage 6
+        .transform(localContentLoad(_storage, _remoteId)) // Stage 6
         .asyncExpand(crdtMerge(
             _merger, _mergeContractLoader, _reconciler, _rdfCore)) // Stage 7
         .transform(_pipelineSupport.resourceUpload()) // Stage 8

@@ -14,7 +14,6 @@ import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
-import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 
@@ -172,38 +171,23 @@ Map<IriTerm, _EntryData> _buildRemoteEntryMap(
   ParsedShard parsed,
   IriTerm? filterPredicate,
 ) {
-  final result = <IriTerm, _EntryData>{};
-
   if (filterPredicate == null) {
     // Fast path: no filter, just use parsed entries directly
-    for (final entry in parsed.entries) {
-      result[entry.resourceIri] = _EntryData(entry.clockHash);
-    }
-    return result;
+    return {
+      for (final entry in parsed.entries)
+        entry.resourceIri: _EntryData(entry.clockHash)
+    };
   }
-
-  // Need filter values: walk the shard graph's containsEntry triples
   final graph = parsed.decodedGraph.graph;
-  final entryIris = graph.getMultiValueObjects<IriTerm>(
-      parsed.shardIri, IdxShard.containsEntry);
-
-  for (final entryIri in entryIris) {
-    final resourceIri =
-        graph.findSingleObject<IriTerm>(entryIri, IdxShardEntry.resource);
-    final clockHash = graph
-        .findSingleObject<LiteralTerm>(entryIri, IdxShardEntry.crdtClockHash)
-        ?.value;
-
-    if (resourceIri != null && clockHash != null) {
-      final filterValues =
-          graph.getMultiValueObjects<RdfObject>(entryIri, filterPredicate);
-      result[resourceIri] = _EntryData(
-        clockHash,
-        filterValues: filterValues.isNotEmpty ? filterValues : null,
-      );
-    }
+  final result = <IriTerm, _EntryData>{};
+  for (final entry in parsed.entries) {
+    final filterValues =
+        graph.getMultiValueObjects<RdfObject>(entry.entryIri, filterPredicate);
+    result[entry.resourceIri] = _EntryData(
+      entry.clockHash,
+      filterValues: filterValues.isNotEmpty ? filterValues : null,
+    );
   }
-
   return result;
 }
 
