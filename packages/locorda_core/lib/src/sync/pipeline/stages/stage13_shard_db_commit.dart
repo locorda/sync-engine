@@ -73,9 +73,9 @@ Stream<CommittedShardEvent> Function(UploadedShardEvent) shardDbCommit(
 
   return (UploadedShardEvent event) async* {
     switch (event) {
-      case UploadedShardBoundary(:final boundary):
+      case PhaseComplete():
         for (final r in await _flush()) yield r;
-        yield CommittedShardBoundary(boundary);
+        yield event;
       case UploadedShard():
         final merged = event.mergedShard;
         final shardDocumentIri = merged.shardIri.getDocumentIri();

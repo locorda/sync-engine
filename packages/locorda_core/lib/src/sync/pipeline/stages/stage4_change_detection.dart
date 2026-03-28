@@ -29,8 +29,8 @@ Stream<SyncCandidateEvent> Function(ParsedShardEvent) changeDetection(
 ) {
   return (ParsedShardEvent event) async* {
     switch (event) {
-      case ParsedShardBoundary(:final boundary):
-        yield SyncCandidateBoundary(boundary);
+      case PhaseComplete():
+        yield event;
       case ParsedShard():
         yield* _handleParsedShard(event, storage, lastSyncTimestamp);
       case ShardResultNotModified():
@@ -54,7 +54,7 @@ Stream<SyncCandidateEvent> _handleParsedShard(
   final typeIri = parsed.typeIri;
   if (typeIri == null) {
     _log.warning('ParsedShard ${shardIri.debug} has no typeIri — skipping');
-    yield SyncCandidateBoundary(ShardComplete(shardIri, shardStorageId));
+    yield ShardComplete(shardIri, shardStorageId);
     return;
   }
 
@@ -100,13 +100,13 @@ Stream<SyncCandidateEvent> _handleParsedShard(
     }
   }
 
-  yield SyncCandidateBoundary(ShardComplete(
+  yield ShardComplete(
     shardIri,
     shardStorageId,
     remoteShardGraph: parsed.decodedGraph,
     newEtag: parsed.newEtag,
     existsOnRemote: true,
-  ));
+  );
 }
 
 /// ShardNotModified: emit localOnly for locally-changed entries.
@@ -129,9 +129,8 @@ Stream<SyncCandidateEvent> _handleNotModified(
     }
   }
 
-  yield SyncCandidateBoundary(ShardComplete(
-      result.shardIri, result.shardStorageId,
-      existsOnRemote: result.existsOnRemote));
+  yield ShardComplete(result.shardIri, result.shardStorageId,
+      existsOnRemote: result.existsOnRemote);
 }
 
 /// ShardGone: emit all local entries as remoteRemoved.
@@ -152,8 +151,7 @@ Stream<SyncCandidateEvent> _handleGone(
     );
   }
 
-  yield SyncCandidateBoundary(
-      ShardComplete(result.shardIri, result.shardStorageId));
+  yield ShardComplete(result.shardIri, result.shardStorageId);
 }
 
 // ---------------------------------------------------------------------------

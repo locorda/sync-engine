@@ -17,7 +17,7 @@ import 'package:locorda_rdf_core/core.dart';
 /// Usage: `stream.map(shardParse(rdfCore))`
 ParsedShardEvent Function(FetchedShardEvent) shardParse(RdfCore rdfCore) {
   return (FetchedShardEvent event) => switch (event) {
-        FetchedShardBoundary(:final boundary) => ParsedShardBoundary(boundary),
+        PhaseComplete() => event,
         ShardContent() => _parseShardContent(event, rdfCore),
         ShardNotModified() => ShardResultNotModified(
             event.shardIri,

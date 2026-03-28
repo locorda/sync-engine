@@ -95,9 +95,12 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
 
   return (UploadedResourceEvent event) async* {
     switch (event) {
-      case UploadedResourceBoundary(:final boundary):
+      case PhaseComplete():
         for (final r in await _flush()) yield r;
-        yield CommittedResourceBoundary(boundary);
+        yield event;
+      case ShardComplete():
+        for (final r in await _flush()) yield r;
+        yield event;
       case UploadResult():
         final mergeResult = event.mergeResult;
 

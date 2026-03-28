@@ -90,7 +90,15 @@ sealed class Boundary {
 /// All resources in this shard have been emitted / processed.
 ///
 /// Introduced by Stage 4 (Change Detection) after the 1:N fan-out.
-class ShardComplete extends Boundary {
+/// Flows from Stage 4 through Stage 9, then consumed by Stage 10.
+class ShardComplete extends Boundary
+    implements
+        SyncCandidateEvent,
+        FetchedCandidateEvent,
+        LoadedCandidateEvent,
+        MergedResourceEvent,
+        UploadedResourceEvent,
+        CommittedResourceEvent {
   final IriTerm shardIri;
 
   /// Storage-internal identifier for the shard IRI.
@@ -121,7 +129,22 @@ class ShardComplete extends Boundary {
 
 /// All shards of this [SyncInput] batch have been emitted / processed.
 /// Signals the end of a complete pipeline pass.
-class PhaseComplete extends Boundary {
+/// Flows through all 13 stage boundaries unchanged.
+class PhaseComplete extends Boundary
+    implements
+        ShardRefEvent,
+        FetchedShardEvent,
+        ParsedShardEvent,
+        SyncCandidateEvent,
+        FetchedCandidateEvent,
+        LoadedCandidateEvent,
+        MergedResourceEvent,
+        UploadedResourceEvent,
+        CommittedResourceEvent,
+        LoadedShardEntriesEvent,
+        MergedShardEvent,
+        UploadedShardEvent,
+        CommittedShardEvent {
   final SyncInput source;
   final int processedShardCount;
 
@@ -640,125 +663,50 @@ class ShardCommitResult implements CommittedShardEvent {
 //
 // Each stage has a dedicated sealed event type for the stream it produces.
 // Data events implement their stage's event type directly (zero overhead).
-// Boundary events ([ShardComplete], [PhaseComplete]) are wrapped in a
-// stage-specific boundary class that carries the original [Boundary] instance,
-// allowing downstream stages to pattern-match exhaustively without casts.
+// Boundary events ([ShardComplete], [PhaseComplete]) implement every event
+// interface they flow through, so they pass through stage switches as-is —
+// no wrapper allocations, no casts.
+//
+// [ShardComplete] implements stages 4–9 (introduced at 4, consumed at 10).
+// [PhaseComplete] implements all 13 stage event types.
 // ---------------------------------------------------------------------------
 
 /// Stream elements emitted by Stage 1 (Shard Resolution) — input to Stage 2.
 sealed class ShardRefEvent {}
 
-/// Boundary wrapper for [ShardRefEvent] streams.
-final class ShardRefBoundary implements ShardRefEvent {
-  final Boundary boundary;
-  const ShardRefBoundary(this.boundary);
-}
-
 /// Stream elements emitted by Stage 2 (Shard Fetch) — input to Stage 3.
 sealed class FetchedShardEvent {}
-
-/// Boundary wrapper for [FetchedShardEvent] streams.
-final class FetchedShardBoundary implements FetchedShardEvent {
-  final Boundary boundary;
-  const FetchedShardBoundary(this.boundary);
-}
 
 /// Stream elements emitted by Stage 3 (Shard Parse) — input to Stage 4.
 sealed class ParsedShardEvent {}
 
-/// Boundary wrapper for [ParsedShardEvent] streams.
-final class ParsedShardBoundary implements ParsedShardEvent {
-  final Boundary boundary;
-  const ParsedShardBoundary(this.boundary);
-}
-
 /// Stream elements emitted by Stage 4 (Change Detection) — input to Stage 5.
 sealed class SyncCandidateEvent {}
-
-/// Boundary wrapper for [SyncCandidateEvent] streams.
-final class SyncCandidateBoundary implements SyncCandidateEvent {
-  final Boundary boundary;
-  const SyncCandidateBoundary(this.boundary);
-}
 
 /// Stream elements emitted by Stage 5 (Resource Fetch) — input to Stage 6.
 sealed class FetchedCandidateEvent {}
 
-/// Boundary wrapper for [FetchedCandidateEvent] streams.
-final class FetchedCandidateBoundary implements FetchedCandidateEvent {
-  final Boundary boundary;
-  const FetchedCandidateBoundary(this.boundary);
-}
-
 /// Stream elements emitted by Stage 6 (Local Content Load) — input to Stage 7.
 sealed class LoadedCandidateEvent {}
-
-/// Boundary wrapper for [LoadedCandidateEvent] streams.
-final class LoadedCandidateBoundary implements LoadedCandidateEvent {
-  final Boundary boundary;
-  const LoadedCandidateBoundary(this.boundary);
-}
 
 /// Stream elements emitted by Stage 7 (CRDT Merge) — input to Stage 8.
 sealed class MergedResourceEvent {}
 
-/// Boundary wrapper for [MergedResourceEvent] streams.
-final class MergedResourceBoundary implements MergedResourceEvent {
-  final Boundary boundary;
-  const MergedResourceBoundary(this.boundary);
-}
-
 /// Stream elements emitted by Stage 8 (Resource Upload) — input to Stage 9.
 sealed class UploadedResourceEvent {}
-
-/// Boundary wrapper for [UploadedResourceEvent] streams.
-final class UploadedResourceBoundary implements UploadedResourceEvent {
-  final Boundary boundary;
-  const UploadedResourceBoundary(this.boundary);
-}
 
 /// Stream elements emitted by Stage 9 (DB Commit) — input to Stage 10.
 sealed class CommittedResourceEvent {}
 
-/// Boundary wrapper for [CommittedResourceEvent] streams.
-final class CommittedResourceBoundary implements CommittedResourceEvent {
-  final Boundary boundary;
-  const CommittedResourceBoundary(this.boundary);
-}
-
 /// Stream elements emitted by Stage 10 (Shard Entry Load) — input to Stage 11.
 sealed class LoadedShardEntriesEvent {}
-
-/// Boundary wrapper for [LoadedShardEntriesEvent] streams.
-final class LoadedShardEntriesBoundary implements LoadedShardEntriesEvent {
-  final Boundary boundary;
-  const LoadedShardEntriesBoundary(this.boundary);
-}
 
 /// Stream elements emitted by Stage 11 (Shard CRDT Merge) — input to Stage 12.
 sealed class MergedShardEvent {}
 
-/// Boundary wrapper for [MergedShardEvent] streams.
-final class MergedShardBoundary implements MergedShardEvent {
-  final Boundary boundary;
-  const MergedShardBoundary(this.boundary);
-}
-
 /// Stream elements emitted by Stage 12 (Shard Upload) — input to Stage 13.
 sealed class UploadedShardEvent {}
-
-/// Boundary wrapper for [UploadedShardEvent] streams.
-final class UploadedShardBoundary implements UploadedShardEvent {
-  final Boundary boundary;
-  const UploadedShardBoundary(this.boundary);
-}
 
 /// Stream elements emitted by Stage 13 (Shard DB Commit) — input to Stage 14.
 /// Also the terminal output type of the pipeline (Stage 14 is a pass-through).
 sealed class CommittedShardEvent {}
-
-/// Boundary wrapper for [CommittedShardEvent] streams.
-final class CommittedShardBoundary implements CommittedShardEvent {
-  final Boundary boundary;
-  const CommittedShardBoundary(this.boundary);
-}

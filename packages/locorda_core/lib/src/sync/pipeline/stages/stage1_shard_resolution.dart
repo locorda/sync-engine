@@ -92,11 +92,11 @@ Stream<ShardRefEvent> Function(SyncInput) shardResolution(
       }
     }
 
-    yield ShardRefBoundary(PhaseComplete(
+    yield PhaseComplete(
       input,
       processedShardCount,
       zeroShardIndices: zeroShardIndices,
-    ));
+    );
   };
 }
 

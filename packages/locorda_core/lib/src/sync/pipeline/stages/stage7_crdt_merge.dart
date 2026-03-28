@@ -16,10 +16,8 @@ import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart' as pipeline
     show
         MergeResult,
         MergedResourceEvent,
-        MergedResourceBoundary,
         LoadedCandidateEvent,
-        LoadedCandidate,
-        LoadedCandidateBoundary;
+        LoadedCandidate;
 import 'package:locorda_core/src/sync/remote_document_merger.dart'
     as merger_lib;
 import 'package:locorda_rdf_core/core.dart';
@@ -39,8 +37,10 @@ Stream<pipeline.MergedResourceEvent> Function(pipeline.LoadedCandidateEvent)
 ) {
   return (pipeline.LoadedCandidateEvent event) async* {
     switch (event) {
-      case pipeline.LoadedCandidateBoundary(:final boundary):
-        yield pipeline.MergedResourceBoundary(boundary);
+      case PhaseComplete():
+        yield event;
+      case ShardComplete():
+        yield event;
       case pipeline.LoadedCandidate():
         yield* _mergeLoaded(
             event, merger, mergeContractLoader, reconciler, rdfCore);

@@ -348,8 +348,8 @@ class InMemorySyncStorage extends RemoteSyncStorage
   StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch() =>
       _asyncSafeTransformer((ShardRefEvent event) async* {
         switch (event) {
-          case ShardRefBoundary(:final boundary):
-            yield FetchedShardBoundary(boundary);
+          case PhaseComplete():
+            yield event;
           case ShardRef():
             final docIri = event.shardIri.getDocumentIri();
             final result = await download(
@@ -385,8 +385,10 @@ class InMemorySyncStorage extends RemoteSyncStorage
       resourceFetch() =>
           _asyncSafeTransformer((SyncCandidateEvent event) async* {
             switch (event) {
-              case SyncCandidateBoundary(:final boundary):
-                yield FetchedCandidateBoundary(boundary);
+              case PhaseComplete():
+                yield event;
+              case ShardComplete():
+                yield event;
               case SyncCandidate():
                 if (event.direction == SyncDirection.localOnly ||
                     event.direction == SyncDirection.remoteRemoved) {
@@ -413,8 +415,10 @@ class InMemorySyncStorage extends RemoteSyncStorage
       resourceUpload() =>
           _asyncSafeTransformer((MergedResourceEvent event) async* {
             switch (event) {
-              case MergedResourceBoundary(:final boundary):
-                yield UploadedResourceBoundary(boundary);
+              case PhaseComplete():
+                yield event;
+              case ShardComplete():
+                yield event;
               case MergeResult():
                 if (!event.needsUpload) {
                   yield UploadResult(event);
@@ -442,8 +446,8 @@ class InMemorySyncStorage extends RemoteSyncStorage
   StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload() =>
       _asyncSafeTransformer((MergedShardEvent event) async* {
         switch (event) {
-          case MergedShardBoundary(:final boundary):
-            yield UploadedShardBoundary(boundary);
+          case PhaseComplete():
+            yield event;
           case MergedShard():
             if (!event.needsUpload) {
               yield UploadedShard(event.shardIri, event);

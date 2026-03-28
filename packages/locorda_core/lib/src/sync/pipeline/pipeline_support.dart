@@ -27,16 +27,16 @@ import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 abstract interface class RemoteSyncPipelineSupport {
   /// Stage 2: Shard Fetch — conditionally download shard documents.
   ///
-  /// Input: [ShardRefEvent] ([ShardRef] data + [ShardRefBoundary] boundaries).
-  /// Output: [FetchedShardEvent] ([FetchedShard] variants + [FetchedShardBoundary] boundaries).
+  /// Input: [ShardRefEvent] ([ShardRef] data + [PhaseComplete] boundary).
+  /// Output: [FetchedShardEvent] ([FetchedShard] variants + [PhaseComplete] boundary).
   ///
   /// Must buffer boundary events until all in-flight fetches complete, then forward.
   StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch();
 
   /// Stage 5: Resource Fetch — download resource graphs.
   ///
-  /// Input: [SyncCandidateEvent] ([SyncCandidate] data + [SyncCandidateBoundary] boundaries).
-  /// Output: [FetchedCandidateEvent] ([FetchedCandidate] data + [FetchedCandidateBoundary] boundaries).
+  /// Input: [SyncCandidateEvent] ([SyncCandidate] data + [PhaseComplete]/[ShardComplete] boundaries).
+  /// Output: [FetchedCandidateEvent] ([FetchedCandidate] data + [PhaseComplete]/[ShardComplete] boundaries).
   ///
   /// `remoteOnly` / `conflictCandidate` → fetch from remote.
   /// `localOnly` / `remoteRemoved` → pass through as [FetchedCandidate] without fetch.
@@ -44,8 +44,8 @@ abstract interface class RemoteSyncPipelineSupport {
 
   /// Stage 8: Resource Upload — upload merged resources.
   ///
-  /// Input: [MergedResourceEvent] ([MergeResult] data + [MergedResourceBoundary] boundaries).
-  /// Output: [UploadedResourceEvent] ([UploadResult] data + [UploadedResourceBoundary] boundaries).
+  /// Input: [MergedResourceEvent] ([MergeResult] data + [PhaseComplete]/[ShardComplete] boundaries).
+  /// Output: [UploadedResourceEvent] ([UploadResult] data + [PhaseComplete]/[ShardComplete] boundaries).
   ///
   /// `needsUpload == true` → encode and upload to remote.
   /// Otherwise → pass through as [UploadResult].
@@ -54,7 +54,7 @@ abstract interface class RemoteSyncPipelineSupport {
 
   /// Stage 12: Shard Upload — upload merged shard documents.
   ///
-  /// Input: [MergedShardEvent] ([MergedShard] data + [MergedShardBoundary] boundaries).
-  /// Output: [UploadedShardEvent] ([UploadedShard] data + [UploadedShardBoundary] boundaries).
+  /// Input: [MergedShardEvent] ([MergedShard] data + [PhaseComplete] boundary).
+  /// Output: [UploadedShardEvent] ([UploadedShard] data + [PhaseComplete] boundary).
   StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload();
 }

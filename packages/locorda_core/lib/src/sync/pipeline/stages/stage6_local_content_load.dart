@@ -27,8 +27,10 @@ Stream<LoadedCandidateEvent> Function(FetchedCandidateEvent) localContentLoad(
 ) {
   return (FetchedCandidateEvent event) async* {
     switch (event) {
-      case FetchedCandidateBoundary(:final boundary):
-        yield LoadedCandidateBoundary(boundary);
+      case PhaseComplete():
+        yield event;
+      case  ShardComplete():
+        yield event;
       case FetchedCandidate():
         final candidate = event.candidate;
         final documentIri = candidate.resourceIri.getDocumentIri();

@@ -32,8 +32,8 @@ Stream<MergedShardEvent> Function(LoadedShardEntriesEvent) shardCrdtMerge(
 ) {
   return (LoadedShardEntriesEvent event) async* {
     switch (event) {
-      case LoadedShardEntriesBoundary(:final boundary):
-        yield MergedShardBoundary(boundary);
+      case PhaseComplete():
+        yield event;
       case LoadedShardEntries():
         yield* _mergeShardEntries(event, documentManager, shardDocGen, rdfCore);
     }
