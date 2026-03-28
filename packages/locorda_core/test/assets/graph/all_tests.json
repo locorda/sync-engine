@@ -1476,10 +1476,17 @@
               "input_resource": "test_cases/save/33_update_group_membership/input_resource_initial.ttl",
               "action_ts": {
                 "save": "2024-01-01T02:00:00Z"
+              },
+              "expected": {
+                "documents_dir": "test_cases/save/33_update_group_membership/step_00_save_initial/storage"
               }
             },
             {
-              "action": "sync"
+              "action": "sync",
+              "expected": {
+                "documents_dir": "test_cases/save/33_update_group_membership/step_01_sync/storage",
+                "remote_documents_dir": "test_cases/save/33_update_group_membership/step_01_sync/remote"
+              }
             },
             {
               "action": "save",
@@ -1503,7 +1510,9 @@
                     "id": "recipe123",
                     "path": "test_cases/save/33_update_group_membership/expected_stored_graph.ttl"
                   }
-                ]
+                ],
+                "documents_dir": "test_cases/save/33_update_group_membership/step_02_save_updated/storage",
+                "remote_documents_dir": "test_cases/save/33_update_group_membership/step_02_save_updated/remote"
               }
             },
             {
@@ -1523,7 +1532,9 @@
                     "id": "index-grouped-f615be90/groups/11_07ebfdc1c615e5711a349104712f9126/shard-mod-md5-1-0-v1_0_0",
                     "path": "test_cases/save/33_update_group_membership/expected_shard_main_course.ttl"
                   }
-                ]
+                ],
+                "documents_dir": "test_cases/save/33_update_group_membership/step_03_sync/storage",
+                "remote_documents_dir": "test_cases/save/33_update_group_membership/step_03_sync/remote"
               }
             }
           ]
@@ -1540,6 +1551,9 @@
               "input_resource": "test_cases/save/34_add_group_membership/input_resource_initial.ttl",
               "action_ts": {
                 "save": "2024-01-01T02:00:00Z"
+              },
+              "expected": {
+                "documents_dir": "test_cases/save/34_add_group_membership/step_00_save_initial/storage"
               }
             },
             {
@@ -1561,7 +1575,8 @@
                     "id": "recipe123",
                     "path": "test_cases/save/34_add_group_membership/expected_stored_graph.ttl"
                   }
-                ]
+                ],
+                "documents_dir": "test_cases/save/34_add_group_membership/step_01_save_updated/storage"
               },
               "action_ts": {
                 "save": "2024-01-01T04:00:00Z"
@@ -1584,7 +1599,9 @@
                     "id": "index-grouped-f615be90/groups/11_c7b4778d91809fb3b0fc8f1652b38ab9/shard-mod-md5-1-0-v1_0_0",
                     "path": "test_cases/save/34_add_group_membership/expected_shard_quick_meals.ttl"
                   }
-                ]
+                ],
+                "documents_dir": "test_cases/save/34_add_group_membership/step_02_sync/storage",
+                "remote_documents_dir": "test_cases/save/34_add_group_membership/step_02_sync/remote"
               }
             }
           ]
@@ -1601,10 +1618,17 @@
               "input_resource": "test_cases/save/35_remove_group_membership/input_resource_initial.ttl",
               "action_ts": {
                 "save": "2024-01-01T02:00:00Z"
+              },
+              "expected": {
+                "documents_dir": "test_cases/save/35_remove_group_membership/step_00_save_initial/storage"
               }
             },
             {
-              "action": "sync"
+              "action": "sync",
+              "expected": {
+                "documents_dir": "test_cases/save/35_remove_group_membership/step_01_sync/storage",
+                "remote_documents_dir": "test_cases/save/35_remove_group_membership/step_01_sync/remote"
+              }
             },
             {
               "action": "save",
@@ -1625,7 +1649,9 @@
                     "id": "recipe123",
                     "path": "test_cases/save/35_remove_group_membership/expected_stored_graph.ttl"
                   }
-                ]
+                ],
+                "documents_dir": "test_cases/save/35_remove_group_membership/step_02_save_updated/storage",
+                "remote_documents_dir": "test_cases/save/35_remove_group_membership/step_02_save_updated/remote"
               },
               "action_ts": {
                 "save": "2024-01-01T04:00:00Z"
@@ -1648,7 +1674,9 @@
                     "id": "index-grouped-f615be90/groups/11_c7b4778d91809fb3b0fc8f1652b38ab9/shard-mod-md5-1-0-v1_0_0",
                     "path": "test_cases/save/35_remove_group_membership/expected_shard_quick_meals_after.ttl"
                   }
-                ]
+                ],
+                "documents_dir": "test_cases/save/35_remove_group_membership/step_03_sync/storage",
+                "remote_documents_dir": "test_cases/save/35_remove_group_membership/step_03_sync/remote"
               }
             }
           ]
