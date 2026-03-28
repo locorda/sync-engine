@@ -28,6 +28,10 @@ ns4:entry-54d3e307b28129cf784975e808c31ba7 cm:clockHash "0e2d9d080342eb7de038267
     idx:indexesClass schema:Recipe;
     idx:resource ns3:groupIndexTemplate .
 
+ns4:entry-ce394f730640668924968eddf09c01bc cm:clockHash "d81f5f9f3826217a54bf165c5ea613e1";
+    idx:indexesClass idx:GroupIndexTemplate;
+    idx:resource ns1:index .
+
 ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
     cm:physicalTime 1704067200006 .
 
@@ -35,5 +39,5 @@ ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
     cm:physicalTime 1704075000006 .
 
 ns4:shard a idx:Shard;
-    idx:containsEntry ns4:entry-54d3e307b28129cf784975e808c31ba7, ns4:entry-1e411ea3d0723c6581c8fe31e69280be;
+    idx:containsEntry ns4:entry-54d3e307b28129cf784975e808c31ba7, ns4:entry-1e411ea3d0723c6581c8fe31e69280be, ns4:entry-ce394f730640668924968eddf09c01bc;
     idx:isShardOf ns1:index .

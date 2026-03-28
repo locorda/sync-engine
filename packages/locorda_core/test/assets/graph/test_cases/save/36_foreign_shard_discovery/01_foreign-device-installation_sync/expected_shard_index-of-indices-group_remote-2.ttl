@@ -23,9 +23,13 @@ ns3:entry-1e411ea3d0723c6581c8fe31e69280be cm:clockHash "7242c129bbfa5ae58fbcc1d
     idx:indexesClass schema:Recipe;
     idx:resource ns2:groupIndexTemplate .
 
+ns3:entry-ce394f730640668924968eddf09c01bc cm:clockHash "ee3544d03bfc955bfe2c62144e76c957";
+    idx:indexesClass idx:GroupIndexTemplate;
+    idx:resource ns1:index .
+
 ns3:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
     cm:physicalTime 1704067200006 .
 
 ns3:shard a idx:Shard;
-    idx:containsEntry ns3:entry-1e411ea3d0723c6581c8fe31e69280be;
+    idx:containsEntry ns3:entry-1e411ea3d0723c6581c8fe31e69280be, ns3:entry-ce394f730640668924968eddf09c01bc;
     idx:isShardOf ns1:index .

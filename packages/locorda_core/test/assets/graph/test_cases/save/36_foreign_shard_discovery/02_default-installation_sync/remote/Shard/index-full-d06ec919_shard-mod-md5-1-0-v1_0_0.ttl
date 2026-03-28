@@ -1,0 +1,36 @@
+@base <https://example.com/shard/index-full-d06ec919%2Fshard-mod-md5-1-0-v1_0_0> .
+@prefix : <#> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix ifd: <https://example.com/fullindex/index-full-d06ec919%2Findex#> .
+@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<> a sync:ManagedDocument;
+    foaf:primaryTopic :shard;
+    cm:clockHash "3e3d1b17273252af06d945ffbb2a7ee6";
+    cm:createdAt "2024-01-01T02:10:00.011Z"^^xsd:dateTime, "2024-01-01T00:00:00.014Z"^^xsd:dateTime;
+    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    sync:hasStatement :lcrd-stmt-md5-5779e5f32213ce4142f01c8b3ddf7d0c, :lcrd-stmt-md5-346cf86b860998ba34d2b21609e7c825;
+    sync:isGovernedBy (mappings:shard-v1);
+    sync:managedResourceType idx:Shard .
+
+:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
+    cm:physicalTime 1704074400003 .
+
+:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
+    cm:physicalTime 0 .
+
+:lcrd-stmt-md5-346cf86b860998ba34d2b21609e7c825 rdf:object :entry-9c4afa0052fbf6bf78d6bcab30280fa8;
+    rdf:predicate idx:containsEntry;
+    rdf:subject :shard;
+    cm:deletedAt "1970-01-01T00:00:00.000Z"^^xsd:dateTime .
+
+:lcrd-stmt-md5-5779e5f32213ce4142f01c8b3ddf7d0c rdf:subject :entry-9c4afa0052fbf6bf78d6bcab30280fa8;
+    cm:deletedAt "1970-01-01T00:00:00.000Z"^^xsd:dateTime .
+
+:shard a idx:Shard;
+    idx:isShardOf ifd:index .
