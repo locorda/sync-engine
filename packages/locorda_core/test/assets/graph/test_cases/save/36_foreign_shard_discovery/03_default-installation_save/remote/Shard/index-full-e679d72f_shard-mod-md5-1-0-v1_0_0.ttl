@@ -11,17 +11,17 @@
 
 <> a sync:ManagedDocument;
     foaf:primaryTopic :shard;
-    cm:clockHash "e4d7a0461521dcbd5e31107bc8e436af";
-    cm:createdAt "2024-01-01T02:10:00.039Z"^^xsd:dateTime;
-    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:clockHash "3ebd8efbfb91dca25606ca7fff4e742e";
+    cm:createdAt "2024-01-01T00:00:00.008Z"^^xsd:dateTime;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
 :entry-c93b50159754d7a665032fc90e56af1d cm:clockHash "a440f29c704d4aaec880b50db767fa0b";
     idx:resource </recipe/chocolate-cake#it> .
 
-:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
-    cm:physicalTime 1704075000038 .
+:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
+    cm:physicalTime 1704074400000 .
 
 :shard a idx:Shard;
     idx:containsEntry :entry-c93b50159754d7a665032fc90e56af1d;

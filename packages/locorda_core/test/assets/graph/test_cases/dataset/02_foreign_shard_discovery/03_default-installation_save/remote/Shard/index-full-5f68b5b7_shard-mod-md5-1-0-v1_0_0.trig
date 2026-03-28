@@ -1,0 +1,103 @@
+@base <https://example.com/shard/index-full-5f68b5b7%2Fshard-mod-md5-1-0-v1_0_0> .
+@prefix : <#> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix if5: <https://example.com/fullindex/index-full-5f68b5b7%2Findex#> .
+@prefix ige: <https://example.com/groupindextemplate/index-grouped-e093655c%2Findex#> .
+@prefix igf: <https://example.com/groupindextemplate/index-grouped-f615be90%2Findex#> .
+@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix schema: <https://schema.org/> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<> a sync:ManagedDocument;
+    foaf:primaryTopic :shard;
+    cm:clockHash "cffc6e578ffc852738518b23b42f74e4";
+    cm:createdAt "2024-01-01T02:10:00.003Z"^^xsd:dateTime, "2024-01-01T00:00:00.003Z"^^xsd:dateTime;
+    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    sync:isGovernedBy (mappings:shard-v1);
+    sync:managedResourceType idx:Shard .
+
+:entry-1e411ea3d0723c6581c8fe31e69280be cm:clockHash "7242c129bbfa5ae58fbcc1d774a68203";
+    idx:indexesClass schema:Recipe;
+    idx:resource ige:groupIndexTemplate .
+
+:entry-54d3e307b28129cf784975e808c31ba7 cm:clockHash "0e2d9d080342eb7de038267d0e5383a5";
+    idx:indexesClass schema:Recipe;
+    idx:resource igf:groupIndexTemplate .
+
+:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
+    cm:physicalTime 1704067200006 .
+
+:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
+    cm:physicalTime 1704075000006 .
+
+:shard a idx:Shard;
+    idx:containsEntry :entry-54d3e307b28129cf784975e808c31ba7, :entry-1e411ea3d0723c6581c8fe31e69280be;
+    idx:isShardOf if5:index .
+
+GRAPH <https://example.com/groupindextemplate/index-grouped-e093655c%2Findex> {
+  <https://example.com/groupindextemplate/index-grouped-e093655c%2Findex> a sync:ManagedDocument;
+      foaf:primaryTopic ige:groupIndexTemplate;
+      cm:clockHash "7242c129bbfa5ae58fbcc1d774a68203";
+      cm:createdAt "2024-01-01T00:00:00.007Z"^^xsd:dateTime;
+      cm:hasClockEntry ige:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      idx:belongsToIndexShard :shard;
+      sync:hasBlankNodeMapping ige:lcrd-ibn-md5-6463ec91078059cd80e9c4068b39f9ff, ige:lcrd-ibn-md5-161bc2f9cafbc0e9308e262e23c7a0b9;
+      sync:isGovernedBy (mappings:index-v1);
+      sync:managedResourceType idx:GroupIndexTemplate .
+  ige:groupIndexTemplate a idx:GroupIndexTemplate;
+      idx:groupedBy _:b2;
+      idx:indexesClass schema:Recipe;
+      idx:readBy </clientinstallation/foreign-device-installation#installation>;
+      idx:shardingAlgorithm [
+          a idx:ModuloHashSharding ;
+          idx:hashAlgorithm "md5" ;
+          idx:numberOfShards 1 ;
+          idx:configVersion "1_0_0" ;
+          idx:autoScaleThreshold 1000
+      ] .
+  ige:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+      cm:physicalTime 1704067200006 .
+  ige:lcrd-ibn-md5-161bc2f9cafbc0e9308e262e23c7a0b9 sync:blankNode _:b3 .
+  ige:lcrd-ibn-md5-6463ec91078059cd80e9c4068b39f9ff sync:blankNode _:b2 .
+  _:b2 a idx:GroupingRule;
+      idx:property _:b3 .
+  _:b3 a idx:GroupingRuleProperty;
+      idx:hierarchyLevel 1;
+      idx:sourceProperty schema:dateCreated .
+}
+
+GRAPH <https://example.com/groupindextemplate/index-grouped-f615be90%2Findex> {
+  <https://example.com/groupindextemplate/index-grouped-f615be90%2Findex> a sync:ManagedDocument;
+      foaf:primaryTopic igf:groupIndexTemplate;
+      cm:clockHash "0e2d9d080342eb7de038267d0e5383a5";
+      cm:createdAt "2024-01-01T02:10:00.007Z"^^xsd:dateTime;
+      cm:hasClockEntry igf:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+      idx:belongsToIndexShard :shard;
+      sync:hasBlankNodeMapping igf:lcrd-ibn-md5-0e2e62f39058d6a36c15403da8b04bf4, igf:lcrd-ibn-md5-5d84696d93d4f139706797c44247a19d;
+      sync:isGovernedBy (mappings:index-v1);
+      sync:managedResourceType idx:GroupIndexTemplate .
+  igf:groupIndexTemplate a idx:GroupIndexTemplate;
+      idx:groupedBy _:b6;
+      idx:indexesClass schema:Recipe;
+      idx:readBy </clientinstallation/default-installation#installation>;
+      idx:shardingAlgorithm [
+          a idx:ModuloHashSharding ;
+          idx:hashAlgorithm "md5" ;
+          idx:numberOfShards 1 ;
+          idx:configVersion "1_0_0" ;
+          idx:autoScaleThreshold 1000
+      ] .
+  igf:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
+      cm:physicalTime 1704075000006 .
+  igf:lcrd-ibn-md5-0e2e62f39058d6a36c15403da8b04bf4 sync:blankNode _:b6 .
+  igf:lcrd-ibn-md5-5d84696d93d4f139706797c44247a19d sync:blankNode _:b7 .
+  _:b6 a idx:GroupingRule;
+      idx:property _:b7 .
+  _:b7 a idx:GroupingRuleProperty;
+      idx:hierarchyLevel 1;
+      idx:sourceProperty schema:recipeCategory .
+}

@@ -13,9 +13,9 @@
 
 <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC0zODgwMzZmMy9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=> a sync:ManagedDocument;
     foaf:primaryTopic ns4:shard;
-    cm:clockHash "7c3100c41b143fcfc973438fab4ebd51";
-    cm:createdAt "2024-01-01T02:10:00.008Z"^^xsd:dateTime;
-    cm:hasClockEntry ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:clockHash "26c361e61d16d6887a2ad46d1bd97ed0";
+    cm:createdAt "2024-01-01T02:10:00.008Z"^^xsd:dateTime, "2024-01-01T00:00:00.011Z"^^xsd:dateTime;
+    cm:hasClockEntry ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
@@ -25,8 +25,11 @@ ns4:entry-ab448ead48ff8785a91ce1fe1a078e40 cm:clockHash "e6d45b5423963ad4bfdab0c
 ns4:entry-dab29d46a8ad65d767b685c8ca60fbd8 cm:clockHash "3f58569d335f669135c40722e62298c9";
     idx:resource ns2:installation .
 
-ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 3;
-    cm:physicalTime 1704075000033 .
+ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
+    cm:physicalTime 1704067200018 .
+
+ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
+    cm:physicalTime 1704075000015 .
 
 ns4:shard a idx:Shard;
     idx:containsEntry ns4:entry-ab448ead48ff8785a91ce1fe1a078e40, ns4:entry-dab29d46a8ad65d767b685c8ca60fbd8;

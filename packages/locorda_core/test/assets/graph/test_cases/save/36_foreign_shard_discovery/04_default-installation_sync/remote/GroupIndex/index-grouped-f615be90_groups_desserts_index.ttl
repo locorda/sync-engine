@@ -14,7 +14,7 @@
 <> a sync:ManagedDocument;
     foaf:primaryTopic :index;
     cm:clockHash "e47da075e07a2fec7dd714916ca403ff";
-    cm:createdAt "2024-01-01T02:10:00.037Z"^^xsd:dateTime;
+    cm:createdAt "2024-01-01T06:00:00.004Z"^^xsd:dateTime;
     cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
     idx:belongsToIndexShard ifdmm10v:shard;
     sync:isGovernedBy (mappings:index-v1);
@@ -25,4 +25,4 @@
     idx:hasShard igfmm10v:shard .
 
 :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
-    cm:physicalTime 1704075000036 .
+    cm:physicalTime 1704088800003 .

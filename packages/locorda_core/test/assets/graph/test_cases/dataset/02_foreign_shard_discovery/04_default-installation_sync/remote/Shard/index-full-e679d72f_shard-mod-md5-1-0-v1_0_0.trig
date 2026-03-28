@@ -1,0 +1,59 @@
+@base <https://example.com/shard/index-full-e679d72f%2Fshard-mod-md5-1-0-v1_0_0> .
+@prefix : <#> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix ife: <https://example.com/fullindex/index-full-e679d72f%2Findex#> .
+@prefix igemm10v: <https://example.com/shard/index-grouped-e093655c%2Fgroups%2F20_ad221effd73057a647d96bab312c4886%2Fshard-mod-md5-1-0-v1_0_0#> .
+@prefix igfmm10v: <https://example.com/shard/index-grouped-f615be90%2Fgroups%2Fdesserts%2Fshard-mod-md5-1-0-v1_0_0#> .
+@prefix mappings1: <https://example.org/test/mappings/> .
+@prefix mappings2: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix recipe: <https://example.com/recipe/> .
+@prefix schema: <https://schema.org/> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<> a sync:ManagedDocument;
+    foaf:primaryTopic :shard;
+    cm:clockHash "d0086d44594e62962fd1bedb512e1bef";
+    cm:createdAt "2024-01-01T06:00:00.003Z"^^xsd:dateTime, "2024-01-01T00:00:00.008Z"^^xsd:dateTime;
+    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    sync:isGovernedBy (mappings2:shard-v1);
+    sync:managedResourceType idx:Shard .
+
+:entry-c93b50159754d7a665032fc90e56af1d cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
+    idx:resource </recipe/chocolate-cake#it> .
+
+:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
+    cm:physicalTime 1704074400000 .
+
+:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
+    cm:physicalTime 1704088800000 .
+
+:shard a idx:Shard;
+    idx:containsEntry :entry-c93b50159754d7a665032fc90e56af1d;
+    idx:isShardOf ife:index .
+
+GRAPH </recipe/chocolate-cake> {
+  </recipe/chocolate-cake> a sync:ManagedDocument;
+      foaf:primaryTopic </recipe/chocolate-cake#it>;
+      cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
+      cm:createdAt "2024-01-01T06:00:00.001Z"^^xsd:dateTime, "2024-01-01T02:00:00.001Z"^^xsd:dateTime;
+      cm:hasClockEntry </recipe/chocolate-cake#lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f>, </recipe/chocolate-cake#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f>;
+      idx:belongsToIndexShard :shard, igfmm10v:shard, igemm10v:shard;
+      sync:isGovernedBy (mappings1:recipe-v1);
+      sync:managedResourceType schema:Recipe .
+  </recipe/chocolate-cake#it> a schema:Recipe;
+      schema:cookTime "PT30M";
+      schema:dateCreated "2024-01-01T02:00:00Z"^^xsd:dateTime;
+      schema:description "A delicious chocolate cake recipe";
+      schema:name "Updated Chocolate Cake Recipe";
+      schema:prepTime "PT20M";
+      schema:recipeCategory "Desserts";
+      schema:recipeYield "8 servings" .
+  </recipe/chocolate-cake#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f> cm:logicalTime 1;
+      cm:physicalTime 1704074400000 .
+  </recipe/chocolate-cake#lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f> cm:logicalTime 1;
+      cm:physicalTime 1704088800000 .
+}

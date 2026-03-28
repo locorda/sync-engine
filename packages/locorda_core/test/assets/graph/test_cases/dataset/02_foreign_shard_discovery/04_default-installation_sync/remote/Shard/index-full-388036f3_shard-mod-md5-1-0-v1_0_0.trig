@@ -1,0 +1,69 @@
+@base <https://example.com/shard/index-full-388036f3%2Fshard-mod-md5-1-0-v1_0_0> .
+@prefix : <#> .
+@prefix clientinstallation: <https://example.com/clientinstallation/> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix if3: <https://example.com/fullindex/index-full-388036f3%2Findex#> .
+@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<> a sync:ManagedDocument;
+    foaf:primaryTopic :shard;
+    cm:clockHash "26c361e61d16d6887a2ad46d1bd97ed0";
+    cm:createdAt "2024-01-01T02:10:00.008Z"^^xsd:dateTime, "2024-01-01T00:00:00.011Z"^^xsd:dateTime;
+    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    sync:isGovernedBy (mappings:shard-v1);
+    sync:managedResourceType idx:Shard .
+
+:entry-ab448ead48ff8785a91ce1fe1a078e40 cm:clockHash "e6d45b5423963ad4bfdab0cbab7d4616";
+    idx:resource </clientinstallation/default-installation#installation> .
+
+:entry-dab29d46a8ad65d767b685c8ca60fbd8 cm:clockHash "3f58569d335f669135c40722e62298c9";
+    idx:resource </clientinstallation/foreign-device-installation#installation> .
+
+:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
+    cm:physicalTime 1704067200018 .
+
+:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
+    cm:physicalTime 1704075000015 .
+
+:shard a idx:Shard;
+    idx:containsEntry :entry-ab448ead48ff8785a91ce1fe1a078e40, :entry-dab29d46a8ad65d767b685c8ca60fbd8;
+    idx:isShardOf if3:index .
+
+GRAPH </clientinstallation/foreign-device-installation> {
+  </clientinstallation/foreign-device-installation> a sync:ManagedDocument;
+      foaf:primaryTopic </clientinstallation/foreign-device-installation#installation>;
+      cm:clockHash "3f58569d335f669135c40722e62298c9";
+      cm:createdAt "2024-01-01T00:00:00.019Z"^^xsd:dateTime;
+      cm:hasClockEntry </clientinstallation/foreign-device-installation#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f>;
+      idx:belongsToIndexShard :shard;
+      sync:isGovernedBy (mappings:client-installation-v1);
+      sync:managedResourceType cm:ClientInstallation .
+  </clientinstallation/foreign-device-installation#installation> a cm:ClientInstallation;
+      cm:createdAt "2024-01-01T00:00:00.017Z"^^xsd:dateTime;
+      cm:lastActiveAt "2024-01-01T00:00:00.017Z"^^xsd:dateTime;
+      cm:maxInactivityPeriod "P6M"^^xsd:duration .
+  </clientinstallation/foreign-device-installation#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f> cm:logicalTime 1;
+      cm:physicalTime 1704067200018 .
+}
+
+GRAPH </clientinstallation/default-installation> {
+  </clientinstallation/default-installation> a sync:ManagedDocument;
+      foaf:primaryTopic </clientinstallation/default-installation#installation>;
+      cm:clockHash "e6d45b5423963ad4bfdab0cbab7d4616";
+      cm:createdAt "2024-01-01T02:10:00.016Z"^^xsd:dateTime;
+      cm:hasClockEntry </clientinstallation/default-installation#lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f>;
+      idx:belongsToIndexShard :shard;
+      sync:isGovernedBy (mappings:client-installation-v1);
+      sync:managedResourceType cm:ClientInstallation .
+  </clientinstallation/default-installation#installation> a cm:ClientInstallation;
+      cm:createdAt "2024-01-01T02:10:00.014Z"^^xsd:dateTime;
+      cm:lastActiveAt "2024-01-01T02:10:00.014Z"^^xsd:dateTime;
+      cm:maxInactivityPeriod "P6M"^^xsd:duration .
+  </clientinstallation/default-installation#lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f> cm:logicalTime 1;
+      cm:physicalTime 1704075000015 .
+}

@@ -16,9 +16,9 @@
 
 <> a sync:ManagedDocument;
     foaf:primaryTopic :shard;
-    cm:clockHash "55f93476370b7f88f0921e7ca228e95d";
-    cm:createdAt "2024-01-01T02:10:00.000Z"^^xsd:dateTime;
-    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:clockHash "29c6c1e77f5e2d14a9db71299058f2e3";
+    cm:createdAt "2024-01-01T02:10:00.000Z"^^xsd:dateTime, "2024-01-01T00:00:00.000Z"^^xsd:dateTime;
+    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
@@ -42,8 +42,11 @@
     idx:indexesClass idx:GroupIndexTemplate;
     idx:resource if2:index .
 
-:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 3;
-    cm:physicalTime 1704075000021 .
+:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
+    cm:physicalTime 1704067200015 .
+
+:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
+    cm:physicalTime 1704075000012 .
 
 :shard a idx:Shard;
     idx:containsEntry :entry-ce394f730640668924968eddf09c01bc, :entry-713129f56a309cabc970f22c7da295cf, :entry-6532e1cce2063165cab55f9425c47e0d, :entry-2e883124d69c377d8daff7f19ee0eaa6, :entry-a68c1c4f5dda5dbf177113200fb133a0;

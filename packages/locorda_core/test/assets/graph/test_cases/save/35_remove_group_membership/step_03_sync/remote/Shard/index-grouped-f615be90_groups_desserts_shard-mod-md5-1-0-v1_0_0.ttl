@@ -11,17 +11,17 @@
 
 <> a sync:ManagedDocument;
     foaf:primaryTopic :shard;
-    cm:clockHash "39d64856e5d74183df0f1aabc418c9b5";
+    cm:clockHash "a61bdd92ff4bbce5dc8506f4be953157";
     cm:createdAt "2024-01-01T02:00:00.002Z"^^xsd:dateTime;
     cm:hasClockEntry :lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
-:entry-fae00fbce5441feea6c3fa52203ccb88 cm:clockHash "d84a7998dcae796b56a5a94fe8ab9583";
+:entry-fae00fbce5441feea6c3fa52203ccb88 cm:clockHash "4d9655a766ecf28a61e3491045e7c545";
     idx:resource </recipe/recipe123#it> .
 
-:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 2;
-    cm:physicalTime 1704074400000 .
+:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 3;
+    cm:physicalTime 1704081600000 .
 
 :shard a idx:Shard;
     idx:containsEntry :entry-fae00fbce5441feea6c3fa52203ccb88;
