@@ -41,7 +41,7 @@ var _syncCounter = 0;
 class StreamingRemoteSyncOrchestrator {
   final Storage _storage;
   final RemoteId _remoteId;
-  final RemoteSyncPipelineSupport _pipelineSupport;
+  final RemoteSyncPipelineSupport _remote;
   final RdfCore _rdfCore;
   final RemoteDocumentMerger _merger;
   final MergeContractLoader _mergeContractLoader;
@@ -67,7 +67,7 @@ class StreamingRemoteSyncOrchestrator {
     required SyncEngineConfig config,
   })  : _storage = storage,
         _remoteId = remoteId,
-        _pipelineSupport = pipelineSupport,
+        _remote = pipelineSupport,
         _rdfCore = rdfCore,
         _merger = merger,
         _mergeContractLoader = mergeContractLoader,
@@ -112,21 +112,21 @@ class StreamingRemoteSyncOrchestrator {
 
     final pipeline = inputController.stream
             .asyncExpand(shardResolution(_storage, _remoteId)) // Stage 1
-            .transform(_pipelineSupport.shardFetch()) // Stage 2
+            .transform(_remote.shardFetch()) // Stage 2
             .map(shardParse(_rdfCore)) // Stage 3
             .asyncExpand(
                 changeDetection(_storage, lastSyncTimestamp)) // Stage 4
             .transform(localContentLoad(_storage, _remoteId)) // Stage 5
-            .transform(_pipelineSupport.resourceFetch()) // Stage 6
+            .transform(_remote.resourceFetch()) // Stage 6
             .asyncExpand(crdtMerge(_merger, _mergeContractLoader, _reconciler,
                 _rdfCore)) // Stage 7
-            .transform(_pipelineSupport.resourceUpload()) // Stage 8
+            .transform(_remote.resourceUpload()) // Stage 8
             .asyncExpand(
                 dbCommit(_storage, _indexManager, _remoteId)) // Stage 9
             .asyncExpand(shardEntryLoad(_storage)) // Stage 10
             .asyncExpand(shardCrdtMerge(
                 _documentManager, _shardDocGen, _rdfCore)) // Stage 11
-            .transform(_pipelineSupport.shardUpload()) // Stage 12
+            .transform(_remote.shardUpload()) // Stage 12
             .asyncExpand(shardDbCommit(_storage, _remoteId)) // Stage 13
             .asyncExpand(feedback(inputController.sink, _storage,
                 () => _contentIndicesFactory(config))) // Stage 14
