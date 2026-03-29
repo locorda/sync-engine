@@ -674,6 +674,17 @@ class ShardCommitResult implements CommittedShardEvent {
 // [PhaseComplete] implements all 13 stage event types.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Shared batch-size default for all pipeline stages that support chunking.
+// ---------------------------------------------------------------------------
+
+/// Default batch size for pipeline stages that buffer events before flushing.
+///
+/// Chosen to stay within SQLite's default SQLITE_MAX_VARIABLE_NUMBER (999)
+/// with headroom, while also being a reasonable chunk for remote I/O stages.
+/// Individual stages accept an optional `batchSize` parameter to override.
+const defaultPipelineBatchSize = 990;
+
 /// Stream elements emitted by Stage 1 (Shard Resolution) — input to Stage 2.
 sealed class ShardRefEvent {}
 
@@ -686,11 +697,11 @@ sealed class ParsedShardEvent {}
 /// Stream elements emitted by Stage 4 (Change Detection) — input to Stage 5.
 sealed class SyncCandidateEvent {}
 
-/// Stream elements emitted by Stage 5 (Resource Fetch) — input to Stage 6.
-sealed class FetchedCandidateEvent {}
-
-/// Stream elements emitted by Stage 6 (Local Content Load) — input to Stage 7.
+/// Stream elements emitted by Stage 5 (Local Content Load) — input to Stage 6.
 sealed class LoadedCandidateEvent {}
+
+/// Stream elements emitted by Stage 6 (Resource Fetch) — input to Stage 7.
+sealed class FetchedCandidateEvent {}
 
 /// Stream elements emitted by Stage 7 (CRDT Merge) — input to Stage 8.
 sealed class MergedResourceEvent {}

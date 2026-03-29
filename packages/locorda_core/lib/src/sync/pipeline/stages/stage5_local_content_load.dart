@@ -15,19 +15,20 @@ import 'package:locorda_core/src/storage/remote_id.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 
-/// SQLite SQLITE_MAX_VARIABLE_NUMBER default is 999.
-const _kBatchSize = 990; // 990 to leave some headroom for other query variables
+/// SQLite SQLITE_MAX_VARIABLE_NUMBER default is 999; [defaultPipelineBatchSize]
+/// provides headroom.
 
 /// Returns a StreamTransformer for Stage 5.
 ///
 /// Buffers [SyncCandidate] events and flushes on each
 /// [ShardComplete] / [PhaseComplete] boundary using batch DB queries
 /// ([Storage.getDocumentsByIri] + [Storage.getRemoteETags]).
-/// Buffers are capped at [_kBatchSize] to respect SQLite's variable limit.
+/// Buffers are capped at [batchSize] to respect SQLite's variable limit.
 StreamTransformer<SyncCandidateEvent, LoadedCandidateEvent> localContentLoad(
   Storage storage,
-  RemoteId remoteId,
-) {
+  RemoteId remoteId, {
+  int batchSize = defaultPipelineBatchSize,
+}) {
   return StreamTransformer.fromBind((stream) async* {
     final buffer = <SyncCandidate>[];
 
@@ -35,7 +36,7 @@ StreamTransformer<SyncCandidateEvent, LoadedCandidateEvent> localContentLoad(
       switch (event) {
         case SyncCandidate():
           buffer.add(event);
-          if (buffer.length >= _kBatchSize) {
+          if (buffer.length >= batchSize) {
             yield* _loadChunk(buffer, storage, remoteId);
             buffer.clear();
           }
