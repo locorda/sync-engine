@@ -1,13 +1,9 @@
 import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_rdf_core/core.dart';
-import 'package:logging/logging.dart';
-
-final _remoteStorageLog = Logger('IriTranslatingRemoteSyncStorage');
 
 /// Result of a remote download operation with ETag support.
 class RemoteDownloadResult<T> {
@@ -533,16 +529,32 @@ Future<T> _retryOnAuthFailure<T>(
   }
 }
 
-class IriTranslatingRemoteSyncStorage extends RemoteSyncStorage
-    implements RemoteSyncPipelineSupport {
+class IriTranslatingRemoteSyncStorage extends RemoteSyncStorage {
   final RemoteSyncStorage _storage;
   final IriTranslator _iriTranslator;
 
-  IriTranslatingRemoteSyncStorage(
-      {required RemoteSyncStorage storage,
-      required IriTranslator iriTranslator})
-      : _storage = storage,
+  IriTranslatingRemoteSyncStorage._({
+    required RemoteSyncStorage storage,
+    required IriTranslator iriTranslator,
+  })  : _storage = storage,
         _iriTranslator = iriTranslator;
+
+  factory IriTranslatingRemoteSyncStorage({
+    required RemoteSyncStorage storage,
+    required IriTranslator iriTranslator,
+    required RdfCore rdfCore,
+  }) =>
+      storage is RemoteSyncPipelineSupport
+          ? IriTranslatingRemoteSyncPipelineStorage(
+              storage: storage,
+              pipelineSupport: storage as RemoteSyncPipelineSupport,
+              iriTranslator: iriTranslator,
+              rdfCore: rdfCore,
+            )
+          : IriTranslatingRemoteSyncStorage._(
+              storage: storage,
+              iriTranslator: iriTranslator,
+            );
 
   @override
   Future<RemoteDownloadResult<RdfGraph>> download(IriTerm documentIri,
@@ -591,150 +603,173 @@ class IriTranslatingRemoteSyncStorage extends RemoteSyncStorage
         ifMatch: ifMatch,
       );
 
-  // ---------------------------------------------------------------------------
-  // RemoteSyncPipelineSupport — delegates to this.download/upload
-  // (which already translate IRIs)
-  // ---------------------------------------------------------------------------
-
-  @override
-  StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch() =>
-      _asyncSafeTransformer((ShardRefEvent event) async* {
-        switch (event) {
-          case PhaseComplete():
-            yield event;
-          case ShardRef():
-            final result = await download(
-              event.shardIri.getDocumentIri(),
-              ifNoneMatch: event.storedEtag,
-            );
-
-            if (result.notModified) {
-              yield ShardNotModified(event.shardIri, event.shardStorageId,
-                  event.fetchPolicy, event.typeIri);
-            } else if (result.graph == null && event.storedEtag != null) {
-              yield ShardGone(event.shardIri, event.shardStorageId,
-                  event.fetchPolicy, event.typeIri);
-            } else if (result.graph == null) {
-              yield ShardNotModified(event.shardIri, event.shardStorageId,
-                  event.fetchPolicy, event.typeIri,
-                  existsOnRemote: false);
-            } else {
-              yield ShardContent(
-                event.shardIri,
-                event.shardStorageId,
-                event.fetchPolicy,
-                event.typeIri,
-                DecodedGraphSource(result.graph!),
-                result.etag!,
-              );
-            }
-        }
-      });
-
-  @override
-  StreamTransformer<LoadedCandidateEvent,
-      FetchedCandidateEvent> resourceFetch() => _asyncSafeTransformer(
-          (LoadedCandidateEvent event) async* {
-        switch (event) {
-          case PhaseComplete():
-            yield event;
-          case ShardComplete():
-            yield event;
-          case LoadedCandidate():
-            if (event.candidate.direction == SyncDirection.localOnly ||
-                event.candidate.direction == SyncDirection.remoteRemoved) {
-              yield FetchedCandidate(event, remoteEtag: event.storedRemoteEtag);
-              return;
-            }
-
-            final result =
-                await download(event.candidate.resourceIri.getDocumentIri());
-            if (result.graph != null) {
-              yield FetchedCandidate(
-                event,
-                remoteSource: DecodedGraphSource(result.graph!),
-                remoteEtag: result.etag,
-              );
-            } else {
-              yield FetchedCandidate(event, remoteEtag: event.storedRemoteEtag);
-            }
-        }
-      });
-
-  @override
-  StreamTransformer<MergedResourceEvent, UploadedResourceEvent>
-      resourceUpload() =>
-          _asyncSafeTransformer((MergedResourceEvent event) async* {
-            switch (event) {
-              case PhaseComplete():
-                yield event;
-              case ShardComplete():
-                yield event;
-              case MergeResult():
-                if (!event.needsUpload) {
-                  yield UploadResult(event);
-                  return;
-                }
-
-                final documentIri = event.resourceIri.getDocumentIri();
-                final result = await upload(
-                  documentIri,
-                  event.mergedGraph.graph,
-                  ifMatch: event.resourceEtag,
-                );
-
-                if (result is SuccessUploadResult) {
-                  yield UploadResult(event, newRemoteEtag: result.etag);
-                } else {
-                  _remoteStorageLog.warning(
-                      'Upload conflict for ${documentIri.debug} — skipping');
-                  yield UploadResult(event);
-                }
-            }
-          });
-
-  @override
-  StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload() =>
-      _asyncSafeTransformer((MergedShardEvent event) async* {
-        switch (event) {
-          case PhaseComplete():
-            yield event;
-          case MergedShard():
-            if (!event.needsUpload) {
-              yield UploadedShard(event.shardIri, event);
-              return;
-            }
-
-            final documentIri = event.shardIri.getDocumentIri();
-            final result = await upload(
-              documentIri,
-              event.mergedGraph.graph,
-              ifMatch: event.newEtag,
-            );
-
-            if (result is SuccessUploadResult) {
-              yield UploadedShard(event.shardIri, event,
-                  newRemoteEtag: result.etag);
-            } else {
-              _remoteStorageLog.warning(
-                  'Shard upload conflict for ${documentIri.debug} — skipping');
-              yield UploadedShard(event.shardIri, event);
-            }
-        }
-      });
-
   @override
   Future<void> finalizeSync() async {
     await _storage.finalizeSync();
   }
 }
 
-/// Creates a [StreamTransformer] from an asyncExpand-style handler.
-///
-/// Unlike [StreamTransformer.fromHandlers] with an async `handleData`,
-/// this ensures each event is fully processed before the next one starts,
-/// preventing boundary events from overtaking pending async results.
-StreamTransformer<In, Out> _asyncSafeTransformer<In, Out>(
-    Stream<Out> Function(In event) handler) {
-  return StreamTransformer.fromBind((stream) => stream.asyncExpand(handler));
+class IriTranslatingRemoteSyncPipelineStorage
+    extends IriTranslatingRemoteSyncStorage
+    implements RemoteSyncPipelineSupport {
+  final RemoteSyncPipelineSupport _pipelineSupport;
+  final RdfCore _rdfCore;
+
+  IriTranslatingRemoteSyncPipelineStorage({
+    required RemoteSyncStorage storage,
+    required RemoteSyncPipelineSupport pipelineSupport,
+    required IriTranslator iriTranslator,
+    required RdfCore rdfCore,
+  })  : _pipelineSupport = pipelineSupport,
+        _rdfCore = rdfCore,
+        super._(storage: storage, iriTranslator: iriTranslator);
+
+  // ---------------------------------------------------------------------------
+  // RemoteSyncPipelineSupport — wraps _pipelineSupport with IRI translation.
+  //
+  // Input events: translate locorda-internal IRIs → external (backend) IRIs
+  // Output events: translate external IRIs/graphs → locorda-internal IRIs
+  // ---------------------------------------------------------------------------
+
+  /// Translates decoded graph sources, leaving encoded sources as-is
+  /// (FPR pipeline always produces [DecodedGraphSource]).
+  RdfGraphSource _translateSource(
+          RdfGraphSource source, RdfGraph Function(RdfGraph) translate) =>
+      switch (source) {
+        DecodedGraphSource(:final graph) => DecodedGraphSource(
+            translate(graph),
+            // graph was changed, so original source is no longer valid for caching
+            originalSource: null,
+          ),
+        EncodedRdfGraphSource() => DecodedGraphSource(
+            translate(source.decodeWith(_rdfCore).graph),
+            // graph was changed, so original source is no longer valid for caching
+            originalSource: null,
+          ),
+      };
+
+  IriTerm _toExternal(IriTerm iri) => _iriTranslator.internalToExternal(iri);
+
+  IriTerm _toInternal(IriTerm iri) => _iriTranslator.externalToInternal(iri);
+
+  DecodedGraphSource _graphToExternal(DecodedGraphSource s) =>
+      DecodedGraphSource(_iriTranslator.translateGraphToExternal(s.graph));
+
+  DecodedGraphSource _graphToInternal(DecodedGraphSource s) =>
+      DecodedGraphSource(_iriTranslator.translateGraphToInternal(s.graph));
+
+  StreamTransformer<T, R> _wrap<T, R>(
+    StreamTransformer<T, R> stageTransformer,
+    T Function(T) translateInput,
+    R Function(R) translateOutput,
+  ) =>
+      StreamTransformer.fromBind((stream) => stageTransformer
+          .bind(stream.map(
+              translateInput)) // Translate input IRIs to external before stage
+          .map(translateOutput)); // Translate output IRIs/graphs
+
+  // --- Stage 2: Shard Fetch ---
+
+  @override
+  StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch() => _wrap(
+        _pipelineSupport.shardFetch(),
+        (e) => switch (e) {
+          ShardRef() => e.copyWith(shardIri: _toExternal(e.shardIri)),
+          PhaseComplete() => e,
+        },
+        (e) => switch (e) {
+          ShardContent() => e.copyWith(
+              shardIri: _toInternal(e.shardIri),
+              source: _translateSource(
+                  e.source, _iriTranslator.translateGraphToInternal),
+            ),
+          ShardNotModified() => e.copyWith(shardIri: _toInternal(e.shardIri)),
+          ShardGone() => e.copyWith(shardIri: _toInternal(e.shardIri)),
+          PhaseComplete() => e,
+        },
+      );
+
+  // --- Stage 6: Resource Fetch ---
+
+  @override
+  StreamTransformer<LoadedCandidateEvent, FetchedCandidateEvent>
+      resourceFetch() => _wrap(
+            _pipelineSupport.resourceFetch(),
+            (e) => switch (e) {
+              LoadedCandidate() => e.copyWith(
+                  candidate: e.candidate.copyWith(
+                      resourceIri: _toExternal(e.candidate.resourceIri))),
+              ShardComplete() => e,
+              PhaseComplete() => e,
+            },
+            (e) => switch (e) {
+              FetchedCandidate() => e.copyWith(
+                  loaded: e.loaded.copyWith(
+                      candidate: e.loaded.candidate.copyWith(
+                          resourceIri:
+                              _toInternal(e.loaded.candidate.resourceIri))),
+                  remoteSource: e.remoteSource != null
+                      ? _translateSource(e.remoteSource!,
+                          _iriTranslator.translateGraphToInternal)
+                      : null,
+                ),
+              ShardComplete() => e,
+              PhaseComplete() => e,
+            },
+          );
+
+  // --- Stage 8: Resource Upload ---
+
+  @override
+  StreamTransformer<MergedResourceEvent, UploadedResourceEvent>
+      resourceUpload() => _wrap(
+            _pipelineSupport.resourceUpload(),
+            (e) => switch (e) {
+              MergeResult() => e.copyWith(
+                  resourceIri: _toExternal(e.resourceIri),
+                  mergedGraph: _graphToExternal(e.mergedGraph),
+                ),
+              ShardComplete() => e,
+              PhaseComplete() => e,
+            },
+            (e) => switch (e) {
+              UploadResult() => e.copyWith(
+                    mergeResult: e.mergeResult.copyWith(
+                  resourceIri: _toInternal(e.mergeResult.resourceIri),
+                  mergedGraph: _graphToInternal(e.mergeResult.mergedGraph),
+                )),
+              ShardComplete() => e,
+              PhaseComplete() => e,
+            },
+          );
+
+  // --- Stage 12: Shard Upload ---
+
+  @override
+  StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload() =>
+      _wrap(
+        _pipelineSupport.shardUpload(),
+        (e) => switch (e) {
+          MergedShard() => e.copyWith(
+              shardIri: _toExternal(e.shardIri),
+              mergedGraph: _graphToExternal(e.mergedGraph),
+            ),
+          PhaseComplete() => e,
+        },
+        (e) => switch (e) {
+          UploadedShard() => e.copyWith(
+              shardIri: _toInternal(e.shardIri),
+              mergedShard: e.mergedShard.copyWith(
+                shardIri: _toInternal(e.mergedShard.shardIri),
+                mergedGraph: _graphToInternal(e.mergedShard.mergedGraph),
+              ),
+            ),
+          PhaseComplete() => e,
+        },
+      );
+
+  @override
+  Future<void> finalizeSync() async {
+    await _storage.finalizeSync();
+  }
 }

@@ -76,6 +76,10 @@ void main() {
   final baseInstallationId = baseJson['installation_id'] as String?;
 
   final testSuites = allTestsJson['test_suites'] as List<dynamic>;
+  final rdfCore = RdfCore.withStandardCodecs(
+    additionalBinaryDatasetCodecs: StandardSyncEngine.extraBinaryDatasetCodecs,
+    additionalBinaryGraphCodecs: StandardSyncEngine.extraBinaryGraphCodecs,
+  );
 
   // Group tests by suite
   for (final suiteJson in testSuites) {
@@ -104,12 +108,12 @@ void main() {
             case 'group_index':
               setupTestLogging(Level.WARNING);
               await _executeSaveTestWithSteps(testJson, testAssetsDir, fetcher,
-                  testBaseTimestamp, baseInstallationId);
+                  testBaseTimestamp, baseInstallationId, rdfCore);
               break;
             case 'save_error':
               setupTestLogging(Level.OFF);
               await _executeSaveErrorTest(testJson, testAssetsDir, fetcher,
-                  testBaseTimestamp, baseInstallationId);
+                  testBaseTimestamp, baseInstallationId, rdfCore);
               break;
             default:
               fail('Unknown test suite: $suiteName');
@@ -144,7 +148,8 @@ Future<void> _executeSaveTestWithSteps(
     Directory testAssetsDir,
     TestFetcher fetcher,
     DateTime baseTimestamp,
-    String? baseInstallationId) async {
+    String? baseInstallationId,
+    RdfCore rdfCore) async {
   final testId = testJson['id'] as String;
 
   // Load configurations - either per-installation or single global config
@@ -183,6 +188,7 @@ Future<void> _executeSaveTestWithSteps(
   final sharedBackend = InMemoryBackend(
     useShardDatasets: useShardDatasets,
     iriTranslator: backendIriTranslator,
+    rdfCore: rdfCore,
   );
 
   // Map of installation_id -> SyncEngine instance
@@ -228,6 +234,7 @@ Future<void> _executeSaveTestWithSteps(
             fetcher: fetcher,
             physicalTimestampFactory: timestampFactory,
             installationIdFactory: () => stepInstallationId,
+            rdfCore: rdfCore,
           ),
           config: config,
         );
@@ -254,6 +261,7 @@ Future<void> _executeSaveTestWithSteps(
       installationContext: installationContext,
       testFetcher: fetcher,
       backendIriTranslator: backendIriTranslator,
+      rdfCore: rdfCore,
     );
   }
 }
@@ -271,6 +279,7 @@ Future<void> _executeStep({
   required _InstallationContext installationContext,
   required TestFetcher testFetcher,
   required IriTranslator backendIriTranslator,
+  required RdfCore rdfCore,
 }) async {
   // Make sure to reset property changes for next step
   installationContext.storage.resetPropertyChanges();
@@ -393,7 +402,8 @@ Future<void> _executeStep({
     );
     final mergeContractLoader = StandardMergeContractLoader(
         RecursiveRdfLoader(
-          fetcher: StandardRdfGraphFetcher(fetcher: testFetcher, rdfCore: rdf),
+          fetcher:
+              StandardRdfGraphFetcher(fetcher: testFetcher, rdfCore: rdfCore),
           iriFactory: iriTermFactory,
         ),
         crdtTypeRegistry);
@@ -1131,7 +1141,8 @@ Future<void> _executeSaveErrorTest(
     Directory testAssetsDir,
     TestFetcher fetcher,
     DateTime baseTimestamp,
-    String? baseInstallationId) async {
+    String? baseInstallationId,
+    RdfCore rdfCore) async {
   // Load configuration
   final config = _loadConfig(testAssetsDir, testJson['config'] as String);
 
@@ -1164,11 +1175,12 @@ Future<void> _executeSaveErrorTest(
     final sync = await SyncEngine.create(
       config: config,
       engineParams: EngineParams(
-        backends: [InMemoryBackend()],
+        backends: [InMemoryBackend(rdfCore: rdfCore)],
         storage: storage,
         fetcher: fetcher,
         physicalTimestampFactory: timestampFactory,
         installationIdFactory: installationIdFactory,
+        rdfCore: rdfCore,
       ),
     );
 

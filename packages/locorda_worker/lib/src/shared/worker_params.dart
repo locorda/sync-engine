@@ -16,20 +16,26 @@ class WorkerParams {
   final PhysicalTimestampFactory? physicalTimestampFactory;
   final InstallationIdFactory? installationIdFactory;
   final IriTermFactory? iriFactory;
-  final RdfCore? rdfCore;
+  final RdfCore rdfCore;
   final http.Client? httpClient;
   final Fetcher? fetcher;
   final Iterable<String>? mappingBootstrapSources;
 
-  const WorkerParams({
+  WorkerParams({
     required this.storages,
     this.remotes = const [],
     this.physicalTimestampFactory,
     this.installationIdFactory,
     this.iriFactory,
-    this.rdfCore,
+    RdfCore? rdfCore,
     this.httpClient,
     this.fetcher,
     this.mappingBootstrapSources,
-  });
+  }) : rdfCore = rdfCore ??
+            RdfCore.withStandardCodecs(
+              additionalBinaryDatasetCodecs:
+                  StandardSyncEngine.extraBinaryDatasetCodecs,
+              additionalBinaryGraphCodecs:
+                  StandardSyncEngine.extraBinaryGraphCodecs,
+            );
 }

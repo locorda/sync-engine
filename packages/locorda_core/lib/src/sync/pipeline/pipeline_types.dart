@@ -195,7 +195,10 @@ class TextGraphSource extends EncodedRdfGraphSource {
   @override
   DecodedGraphSource decodeWith(RdfCore rdfCore) {
     final graph = rdfCore.decode(text, contentType: contentType);
-    return DecodedGraphSource(graph, originalSource: this);
+    return DecodedGraphSource(
+      graph,
+      originalSource: this,
+    );
   }
 }
 
@@ -211,7 +214,10 @@ class BinaryGraphSource extends EncodedRdfGraphSource {
   @override
   DecodedGraphSource decodeWith(RdfCore rdfCore) {
     final decoded = rdfCore.decodeBinary(bytes, contentType: contentType);
-    return DecodedGraphSource(decoded, originalSource: this);
+    return DecodedGraphSource(
+      decoded,
+      originalSource: this,
+    );
   }
 }
 
@@ -256,6 +262,23 @@ class ShardRef implements ShardRefEvent {
     this.typeIri, {
     this.storedEtag,
   });
+
+  ShardRef copyWith({
+    IriTerm? indexIri,
+    IriTerm? shardIri,
+    IriStorageId? shardStorageId,
+    RootResourceFetchPolicy? fetchPolicy,
+    IriTerm? typeIri,
+    String? storedEtag,
+  }) =>
+      ShardRef(
+        indexIri ?? this.indexIri,
+        shardIri ?? this.shardIri,
+        shardStorageId ?? this.shardStorageId,
+        fetchPolicy ?? this.fetchPolicy,
+        typeIri ?? this.typeIri,
+        storedEtag: storedEtag ?? this.storedEtag,
+      );
 }
 
 // ---------------------------------------------------------------------------
@@ -300,6 +323,20 @@ class ShardContent extends FetchedShard {
     this.newEtag, {
     this.allResourcesAvailable = false,
   });
+
+  ShardContent copyWith({
+    IriTerm? shardIri,
+    RdfGraphSource? source,
+  }) =>
+      ShardContent(
+        shardIri ?? this.shardIri,
+        shardStorageId,
+        fetchPolicy,
+        typeIri,
+        source ?? this.source,
+        newEtag,
+        allResourcesAvailable: allResourcesAvailable,
+      );
 }
 
 /// HTTP 304: shard unchanged.
@@ -315,6 +352,10 @@ class ShardNotModified extends FetchedShard {
   const ShardNotModified(
       this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri,
       {this.existsOnRemote = true});
+
+  ShardNotModified copyWith({IriTerm? shardIri}) => ShardNotModified(
+      shardIri ?? this.shardIri, shardStorageId, fetchPolicy, typeIri,
+      existsOnRemote: existsOnRemote);
 }
 
 /// HTTP 404/410: shard removed.
@@ -326,6 +367,9 @@ class ShardGone extends FetchedShard {
 
   const ShardGone(
       this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri);
+
+  ShardGone copyWith({IriTerm? shardIri}) => ShardGone(
+      shardIri ?? this.shardIri, shardStorageId, fetchPolicy, typeIri);
 }
 
 // ---------------------------------------------------------------------------
@@ -440,6 +484,15 @@ class SyncCandidate implements SyncCandidateEvent {
     this.localClockHash,
     this.remoteClockHash,
   });
+
+  SyncCandidate copyWith({IriTerm? resourceIri}) => SyncCandidate(
+        resourceIri ?? this.resourceIri,
+        shardStorageId,
+        direction,
+        typeIri,
+        localClockHash: localClockHash,
+        remoteClockHash: remoteClockHash,
+      );
 }
 
 // ---------------------------------------------------------------------------
@@ -467,6 +520,13 @@ class LoadedCandidate implements LoadedCandidateEvent {
     this.localUpdatedAt,
     this.storedRemoteEtag,
   });
+
+  LoadedCandidate copyWith({SyncCandidate? candidate}) => LoadedCandidate(
+        candidate ?? this.candidate,
+        localSource: localSource,
+        localUpdatedAt: localUpdatedAt,
+        storedRemoteEtag: storedRemoteEtag,
+      );
 }
 
 // ---------------------------------------------------------------------------
@@ -488,6 +548,16 @@ class FetchedCandidate implements FetchedCandidateEvent {
   final String? remoteEtag;
 
   const FetchedCandidate(this.loaded, {this.remoteSource, this.remoteEtag});
+
+  FetchedCandidate copyWith({
+    LoadedCandidate? loaded,
+    RdfGraphSource? remoteSource,
+  }) =>
+      FetchedCandidate(
+        loaded ?? this.loaded,
+        remoteSource: remoteSource ?? this.remoteSource,
+        remoteEtag: remoteEtag,
+      );
 }
 
 // ---------------------------------------------------------------------------
@@ -539,6 +609,23 @@ class MergeResult implements MergedResourceEvent {
     this.resourceEtag,
     this.localUpdatedAt,
   });
+
+  MergeResult copyWith({
+    IriTerm? resourceIri,
+    DecodedGraphSource? mergedGraph,
+  }) =>
+      MergeResult(
+        resourceIri ?? this.resourceIri,
+        typeIri,
+        mergedGraph ?? this.mergedGraph,
+        encodedForDb,
+        needsUpload: needsUpload,
+        needsDbWrite: needsDbWrite,
+        clock: clock,
+        missingGroupIndices: missingGroupIndices,
+        resourceEtag: resourceEtag,
+        localUpdatedAt: localUpdatedAt,
+      );
 }
 
 // ---------------------------------------------------------------------------
@@ -553,6 +640,11 @@ class UploadResult implements UploadedResourceEvent {
   final String? newRemoteEtag;
 
   const UploadResult(this.mergeResult, {this.newRemoteEtag});
+
+  UploadResult copyWith({MergeResult? mergeResult}) => UploadResult(
+        mergeResult ?? this.mergeResult,
+        newRemoteEtag: newRemoteEtag,
+      );
 }
 
 // ---------------------------------------------------------------------------
@@ -633,6 +725,19 @@ class MergedShard implements MergedShardEvent {
     required this.needsUpload,
     required this.ourPhysicalClock,
   });
+
+  MergedShard copyWith({
+    IriTerm? shardIri,
+    DecodedGraphSource? mergedGraph,
+  }) =>
+      MergedShard(
+        shardIri ?? this.shardIri,
+        mergedGraph ?? this.mergedGraph,
+        encodedForDb,
+        newEtag: newEtag,
+        needsUpload: needsUpload,
+        ourPhysicalClock: ourPhysicalClock,
+      );
 }
 
 // ---------------------------------------------------------------------------
@@ -648,6 +753,16 @@ class UploadedShard implements UploadedShardEvent {
   final String? newRemoteEtag;
 
   const UploadedShard(this.shardIri, this.mergedShard, {this.newRemoteEtag});
+
+  UploadedShard copyWith({
+    IriTerm? shardIri,
+    MergedShard? mergedShard,
+  }) =>
+      UploadedShard(
+        shardIri ?? this.shardIri,
+        mergedShard ?? this.mergedShard,
+        newRemoteEtag: newRemoteEtag,
+      );
 }
 
 // ---------------------------------------------------------------------------

@@ -516,6 +516,7 @@ class SolidRemoteStorage implements RemoteStorage {
     return IriTranslatingRemoteSyncStorage(
       storage: storage,
       iriTranslator: iriTranslator,
+      rdfCore: _rdfCore,
     );
   }
 

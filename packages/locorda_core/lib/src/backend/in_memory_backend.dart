@@ -43,12 +43,16 @@ class InMemoryBackend implements Backend {
   final BehaviorSubject<List<RemoteStorage>> _remotesChangedSubject;
   final IriTranslator? iriTranslator;
 
-  InMemoryBackend({bool useShardDatasets = false, this.iriTranslator})
+  InMemoryBackend(
+      {bool useShardDatasets = false,
+      this.iriTranslator,
+      required RdfCore rdfCore})
       : _remotes = [
           InMemoryRemoteStorage(
             RemoteId('in-memory', 'default'),
             useShardDatasets: useShardDatasets,
             iriTranslator: iriTranslator,
+            rdfCore: rdfCore,
           )
         ],
         _remotesChangedSubject = BehaviorSubject<List<RemoteStorage>>() {
@@ -81,12 +85,16 @@ class InMemoryRemoteStorage implements RemoteStorage {
   @override
   final bool useShardDatasets;
   final IriTranslator? iriTranslator;
+  final RdfCore _rdfCore;
 
   /// Storage: documentIri -> (graph, etag)
   late final _Store _store = _Store();
 
   InMemoryRemoteStorage(this.remoteId,
-      {this.useShardDatasets = false, this.iriTranslator});
+      {this.useShardDatasets = false,
+      this.iriTranslator,
+      required RdfCore rdfCore})
+      : _rdfCore = rdfCore;
 
   /// Returns a stored graph for testing purposes.
   ///
@@ -134,7 +142,7 @@ class InMemoryRemoteStorage implements RemoteStorage {
     return iriTranslator == null
         ? storage
         : IriTranslatingRemoteSyncStorage(
-            storage: storage, iriTranslator: iriTranslator!);
+            storage: storage, iriTranslator: iriTranslator!, rdfCore: _rdfCore);
   }
 
   /// Clear all stored documents (for testing)

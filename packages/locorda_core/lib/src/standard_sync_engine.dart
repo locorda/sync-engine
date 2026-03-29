@@ -170,6 +170,9 @@ class StandardSyncEngine implements SyncEngine {
   final Map<IriTerm, String> _groupIndexSubscriptionFingerprints = {};
   final Perflog _perflog;
 
+  static final List<RdfBinaryGraphCodec> extraBinaryGraphCodecs = [jellyGraph];
+  static final List<RdfBinaryDatasetCodec> extraBinaryDatasetCodecs = [jelly];
+
   /// Access the sync manager for manual sync triggering and status monitoring.
   SyncManager get syncManager => _syncManager;
 
@@ -526,8 +529,8 @@ the streams yourself.''');
     Perflog? perflog,
   }) async {
     rdfCore ??= RdfCore.withStandardCodecs(
-        additionalBinaryDatasetCodecs: [jelly],
-        additionalBinaryGraphCodecs: [jellyGraph]);
+        additionalBinaryDatasetCodecs: extraBinaryDatasetCodecs,
+        additionalBinaryGraphCodecs: extraBinaryGraphCodecs);
     httpClient ??= http.Client();
     fetcher ??= HttpFetcher(httpClient: httpClient);
     iriFactory ??= IriTerm.validated;

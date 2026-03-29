@@ -83,11 +83,16 @@ class TestOrchestratorSetup {
     final perflog = Perflog.root();
     // Build effective config with framework-owned resources
     final effectiveConfig = buildEffectiveConfig(config);
-
+    final rdfCore = RdfCore.withStandardCodecs(
+      additionalBinaryDatasetCodecs:
+          StandardSyncEngine.extraBinaryDatasetCodecs,
+      additionalBinaryGraphCodecs: StandardSyncEngine.extraBinaryGraphCodecs,
+    );
     final storage = InMemoryStorage();
     final backend = InMemoryRemoteStorage(
       RemoteId('test', 'mock'),
       useShardDatasets: useShardDatasets,
+      rdfCore: rdfCore,
     );
     final timestampFactory = TestPhysicalTimestampFactory(
         baseTimestamp: baseTimestamp ?? DateTime.now());
@@ -129,7 +134,7 @@ class TestOrchestratorSetup {
 
     final fetcher = StandardRdfGraphFetcher(
       fetcher: testFetcher,
-      rdfCore: rdf,
+      rdfCore: rdfCore,
     );
 
     final mergeContractLoader = CachingMergeContractLoader(
