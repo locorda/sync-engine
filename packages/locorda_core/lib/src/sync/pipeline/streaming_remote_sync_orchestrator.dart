@@ -29,6 +29,7 @@ import 'package:locorda_core/src/sync/pipeline/stages/stage4_change_detection.da
 import 'package:locorda_core/src/sync/pipeline/stages/stage5_local_content_load.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage7_crdt_merge.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage9_db_commit.dart';
+import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/sync/remote_document_merger.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
 import 'package:locorda_rdf_core/core.dart';
@@ -40,6 +41,7 @@ var _syncCounter = 0;
 
 class StreamingRemoteSyncOrchestrator {
   final Storage _storage;
+  final DocumentSaveService _saveService;
   final RemoteId _remoteId;
   final RemoteSyncPipelineSupport _remote;
   final RdfCore _rdfCore;
@@ -54,6 +56,7 @@ class StreamingRemoteSyncOrchestrator {
 
   StreamingRemoteSyncOrchestrator({
     required Storage storage,
+    required DocumentSaveService documentSaveService,
     required RemoteId remoteId,
     required RemoteSyncPipelineSupport pipelineSupport,
     required RdfCore rdfCore,
@@ -66,6 +69,7 @@ class StreamingRemoteSyncOrchestrator {
     required IndexRdfGenerator indexRdfGenerator,
     required SyncEngineConfig config,
   })  : _storage = storage,
+        _saveService = documentSaveService,
         _remoteId = remoteId,
         _remote = pipelineSupport,
         _rdfCore = rdfCore,
@@ -121,8 +125,8 @@ class StreamingRemoteSyncOrchestrator {
             .asyncExpand(crdtMerge(_merger, _mergeContractLoader, _reconciler,
                 _rdfCore)) // Stage 7
             .transform(_remote.resourceUpload()) // Stage 8
-            .asyncExpand(
-                dbCommit(_storage, _indexManager, _remoteId)) // Stage 9
+            .asyncExpand(dbCommit(
+                _storage, _indexManager, _remoteId, _saveService)) // Stage 9
             .asyncExpand(shardEntryLoad(_storage)) // Stage 10
             .asyncExpand(shardCrdtMerge(
                 _documentManager, _shardDocGen, _rdfCore)) // Stage 11

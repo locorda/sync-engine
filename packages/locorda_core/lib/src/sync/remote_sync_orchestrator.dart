@@ -14,6 +14,7 @@ import 'package:locorda_core/src/mapping/merge_contract.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/remote_storage.dart';
+import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/sync/dataset_based_graph_sync_storage.dart';
 import 'package:locorda_core/src/sync/remote_document_merger.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
@@ -294,6 +295,7 @@ class RemoteSyncOrchestrator {
     required RemoteSyncStorage remoteSyncStorage,
     required RemoteId remoteId,
     required Storage storage,
+    required DocumentSaveService documentSaveService,
     required RemoteDocumentMerger merger,
     required IndexRdfGenerator indexRdfGenerator,
     required IndexManager indexManager,
@@ -313,6 +315,7 @@ class RemoteSyncOrchestrator {
         _perflog = perflog.create('Orchestrator', 'RemoteSyncOrchestrator') {
     _docSync = _DocumentSyncHelper(
       storage: storage,
+      documentSaveService: documentSaveService,
       remoteId: remoteId,
       mergeContractLoader: mergeContractLoader,
       merger: merger,
@@ -436,9 +439,7 @@ class RemoteSyncOrchestrator {
     _log.fine(
         'Collected ${configuredIndices.length} configured and ${foreignIndices.length} foreign indices for ${resourceType.debug}');
 
-    return (
-      allSpecs: [...configuredIndices, ...foreignIndices],
-    );
+    return (allSpecs: [...configuredIndices, ...foreignIndices],);
   }
 
   /// Syncs all content resource types using a flat batch strategy:
@@ -1153,6 +1154,7 @@ Future<void> _executeInChunks<T>(
 class _DocumentSyncHelper {
   final Perflog _perflog;
   final Storage _storage;
+  final DocumentSaveService _saveService;
   final RemoteId _remoteId;
   final MergeContractLoader _mergeContractLoader;
   final RemoteDocumentMerger _merger;
@@ -1164,6 +1166,7 @@ class _DocumentSyncHelper {
 
   _DocumentSyncHelper({
     required Storage storage,
+    required DocumentSaveService documentSaveService,
     required RemoteId remoteId,
     required MergeContractLoader mergeContractLoader,
     required RemoteDocumentMerger merger,
@@ -1174,6 +1177,7 @@ class _DocumentSyncHelper {
     required PhysicalTimestampFactory physicalTimestampFactory,
     required Perflog perflog,
   })  : _storage = storage,
+        _saveService = documentSaveService,
         _remoteId = remoteId,
         _mergeContractLoader = mergeContractLoader,
         _merger = merger,
@@ -1654,7 +1658,7 @@ class _DocumentSyncHelper {
     final commit = () async {
       await _perflog.measure(
         'batch.commit.saveDocuments',
-        () => _storage.saveDocuments(deferred.saveRequests,
+        () => _saveService.saveDocuments(deferred.saveRequests,
             preEncodedContents: preEncodedContents),
         args: ['count=${deferred.saveRequests.length}'],
         minDurationMs: 5,

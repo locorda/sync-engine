@@ -13,6 +13,7 @@ library;
 
 import 'package:locorda_core/src/index/index_manager.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
+import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/storage/remote_id.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
@@ -32,6 +33,7 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
   Storage storage,
   IndexManager indexManager,
   RemoteId remoteId,
+  DocumentSaveService documentSaveService,
 ) {
   final pendingSaves = <SaveDocumentRequest>[];
   final pendingIndexEntries = <SaveIndexEntryRequest>[];
@@ -63,13 +65,13 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
 
       if (storage case TransactionalStorage txStorage) {
         await txStorage.inTransaction(() async {
-          await storage.saveDocuments(saveChunk);
+          await documentSaveService.saveDocuments(saveChunk);
           if (indexChunk.isNotEmpty) {
             await storage.saveIndexEntries(indexChunk);
           }
         });
       } else {
-        await storage.saveDocuments(saveChunk);
+        await documentSaveService.saveDocuments(saveChunk);
         if (indexChunk.isNotEmpty) {
           await storage.saveIndexEntries(indexChunk);
         }

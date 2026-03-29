@@ -73,6 +73,9 @@ class InMemoryStorage implements Storage, TransactionalStorage {
   // Note: Sync timestamps now stored in _settings via SyncTimestampStorage extension
   // Remote ETags also stored in _settings
 
+  // Index shard storage: index IRI → ordered list of shard IRIs
+  final Map<IriTerm, List<IriTerm>> _indexShards = {};
+
   // Group index subscription storage
   final Map<IriTerm, _GroupIndexSubscription> _groupIndexSubscriptions = {};
 
@@ -234,6 +237,14 @@ class InMemoryStorage implements Storage, TransactionalStorage {
       ));
     }
     return results;
+  }
+
+  @override
+  Future<void> saveIndexShards(
+      List<(IriTerm, List<IriTerm>)> indexShards) async {
+    for (final (indexIri, shardIris) in indexShards) {
+      _indexShards[indexIri] = List.of(shardIris);
+    }
   }
 
   /// Emit current documents to all watch streams for a specific type.

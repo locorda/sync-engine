@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/local_document_merger.dart';
+import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/hlc_service.dart';
@@ -266,6 +267,7 @@ List<IriTerm> _computeIsGovernedBy(RdfGraph? oldFrameworkGraph,
 /// and sync operations transparently.
 class CrdtDocumentManager {
   final Storage _storage;
+  final DocumentSaveService _saveService;
   final ConfigService _configService;
   SyncEngineConfig get _config => _configService.currentConfig;
   final MergeContractLoader _mergeContractLoader;
@@ -278,6 +280,7 @@ class CrdtDocumentManager {
 
   CrdtDocumentManager({
     required Storage storage,
+    required DocumentSaveService documentSaveService,
     required ConfigService configService,
     required MergeContractLoader mergeContractLoader,
     required HlcService hlcService,
@@ -285,6 +288,7 @@ class CrdtDocumentManager {
     required LocalDocumentMerger localDocumentMerger,
     required PhysicalTimestampFactory physicalTimestampFactory,
   })  : _storage = storage,
+        _saveService = documentSaveService,
         _configService = configService,
         _mergeContractLoader = mergeContractLoader,
         _hlcService = hlcService,
@@ -662,14 +666,7 @@ class CrdtDocumentManager {
 
     late final SaveDocumentResult saveResult;
     try {
-      saveResult = await _storage.saveDocument(
-        prepared.request.documentIri,
-        prepared.request.typeIri,
-        prepared.request.document,
-        prepared.request.metadata,
-        prepared.request.changes,
-        ifMatchUpdatedAt: prepared.request.ifMatchUpdatedAt,
-      );
+      saveResult = await _saveService.saveDocument(prepared.request);
     } on ConcurrentUpdateException {
       rethrow;
     } catch (e) {

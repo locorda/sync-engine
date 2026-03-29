@@ -23,6 +23,7 @@ import 'package:locorda_core/src/mapping/framework_iri_generator.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
+import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart' as storage;
 import 'package:locorda_core/src/sync/pipeline/document_shard_reconciler.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
@@ -627,8 +628,11 @@ the streams yourself.''');
       crdtTypeRegistry: crdtTypeRegistry,
     );
 
+    final documentSaveService = DocumentSaveService(storage);
+
     final crdtDocumentManager = CrdtDocumentManager(
       storage: storage,
+      documentSaveService: documentSaveService,
       configService: configService,
       shardDeterminer: shardDeterminer,
       mergeContractLoader: mergeContractLoader,
@@ -671,6 +675,7 @@ the streams yourself.''');
           remoteSyncStorage: remoteSyncStorage,
           remoteId: remoteId,
           storage: storage,
+          documentSaveService: documentSaveService,
           merger: remoteDocumentMerger,
           indexRdfGenerator: indexRdfGenerator,
           indexManager: indexManager,
@@ -696,6 +701,7 @@ the streams yourself.''');
     ) =>
         StreamingRemoteSyncOrchestrator(
           storage: storage,
+          documentSaveService: documentSaveService,
           remoteId: remoteId,
           pipelineSupport: pipelineSupport,
           rdfCore: rdfCore!,

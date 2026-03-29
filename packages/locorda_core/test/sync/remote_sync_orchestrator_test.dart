@@ -17,6 +17,7 @@ import 'package:locorda_core/src/mapping/framework_iri_generator.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
 import 'package:locorda_core/src/sync/remote_document_merger.dart';
+import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/sync/remote_sync_orchestrator.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
 import 'package:locorda_core/src/util/build_effective_config.dart';
@@ -176,6 +177,7 @@ class TestOrchestratorSetup {
       localDocumentMerger: localDocumentMerger,
       hlcService: hlcService,
       physicalTimestampFactory: timestampFactory,
+      documentSaveService: DocumentSaveService(storage),
     );
 
     final installationIri = InstallationService.createInstallationIri(
@@ -226,6 +228,7 @@ class TestOrchestratorSetup {
       physicalTimestampFactory: timestampFactory,
       useShardDatasets: backend.useShardDatasets,
       perflog: perflog,
+      documentSaveService: DocumentSaveService(storage),
     );
 
     return TestOrchestratorSetup(

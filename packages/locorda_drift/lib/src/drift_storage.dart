@@ -748,6 +748,49 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   }
 
   @override
+  Future<void> saveIndexShards(
+      List<(IriTerm, List<IriTerm>)> indexShards) async {
+    if (indexShards.isEmpty) return;
+    final allIris =
+        indexShards.expand((e) => [e.$1, ...e.$2]).map((t) => t.value).toList();
+    final iriIdMap = await _getOrCreateIriIdsMap(allIris);
+
+    await _database.transaction(() async {
+      // Diff-based delete: remove only shards no longer present.
+      // OR-Set semantics mean shards are rarely removed, so this avoids
+      // the unnecessary delete+reinsert of the common case.
+      for (final (indexIri, shardIris) in indexShards) {
+        final indexIriId = iriIdMap[indexIri.value]!;
+        final shardIriIds =
+            shardIris.map((s) => iriIdMap[s.value]!).toList(growable: false);
+        final deleteQuery = _database.delete(_database.indexShards)
+          ..where((s) => shardIriIds.isEmpty
+              ? s.indexIriId.equals(indexIriId)
+              : s.indexIriId.equals(indexIriId) &
+                  s.shardIriId.isNotIn(shardIriIds));
+        await deleteQuery.go();
+      }
+      // Single batch insert across all indices — compiles to one executeBatch
+      // call instead of N sequential round-trips.
+      await _database.batch((batch) {
+        for (final (indexIri, shardIris) in indexShards) {
+          final indexIriId = iriIdMap[indexIri.value]!;
+          for (final shardIri in shardIris) {
+            batch.insert(
+              _database.indexShards,
+              IndexShardsCompanion.insert(
+                indexIriId: indexIriId,
+                shardIriId: iriIdMap[shardIri.value]!,
+              ),
+              mode: InsertMode.insertOrIgnore,
+            );
+          }
+        }
+      });
+    });
+  }
+
+  @override
   Future<void> saveGroupIndexSubscription({
     required IriTerm groupIndexIri,
     required IriTerm groupIndexTemplateIri,

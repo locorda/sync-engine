@@ -1792,6 +1792,22 @@ class BatchIndexEntrySaveOperation {
   });
 }
 
+/// Shard membership for index documents.
+///
+/// Populated by [DocumentSaveService] whenever an [IdxFullIndex] or
+/// [IdxGroupIndex] document is saved.  Enables Stage 1 to resolve shards
+/// with a single DB query instead of parsing full RDF documents.
+class IndexShards extends Table {
+  @ReferenceName('indexIri')
+  IntColumn get indexIriId => integer().references(SyncIris, #id)();
+
+  @ReferenceName('shardIri')
+  IntColumn get shardIriId => integer().references(SyncIris, #id)();
+
+  @override
+  Set<Column> get primaryKey => {indexIriId, shardIriId};
+}
+
 /// Main sync database class
 @DriftDatabase(
   tables: [
@@ -1805,6 +1821,7 @@ class BatchIndexEntrySaveOperation {
     IndexIriIdSetVersions,
     RemoteSettings,
     RemoteSyncState,
+    IndexShards,
   ],
   daos: [SyncDocumentDao, SyncPropertyChangeDao, IndexDao, RemoteSyncStateDao],
 )
@@ -1816,7 +1833,7 @@ class SyncDatabase extends _$SyncDatabase {
   SyncDatabase.forExecutor(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1886,6 +1903,11 @@ class SyncDatabase extends _$SyncDatabase {
           await m.database.customStatement('''
         CREATE INDEX IF NOT EXISTS idx_index_instance_sync_states_remote
         ON index_instance_sync_states(remote_setting_id);
+      ''');
+
+          await m.database.customStatement('''
+        CREATE INDEX IF NOT EXISTS idx_index_shards_index_iri
+        ON index_shards(index_iri_id);
       ''');
         },
         onUpgrade: (Migrator m, int from, int to) async {
@@ -1988,6 +2010,13 @@ class SyncDatabase extends _$SyncDatabase {
             // SQLite doesn't support ALTER COLUMN, so we recreate the tables.
             await _migrateDocumentsToBlob(m);
             await _migrateIndexEntriesToBlob(m);
+          }
+          if (from < 10) {
+            await m.createTable(indexShards);
+            await m.database.customStatement('''
+              CREATE INDEX IF NOT EXISTS idx_index_shards_index_iri
+              ON index_shards(index_iri_id);
+            ''');
           }
         },
       );

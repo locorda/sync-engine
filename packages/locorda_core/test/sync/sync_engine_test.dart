@@ -17,6 +17,7 @@ import 'package:locorda_core/src/mapping/framework_iri_generator.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
+import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
 import 'package:locorda_core/src/util/build_effective_config.dart';
 import 'package:locorda_rdf_core/core.dart';
@@ -414,7 +415,8 @@ Future<void> _executeStep({
         localDocumentMerger: localDocumentMerger,
         mergeContractLoader: mergeContractLoader,
         physicalTimestampFactory: timestampFactory,
-        shardDeterminer: shardDeterminer);
+        shardDeterminer: shardDeterminer,
+        documentSaveService: DocumentSaveService(storage));
     final installationIri = InstallationService.createInstallationIri(
         resourceLocator, baseInstallationId);
     final indexManager = IndexManager(

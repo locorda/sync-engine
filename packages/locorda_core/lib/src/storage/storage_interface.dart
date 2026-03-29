@@ -76,6 +76,20 @@ abstract interface class Storage {
   List<Uint8List>? preEncodeDocuments(List<SaveDocumentRequest> requests) =>
       null;
 
+  /// Persist the full shard membership for an index document.
+  ///
+  /// Replaces all previously stored shard IRIs for [indexIri] with
+  /// [shardIris] (full-replace / OR-Set semantics: the caller always provides
+  /// the complete post-merge shard set).  Called automatically by
+  /// [DocumentSaveService] when an [IdxFullIndex] or [IdxGroupIndex] document
+  /// is saved; storage backends that derive shard membership from the RDF
+  /// graph at query time may leave this as a no-op.
+  ///
+  /// Each entry is a record of `(indexIri, shardIris)` so the entire batch can
+  /// be persisted in a single round-trip / transaction.
+  Future<void> saveIndexShards(
+      List<(IriTerm, List<IriTerm>)> indexShards) async {}
+
   /// Get document with content and metadata by IRI.
   Future<StoredDocument?> getDocument(
     IriTerm documentIri, {
