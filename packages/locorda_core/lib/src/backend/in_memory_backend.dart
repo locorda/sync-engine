@@ -381,34 +381,34 @@ class InMemorySyncStorage extends RemoteSyncStorage
       });
 
   @override
-  StreamTransformer<SyncCandidateEvent, FetchedCandidateEvent>
-      resourceFetch() =>
-          _asyncSafeTransformer((SyncCandidateEvent event) async* {
-            switch (event) {
-              case PhaseComplete():
-                yield event;
-              case ShardComplete():
-                yield event;
-              case SyncCandidate():
-                if (event.direction == SyncDirection.localOnly ||
-                    event.direction == SyncDirection.remoteRemoved) {
-                  yield FetchedCandidate(event);
-                  return;
-                }
-
-                final result =
-                    await download(event.resourceIri.getDocumentIri());
-                if (result.graph != null) {
-                  yield FetchedCandidate(
-                    event,
-                    remoteSource: DecodedGraphSource(result.graph!),
-                    remoteEtag: result.etag,
-                  );
-                } else {
-                  yield FetchedCandidate(event);
-                }
+  StreamTransformer<LoadedCandidateEvent,
+      FetchedCandidateEvent> resourceFetch() => _asyncSafeTransformer(
+          (LoadedCandidateEvent event) async* {
+        switch (event) {
+          case PhaseComplete():
+            yield event;
+          case ShardComplete():
+            yield event;
+          case LoadedCandidate():
+            if (event.candidate.direction == SyncDirection.localOnly ||
+                event.candidate.direction == SyncDirection.remoteRemoved) {
+              yield FetchedCandidate(event, remoteEtag: event.storedRemoteEtag);
+              return;
             }
-          });
+
+            final result =
+                await download(event.candidate.resourceIri.getDocumentIri());
+            if (result.graph != null) {
+              yield FetchedCandidate(
+                event,
+                remoteSource: DecodedGraphSource(result.graph!),
+                remoteEtag: result.etag,
+              );
+            } else {
+              yield FetchedCandidate(event, remoteEtag: event.storedRemoteEtag);
+            }
+        }
+      });
 
   @override
   StreamTransformer<MergedResourceEvent, UploadedResourceEvent>

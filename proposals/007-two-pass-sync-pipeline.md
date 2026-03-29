@@ -103,7 +103,7 @@ Each installation creates its own documents for IoI, IoGI, and at least one shar
 1. **Stream across stages, batch within stages**: Resources flow continuously from stage to stage — no phase barriers. Within a single stage, I/O operations are batched/chunked for efficiency (e.g. 10 concurrent downloads, 500 items per DB transaction).
 2. **Backend as stream transform**: The backend is a function `Stream<Request> → Stream<Result>`. All backend-specific complexity (file-per-resource vs. file-per-shard vs. aggregated storage) is encapsulated inside the transform.
 3. **Boundary elements for coordination**: Typed sentinel events (`ShardComplete`, `PhaseComplete`) flow inline with data — no external coordinator needed.
-4. **CPU stages only do CPU; I/O stages only do I/O**: No parsing in I/O stages. `EncodedRdfGraphSource` (raw bytes/text) flows through I/O stages untouched. All decoding/encoding happens in CPU stages (3, 7, 11). **Backend-owned stages** (2, 5, 8, 12) maintain this separation *internally* via sub-pipelines (e.g. 8a CPU → 8b I/O) — from Core's perspective each backend stage is a single opaque `StreamTransformer`.
+4. **CPU stages only do CPU; I/O stages only do I/O**: No parsing in I/O stages. `EncodedRdfGraphSource` (raw bytes/text) flows through I/O stages untouched. All decoding/encoding happens in CPU stages (3, 7, 11). **Backend-owned stages** (2, 6, 8, 12) maintain this separation *internally* via sub-pipelines (e.g. 8a CPU → 8b I/O) — from Core's perspective each backend stage is a single opaque `StreamTransformer`.
 5. **Only sync what changed**: ETags for remote shards, `updatedAt > lastSyncTimestamp` for local. Unchanged items are never processed.
 6. **Backend persists its own remote knowledge**: Each backend maintains its own view of the remote state via a transactional callback within Core's DB commit. Core never accesses mirror data directly.
 > **KK:** that must be removed - this is not needed any more, it was a dead end
@@ -291,39 +291,41 @@ The critical invariant is: **a resource must be uploaded to remote (Stage 8) bef
 
 ---
 
-### Stage 5: Remote Resource Fetch (backend, remote I/O)
+### Stage 5: Local Content Load (core, DB read)
 
-Download resource content for candidates that need remote data.
-
-| | |
-|---|---|
-| **Owner** | Backend |
-| **I/O** | Remote HTTP |
-| **Implementation** | Custom `StreamTransformer` — concurrency pool; `sync: true` internal controller; pauses upstream when all N slots occupied |
-| **Input** | `Stream<SyncCandidate + ShardComplete>` |
-| **Operation** | `remoteOnly` / `conflictCandidate` → batched download. `localOnly` / `remoteRemoved` → pass through. |
-| **Output** | `Stream<FetchedCandidate(candidate, remoteSource: RdfGraphSource?) + ShardComplete>` |
-| **Batching** | Chunked: max N concurrent downloads |
-
-The downloaded content is delivered as `RdfGraphSource` — typically `EncodedRdfGraphSource` (raw bytes), but backends may also provide a `DecodedGraphSource` directly (e.g. a shard-dataset backend that extracts individual resource graphs from a downloaded TRiG file). **This stage does not decode unless it needs decoded itself.** Decoding is deferred to Stage 7 (CRDT Merge), which is the first stage that requires the parsed graph. Stage 7 handles both cases transparently via `RdfGraphSource.decode()`.
-
----
-
-### Stage 6: Local Content Load (core, DB read)
-
-Load local graph content for candidates that need the local version.
+Load local graph content and stored remote ETags for candidates.
 
 | | |
 |---|---|
 | **Owner** | Core |
 | **I/O** | DB read |
 | **Implementation** | Custom `StreamTransformer` — chunked DB read; `sync: true` internal controller |
-| **Input** | `Stream<FetchedCandidate + ShardComplete>` |
-| **Operation** | `conflictCandidate` / `localOnly` → load local content from DB. `remoteOnly` → pass through. |
-| **Output** | `Stream<LoadedCandidate(candidate, remoteSource?, localSource?) + ShardComplete>` |
-| **Batching** | Chunked: 500 items per `getDocumentsByIri()` IN-query (same bound as Stage 9; avoids SQLite variable limit) |
+| **Input** | `Stream<SyncCandidate + ShardComplete>` |
+| **Operation** | `conflictCandidate` / `localOnly` → load local content from DB. `remoteOnly` → pass through (but still load stored ETag). |
+| **Output** | `Stream<LoadedCandidate(candidate, localSource?, storedRemoteEtag?) + ShardComplete>` |
+| **Batching** | Chunked: 990 items per `getDocumentsByIri()` IN-query (stays within SQLite's SQLITE_MAX_VARIABLE_NUMBER limit of 999) |
 
-Local content is loaded as `RdfGraphSource` (typically `BinaryGraphSource` — Jelly bytes from DB). **This stage does not decode.** Both `remoteSource` and `localSource` remain undecoded `RdfGraphSource` values; decoding is deferred to Stage 7.
+Local content is loaded as `RdfGraphSource` (typically `BinaryGraphSource` — Jelly bytes from DB). **This stage does not decode.** `localSource` remains an undecoded `RdfGraphSource`; decoding is deferred to Stage 7.
+
+The stored remote ETag (`storedRemoteEtag`) is loaded from DB for all directions that may need it. This ETag is passed to Stage 6 (Resource Fetch) for conditional GET (`If-None-Match`), and carried through to Stage 8 (Upload) for conflict detection (`If-Match`) on `localOnly` resources.
+
+---
+
+### Stage 6: Remote Resource Fetch (backend, remote I/O)
+
+Download resource content for candidates that need remote data, using stored ETags for conditional GET.
+
+| | |
+|---|---|
+| **Owner** | Backend |
+| **I/O** | Remote HTTP |
+| **Implementation** | Custom `StreamTransformer` — concurrency pool; `sync: true` internal controller; pauses upstream when all N slots occupied |
+| **Input** | `Stream<LoadedCandidate + ShardComplete>` |
+| **Operation** | `remoteOnly` / `conflictCandidate` → batched download (with `If-None-Match` from `storedRemoteEtag`). `localOnly` / `remoteRemoved` → pass through. |
+| **Output** | `Stream<FetchedCandidate(loaded, remoteSource?, remoteEtag?) + ShardComplete>` |
+| **Batching** | Chunked: max N concurrent downloads |
+
+`FetchedCandidate` wraps the `LoadedCandidate` from Stage 5, adding the remote graph source and response ETag. The downloaded content is delivered as `RdfGraphSource` — typically `EncodedRdfGraphSource` (raw bytes), but backends may also provide a `DecodedGraphSource` directly (e.g. a shard-dataset backend that extracts individual resource graphs from a downloaded TRiG file). **This stage does not decode unless it needs decoded itself.** Decoding is deferred to Stage 7 (CRDT Merge), which is the first stage that requires the parsed graph. Stage 7 handles both cases transparently via `RdfGraphSource.decode()`.
 
 ---
 
@@ -336,7 +338,7 @@ Decode on demand, merge, encode for DB. **Pure CPU — no I/O.**
 | **Owner** | Core |
 | **I/O** | None — pure CPU |
 | **Implementation** | `stream.map()` — synchronous, no controller, zero microtask overhead |
-| **Input** | `Stream<LoadedCandidate + ShardComplete>` |
+| **Input** | `Stream<FetchedCandidate + ShardComplete>` |
 | **Output** | `Stream<MergeResult + ShardComplete>` |
 
 > **Isolate note**: Stage 7's synchronous CPU work per resource must remain sub-millisecond to keep the event loop responsive to concurrent I/O callbacks. If heavy documents make this a bottleneck, Stage 7 can be moved to a dedicated isolate — serializing `LoadedCandidate`/`MergeResult` across the port boundary — without changing any other stage or the pipeline architecture.
@@ -345,9 +347,9 @@ Decode on demand, merge, encode for DB. **Pure CPU — no I/O.**
 
 | Direction | Operation |
 |---|---|
-| `remoteOnly` | Decode `remoteSource` on demand → accept as merged graph → encode to Jelly for DB |
-| `localOnly` | Decode `localSource` on demand if needed → retain as merged graph; already Jelly for DB |
-| `conflictCandidate` | Decode both sides on demand → CRDT merge → encode merged graph to Jelly for DB |
+| `remoteOnly` | Decode `fetched.remoteSource` on demand → accept as merged graph → encode to Jelly for DB |
+| `localOnly` | Decode `fetched.loaded.localSource` on demand if needed → retain as merged graph; already Jelly for DB |
+| `conflictCandidate` | Decode both `fetched.remoteSource` and `fetched.loaded.localSource` on demand → CRDT merge → encode merged graph to Jelly for DB |
 | `remoteRemoved` | Apply deletion semantics (tombstone / remove) |
 
 **Decoding is on-demand**: `RdfGraphSource.decode()` is called only when the decoded graph is actually required. If an `RdfGraphSource` already is a `DecodedGraphSource`, no work is done.
@@ -357,7 +359,7 @@ Decode on demand, merge, encode for DB. **Pure CPU — no I/O.**
 - `mergedGraph: DecodedGraphSource` — the decoded merged result (always available at this point)
 - `encodedForDb: BinaryGraphSource` — Jelly-encoded bytes for DB commit (no further CPU in Stage 9)
 - `needsUpload`, `needsDbWrite` — flags
-- `resourceEtag?` — from remote fetch, for upload conflict detection
+- `resourceEtag?` — from remote fetch (or stored ETag for `localOnly`), for upload conflict detection
 
 Stage 7 does **not** pre-encode for upload — encoding for the wire format is the backend's responsibility (see [OQ5 resolution](#5-upload-encoding--resolved)).
 

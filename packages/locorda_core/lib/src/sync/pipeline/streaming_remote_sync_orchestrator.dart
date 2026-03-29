@@ -26,7 +26,7 @@ import 'package:locorda_core/src/sync/pipeline/stages/stage14_feedback.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage1_shard_resolution.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage3_shard_parse.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage4_change_detection.dart';
-import 'package:locorda_core/src/sync/pipeline/stages/stage6_local_content_load.dart';
+import 'package:locorda_core/src/sync/pipeline/stages/stage5_local_content_load.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage7_crdt_merge.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage9_db_commit.dart';
 import 'package:locorda_core/src/sync/remote_document_merger.dart';
@@ -89,9 +89,10 @@ class StreamingRemoteSyncOrchestrator {
 
     // Compute IoI, IoGI, and IoGIT IRIs from config
     final ioiIri = _computeMetaIndexIri(IdxFullIndex.classIri, 'fullIndices');
-    final iogiIri = _computeMetaIndexIri(IdxGroupIndex.classIri, 'groupIndices');
-    final iogitIri =
-        _computeMetaIndexIri(IdxGroupIndexTemplate.classIri, 'groupIndexTemplates');
+    final iogiIri =
+        _computeMetaIndexIri(IdxGroupIndex.classIri, 'groupIndices');
+    final iogitIri = _computeMetaIndexIri(
+        IdxGroupIndexTemplate.classIri, 'groupIndexTemplates');
 
     if (ioiIri == null || iogiIri == null || iogitIri == null) {
       _log.warning('Meta-index IRIs not found in config — skipping sync');
@@ -110,27 +111,25 @@ class StreamingRemoteSyncOrchestrator {
     final inputController = StreamController<SyncInput>();
 
     final pipeline = inputController.stream
-        .asyncExpand(shardResolution(_storage, _remoteId)) // Stage 1
-        .transform(_pipelineSupport.shardFetch()) // Stage 2
-        .map(shardParse(_rdfCore)) // Stage 3
-        .asyncExpand(changeDetection(_storage, lastSyncTimestamp)) // Stage 4
-        .transform(_pipelineSupport.resourceFetch()) // Stage 5
-        .transform(localContentLoad(_storage, _remoteId)) // Stage 6
-        .asyncExpand(crdtMerge(
-            _merger, _mergeContractLoader, _reconciler, _rdfCore)) // Stage 7
-        .transform(_pipelineSupport.resourceUpload()) // Stage 8
-        .asyncExpand(
-            dbCommit(_storage, _indexManager, _remoteId)) // Stage 9
-        .asyncExpand(shardEntryLoad(_storage)) // Stage 10
-        .asyncExpand(shardCrdtMerge(
-            _documentManager, _shardDocGen, _rdfCore)) // Stage 11
-        .transform(_pipelineSupport.shardUpload()) // Stage 12
-        .asyncExpand(
-            shardDbCommit(_storage, _remoteId)) // Stage 13
-        .asyncExpand(feedback(
-            inputController.sink,
-            _storage,
-            () => _contentIndicesFactory(config))) // Stage 14
+            .asyncExpand(shardResolution(_storage, _remoteId)) // Stage 1
+            .transform(_pipelineSupport.shardFetch()) // Stage 2
+            .map(shardParse(_rdfCore)) // Stage 3
+            .asyncExpand(
+                changeDetection(_storage, lastSyncTimestamp)) // Stage 4
+            .transform(localContentLoad(_storage, _remoteId)) // Stage 5
+            .transform(_pipelineSupport.resourceFetch()) // Stage 6
+            .asyncExpand(crdtMerge(_merger, _mergeContractLoader, _reconciler,
+                _rdfCore)) // Stage 7
+            .transform(_pipelineSupport.resourceUpload()) // Stage 8
+            .asyncExpand(
+                dbCommit(_storage, _indexManager, _remoteId)) // Stage 9
+            .asyncExpand(shardEntryLoad(_storage)) // Stage 10
+            .asyncExpand(shardCrdtMerge(
+                _documentManager, _shardDocGen, _rdfCore)) // Stage 11
+            .transform(_pipelineSupport.shardUpload()) // Stage 12
+            .asyncExpand(shardDbCommit(_storage, _remoteId)) // Stage 13
+            .asyncExpand(feedback(inputController.sink, _storage,
+                () => _contentIndicesFactory(config))) // Stage 14
         ;
 
     // Seed with meta-index phase
@@ -149,14 +148,12 @@ class StreamingRemoteSyncOrchestrator {
   /// Compute a meta-index IRI from config by matching the resource type and
   /// index local name.
   IriTerm? _computeMetaIndexIri(IriTerm typeIri, String indexNameField) {
-    final resourceConfig = _config.resources
-        .where((r) => r.typeIri == typeIri)
-        .firstOrNull;
+    final resourceConfig =
+        _config.resources.where((r) => r.typeIri == typeIri).firstOrNull;
     if (resourceConfig == null) return null;
 
-    final fullIndex = resourceConfig.indices
-        .whereType<FullIndexData>()
-        .firstOrNull;
+    final fullIndex =
+        resourceConfig.indices.whereType<FullIndexData>().firstOrNull;
     if (fullIndex == null) return null;
 
     return _indexRdfGenerator.generateFullIndexIri(fullIndex, typeIri);
@@ -194,8 +191,8 @@ class StreamingRemoteSyncOrchestrator {
     final infos = <IriTerm, IndexInputInfo>{};
 
     // IoI indexes FullIndex documents
-    final ioiConfig = config.resources
-        .firstWhere((r) => r.typeIri == IdxFullIndex.classIri);
+    final ioiConfig =
+        config.resources.firstWhere((r) => r.typeIri == IdxFullIndex.classIri);
     final ioiFullIndex = ioiConfig.indices.whereType<FullIndexData>().first;
     infos[ioiIri] = IndexInputInfo(
         ioiFullIndex.rootResourceFetchPolicy, IdxFullIndex.classIri);
@@ -238,13 +235,12 @@ class StreamingRemoteSyncOrchestrator {
       for (final index in resourceConfig.indices.whereType<FullIndexData>()) {
         final indexIri =
             _indexRdfGenerator.generateFullIndexIri(index, typeIri);
-        result[indexIri] = IndexInputInfo(
-            index.rootResourceFetchPolicy, typeIri);
+        result[indexIri] =
+            IndexInputInfo(index.rootResourceFetchPolicy, typeIri);
       }
 
       // Subscribed GroupIndex IRIs from DB
-      final groupIndices =
-          await _storage.getSubscribedGroupIndices(typeIri);
+      final groupIndices = await _storage.getSubscribedGroupIndices(typeIri);
       for (final (groupIndexIri, _, fetchPolicy) in groupIndices) {
         result[groupIndexIri] = IndexInputInfo(fetchPolicy, typeIri);
       }
@@ -258,16 +254,15 @@ class StreamingRemoteSyncOrchestrator {
 
       final foreignShards = await _storage.getForeignIndexShardsToSync(
         resourceType: typeIri,
-        sinceTimestamp:
-            await _storage.getLastRemoteSyncTimestamp(_remoteId),
+        sinceTimestamp: await _storage.getLastRemoteSyncTimestamp(_remoteId),
         excludeIndexIris: configuredIris,
       );
 
       for (final indexIri in foreignShards.keys) {
         // Foreign indices use OnRequest fetch policy — Stage 4 skips
         // remoteOnly entries, giving upload-only behavior.
-        result[indexIri] = IndexInputInfo(
-            RootResourceFetchPolicy.onRequest, typeIri);
+        result[indexIri] =
+            IndexInputInfo(RootResourceFetchPolicy.onRequest, typeIri);
       }
     }
 
@@ -314,12 +309,11 @@ class StreamingRemoteSyncOrchestrator {
         final instanceDoc = await _storage.getDocument(instanceDocIri);
         if (instanceDoc == null) continue;
 
-        final indexedClass = instanceDoc.document
-            .findSingleObject<IriTerm>(
-                entry.resourceIri, IdxIndex.indexesClass);
+        final indexedClass = instanceDoc.document.findSingleObject<IriTerm>(
+            entry.resourceIri, IdxIndex.indexesClass);
         if (indexedClass != null && contentTypes.contains(indexedClass)) {
-          result[entry.resourceIri] = IndexInputInfo(
-              RootResourceFetchPolicy.prefetch, indexedClass);
+          result[entry.resourceIri] =
+              IndexInputInfo(RootResourceFetchPolicy.prefetch, indexedClass);
           _log.fine('Discovered foreign FullIndex: ${entry.resourceIri.debug} '
               'for ${indexedClass.debug}');
         }
@@ -327,7 +321,8 @@ class StreamingRemoteSyncOrchestrator {
     }
 
     // Read IoGI to find foreign GroupIndex instances
-    final iogiIri = _computeMetaIndexIri(IdxGroupIndex.classIri, 'groupIndices');
+    final iogiIri =
+        _computeMetaIndexIri(IdxGroupIndex.classIri, 'groupIndices');
     if (iogiIri == null) return;
 
     final iogiDocIri = iogiIri.getDocumentIri();
@@ -346,12 +341,11 @@ class StreamingRemoteSyncOrchestrator {
         final instanceDoc = await _storage.getDocument(instanceDocIri);
         if (instanceDoc == null) continue;
 
-        final indexedClass = instanceDoc.document
-            .findSingleObject<IriTerm>(
-                entry.resourceIri, IdxIndex.indexesClass);
+        final indexedClass = instanceDoc.document.findSingleObject<IriTerm>(
+            entry.resourceIri, IdxIndex.indexesClass);
         if (indexedClass != null && contentTypes.contains(indexedClass)) {
-          result[entry.resourceIri] = IndexInputInfo(
-              RootResourceFetchPolicy.prefetch, indexedClass);
+          result[entry.resourceIri] =
+              IndexInputInfo(RootResourceFetchPolicy.prefetch, indexedClass);
           _log.fine('Discovered foreign GroupIndex: ${entry.resourceIri.debug} '
               'for ${indexedClass.debug}');
         }

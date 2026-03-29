@@ -1,8 +1,8 @@
 /// Optional extension of [RemoteSyncStorage] for the streaming sync pipeline.
 ///
-/// Provides the four backend-owned stream transformers for Stages 2, 5, 8, 12.
+/// Provides the four backend-owned stream transformers for Stages 2, 6, 8, 12.
 /// Implementations may share internal state across transformers (e.g. a
-/// per-shard resource cache populated in Stage 2, consumed in Stage 5).
+/// per-shard resource cache populated in Stage 2, consumed in Stage 6).
 library;
 
 import 'dart:async';
@@ -33,14 +33,15 @@ abstract interface class RemoteSyncPipelineSupport {
   /// Must buffer boundary events until all in-flight fetches complete, then forward.
   StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch();
 
-  /// Stage 5: Resource Fetch — download resource graphs.
+  /// Stage 6: Resource Fetch — download resource graphs.
   ///
-  /// Input: [SyncCandidateEvent] ([SyncCandidate] data + [PhaseComplete]/[ShardComplete] boundaries).
+  /// Input: [LoadedCandidateEvent] ([LoadedCandidate] data + [PhaseComplete]/[ShardComplete] boundaries).
   /// Output: [FetchedCandidateEvent] ([FetchedCandidate] data + [PhaseComplete]/[ShardComplete] boundaries).
   ///
-  /// `remoteOnly` / `conflictCandidate` → fetch from remote.
+  /// `remoteOnly` / `conflictCandidate` → fetch from remote (using [LoadedCandidate.storedRemoteEtag] for conditional GET).
   /// `localOnly` / `remoteRemoved` → pass through as [FetchedCandidate] without fetch.
-  StreamTransformer<SyncCandidateEvent, FetchedCandidateEvent> resourceFetch();
+  StreamTransformer<LoadedCandidateEvent, FetchedCandidateEvent>
+      resourceFetch();
 
   /// Stage 8: Resource Upload — upload merged resources.
   ///

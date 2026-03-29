@@ -443,31 +443,12 @@ class SyncCandidate implements SyncCandidateEvent {
 }
 
 // ---------------------------------------------------------------------------
-// Stage 5 output: Resource Fetch
+// Stage 5 output: Local Content Load
 // ---------------------------------------------------------------------------
 
-/// A candidate with its remote graph source fetched.
-class FetchedCandidate implements FetchedCandidateEvent {
-  final SyncCandidate candidate;
-
-  /// Remote graph source — null for [SyncDirection.localOnly].
-  final RdfGraphSource? remoteSource;
-
-  /// ETag of the remote resource, for conditional upload in Stage 8.
-  /// Null for [SyncDirection.localOnly] (no remote fetch performed).
-  final String? remoteEtag;
-
-  const FetchedCandidate(this.candidate, {this.remoteSource, this.remoteEtag});
-}
-
-// ---------------------------------------------------------------------------
-// Stage 6 output: Local Content Load
-// ---------------------------------------------------------------------------
-
-/// A candidate with both remote and local graph sources loaded.
+/// A candidate with local graph content and stored remote ETag loaded from DB.
 class LoadedCandidate implements LoadedCandidateEvent {
   final SyncCandidate candidate;
-  final RdfGraphSource? remoteSource;
 
   /// Local graph source — null for [SyncDirection.remoteOnly].
   final RdfGraphSource? localSource;
@@ -476,16 +457,37 @@ class LoadedCandidate implements LoadedCandidateEvent {
   /// Null for [SyncDirection.remoteOnly] (no local document).
   final int? localUpdatedAt;
 
-  /// ETag of the remote resource, for conditional upload in Stage 8.
-  final String? remoteEtag;
+  /// Stored remote ETag from DB, for conditional GET in Stage 6 and
+  /// conditional upload in Stage 8 (for `localOnly` resources).
+  final String? storedRemoteEtag;
 
   const LoadedCandidate(
     this.candidate, {
-    this.remoteSource,
     this.localSource,
     this.localUpdatedAt,
-    this.remoteEtag,
+    this.storedRemoteEtag,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Stage 6 output: Resource Fetch
+// ---------------------------------------------------------------------------
+
+/// A candidate with its remote graph source fetched, wrapping the local data
+/// from Stage 5.
+class FetchedCandidate implements FetchedCandidateEvent {
+  /// The local-loaded candidate from Stage 5.
+  final LoadedCandidate loaded;
+
+  /// Remote graph source — null for [SyncDirection.localOnly].
+  final RdfGraphSource? remoteSource;
+
+  /// ETag of the remote resource from the HTTP response, for conditional
+  /// upload in Stage 8. For `localOnly` direction, this carries the stored
+  /// ETag from [LoadedCandidate.storedRemoteEtag].
+  final String? remoteEtag;
+
+  const FetchedCandidate(this.loaded, {this.remoteSource, this.remoteEtag});
 }
 
 // ---------------------------------------------------------------------------

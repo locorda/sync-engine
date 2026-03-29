@@ -83,15 +83,15 @@ Defined in `locorda_core`. Optional — backends only implement it if they suppo
 ```dart
 /// Optional extension of [RemoteSyncStorage] for the streaming sync pipeline.
 ///
-/// Provides the four backend-owned stream transformers for Stages 2, 5, 8, 12.
+/// Provides the four backend-owned stream transformers for Stages 2, 6, 8, 12.
 /// Implementations may share internal state across transformers (e.g. a
-/// per-shard resource cache populated in Stage 2, consumed in Stage 5).
+/// per-shard resource cache populated in Stage 2, consumed in Stage 6).
 abstract interface class RemoteSyncPipelineSupport {
   /// Stage 2: Shard Fetch — conditionally download shard documents.
   StreamTransformer<ShardRef, FetchedShard> shardFetch();
 
-  /// Stage 5: Resource Fetch — download resource graphs.
-  StreamTransformer<SyncCandidate, FetchedCandidate> resourceFetch();
+  /// Stage 6: Resource Fetch — download resource graphs.
+  StreamTransformer<LoadedCandidate, FetchedCandidate> resourceFetch();
 
   /// Stage 8: Resource Upload — upload merged resources.
   StreamTransformer<MergeResult, UploadResult> resourceUpload();
@@ -106,7 +106,7 @@ abstract interface class RemoteSyncPipelineSupport {
 `DirSyncStorage` (in `locorda_dir`) implements both `RemoteSyncStorage` and `RemoteSyncPipelineSupport`. File-per-resource mode first:
 
 - **Stage 2**: Conditional file read for shard documents (ETag-based)
-- **Stage 5**: File read per resource
+- **Stage 6**: File read per resource
 - **Stage 8**: File write per resource (concurrent pool with backpressure)
 - **Stage 12**: File write per shard document (concurrent pool)
 
@@ -157,7 +157,7 @@ Build and test stages in **data-flow order** — each stage can be tested in iso
 1. **Stage 1: Shard Resolution** (`asyncExpand`) — resolve `SyncInput` → `ShardRef`s via DB queries
 2. **Stage 3: Shard Parse** (`stream.map()`) — parse shard document → `ParsedShard` with entries
 3. **Stage 4: Change Detection** (`StreamTransformer`) — diff local vs remote entries → `SyncCandidate`s. Emit `localOnly` candidates on `ShardComplete`.
-4. **Stage 6: Local Content Load** (`StreamTransformer`) — load local graph from DB for merge
+4. **Stage 5: Local Content Load** (`StreamTransformer`) — load local graph + stored ETags from DB
 5. **Stage 7: CRDT Merge** (`stream.map()`) — uses extracted merge primitives from Phase 1
 6. **Stage 9: DB Commit** (`StreamTransformer`) — chunked transaction writes (500 per tx)
 7. **Stage 10: Shard Entry Load** (`StreamTransformer`) — load shard entries + shard document from DB on `ShardComplete`
@@ -243,14 +243,14 @@ Only after file-per-resource is working and tested end-to-end.
 Extend the directory `SyncSupport` implementation:
 
 - **Stage 2**: Read entire TriG dataset file per shard, split into resource graphs, set `allResourcesAvailable = true`
-- **Stage 5**: Serve from internal cache (no file I/O)
+- **Stage 6**: Serve from internal cache (no file I/O)
 - **Stage 8**: Accumulate `mergedGraph` into `syncSupport` (no file write)
 - **Stage 12**: On `PhaseComplete`, assemble TriG datasets from accumulator + Core DB query, write one file per shard
 
 ### 6.2: Single-file mode
 
 - **Stage 2**: Read one TriG file, split by shard graph and resource graphs, emit `ShardContent` per shard with proactive injection for non-requested shards (content phase only)
-- **Stage 5**: Serve from internal cache
+- **Stage 6**: Serve from internal cache
 - **Stage 8**: Accumulate into `syncSupport`
 - **Stage 12**: On `PhaseComplete`, assemble one full file from accumulator + Core DB, write one file
 

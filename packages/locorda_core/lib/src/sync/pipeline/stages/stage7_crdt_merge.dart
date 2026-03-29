@@ -3,7 +3,7 @@
 /// **Implementation**: `asyncExpand` — merge contract loading and shard
 /// reconciliation are async (though typically served from cache).
 ///
-/// **Input**: `Stream<LoadedCandidateEvent>`
+/// **Input**: `Stream<FetchedCandidateEvent>`
 /// **Output**: `Stream<MergedResourceEvent>`
 library;
 
@@ -16,8 +16,8 @@ import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart' as pipeline
     show
         MergeResult,
         MergedResourceEvent,
-        LoadedCandidateEvent,
-        LoadedCandidate;
+        FetchedCandidateEvent,
+        FetchedCandidate;
 import 'package:locorda_core/src/sync/remote_document_merger.dart'
     as merger_lib;
 import 'package:locorda_rdf_core/core.dart';
@@ -28,42 +28,42 @@ final _log = Logger('Stage7.CrdtMerge');
 /// Returns an asyncExpand function for Stage 7.
 ///
 /// Usage: `stream.asyncExpand(crdtMerge(merger, mergeContractLoader, reconciler, rdfCore))`
-Stream<pipeline.MergedResourceEvent> Function(pipeline.LoadedCandidateEvent)
+Stream<pipeline.MergedResourceEvent> Function(pipeline.FetchedCandidateEvent)
     crdtMerge(
   merger_lib.RemoteDocumentMerger merger,
   MergeContractLoader mergeContractLoader,
   DocumentShardReconciler reconciler,
   RdfCore rdfCore,
 ) {
-  return (pipeline.LoadedCandidateEvent event) async* {
+  return (pipeline.FetchedCandidateEvent event) async* {
     switch (event) {
       case PhaseComplete():
         yield event;
       case ShardComplete():
         yield event;
-      case pipeline.LoadedCandidate():
-        yield* _mergeLoaded(
+      case pipeline.FetchedCandidate():
+        yield* _mergeFetched(
             event, merger, mergeContractLoader, reconciler, rdfCore);
     }
   };
 }
 
-Stream<pipeline.MergeResult> _mergeLoaded(
-  pipeline.LoadedCandidate loaded,
+Stream<pipeline.MergeResult> _mergeFetched(
+  pipeline.FetchedCandidate fetched,
   merger_lib.RemoteDocumentMerger merger,
   MergeContractLoader mergeContractLoader,
   DocumentShardReconciler reconciler,
   RdfCore rdfCore,
 ) async* {
-  final candidate = loaded.candidate;
+  final candidate = fetched.loaded.candidate;
   final typeIri = candidate.typeIri;
-  final localUpdatedAt = loaded.localUpdatedAt;
-  final remoteEtag = loaded.remoteEtag;
+  final localUpdatedAt = fetched.loaded.localUpdatedAt;
+  final remoteEtag = fetched.remoteEtag;
   final documentIri = candidate.resourceIri.getDocumentIri();
 
   // Decode sources on demand
-  final remoteGraph = loaded.remoteSource?.decodeWith(rdfCore).graph;
-  final localGraph = loaded.localSource?.decodeWith(rdfCore).graph;
+  final remoteGraph = fetched.remoteSource?.decodeWith(rdfCore).graph;
+  final localGraph = fetched.loaded.localSource?.decodeWith(rdfCore).graph;
 
   final RdfGraph mergedGraph;
 
