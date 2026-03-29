@@ -247,6 +247,15 @@ class InMemoryStorage implements Storage, TransactionalStorage {
     }
   }
 
+  @override
+  Future<Map<IriTerm, List<IriTerm>>> getIndexShards(
+      Iterable<IriTerm> indexIris) async {
+    return {
+      for (final iri in indexIris)
+        if (_indexShards.containsKey(iri)) iri: _indexShards[iri]!,
+    };
+  }
+
   /// Emit current documents to all watch streams for a specific type.
   Future<void> _triggerWatchers(Iterable<IriTerm> typeIris) async {
     _logger.fine(

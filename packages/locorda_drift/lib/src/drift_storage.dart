@@ -748,6 +748,40 @@ class DriftStorage implements core.Storage, core.TransactionalStorage {
   }
 
   @override
+  Future<Map<IriTerm, List<IriTerm>>> getIndexShards(
+      Iterable<IriTerm> indexIris) async {
+    final indexIriList = indexIris.toList(growable: false);
+    if (indexIriList.isEmpty) return const {};
+
+    final iriIdMap =
+        await _getOrCreateIriIdsMap(indexIriList.map((iri) => iri.value));
+    final indexIriIds = iriIdMap.values.toSet();
+
+    final rows = await (_database.select(_database.indexShards)
+          ..where((s) => s.indexIriId.isIn(indexIriIds)))
+        .get();
+    if (rows.isEmpty) return const {};
+
+    // Batch-load all shard IRI strings in one round-trip.
+    final shardIriIds = rows.map((r) => r.shardIriId).toSet();
+    final shardIriStrings = await indexDao.getIrisBatch(shardIriIds);
+
+    // Reverse-map indexIriId → IriTerm.
+    final idToIndexIri = {
+      for (final e in iriIdMap.entries) e.value: _iriTermFactory(e.key),
+    };
+
+    final result = <IriTerm, List<IriTerm>>{};
+    for (final row in rows) {
+      final indexIri = idToIndexIri[row.indexIriId];
+      final shardIriString = shardIriStrings[row.shardIriId];
+      if (indexIri == null || shardIriString == null) continue;
+      (result[indexIri] ??= []).add(_iriTermFactory(shardIriString));
+    }
+    return result;
+  }
+
+  @override
   Future<void> saveIndexShards(
       List<(IriTerm, List<IriTerm>)> indexShards) async {
     if (indexShards.isEmpty) return;

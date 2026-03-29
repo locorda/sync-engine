@@ -87,8 +87,15 @@ abstract interface class Storage {
   ///
   /// Each entry is a record of `(indexIri, shardIris)` so the entire batch can
   /// be persisted in a single round-trip / transaction.
-  Future<void> saveIndexShards(
-      List<(IriTerm, List<IriTerm>)> indexShards) async {}
+  Future<void> saveIndexShards(List<(IriTerm, List<IriTerm>)> indexShards);
+
+  /// Returns the known shard IRIs for each of the given index IRIs.
+  ///
+  /// Backends populate this table via [saveIndexShards]; callers rely on the
+  /// result being accurate — an empty map is treated as "no shards" and will
+  /// cause sync to skip indices silently.
+  Future<Map<IriTerm, List<IriTerm>>> getIndexShards(
+      Iterable<IriTerm> indexIris);
 
   /// Get document with content and metadata by IRI.
   Future<StoredDocument?> getDocument(

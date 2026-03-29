@@ -282,6 +282,8 @@ class StreamingRemoteSyncOrchestrator {
   /// Discover foreign indices by reading index instance documents downloaded
   /// during the meta-phase. Checks `idx:indexesClass` to determine what
   /// resource type each index serves.
+  ///
+  /// FIXME: This is a bit hacky — I don't understand what it is good for. Actually, most methods here feel hacky - I expected the pipeline, and thats it!
   Future<void> _discoverForeignIndicesFromMeta(
     SyncEngineConfig config,
     Set<IriTerm> metaTypes,
@@ -296,12 +298,8 @@ class StreamingRemoteSyncOrchestrator {
     final ioiIri = _computeMetaIndexIri(IdxFullIndex.classIri, 'fullIndices');
     if (ioiIri == null) return;
 
-    final ioiDocIri = ioiIri.getDocumentIri();
-    final ioiDoc = await _storage.getDocument(ioiDocIri);
-    if (ioiDoc == null) return;
-
-    final shardIris = ioiDoc.document
-        .getMultiValueObjects<IriTerm>(ioiIri, IdxIndex.hasShard);
+    final ioiShards = await _storage.getIndexShards([ioiIri]);
+    final shardIris = ioiShards[ioiIri] ?? const [];
 
     for (final shardIri in shardIris) {
       final entries = await _storage.getActiveIndexEntriesForShard(shardIri);
@@ -329,12 +327,8 @@ class StreamingRemoteSyncOrchestrator {
         _computeMetaIndexIri(IdxGroupIndex.classIri, 'groupIndices');
     if (iogiIri == null) return;
 
-    final iogiDocIri = iogiIri.getDocumentIri();
-    final iogiDoc = await _storage.getDocument(iogiDocIri);
-    if (iogiDoc == null) return;
-
-    final iogiShardIris = iogiDoc.document
-        .getMultiValueObjects<IriTerm>(iogiIri, IdxIndex.hasShard);
+    final iogiShards = await _storage.getIndexShards([iogiIri]);
+    final iogiShardIris = iogiShards[iogiIri] ?? const [];
 
     for (final shardIri in iogiShardIris) {
       final entries = await _storage.getActiveIndexEntriesForShard(shardIri);

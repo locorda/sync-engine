@@ -231,16 +231,21 @@ class RemoteStoredDocument {
 class InMemorySyncStorage extends RemoteSyncStorage
     implements RemoteSyncPipelineSupport, FPRBackend {
   final _Store _storage;
-  late final RemoteSyncPipelineSupport _pipelineSupport;
+  late final RemoteSyncPipelineSupport _pipelineSupport =
+      _pipelineSupportFactory(storage: this);
+
+  _Store storage;
+
+  RemoteSyncPipelineSupport Function({required InMemorySyncStorage storage})
+      _pipelineSupportFactory;
 
   InMemorySyncStorage(
-      {required _Store storage,
+      {required this.storage,
       required RemoteSyncPipelineSupport Function(
               {required InMemorySyncStorage storage})
           pipelineSupportFactory})
-      : _storage = storage {
-    _pipelineSupport = pipelineSupportFactory(storage: this);
-  }
+      : _storage = storage,
+        _pipelineSupportFactory = pipelineSupportFactory;
 
   @override
   Future<RemoteDownloadResult<RdfGraph>> download(IriTerm documentIri,

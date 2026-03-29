@@ -13,7 +13,6 @@ import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/remote_id.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
-import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 
@@ -30,30 +29,15 @@ Stream<ShardRefEvent> Function(SyncInput) shardResolution(
     final zeroShardIndices = <IriTerm>[];
     var processedShardCount = 0;
 
-    // Batch-load all index documents in one query
-    final documentIris =
-        input.indexIris.map((iri) => iri.getDocumentIri()).toList();
-    final docs = await storage.getDocumentsByIri(documentIris);
+    // Single DB query replaces document load + RDF parse per index.
+    final indexToShards = await storage.getIndexShards(input.indexIris);
 
-    // Collect all shard IRIs across all indices for bulk ETag query
+    // Collect all shard IRIs for bulk ETag query.
     final allShardIris = <IriTerm>{};
-    final indexShards =
-        <IriTerm, (Set<IriTerm> shardIris, IndexInputInfo info)>{};
+    final indexShards = <IriTerm, (List<IriTerm>, IndexInputInfo)>{};
 
     for (final indexIri in input.indexIris) {
-      final documentIri = indexIri.getDocumentIri();
-      final doc = docs[documentIri];
-
-      if (doc == null) {
-        _log.warning('Index document not found: ${documentIri.debug} — '
-            'adding to zeroShardIndices');
-        zeroShardIndices.add(indexIri);
-        continue;
-      }
-
-      final shardIris = doc.document
-          .getMultiValueObjects<IriTerm>(indexIri, IdxIndex.hasShard);
-
+      final shardIris = indexToShards[indexIri] ?? const [];
       if (shardIris.isEmpty) {
         zeroShardIndices.add(indexIri);
         continue;
@@ -69,12 +53,11 @@ Stream<ShardRefEvent> Function(SyncInput) shardResolution(
       indexShards[indexIri] = (shardIris, info);
     }
 
-    // Bulk ETag query for all shards across all indices
+    // Bulk ETag query for all shards across all indices.
     final etags = allShardIris.isNotEmpty
         ? await _getStoredEtags(storage, remoteId, allShardIris)
         : <IriTerm, String>{};
 
-    // Emit ShardRefs
     for (final entry in indexShards.entries) {
       final indexIri = entry.key;
       final (shardIris, info) = entry.value;
