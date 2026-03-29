@@ -55,7 +55,7 @@ Stream<ShardRefEvent> Function(SyncInput) shardResolution(
 
     // Bulk ETag query for all shards across all indices.
     final etags = allShardIris.isNotEmpty
-        ? await _getStoredEtags(storage, remoteId, allShardIris)
+        ? await storage.getRemoteETags(remoteId, allShardIris)
         : <IriTerm, String>{};
 
     for (final entry in indexShards.entries) {
@@ -80,18 +80,5 @@ Stream<ShardRefEvent> Function(SyncInput) shardResolution(
       processedShardCount,
       zeroShardIndices: zeroShardIndices,
     );
-  };
-}
-
-/// Query stored ETags for shard IRIs from remote sync state.
-Future<Map<IriTerm, String>> _getStoredEtags(
-  Storage storage,
-  RemoteId remoteId,
-  Set<IriTerm> shardIris,
-) async {
-  final etagMap = await storage.getRemoteETags(remoteId, shardIris);
-  return {
-    for (final entry in etagMap.entries)
-      if (entry.value != null) entry.key: entry.value!,
   };
 }
