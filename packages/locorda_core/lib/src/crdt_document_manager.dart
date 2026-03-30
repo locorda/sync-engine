@@ -532,12 +532,8 @@ class CrdtDocumentManager {
               documentIri, SyncManagedDocument.crdtCreatedAt) ??
           LiteralTermExtensions.dateTime(updatedAtTimestamp);
 
-      final (
-        allShards,
-        _,
-        resolvedGroupIndices,
-        missingIndexDocuments
-      ) = await _shardDeterminer.calculateShards(
+      final (allShards, _, resolvedGroupIndices, missingIndexDocuments) =
+          await _shardDeterminer.calculateShards(
         type,
         resourceIri,
         documentIri,

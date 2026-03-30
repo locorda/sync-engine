@@ -1718,7 +1718,7 @@ class _DocumentSyncHelper {
         final clock = _hlcService.getCurrentClock(mergedDocument, documentIri);
 
         // Replace shards in the document and generate metadata for the change
-        final document =  _localDocumentMerger.replaceInDocument(
+        final document = _localDocumentMerger.replaceInDocument(
             documentIri: documentIri,
             document: mergedDocument,
             mergeContract: mergeContract,
