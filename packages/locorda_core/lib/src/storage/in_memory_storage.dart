@@ -55,7 +55,7 @@ class _WatchController<T> {
 /// ```
 ///
 /// For persistent storage, use [DriftStorage] from the `locorda_drift` package.
-class InMemoryStorage implements Storage, TransactionalStorage {
+class InMemoryStorage implements Storage {
   final Map<IriTerm, StoredDocument> _documents = {};
   final Map<IriTerm, IriTerm> _documentTypes = {}; // documentIri -> typeIri
   final Map<IriTerm, List<PropertyChange>> _propertyChanges = {};

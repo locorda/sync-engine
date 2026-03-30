@@ -19,7 +19,7 @@ import 'sync_database_impl_flutter.dart'
 ///
 /// Provides cross-platform SQLite storage for RDF documents, CRDT metadata,
 /// and property-level change tracking using the Drift ORM.
-class DriftStorage implements core.Storage, core.TransactionalStorage {
+class DriftStorage implements core.Storage {
   final SyncDocumentDao documentDao;
   final SyncPropertyChangeDao propertyChangeDao;
   final IndexDao indexDao;

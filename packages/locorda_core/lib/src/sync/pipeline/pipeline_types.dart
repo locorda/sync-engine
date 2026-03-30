@@ -641,6 +641,14 @@ class UploadResult implements UploadedResourceEvent {
 
   const UploadResult(this.mergeResult, {this.newRemoteEtag});
 
+  /// The ETag to persist for this resource after Stage 9.
+  ///
+  /// Prefers the post-upload ETag ([newRemoteEtag]); falls back to the
+  /// pre-upload remote ETag ([MergeResult.resourceEtag]) for remoteOnly
+  /// resources that were not uploaded but must still record the remote
+  /// ETag for future conditional PUTs.
+  String? get remoteEtag => newRemoteEtag ?? mergeResult.resourceEtag;
+
   UploadResult copyWith({MergeResult? mergeResult}) => UploadResult(
         mergeResult ?? this.mergeResult,
         newRemoteEtag: newRemoteEtag,
@@ -753,6 +761,13 @@ class UploadedShard implements UploadedShardEvent {
   final String? newRemoteEtag;
 
   const UploadedShard(this.shardIri, this.mergedShard, {this.newRemoteEtag});
+
+  /// The ETag to persist for this shard after Stage 13.
+  ///
+  /// Prefers the post-upload ETag ([newRemoteEtag]); falls back to the
+  /// pre-upload remote ETag ([MergedShard.newEtag]) for shards that were
+  /// not uploaded but must still record the remote ETag.
+  String? get remoteEtag => newRemoteEtag ?? mergedShard.newEtag;
 
   UploadedShard copyWith({
     IriTerm? shardIri,

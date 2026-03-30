@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/sync/pipeline/backend_pipeline.dart';
 import 'package:locorda_core/src/storage/remote_storage.dart'
-    show RemoteDownloadRequest;
+    show RemoteDownloadRequest, RemoteUploadRequest;
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
@@ -135,6 +135,7 @@ class InMemoryRemoteStorage implements RemoteStorage {
     // In-memory backend needs no initialization, just wrap access
     final storage = InMemorySyncStorage(
         storage: _store,
+        rdfCore: _rdfCore,
         pipelineSupportFactory: ({required storage}) => useShardDatasets
             ? throw UnimplementedError(
                 'Shard datasets not implemented in in-memory backend yet',
@@ -233,6 +234,7 @@ class RemoteStoredDocument {
 class InMemorySyncStorage extends RemoteSyncStorage
     implements RemoteSyncPipelineSupport, FPRBackend {
   final _Store _storage;
+  final RdfCore _rdfCore;
   late final RemoteSyncPipelineSupport _pipelineSupport =
       _pipelineSupportFactory(storage: this);
 
@@ -243,10 +245,12 @@ class InMemorySyncStorage extends RemoteSyncStorage
 
   InMemorySyncStorage(
       {required this.storage,
+      required RdfCore rdfCore,
       required RemoteSyncPipelineSupport Function(
               {required InMemorySyncStorage storage})
           pipelineSupportFactory})
       : _storage = storage,
+        _rdfCore = rdfCore,
         _pipelineSupportFactory = pipelineSupportFactory;
 
   @override
@@ -333,6 +337,22 @@ class InMemorySyncStorage extends RemoteSyncStorage
         graph,
         ifMatch: ifMatch,
       );
+
+  @override
+  Future<List<RemoteUploadResult>> uploadSources(
+      Iterable<RemoteUploadRequest<RdfGraphSource>> requests) async {
+    final results = <RemoteUploadResult>[];
+    for (final request in requests) {
+      // CRDT merge always produces DecodedGraphSource; it is highly unlikely
+      // that callers would pass an encoded source to uploadSources,
+      // but if they do, play it safe and decode it first to get the graph,
+      // because we store the graph in memory.
+      final source = request.document.decodeWith(_rdfCore);
+      results.add(await upload(request.documentIri, source.graph,
+          ifMatch: request.ifMatch));
+    }
+    return results;
+  }
 
   @override
   Future<RemoteUploadResult> uploadDataset(

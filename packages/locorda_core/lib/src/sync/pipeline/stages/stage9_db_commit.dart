@@ -1,8 +1,12 @@
 /// Stage 9: DB Commit — persist merged resource documents to local DB.
 ///
 /// Batches document saves, index entry updates, and ETag persists into
-/// chunked transactions (max 500 items per transaction). Flushes on
-/// [ShardComplete] to ensure Stage 10 loads up-to-date index entries.
+/// transactions bounded by [batchSize]. Flushes eagerly when [batchSize] is
+/// reached, on [ShardComplete] so Stage 10 sees committed index entries, and
+/// on [PhaseComplete] for the final flush.
+///
+/// Documents, index entries, and remote ETags are written atomically in a
+/// single transaction per flush — no partial-commit inconsistency possible.
 ///
 /// **Implementation**: `asyncExpand` with mutable batch state captured in
 /// closure — safe because `asyncExpand` processes events sequentially.
@@ -21,99 +25,71 @@ import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger('Stage9.DbCommit');
-const _chunkSize = 500;
 
 /// Returns an asyncExpand function for Stage 9.
 ///
-/// Usage: `stream.asyncExpand(dbCommit(storage, indexManager, remoteId))`
+/// Usage: `stream.asyncExpand(dbCommit(storage, indexManager, remoteId, saveService))`
 ///
-/// Flushes the batch on [ShardComplete] (so Stage 10 sees committed index
-/// entries) and on [PhaseComplete] (final flush).
+/// Flushes when [batchSize] is reached, on [ShardComplete] (so Stage 10 sees
+/// committed index entries), and on [PhaseComplete] (final flush).
+/// Documents, index entries, and remote ETags are written atomically per flush.
 Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
   Storage storage,
   IndexManager indexManager,
   RemoteId remoteId,
-  DocumentSaveService documentSaveService,
-) {
+  DocumentSaveService documentSaveService, {
+  int batchSize = defaultPipelineBatchSize,
+}) {
   final pendingSaves = <SaveDocumentRequest>[];
   final pendingIndexEntries = <SaveIndexEntryRequest>[];
   final pendingEtags = <IriTerm, String>{};
   final pendingResourceIris = <IriTerm>[];
 
-  Future<Iterable<CommitResult>> _flush() async {
-    if (pendingSaves.isEmpty && pendingEtags.isEmpty) {
-      return const [];
-    }
+  // Writes the entire pending batch atomically and yields CommitResults.
+  // No internal chunking — the caller controls batch size via [batchSize].
+  Stream<CommitResult> _flush() async* {
+    if (pendingSaves.isEmpty && pendingEtags.isEmpty) return;
 
-    final results = <CommitResult>[];
-
-    // Chunk saves + index entries together (same chunk boundaries).
-    // ETag map is usually small — always written atomically at end.
-    for (var i = 0; i < pendingSaves.length; i += _chunkSize) {
-      final saveChunk = pendingSaves.sublist(
-          i,
-          i + _chunkSize > pendingSaves.length
-              ? pendingSaves.length
-              : i + _chunkSize);
-      final indexChunk = pendingIndexEntries.isNotEmpty
-          ? pendingIndexEntries.sublist(
-              i,
-              i + _chunkSize > pendingIndexEntries.length
-                  ? pendingIndexEntries.length
-                  : i + _chunkSize)
-          : const <SaveIndexEntryRequest>[];
-
-      if (storage case TransactionalStorage txStorage) {
-        await txStorage.inTransaction(() async {
-          await documentSaveService.saveDocuments(saveChunk);
-          if (indexChunk.isNotEmpty) {
-            await storage.saveIndexEntries(indexChunk);
-          }
-        });
-      } else {
-        await documentSaveService.saveDocuments(saveChunk);
-        if (indexChunk.isNotEmpty) {
-          await storage.saveIndexEntries(indexChunk);
-        }
+    await storage.inTransaction(() async {
+      if (pendingSaves.isNotEmpty) {
+        await documentSaveService.saveDocuments(pendingSaves);
       }
-    }
-
-    // Persist ETags (separate — usually very small).
-    if (pendingEtags.isNotEmpty) {
-      await storage.setRemoteETags(remoteId, pendingEtags);
-    }
+      if (pendingIndexEntries.isNotEmpty) {
+        await storage.saveIndexEntries(pendingIndexEntries);
+      }
+      if (pendingEtags.isNotEmpty) {
+        await storage.setRemoteETags(remoteId, pendingEtags);
+      }
+    });
 
     for (final iri in pendingResourceIris) {
-      results.add(CommitResult(iri));
+      yield CommitResult(iri);
     }
 
     pendingSaves.clear();
     pendingIndexEntries.clear();
     pendingEtags.clear();
     pendingResourceIris.clear();
-
-    return results;
   }
 
   return (UploadedResourceEvent event) async* {
     switch (event) {
       case PhaseComplete():
-        for (final r in await _flush()) yield r;
+        yield* _flush();
         yield event;
       case ShardComplete():
-        for (final r in await _flush()) yield r;
+        yield* _flush();
         yield event;
       case UploadResult():
         final mergeResult = event.mergeResult;
+        final etag = event.remoteEtag;
 
         if (!mergeResult.needsDbWrite) {
-          // Still store ETag even without DB write — needed for subsequent
-          // uploads of the same resource (e.g., localOnly processed through
-          // multiple index shards).
-          final etag = event.newRemoteEtag ?? mergeResult.resourceEtag;
+          // No DB write needed — still persist the ETag so subsequent
+          // localOnly uploads (across multiple index shards) can use If-Match.
           if (etag != null) {
-            final docIri = mergeResult.resourceIri.getDocumentIri();
-            pendingEtags[docIri] = etag;
+            pendingEtags[mergeResult.resourceIri.getDocumentIri()] = etag;
+            if (pendingEtags.length >= batchSize) yield* _flush();
           }
           yield CommitResult(mergeResult.resourceIri);
           return;
@@ -134,7 +110,6 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
           ifMatchUpdatedAt: mergeResult.localUpdatedAt,
         ));
 
-        // Update index entries with post-merge clock hash.
         try {
           final indexEntries = await indexManager.prepareIndexEntryWrites(
             document: mergeResult.mergedGraph.graph,
@@ -150,22 +125,18 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
               'prepareIndexEntryWrites failed for $documentIri: $e', e, st);
         }
 
-        // Capture ETag: prefer upload result, fall back to download ETag.
-        // The download ETag (from Stage 5) is needed for remoteOnly resources
-        // so that subsequent localOnly uploads can use If-Match.
-        final etag = event.newRemoteEtag ?? mergeResult.resourceEtag;
+        // Prefer upload-response ETag; fall back to stored remote ETag from
+        // Stage 5 (needed for remoteOnly resources so subsequent localOnly
+        // uploads can use If-Match).
         if (etag != null) {
           pendingEtags[documentIri] = etag;
         }
-        print(
-            'DEBUG S9: ${mergeResult.resourceIri.debug} uploadEtag=${event.newRemoteEtag} '
-            'resourceEtag=${mergeResult.resourceEtag} stored=$etag needsUpload=${mergeResult.needsUpload}');
 
         pendingResourceIris.add(mergeResult.resourceIri);
 
-        // Flush when chunk is full.
-        if (pendingSaves.length >= _chunkSize) {
-          for (final r in await _flush()) yield r;
+        if (pendingSaves.length >= batchSize ||
+            pendingEtags.length >= batchSize) {
+          yield* _flush();
         }
     }
   };

@@ -809,15 +809,9 @@ Use the 'documentIriTemplate' property of the resource configuration to configur
   @override
   Future<void> saveAll(List<(IriTerm type, RdfGraph appData)> items) async {
     return _perflog.measure('saveAll', () async {
-      if (_storage case TransactionalStorage transactionalStorage) {
-        await transactionalStorage
-            .inTransaction(() => _saveAllSequential(items));
-      } else {
-        await _saveAllSequential(items);
-      }
+      await _storage.inTransaction(() => _saveAllSequential(items));
     }, args: [
       'count=${items.length}',
-      'tx=${_storage is TransactionalStorage}',
       if (items.isNotEmpty) 'lastType=${items.last.$1.value.split('/').last}',
     ]);
   }

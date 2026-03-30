@@ -16,12 +16,15 @@ abstract interface class FPRBackend {
   Future<List<RemoteDownloadResult<RdfGraphSource>>> downloadSources(
       Iterable<RemoteDownloadRequest> requests);
 
-  /// Upload multiple documents to remote storage.
+  /// Upload multiple documents to remote storage, accepting source form.
   ///
-  /// Default implementation maps each request to [upload].
-  /// Backends may override this for transport-level batching.
-  Future<List<RemoteUploadResult>> uploadMany(
-      Iterable<RemoteUploadRequest<RdfGraph>> requests);
+  /// Callers pass [RdfGraphSource] so backends can use pre-encoded bytes
+  /// (via [DecodedGraphSource.originalSource]) when available, avoiding a
+  /// redundant encode/decode round-trip. In practice the source after CRDT
+  /// merge is always [DecodedGraphSource]; backends that need encoded bytes
+  /// must encode inside this method.
+  Future<List<RemoteUploadResult>> uploadSources(
+      Iterable<RemoteUploadRequest<RdfGraphSource>> requests);
 }
 
 abstract class SimpleFPRBackend implements FPRBackend {
@@ -29,7 +32,10 @@ abstract class SimpleFPRBackend implements FPRBackend {
   Future<RemoteDownloadResult<RdfGraphSource>> downloadSource(
       IriTerm documentIri,
       {String? ifNoneMatch});
-  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfGraph graph,
+
+  /// Upload a single document from source form.
+  Future<RemoteUploadResult> uploadSource(
+      IriTerm documentIri, RdfGraphSource source,
       {String? ifMatch});
 
   /// Download multiple documents from remote storage.
@@ -49,15 +55,16 @@ abstract class SimpleFPRBackend implements FPRBackend {
     return results;
   }
 
-  /// Upload multiple documents to remote storage.
+  /// Upload multiple documents from source form.
   ///
-  /// Default implementation maps each request to [upload].
+  /// Default implementation maps each request to [uploadSource].
   /// Backends may override this for transport-level batching.
-  Future<List<RemoteUploadResult>> uploadMany(
-      Iterable<RemoteUploadRequest<RdfGraph>> requests) async {
+  @override
+  Future<List<RemoteUploadResult>> uploadSources(
+      Iterable<RemoteUploadRequest<RdfGraphSource>> requests) async {
     final results = <RemoteUploadResult>[];
     for (final request in requests) {
-      results.add(await upload(
+      results.add(await uploadSource(
         request.documentIri,
         request.document,
         ifMatch: request.ifMatch,
@@ -260,13 +267,13 @@ class FilePerResourceRemoteSyncSupport implements RemoteSyncPipelineSupport {
   Stream<UploadedResourceEvent> _uploadResourceChunk(
       List<MergeResult> chunk) async* {
     if (chunk.isEmpty) return;
-    final requests = chunk.map((e) => RemoteUploadRequest<RdfGraph>(
+    final requests = chunk.map((e) => RemoteUploadRequest<RdfGraphSource>(
           documentIri: e.resourceIri.getDocumentIri(),
-          document: e.mergedGraph.graph,
+          document: e.mergedGraph,
           ifMatch: e.resourceEtag,
         ));
 
-    final results = await backend.uploadMany(requests);
+    final results = await backend.uploadSources(requests);
 
     for (var i = 0; i < chunk.length; i++) {
       final event = chunk[i];
@@ -323,13 +330,13 @@ class FilePerResourceRemoteSyncSupport implements RemoteSyncPipelineSupport {
 
   Stream<UploadedShardEvent> _uploadShardChunk(List<MergedShard> chunk) async* {
     if (chunk.isEmpty) return;
-    final requests = chunk.map((e) => RemoteUploadRequest<RdfGraph>(
+    final requests = chunk.map((e) => RemoteUploadRequest<RdfGraphSource>(
           documentIri: e.shardIri.getDocumentIri(),
-          document: e.mergedGraph.graph,
+          document: e.mergedGraph,
           ifMatch: e.newEtag,
         ));
 
-    final results = await backend.uploadMany(requests);
+    final results = await backend.uploadSources(requests);
 
     for (var i = 0; i < chunk.length; i++) {
       final event = chunk[i];

@@ -1417,11 +1417,7 @@ class _DocumentSyncHelper {
     readData = await _perflog.measure(
       'batch.readPhase',
       () async {
-        if (_storage case final TransactionalStorage txStorageRead) {
-          return txStorageRead.inTransaction(readPhase);
-        } else {
-          return readPhase();
-        }
+        return _storage.inTransaction(readPhase);
       },
       args: ['count=${documentIris.length}'],
     );
@@ -1683,11 +1679,7 @@ class _DocumentSyncHelper {
     await _perflog.measure(
       'batch.commitBatchChunk',
       () async {
-        if (_storage case TransactionalStorage txStorage) {
-          await txStorage.inTransaction(commit);
-        } else {
-          await commit();
-        }
+        await _storage.inTransaction(commit);
       },
       args: ['count=${deferred.saveRequests.length}'],
       minDurationMs: 5,

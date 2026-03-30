@@ -9,15 +9,14 @@ import 'dart:typed_data';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
 
-abstract interface class TransactionalStorage {
+abstract interface class Storage {
   /// Execute [action] inside one storage transaction.
   ///
-  /// Implementations should guarantee atomicity and commit once at the end,
-  /// which helps coalesce reactive notifications during bulk operations.
+  /// Non-transactional backends should implement this as `=> action()`.
+  /// Transactional backends (e.g. SQLite) should wrap [action] in a real DB
+  /// transaction to guarantee atomicity and coalesce reactive notifications.
   Future<T> inTransaction<T>(Future<T> Function() action);
-}
 
-abstract interface class Storage {
   /// Save a document with content, metadata, and property changes atomically.
   ///
   /// Storage handles RDF serialization and persists all data in a single transaction.
