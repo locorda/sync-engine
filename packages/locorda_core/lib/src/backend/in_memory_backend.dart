@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/sync/pipeline/backend_pipeline.dart';
+import 'package:locorda_core/src/storage/remote_storage.dart'
+    show RemoteDownloadRequest;
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
@@ -255,9 +257,25 @@ class InMemorySyncStorage extends RemoteSyncStorage
       documentIri,
       ifNoneMatch: ifNoneMatch,
     );
-    return result.copyWith(
-      graph: result.graph != null ? result.graph! : null,
-    );
+    return result;
+  }
+
+  @override
+  Future<List<RemoteDownloadResult<RdfGraphSource>>> downloadSources(
+      Iterable<RemoteDownloadRequest> requests) async {
+    final results = <RemoteDownloadResult<RdfGraphSource>>[];
+    for (final request in requests) {
+      final result =
+          await download(request.documentIri, ifNoneMatch: request.ifNoneMatch);
+      // In-memory backend holds decoded graphs directly; DecodedGraphSource is
+      // the correct source type — no encoding round-trip ever happened.
+      results.add(RemoteDownloadResult<RdfGraphSource>(
+        graph: result.graph != null ? DecodedGraphSource(result.graph!) : null,
+        etag: result.etag,
+        notModified: result.notModified,
+      ));
+    }
+    return results;
   }
 
   @override

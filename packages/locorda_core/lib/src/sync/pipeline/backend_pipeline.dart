@@ -8,7 +8,12 @@ import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 
 abstract interface class FPRBackend {
-  Future<List<RemoteDownloadResult<RdfGraph>>> downloadMany(
+  /// Download multiple documents, returning raw/source form — no decoding.
+  ///
+  /// Backends return [EncodedRdfGraphSource] (raw bytes/text) or, if they
+  /// already hold a decoded graph (e.g. in-memory backends), [DecodedGraphSource].
+  /// Decoding is deferred to the CPU stage that first needs the parsed graph.
+  Future<List<RemoteDownloadResult<RdfGraphSource>>> downloadSources(
       Iterable<RemoteDownloadRequest> requests);
 
   /// Upload multiple documents to remote storage.
@@ -20,20 +25,23 @@ abstract interface class FPRBackend {
 }
 
 abstract class SimpleFPRBackend implements FPRBackend {
-  Future<RemoteDownloadResult<RdfGraph>> download(IriTerm documentIri,
+  /// Download a single document, returning raw/source form — no decoding.
+  Future<RemoteDownloadResult<RdfGraphSource>> downloadSource(
+      IriTerm documentIri,
       {String? ifNoneMatch});
   Future<RemoteUploadResult> upload(IriTerm documentIri, RdfGraph graph,
       {String? ifMatch});
 
   /// Download multiple documents from remote storage.
   ///
-  /// Default implementation maps each request to [download].
+  /// Default implementation maps each request to [downloadSource].
   /// Backends may override this for transport-level batching.
-  Future<List<RemoteDownloadResult<RdfGraph>>> downloadMany(
+  @override
+  Future<List<RemoteDownloadResult<RdfGraphSource>>> downloadSources(
       Iterable<RemoteDownloadRequest> requests) async {
-    final results = <RemoteDownloadResult<RdfGraph>>[];
+    final results = <RemoteDownloadResult<RdfGraphSource>>[];
     for (final request in requests) {
-      results.add(await download(
+      results.add(await downloadSource(
         request.documentIri,
         ifNoneMatch: request.ifNoneMatch,
       ));
@@ -98,7 +106,7 @@ class FilePerResourceRemoteSyncSupport implements RemoteSyncPipelineSupport {
           ifNoneMatch: e.storedEtag,
         ));
 
-    final results = await backend.downloadMany(requests);
+    final results = await backend.downloadSources(requests);
 
     for (var i = 0; i < chunk.length; i++) {
       final event = chunk[i];
@@ -120,7 +128,7 @@ class FilePerResourceRemoteSyncSupport implements RemoteSyncPipelineSupport {
           event.shardStorageId,
           event.fetchPolicy,
           event.typeIri,
-          DecodedGraphSource(result.graph!),
+          result.graph!,
           result.etag!,
         );
       }
@@ -184,7 +192,7 @@ class FilePerResourceRemoteSyncSupport implements RemoteSyncPipelineSupport {
           ifNoneMatch: e.storedRemoteEtag,
         ));
 
-    final results = await backend.downloadMany(requests);
+    final results = await backend.downloadSources(requests);
 
     for (var i = 0; i < chunk.length; i++) {
       final event = chunk[i];
@@ -193,7 +201,7 @@ class FilePerResourceRemoteSyncSupport implements RemoteSyncPipelineSupport {
       if (result.graph != null) {
         yield FetchedCandidate(
           event,
-          remoteSource: DecodedGraphSource(result.graph!),
+          remoteSource: result.graph!,
           remoteEtag: result.etag,
         );
       } else {
