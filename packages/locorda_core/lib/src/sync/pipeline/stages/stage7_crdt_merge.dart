@@ -28,6 +28,8 @@ final _log = Logger('Stage7.CrdtMerge');
 /// Returns an asyncExpand function for Stage 7.
 ///
 /// Usage: `stream.asyncExpand(crdtMerge(merger, mergeContractLoader, reconciler, rdfCore))`
+///
+/// FIXME: should be .expand or .map, but certainly not async. We need to replace all async operations.
 Stream<pipeline.MergedResourceEvent> Function(pipeline.FetchedCandidateEvent)
     crdtMerge(
   merger_lib.RemoteDocumentMerger merger,
@@ -93,7 +95,7 @@ Stream<pipeline.MergeResult> _mergeFetched(
       );
       final mergeContract = await mergeContractLoader.load(governanceIris);
 
-      final mergeResult = await merger.merge(
+      final mergeResult = merger.merge(
         mergeContract: mergeContract,
         documentIri: documentIri,
         localGraph: localGraph,

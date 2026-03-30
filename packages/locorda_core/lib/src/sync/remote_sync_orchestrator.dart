@@ -1261,7 +1261,7 @@ class _DocumentSyncHelper {
           [if (localDocument != null) localDocument, remoteGraph], documentIri);
       mergeContract = await _mergeContractLoader.load(governanceIris);
       // CRDT merge local + remote
-      final mergeResult = await _merger.merge(
+      final mergeResult = _merger.merge(
         mergeContract: mergeContract,
         documentIri: documentIri,
         localGraph: localDocument,
@@ -1718,7 +1718,7 @@ class _DocumentSyncHelper {
         final clock = _hlcService.getCurrentClock(mergedDocument, documentIri);
 
         // Replace shards in the document and generate metadata for the change
-        final document = await _localDocumentMerger.replaceInDocument(
+        final document =  _localDocumentMerger.replaceInDocument(
             documentIri: documentIri,
             document: mergedDocument,
             mergeContract: mergeContract,
@@ -1750,7 +1750,7 @@ class _DocumentSyncHelper {
     final mergeContract = await _mergeContractLoader.load(governanceIris);
     var accumulated = remoteVersions.first;
     for (var i = 1; i < remoteVersions.length; i++) {
-      final result = await _merger.merge(
+      final result = _merger.merge(
         mergeContract: mergeContract,
         documentIri: documentIri,
         localGraph: accumulated,

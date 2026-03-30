@@ -111,6 +111,7 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
         ));
 
         try {
+          // FIXME: potentially expensive to prepare index entry writes for every merged document
           final indexEntries = await indexManager.prepareIndexEntryWrites(
             document: mergeResult.mergedGraph.graph,
             documentIri: documentIri,

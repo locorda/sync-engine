@@ -25,6 +25,8 @@ final _log = Logger('Stage11.ShardCrdtMerge');
 /// Reacts to [LoadedShardEntries]: builds the shard document from committed
 /// entries and CRDT-merges with the existing local shard document.
 /// [PhaseComplete] passes through unchanged.
+///
+/// FIXME: should be .expand or .map, but certainly not async. We need to replace all async operations. The only async operation is the CRDT merge, which needs to be refactored to be sync (currently it loads the merge contract, which is cached after the meta phase, so it should be a sync cache lookup).
 Stream<MergedShardEvent> Function(LoadedShardEntriesEvent) shardCrdtMerge(
   CrdtDocumentManager documentManager,
   ShardDocumentGenerator shardDocGen,

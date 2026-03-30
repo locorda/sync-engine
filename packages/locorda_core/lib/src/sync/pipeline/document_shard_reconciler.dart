@@ -68,12 +68,12 @@ class DocumentShardReconciler {
     final clock = _hlcService.getCurrentClock(mergedDocument, documentIri);
 
     // Load merge contract for the document (cached after first load).
-    final governanceIris =
-        _mergeContractLoader.getMergedGovernanceIris([mergedDocument], documentIri);
+    final governanceIris = _mergeContractLoader
+        .getMergedGovernanceIris([mergedDocument], documentIri);
     final mergeContract = await _mergeContractLoader.load(governanceIris);
 
     // Replace shard assignments with CRDT metadata.
-    final reconciledGraph = await _localDocumentMerger.replaceInDocument(
+    final reconciledGraph = _localDocumentMerger.replaceInDocument(
       documentIri: documentIri,
       document: mergedDocument,
       mergeContract: mergeContract,

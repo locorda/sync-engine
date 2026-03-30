@@ -144,6 +144,9 @@ Stream<SyncCandidateEvent> _handleGone(
     yield SyncCandidate(
       entry.resourceIri,
       result.shardStorageId,
+      // FIXME: Is this really "remoteRemoved"? The resource is removed from 
+      // the remote shard, but it may still exist in some other shard. This situation
+      // here actually says nothing about the resource's state, only about the shard's state!
       SyncDirection.remoteRemoved,
       result.typeIri,
       localClockHash: entry.clockHash,

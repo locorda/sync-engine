@@ -70,12 +70,12 @@ class RemoteDocumentMerger {
   /// - [remoteGraph]: Remote state (may be null if deleted remotely)
   ///
   /// Returns: Merge result indicating merged state and sync direction.
-  Future<MergeResult> merge({
+  MergeResult merge({
     required MergeContract mergeContract,
     required IriTerm documentIri,
     required RdfGraph? localGraph,
     required RdfGraph? remoteGraph,
-  }) async {
+  }) {
     _log.fine('Merging document ${documentIri.debug}');
 
     // Handle null cases

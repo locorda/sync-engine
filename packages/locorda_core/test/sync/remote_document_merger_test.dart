@@ -128,7 +128,7 @@ Future<void> _executeMergeTest(Map<String, dynamic> testJson,
   );
 
   // Perform merge
-  final result = await merger.merge(
+  final result = merger.merge(
     mergeContract: mergeContract,
     documentIri: documentIri,
     localGraph: localGraph,

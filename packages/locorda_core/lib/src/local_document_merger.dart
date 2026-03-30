@@ -83,7 +83,7 @@ class LocalDocumentMerger {
  * For really simple cases like replacing index shards, we can avoid full CRDT merge
  * and just replace the relevant triples directly, generating necessary metadata.
  */
-  Future<RdfGraph> replaceInDocument({
+  RdfGraph replaceInDocument({
     required IriTerm documentIri,
     required RdfGraph document,
     required MergeContract mergeContract,
@@ -96,7 +96,7 @@ class LocalDocumentMerger {
               Set<RdfObject> newObjects,
             })>
         changes,
-  }) async {
+  }) {
     // Build updated document
     final updatedTriples = document.triples.toSet();
 
