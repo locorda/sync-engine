@@ -123,7 +123,7 @@ class ShardDocumentGenerator {
         resourceTypeIri: shardInfo.resourceTypeIri,
         physicalTime: prepared.physicalTime,
         updatedAt: prepared.updatedAt,
-        missingGroupIndices: prepared.missingGroupIndices,
+        resolvedGroupIndices: prepared.resolvedGroupIndices,
       );
       allIndexRequests.addAll(indexRequests);
     }
@@ -202,7 +202,7 @@ class ShardDocumentGenerator {
     // - load old data and call our callback to generate new graph from entries
     // - Compare with existing document
     // - Create tombstones for removed entries
-    // - Return MissingGroupIndex instances if new groups detected
+    // - Return ResolvedGroupIndex instances if new groups detected
     final saveResult = await _documentManager.modify(
       IdxShard.classIri,
       shardIri,
@@ -225,7 +225,7 @@ class ShardDocumentGenerator {
       physicalTime: saveResult.physicalTime,
       updatedAt: saveResult.updatedAt,
       resourceTypeIri: resourceTypeIri,
-      missingGroupIndices: saveResult.missingGroupIndices,
+      resolvedGroupIndices: saveResult.resolvedGroupIndices,
     );
 
     return saveResult;

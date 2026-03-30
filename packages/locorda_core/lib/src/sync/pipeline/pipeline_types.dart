@@ -10,7 +10,7 @@ import 'package:locorda_core/src/hlc_service.dart' show CurrentCrdtClock;
 import 'package:locorda_core/src/index/index_config_base.dart'
     show RootResourceFetchPolicy;
 import 'package:locorda_core/src/index/shard_determiner.dart'
-    show MissingGroupIndex;
+    show ResolvedGroupIndex;
 import 'package:locorda_core/src/storage/storage_interface.dart'
     show IndexEntryWithIri, StoredDocument;
 import 'package:locorda_rdf_core/core.dart';
@@ -593,9 +593,10 @@ class MergeResult implements MergedResourceEvent {
   /// Used by Stage 9 to set `ourPhysicalClock` in [DocumentMetadata].
   final CurrentCrdtClock clock;
 
-  /// Missing GroupIndex documents discovered during shard reconciliation.
-  /// Passed to [IndexManager.prepareIndexEntryWrites] in Stage 9.
-  final List<MissingGroupIndex> missingGroupIndices;
+  /// Resolved GroupIndex documents discovered during shard reconciliation.
+  /// Passed to [IndexManager.prepareIndexEntryWrites] in Stage 9 for
+  /// batched existence check and on-demand creation.
+  final List<ResolvedGroupIndex> resolvedGroupIndices;
 
   const MergeResult(
     this.resourceIri,
@@ -605,7 +606,7 @@ class MergeResult implements MergedResourceEvent {
     required this.needsUpload,
     required this.needsDbWrite,
     required this.clock,
-    required this.missingGroupIndices,
+    required this.resolvedGroupIndices,
     this.resourceEtag,
     this.localUpdatedAt,
   });
@@ -622,7 +623,7 @@ class MergeResult implements MergedResourceEvent {
         needsUpload: needsUpload,
         needsDbWrite: needsDbWrite,
         clock: clock,
-        missingGroupIndices: missingGroupIndices,
+        resolvedGroupIndices: resolvedGroupIndices,
         resourceEtag: resourceEtag,
         localUpdatedAt: localUpdatedAt,
       );

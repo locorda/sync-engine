@@ -259,35 +259,32 @@ class IndexManager {
     }
   }
 
-  /// Creates a missing GroupIndex that was detected during shard determination.
-  ///
-  /// This is a public wrapper around _createGroupIndex() that can be called
-  /// by SyncEngine to create GroupIndices that were reported as missing
-  /// during document save.
+  /// Creates a GroupIndex that was resolved during shard determination but
+  /// does not yet exist locally.
   ///
   /// Uses IndexDiscovery to load the GroupIndexTemplate configuration dynamically,
   /// supporting both own and foreign application templates.
-  Future<void> _createMissingGroupIndex(MissingGroupIndex missing) async {
+  Future<void> _createMissingGroupIndex(ResolvedGroupIndex resolved) async {
     // Use IndexDiscovery to load the template configuration
     // This supports both own and foreign templates via the cache infrastructure
     final templateConfig = await _indexDiscovery.discoverGroupIndexTemplate(
-      missing.templateIri,
+      resolved.templateIri,
       mode: ShardDeterminationMode
           .strict, // Must succeed - data consistency critical
     );
 
     if (templateConfig == null) {
       throw StateError(
-          'Could not load GroupIndexTemplate configuration for ${missing.templateIri.debug}. '
+          'Could not load GroupIndexTemplate configuration for ${resolved.templateIri.debug}. '
           'Template may not be properly indexed in groupIndexTemplates meta-index.');
     }
 
     await _createGroupIndex(
       templateConfig,
-      missing.typeIri,
-      missing.templateIri,
-      missing.groupKey,
-      missing.groupIndexIri,
+      resolved.typeIri,
+      resolved.templateIri,
+      resolved.groupKey,
+      resolved.groupIndexIri,
     );
   }
 
@@ -369,7 +366,7 @@ class IndexManager {
           resourceTypeIri: type,
           physicalTime: saved.physicalTime,
           updatedAt: saved.updatedAt,
-          missingGroupIndices: saved.missingGroupIndices);
+          resolvedGroupIndices: saved.resolvedGroupIndices);
     }
     return saved;
   }
@@ -380,14 +377,14 @@ class IndexManager {
       required IriTerm resourceTypeIri,
       required int physicalTime,
       required int updatedAt,
-      required Iterable<MissingGroupIndex> missingGroupIndices}) async {
+      required Iterable<ResolvedGroupIndex> resolvedGroupIndices}) async {
     final requests = await prepareIndexEntryWrites(
       document: document,
       documentIri: documentIri,
       resourceTypeIri: resourceTypeIri,
       physicalTime: physicalTime,
       updatedAt: updatedAt,
-      missingGroupIndices: missingGroupIndices,
+      resolvedGroupIndices: resolvedGroupIndices,
     );
 
     await _storage.saveIndexEntries(requests);
@@ -399,14 +396,22 @@ class IndexManager {
     required IriTerm resourceTypeIri,
     required int physicalTime,
     required int updatedAt,
-    required Iterable<MissingGroupIndex> missingGroupIndices,
+    required Iterable<ResolvedGroupIndex> resolvedGroupIndices,
   }) async {
-    //  Create any missing GroupIndex documents that were detected during save
-    // This must happen before updateIndices so the shards exist
-    for (final missing in missingGroupIndices) {
-      _log.info(
-          'Creating missing GroupIndex for group "${missing.groupKey}" at ${missing.groupIndexIri}');
-      await _createMissingGroupIndex(missing);
+    // Check which resolved GroupIndices don't exist locally yet and create them.
+    // Batched existence check: collect all IRIs, query storage once.
+    if (resolvedGroupIndices.isNotEmpty) {
+      final groupIndexIris =
+          resolvedGroupIndices.map((r) => r.groupIndexIri).toList();
+      final existingDocs = await _storage.getDocumentsByIri(groupIndexIris);
+      for (final resolved in resolvedGroupIndices) {
+        if (existingDocs[resolved.groupIndexIri] == null) {
+          _log.info(
+              'Creating missing GroupIndex for group "${resolved.groupKey}" '
+              'at ${resolved.groupIndexIri}');
+          await _createMissingGroupIndex(resolved);
+        }
+      }
     }
 
     // Update the Index Shards

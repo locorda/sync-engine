@@ -169,7 +169,7 @@ pipeline.MergeResult _buildResult({
     needsUpload: needsUpload,
     needsDbWrite: needsDbWrite,
     clock: reconciled.clock,
-    missingGroupIndices: reconciled.missingGroupIndices,
+    resolvedGroupIndices: reconciled.resolvedGroupIndices,
     localUpdatedAt: localUpdatedAt,
     resourceEtag: resourceEtag,
   );

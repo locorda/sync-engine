@@ -32,8 +32,6 @@ typedef DocumentSaveResult = ({
   int physicalTime,
   int updatedAt,
   List<ResolvedGroupIndex> resolvedGroupIndices,
-  List<
-      MissingGroupIndex> missingGroupIndices // GroupIndices that need to be created
 });
 
 /// Encapsulates the computed state for a deferred document write.
@@ -49,7 +47,6 @@ typedef PreparedDocumentSave = ({
   int physicalTime,
   int updatedAt,
   List<ResolvedGroupIndex> resolvedGroupIndices,
-  List<MissingGroupIndex> missingGroupIndices,
   SaveDocumentRequest request,
 });
 
@@ -539,7 +536,6 @@ class CrdtDocumentManager {
         allShards,
         _,
         resolvedGroupIndices,
-        missingGroupIndices,
         missingIndexDocuments
       ) = await _shardDeterminer.calculateShards(
         type,
@@ -609,7 +605,6 @@ class CrdtDocumentManager {
         physicalTime: clock.physicalTime,
         updatedAt: updatedAtTimestamp.millisecondsSinceEpoch,
         resolvedGroupIndices: resolvedGroupIndices,
-        missingGroupIndices: missingGroupIndices,
         request: SaveDocumentRequest(
           documentIri: documentIri,
           typeIri: type,
@@ -685,7 +680,6 @@ class CrdtDocumentManager {
       previousCursor: saveResult.previousCursor,
       currentCursor: saveResult.currentCursor,
       resolvedGroupIndices: prepared.resolvedGroupIndices,
-      missingGroupIndices: prepared.missingGroupIndices,
       physicalTime: prepared.physicalTime,
       updatedAt: prepared.updatedAt,
     );

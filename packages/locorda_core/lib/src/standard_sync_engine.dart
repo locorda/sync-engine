@@ -795,7 +795,7 @@ Use the 'documentIriTemplate' property of the resource configuration to configur
       physicalTime: saved.physicalTime,
       resourceTypeIri: type,
       updatedAt: saved.updatedAt,
-      missingGroupIndices: saved.missingGroupIndices,
+      resolvedGroupIndices: saved.resolvedGroupIndices,
     );
   }
 

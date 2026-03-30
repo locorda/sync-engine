@@ -118,7 +118,7 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
             resourceTypeIri: mergeResult.typeIri,
             physicalTime: mergeResult.clock.physicalTime,
             updatedAt: now,
-            missingGroupIndices: mergeResult.missingGroupIndices,
+            resolvedGroupIndices: mergeResult.resolvedGroupIndices,
           );
           pendingIndexEntries.addAll(indexEntries);
         } catch (e, st) {

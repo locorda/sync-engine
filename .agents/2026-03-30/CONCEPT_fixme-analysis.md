@@ -62,125 +62,174 @@ Only one `await` call in `_mergeShardEntries()`:
 
 This is the **real blocker**: while `MergeContractLoader` and `RemoteDocumentMerger` can trivially become sync, the shard determination path has genuine storage dependencies (loading index documents, group index documents, templates).
 
-### Proposed Solution
+### Proposed Solution: Explicit Pipeline Data Passing
 
-The solution requires **three layers** of refactoring, from leaf changes to structural changes:
+> **Rejected approach**: Implicit cache-warming between phases was considered but rejected as too implicit and fragile. It violates the pipeline's data-passing principle — pipeline stages should receive their data explicitly, not depend on warm caches from prior stages.
+>
+> **Chosen approach**: Split Stage 7 into explicit sub-stages that separate parsing (CPU), preloading (I/O), and merging (CPU). Stage 11 uses `asyncMap` with LRU cache.
 
-#### Layer 1: Quick Wins — Remove Unnecessary `async`
+#### Prerequisites: Remove Unnecessary `async` (Already Done)
 
-These methods have zero I/O and can immediately become sync:
+These methods had zero I/O and have been made sync by user:
 
-1. **`RemoteDocumentMerger.merge()`** → Return `MergeResult` instead of `Future<MergeResult>`. Remove `async` keyword.
+1. **`RemoteDocumentMerger.merge()`** — now returns `MergeResult` (pure CPU)
+2. **`LocalDocumentMerger.replaceInDocument()`** — now returns `RdfGraph` (pure CPU)
 
-2. **`LocalDocumentMerger.replaceInDocument()`** → Return `RdfGraph` instead of `Future<RdfGraph>`. Remove `async` keyword.
+#### Stage 7 → Split into 7a / 7b / 7c
 
-These changes are trivial and can be done in isolation. Impact: 2 fewer `await`s in Stage 7.
+| Sub-Stage | Type | Operator | What |
+|-----------|------|----------|------|
+| **7a** | CPU | `.map()` | Decode RDF sources (Jelly bytes → `RdfGraph`) |
+| **7b** | I/O | `.transform()` | Batch-preload MergeContracts + Index data |
+| **7c** | CPU | `.expand()` | CRDT merge + shard reconciliation + encoding |
 
-#### Layer 2: Sync Cache Accessor for `MergeContractLoader`
+##### 7a — Parse (`stage7a_parse.dart`)
 
-Add a **synchronous** accessor that retrieves from cache without fallback:
+- Per-element `.map()`, no batching needed
+- Decodes `remoteSource?.decodeWith(rdfCore)` and `localSource?.decodeWith(rdfCore)`
+- Input: `FetchedCandidateEvent` → Output: `ParsedCandidateEvent`
+
+##### 7b — Preload (`stage7b_preload.dart`)
+
+- `StreamTransformer` with batch accumulation
+- Collects unique type IRIs + governance IRI sets from parsed graphs
+- Batch-loads:
+  1. `discoverIndices(type)` per unique type (~3 calls for ~3 types)
+  2. Index/Template documents for sharding configs (~3-6 reads, per-type)
+  3. `mergeContractLoader.load()` per unique governance IRI set
+  4. **[OPEN]** GroupIndex documents for existence checks — see [Open Design Decision](#open-design-decision-groupindex-existence-checks) below
+- All loaded data packaged into a shared `BatchPreloadedData` struct
+- Input: `ParsedCandidateEvent` → Output: `PreloadedCandidateEvent`
+
+##### 7c — CRDT Merge (`stage7c_crdt_merge.dart`)
+
+- Pure CPU, sync `.expand()`
+- Uses pre-loaded data for all lookups (no storage access)
+- `DocumentShardReconciler` gets sync variant accepting `BatchPreloadedData`
+- `ShardDeterminer` gets sync variant — map lookup instead of storage read
+- Input: `PreloadedCandidateEvent` → Output: `MergedResourceEvent`
+
+##### Why Preloading Is Feasible
+
+Storage reads in `determineShards()` are **per-type**, not per-document:
+
+| Read | Granularity | Count for 990 docs / 3 types |
+|------|-------------|------------------------------|
+| `discoverIndices(type)` | per-type | ~3 (watch-cached, often sync) |
+| FullIndex document (sharding config) | per-index | ~3 |
+| GroupIndexTemplate document | per-template | ~3 |
+| GroupIndex existence check | per-group-key | varies, bounded, shared across docs |
+
+Total: ~10-20 storage reads to preload everything for a batch of 990 documents.
+
+##### New Data Types
 
 ```dart
-abstract interface class MergeContractLoader {
-  Future<MergeContract> load(List<IriTerm> isGovernedBy);
-  
-  /// Returns the cached merge contract or throws if not cached.
-  /// Safe to call during content phase (all contracts loaded in meta phase).
-  MergeContract loadCached(List<IriTerm> isGovernedBy);
-  
-  // ... existing methods
+/// Pre-loaded I/O data shared across a batch, computed in Stage 7b.
+class BatchPreloadedData {
+  /// MergeContracts keyed by governance IRI set (joined with |).
+  final Map<String, MergeContract> mergeContracts;
+
+  /// Index configs per resource type.
+  final Map<IriTerm, List<CrdtIndexData>> indexConfigsByType;
+
+  /// Pre-loaded index/template documents for shard determination.
+  /// Key: document IRI → value: StoredDocument? (null = confirmed missing).
+  /// Note: GroupIndex documents are NOT included — existence checks are
+  /// deferred to Stage 9 (I/O stage). Only FullIndex + GroupIndexTemplate docs.
+  final Map<IriTerm, StoredDocument?> indexDocuments;
 }
 ```
 
-`CachingMergeContractLoader` implementation:
-
 ```dart
-@override
-MergeContract loadCached(List<IriTerm> isGovernedBy) {
-  final key = _cacheKey(isGovernedBy);
-  final cached = _cache[key];
-  if (cached == null) {
-    throw StateError(
-      'MergeContract not cached for $key. '
-      'This should only be called during content phase '
-      'after meta phase has loaded all contracts.');
-  }
-  // The cached Future should already be completed during content phase
-  // But we need to handle the case where it's still pending
-  // Option A: Store completed values separately
-  // Option B: Use a sync cache alongside the async one
-  ...
+/// Stage 7a output: FetchedCandidate + decoded RdfGraphs.
+class ParsedCandidate implements ParsedCandidateEvent {
+  final FetchedCandidate fetched;
+  final RdfGraph? remoteGraph;
+  final RdfGraph? localGraph;
+}
+
+/// Stage 7b output: ParsedCandidate + shared batch preloaded data.
+class PreloadedCandidate implements PreloadedCandidateEvent {
+  final ParsedCandidate parsed;
+  final BatchPreloadedData preloadedData;
 }
 ```
 
-**Problem**: `LRUCache<String, Future<MergeContract>>` stores `Future`s, not resolved values. Two options:
+#### Stage 11 → Split into 11a / 11b / 11c
 
-**Option A — Dual Cache** (recommended): Maintain a separate `LRUCache<String, MergeContract>` that gets populated when Futures complete. `loadCached()` reads from this sync cache.
+Same structural split as Stage 7, but 11b is simpler — no batch-accumulating transformer needed.
 
-**Option B — Completed Future Check**: Extract value from `Future` using `SynchronousFuture` pattern or `Completer.isCompleted` check. Less clean, Dart futures don't expose this easily.
+| Sub-Stage | Type | Operator | What |
+|-----------|------|----------|------|
+| **11a** | CPU | `.map()` | Extract governance IRIs from shard doc, build shard document from entries |
+| **11b** | I/O | `.asyncMap()` | Load MergeContract per governance IRI set (LRU cached) |
+| **11c** | CPU | `.expand()` | CRDT merge with loaded contract, encode |
 
-**Impact**: All `MergeContractLoader` consumers can switch from `await loader.load(...)` to `loader.loadCached(...)` during content phase. This removes 1 `await` in Stage 7, 1 in Stage 11 (via `prepareModify`), and 1 in `DocumentShardReconciler.reconcile()`.
+##### Why 11b doesn't need a batching transform
 
-#### Layer 3: Pre-warm Index Discovery and Shard Determination
+- `calculateShards()` is a **no-op** for `IdxShard.classIri` — shards are not indexed into other shards
+- The only remaining I/O is `_mergeContractLoader.load()` for shard governance IRIs
+- **Different shards may reference different governance versions** — different Locorda versions or apps may have written shards with different `sync:isGovernedBy` triples. We cannot assume a single MergeContract for all shards.
+- However, the number of distinct governance IRI sets is **very small** (~2-3 Locorda versions in a deployment)
+- The `MergeContractLoader` already has an LRU cache → first shard per governance set triggers a load, all subsequent shards hit cache (microseconds)
+- A full batch-preload transformer would add complexity for negligible benefit
 
-This is the main challenge. `ShardDeterminer.determineShards()` and `calculateShards()` make genuine storage reads:
+##### Refactoring needed
 
-1. `_indexDiscovery._getOrLoadIndexConfig()` — loads + parses index document from storage on LRU cache miss
-2. `_determineShardsForFullIndex._getDocument()` — loads index document for sharding config
-3. `_determineShardsForGroupIndex._getDocument()` — loads template + group index documents
+`CrdtDocumentManager.prepareModify()` needs a new variant:
 
-**Why these _should_ be cached during content phase:**
-- The meta phase syncs all index-of-indices, so the watch-based metadata caches (`_indexedClassToFullIndexMetadata`, `_indexedClassToTemplateMetadata`) are warm.
-- However, the LRU parsed config cache in `_getOrLoadIndexConfig` and the per-request `_getDocument` calls in `_determineShardsFor*` may still miss.
-
-**Proposed approach — Explicit Pre-Warming Between Phases:**
-
-Add a method to `IndexDiscovery` / `ShardDeterminer` that loads and caches all required documents:
-
-```dart
-/// Pre-loads all index configurations into the sync cache.
-/// Call once before content phase to eliminate async lookups.
-Future<void> warmCaches() async {
-  // Load all FullIndex configs
-  for (final entry in _indexedClassToFullIndexMetadata.values) {
-    await _getOrLoadIndexConfig(entry.iri, entry.clockHash, _loadAndParseFullIndex);
-  }
-  // Load all GroupIndexTemplate configs
-  for (final entry in _indexedClassToTemplateMetadata.values) {
-    await _getOrLoadIndexConfig(entry.iri, entry.clockHash, _loadAndParseTemplate);
-  }
-}
-```
-
-Similarly, `ShardDeterminer` could pre-load all index documents referenced by the configs.
-
-After warming, provide **sync accessors**:
+- `prepareModifyWithContract()` — accepts pre-loaded `MergeContract` as parameter
+- Skips `calculateShards()` for `IdxShard.classIri`
+- Returns sync result (no remaining I/O)
 
 ```dart
-/// Synchronous version of discoverIndices — uses only cached data.
-/// Throws if cache is not warm (call warmCaches() first).
-List<CrdtIndexData> discoverIndicesSync(IriTerm type, {required ShardDeterminationMode mode});
+// Stage 11a: .map() — CPU
+.map(shardPrepare(shardDocGen))              // extract governance IRIs, build shard triples
+
+// Stage 11b: .asyncMap() — I/O (LRU cached)
+.asyncMap(shardContractLoad(mergeContractLoader))  // load MergeContract per governance set
+
+// Stage 11c: .expand() — CPU
+.expand(shardCrdtMerge(documentManager, rdfCore))  // CRDT merge + encode
 ```
 
-**Impact on Stage 7**: With Layers 1-3 complete:
-- `mergeContractLoader.loadCached()` — sync
-- `merger.merge()` — sync
-- `reconciler.reconcile()` — sync (because `determineShards` uses sync caches, `replaceInDocument` is sync, `loadCached` is sync)
+#### Resolved: GroupIndex Existence Checks → "Required Group Indices" (Deferred to Stage 9)
 
-Stage 7 becomes `expand`/`map` instead of `asyncExpand`. Same for Stage 11.
+**Decision**: Option C — skip existence check in 7c entirely, defer to Stage 9.
 
-**Impact on Stage 11**: With Layer 2 done, `prepareModify` still needs `calculateShards()`. With Layer 3, that becomes sync too. BUT: `_computeSave` in `CrdtDocumentManager` also calls `_shardDeterminer.calculateShards()`. This is the same dependency chain. If Layer 3 is complete, `_computeSave` can also become sync, making `prepareModify` sync.
+##### Rationale
 
-### Alternative: Move Shard Reconciliation Out of Stage 7
+`_determineShardsForGroupIndex` currently loads GroupIndex documents per group-key to check existence (`_getDocument`). This is the **last remaining storage I/O** blocking 7c from being pure CPU. But:
 
-Instead of making everything sync, another approach is to **extract** shard determination into a separate I/O stage:
+1. The shard IRI is calculated **regardless** of existence — it only needs the template sharding config + `hash(resourceIri)`.
+2. "Exists" means "this installation has this GroupIndex document locally" — a simple existence check, not a content read.
+3. The number of groups is **not bounded** — the framework must not assume anything about group count.
+4. The existence check is naturally an I/O operation that belongs in an I/O stage, not a CPU stage.
 
-- **Stage 6.5** (new): Pre-load shard determination data in batch (all index documents, templates, group indices for the batch of resources)
-- **Stage 7**: Pure CPU merge using pre-loaded data
+##### Design
 
-This respects the I/O/CPU separation more cleanly. However, it means adding a new stage and passing pre-loaded data through the pipeline, which adds complexity. The cache-warming approach (Layer 3) achieves the same result more elegantly since the data is inherently cacheable and rarely changes during a sync cycle.
+- **`MissingGroupIndex` is eliminated.** `ResolvedGroupIndex` already captures all needed fields (identical structure).
+- **`_determineShardsForGroupIndex`** drops the `_getDocument` existence check entirely. It produces only `resolvedGroupIndices` — pure CPU from group keys + template sharding config.
+- **`DocumentSaveResult` and `PreparedDocumentSave`** lose the `missingGroupIndices` field. Only `resolvedGroupIndices` is carried.
+- **`ShardDeterminationResult`** loses `missingGroupIndices` field.
 
-**Recommendation**: Layer 3 (cache warming) is preferred. The meta phase already loads all meta-indices, so warming the parsed-config caches is a natural extension. No new pipeline stage needed.
+##### Where existing GroupIndex creation moves
+
+**Stage 9 (pipeline path):** `prepareIndexEntryWrites` receives `resolvedGroupIndices` (instead of `missingGroupIndices`). It does a **batched existence check** across all required group indices in the flush batch, then creates only those that don't exist locally. This is the shared implementation.
+
+**Non-pipeline path (`IndexManager._save` → `updateIndices`):** Calls the **same** `prepareIndexEntryWrites` method with `resolvedGroupIndices`. No separate code path — the method handles the batched existence check + creation internally. The method is already async, so no wrapper needed.
+
+##### Code sharing principle
+
+`prepareIndexEntryWrites(resolvedGroupIndices: ...)` is the single method that both pipeline and non-pipeline paths call. It:
+
+1. Collects all `groupIndexIri` from `resolvedGroupIndices`
+2. Batched existence check: `storage.hasDocuments(groupIndexIris)` (or equivalent batch API)
+3. Creates missing ones via existing `_createMissingGroupIndex` logic (adapted to take `ResolvedGroupIndex`)
+4. Proceeds with index entry construction
+
+This avoids copy-paste between pipeline and non-pipeline paths — the sync shard determination method (shared) produces `resolvedGroupIndices`, and the async `prepareIndexEntryWrites` (shared) handles the deferred existence check. To be discussed.
 
 ---
 
@@ -542,77 +591,125 @@ Then pipeline code uses `event.candidate.direction.isLocalUploadOnly` instead of
 
 ## Implementation Strategy
 
-### Phase 1: Quick Wins (No Architectural Changes)
+> **Updated 2026-03-30**: Replaced implicit cache-warming approach with explicit pipeline data passing. Stage 7 splits into 7a/7b/7c. Stage 11 uses `asyncMap` with LRU cache.
 
-1. **Remove `async` from `RemoteDocumentMerger.merge()`** — Change return type to `MergeResult`, remove `async` keyword. All callers change from `await merger.merge(...)` to `merger.merge(...)`.
+### Phase 1: Pipeline Types & Stage 7a (Parse)
 
-2. **Remove `async` from `LocalDocumentMerger.replaceInDocument()`** — Change return type to `RdfGraph`, remove `async` keyword. All callers update.
+1. Add new sealed event types to `pipeline_types.dart`:
+   - `ParsedCandidateEvent` (sealed: `ParsedCandidate`, `PhaseComplete`, `ShardComplete`)
+   - `PreloadedCandidateEvent` (sealed: `PreloadedCandidate`, `PhaseComplete`, `ShardComplete`)
+2. Add `ParsedCandidate` data class (fetched + decoded graphs)
+3. Create `stage7a_parse.dart` — trivial `.map()` decoder
+4. Wire into orchestrator between Stage 6 output and Stage 7b
 
-3. **Refactor `SyncDirection` enum** — Split `localOnly` into `remoteUnchanged` (from `_handleNotModified`) and `notInRemoteShard` (from `_classify`). Rename `remoteRemoved` to `shardGone`. Add `isLocalUploadOnly` helper getter. Update all references across pipeline stages and `backend_pipeline.dart`.
+### Phase 2: BatchPreloadedData & Stage 7b (Preload)
 
-**Impact**: Stage 7 and 11 still need `asyncExpand` (due to merge contract + shard determination), but 2 of the 5 async calls are eliminated.
+5. Define `BatchPreloadedData` class with:
+   - `Map<String, MergeContract> mergeContracts`
+   - `Map<IriTerm, List<CrdtIndexData>> indexConfigsByType`
+   - `Map<IriTerm, StoredDocument?> indexDocuments`
+6. Add `PreloadedCandidate` data class (parsed + shared preloaded data)
+7. Create `stage7b_preload.dart` — `StreamTransformer` that:
+   - Accumulates parsed events up to batch boundary (`PhaseComplete`/`ShardComplete`)
+   - Extracts unique type IRIs + governance IRI sets from parsed graphs
+   - Batch-loads: `discoverIndices(type)`, index/template docs, MergeContracts
+   - GroupIndex existence checks are **not** done here — deferred to Stage 9 (see resolved design decision above)
+   - Emits `PreloadedCandidate` events with shared `BatchPreloadedData`
 
-### Phase 2: Sync Merge Contract Loading
+### Phase 3: Sync Variants & Stage 7c (CRDT Merge)
 
-4. **Add sync cache to `CachingMergeContractLoader`** — Maintain a separate `LRUCache<String, MergeContract>` for resolved values. Populate when `Future` completes. Add `MergeContract loadCached(List<IriTerm>)` to interface.
+8. Add sync variant to `ShardDeterminer`:
+   - `ShardDeterminationResult determineShardsFromPreloaded(...)` — uses `BatchPreloadedData` maps instead of storage reads
+9. Add sync variant to `DocumentShardReconciler`:
+   - `ReconciledDocument reconcileFromPreloaded(...)` — uses `BatchPreloadedData` for both MergeContract and shard determination
+10. Refactor `stage7_crdt_merge.dart` → `stage7c_crdt_merge.dart`:
+    - Input changes from `FetchedCandidateEvent` to `PreloadedCandidateEvent`
+    - All lookups use `BatchPreloadedData` maps
+    - `.asyncExpand()` → `.expand()`
+11. Update orchestrator pipeline composition
 
-5. **Switch content-phase callers to `loadCached()`** — Stage 7, Stage 11 (`prepareModify`), `DocumentShardReconciler`. Keep `load()` for meta-phase and cold-start scenarios.
+### Phase 4: Stage 11 (11a / 11b / 11c Split)
 
-**Impact**: 3 more `await`s eliminated (one each in Stage 7 `_mergeFetched`, `DocumentShardReconciler.reconcile`, `CrdtDocumentManager.prepareModify`).
+12. Add `prepareModifyWithContract()` to `CrdtDocumentManager`:
+    - Accepts pre-loaded `MergeContract` as parameter (no internal load)
+    - Skips `calculateShards()` for `IdxShard.classIri` (shards don't belong to other shards)
+    - Returns sync result (no remaining I/O)
+13. Create `stage11a_shard_prepare.dart` — `.map()`:
+    - Extract governance IRIs from shard document (remote or local)
+    - Build shard entry triples via `ShardDocumentGenerator`
+    - Output: `PreparedShardEvent` with governance IRIs + assembled triples
+14. Create `stage11b_shard_contract_load.dart` — `.asyncMap()`:
+    - Load MergeContract via `mergeContractLoader.load()` (LRU cached)
+    - Effectively sync after first hit per governance set (~2-3 distinct sets)
+    - No batching needed due to high cache-hit rate
+    - Output: `ContractLoadedShardEvent` with MergeContract attached
+    - Note: Cannot assume single MergeContract — different Locorda versions/apps may have written shards with different governance
+15. Refactor `stage11_shard_crdt_merge.dart` → `stage11c_shard_crdt_merge.dart` — `.expand()`:
+    - Call `prepareModifyWithContract()` with loaded contract
+    - Pure CPU: CRDT merge + encoding
 
-### Phase 3: Sync Index Discovery / Shard Determination
+### Phase 5: SyncDirection Enum Refactor (Independent)
 
-6. **Add `warmCaches()` to `IndexDiscovery`** — Pre-load all index configs from storage into LRU cache after meta phase completes.
+16. Split `localOnly` → `remoteUnchanged` + `notInRemoteShard`
+17. Rename `remoteRemoved` → `shardGone`
+18. Add `isLocalUploadOnly` getter
+19. Update all pipeline stages + `backend_pipeline.dart`
 
-7. **Add sync accessors to `IndexDiscovery` and `ShardDeterminer`** — `discoverIndicesSync()`, `determineShardsSync()`. These read only from warm caches and throw on cache miss.
+### Phase 6: Stage 9 Index Entry Batching & GroupIndex Creation (Independent)
 
-8. **Pre-load index documents for `ShardDeterminer._getDocument()`** — Either warm a cache with all index/template/group-index documents, or provide a sync `getDocumentSync()` accessor on storage. The former is preferable (bounded set of documents).
-
-9. **Call `warmCaches()` between meta and content phases** in the pipeline orchestrator.
-
-**Impact**: `reconciler.reconcile()` becomes fully sync. `prepareModify` becomes fully sync. Stage 7 becomes `expand`. Stage 11 becomes `expand`.
-
-### Phase 4: Batch Index Entry Preparation in Stage 9
-
-10. **Pre-resolve indexed properties at flush-time** — Collect all shard IRIs from the flush batch, call `resolveIndexedPropertiesBatch()` once, pass results to per-document entry construction.
-
-11. **Separate missing GroupIndex creation from entry preparation** — Create missing GroupIndices in a dedicated batch step before entry construction.
-
-12. **Add `prepareIndexEntryWritesSync(preResolvedProperties: ...)` variant** — Pure CPU version that uses pre-resolved data, no I/O.
-
-**Impact**: Stage 9 flush goes from N property-resolution calls to 1 batched call per flush.
+20. Batch `resolveIndexedPropertiesBatch` at flush-time (1 call per flush instead of N)
+21. Refactor `prepareIndexEntryWrites` to accept `resolvedGroupIndices` (instead of `missingGroupIndices`):
+    - Batched existence check: collect all `groupIndexIri` from `resolvedGroupIndices`, check which exist locally in one batch
+    - Create missing GroupIndex documents for the non-existing ones (reuse existing `_createMissingGroupIndex` logic, adapted for `ResolvedGroupIndex`)
+    - This is the **single shared method** used by both pipeline (Stage 9) and non-pipeline (`IndexManager.updateIndices`)
+22. Delete `MissingGroupIndex` class — `ResolvedGroupIndex` covers all use cases
+23. Remove `missingGroupIndices` from `DocumentSaveResult`, `PreparedDocumentSave`, `ShardDeterminationResult`
+24. Add sync `prepareIndexEntryWritesSync(preResolvedProperties: ...)` variant for future batching optimization
 
 ### Dependency Graph
 
 ```
-Phase 1 (Quick Wins)
-├── 1. merger.merge() → sync           [independent]
-├── 2. replaceInDocument() → sync      [independent]
-└── 3. SyncDirection rename            [independent]
+Phase 1 (Types + 7a)        [independent]
+  └── Phase 2 (7b + data)   [depends on Phase 1]
+      └── Phase 3 (7c sync) [depends on Phase 2]
 
-Phase 2 (Sync MergeContract)
-└── 4. Dual cache + loadCached()       [independent]
-    └── 5. Switch callers              [depends on 4]
+Phase 4 (Stage 11)          [independent of Phases 1-3]
 
-Phase 3 (Sync Index Discovery)
-├── 6. warmCaches()                    [independent]
-├── 7. Sync accessors                  [depends on 6]
-├── 8. Pre-load index docs             [depends on 6]
-└── 9. Wire up in orchestrator         [depends on 6, 7, 8]
-    └── Stage 7/11 → expand            [depends on 1, 2, 5, 9]
+Phase 5 (SyncDirection)     [independent]
 
-Phase 4 (Batch Index Entries)
-├── 10. Pre-resolve at flush-time      [independent]
-├── 11. Separate GroupIndex creation    [independent]
-└── 12. Sync prepareIndexEntryWrites   [depends on 10, 11]
+Phase 6 (Stage 9 batching)  [independent]
+```
+
+### Pipeline Composition After All Phases
+
+```dart
+.transform(_remote.resourceFetch())              // Stage 6
+.map(resourceParse(rdfCore))                      // Stage 7a (CPU: decode)
+.transform(preloadMergeData(                      // Stage 7b (I/O: batch preload)
+    mergeContractLoader, indexDiscovery, storage))
+.expand(crdtMerge(merger, reconciler))            // Stage 7c (CPU: merge)
+.transform(_remote.resourceUpload())              // Stage 8
+.asyncExpand(dbCommit(...))                        // Stage 9
+.asyncExpand(shardEntryLoad(_storage))             // Stage 10
+.map(shardPrepare(shardDocGen))                    // Stage 11a (CPU: extract + build)
+.asyncMap(shardContractLoad(mergeContractLoader))  // Stage 11b (I/O: LRU-cached contracts)
+.expand(shardCrdtMerge(documentManager, rdfCore))  // Stage 11c (CPU: merge + encode)
+.transform(_remote.shardUpload())                  // Stage 12
+.asyncExpand(shardDbCommit(_storage, _remoteId))  // Stage 13
+.asyncExpand(feedback(...))                        // Stage 14
 ```
 
 ### Risks and Considerations
 
-- **Cache Invalidation**: If index documents change _during_ a content phase (e.g., GroupIndex creation by `_createMissingGroupIndex`), pre-warmed caches could become stale. Mitigation: GroupIndex creation should also update the warm caches when it writes new documents.
+- **GroupIndex Creation During Content Phase**: `prepareIndexEntryWrites` in Stage 9 receives `resolvedGroupIndices`, does a batched existence check, and creates missing GroupIndex documents before building index entries. This is the **same method** called by `IndexManager.updateIndices` in the non-pipeline path — no code duplication. GroupIndex creation in Stage 9 only matters for _subsequent_ pipeline iterations (Stage 14 feedback loop), where 7b would re-load fresh data.
 
-- **First Sync (Cold Start)**: On very first sync, the meta phase data may not be complete. Sync accessors must handle this gracefully — either fall back to async loading or skip shard determination for the first cycle.
+- **First Sync (Cold Start)**: On very first sync, index-of-indices are synced in the meta phase. Stage 7b's `discoverIndices()` then finds the newly-synced indices. No special cold-start handling needed — the meta → content phase ordering guarantees data availability.
 
-- **Testing**: Each phase should have dedicated tests verifying the sync behavior under warm-cache conditions, and that cache-miss throws `StateError` with a clear message rather than silently returning wrong data.
+- **`_computeSave` in `CrdtDocumentManager`**: Called from both pipeline (Stage 11) and local saves (app). For local saves, `calculateShards()` remains async (no pre-loaded data available). The new `prepareModifyWithContract()` is pipeline-only; the existing `prepareModify()` stays async for app use. Note: `calculateShards()` no longer checks GroupIndex existence (deferred to `prepareIndexEntryWrites`), which reduces its I/O footprint but does not eliminate it entirely — FullIndex/Template document loads remain.
 
-- **`_computeSave` in `CrdtDocumentManager`**: This is called from both pipeline stages AND from local save operations (app saves). For local saves, caches may not be warm. Solution: Keep async `_computeSave` for local saves, add `_computeSaveSync` for pipeline use, or always warm caches on `SyncEngine` initialization.
+- **Testing**: Each phase should have dedicated tests. Key scenarios:
+  - 7b correctly batches across diverse types and governance sets
+  - 7c produces identical results to the current async Stage 7
+  - Stage 11b `asyncMap` handles multiple governance versions within one batch
+  - Stage 11c is pure CPU with pre-loaded contract
+  - Regression: end-to-end sync produces same results before and after refactor

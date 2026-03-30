@@ -21,7 +21,7 @@ import 'package:locorda_rdf_core/core.dart';
 typedef ReconciledDocument = ({
   RdfGraph graph,
   CurrentCrdtClock clock,
-  List<MissingGroupIndex> missingGroupIndices,
+  List<ResolvedGroupIndex> resolvedGroupIndices,
 });
 
 /// Recomputes shard assignments for a merged document and updates the
@@ -91,7 +91,7 @@ class DocumentShardReconciler {
     return (
       graph: reconciledGraph,
       clock: clock,
-      missingGroupIndices: shards.missingGroupIndices.toList(),
+      resolvedGroupIndices: shards.resolvedGroupIndices.toList(),
     );
   }
 }

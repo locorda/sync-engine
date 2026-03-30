@@ -1341,7 +1341,7 @@ class _DocumentSyncHelper {
         if (merged == null) {
           return; // No changes, nothing to do
         }
-        final (typeIri, documentToUpload, clock, missingGroupIndices) =
+        final (typeIri, documentToUpload, clock, resolvedGroupIndices) =
             await reconcileDocumentShards(
           documentIri,
           merged.mergedDocument,
@@ -1364,7 +1364,7 @@ class _DocumentSyncHelper {
           clock: clock,
           documentToUpload: documentToUpload,
           localUpdatedAt: merged.localUpdatedAt,
-          missingGroupIndices: missingGroupIndices,
+          resolvedGroupIndices: resolvedGroupIndices,
           syncTime: syncTime,
           typeIri: typeIri,
           etag: merged.etag,
@@ -1440,7 +1440,7 @@ class _DocumentSyncHelper {
       RdfGraph documentToUpload,
       CurrentCrdtClock clock,
       int? localUpdatedAt,
-      Iterable<MissingGroupIndex> missingGroupIndices,
+      Iterable<ResolvedGroupIndex> resolvedGroupIndices,
       String? ifMatch,
       String debugName,
     })>[];
@@ -1467,7 +1467,7 @@ class _DocumentSyncHelper {
             continue;
           }
 
-          final (typeIri, documentToUpload, clock, missingGroupIndices) =
+          final (typeIri, documentToUpload, clock, resolvedGroupIndices) =
               await reconcileDocumentShards(
             candidate.documentIri,
             merged.mergedDocument,
@@ -1481,7 +1481,7 @@ class _DocumentSyncHelper {
             documentToUpload: documentToUpload,
             clock: clock,
             localUpdatedAt: merged.localUpdatedAt,
-            missingGroupIndices: missingGroupIndices,
+            resolvedGroupIndices: resolvedGroupIndices,
             ifMatch: merged.etag,
             debugName: candidate.debugName,
           ));
@@ -1544,7 +1544,7 @@ class _DocumentSyncHelper {
         documentIri: entry.documentIri,
         physicalTime: entry.clock.physicalTime,
         resourceTypeIri: entry.typeIri,
-        missingGroupIndices: entry.missingGroupIndices,
+        resolvedGroupIndices: entry.resolvedGroupIndices,
         updatedAt: updatedAtTimestamp,
       );
       indexEntryRequests.addAll(entryWrites);
@@ -1691,7 +1691,7 @@ class _DocumentSyncHelper {
         IriTerm typeIri,
         RdfGraph document,
         CurrentCrdtClock clock,
-        List<MissingGroupIndex> missingGroupIndices
+        List<ResolvedGroupIndex> resolvedGroupIndices
       )> reconcileDocumentShards(
     IriTerm documentIri,
     RdfGraph mergedDocument,
@@ -1731,7 +1731,7 @@ class _DocumentSyncHelper {
                 newObjects: shards.shards,
               )
             ]);
-        return (typeIri, document, clock, shards.missingGroupIndices);
+        return (typeIri, document, clock, shards.resolvedGroupIndices);
       },
       minDurationMs: 5,
     );
@@ -1768,7 +1768,7 @@ class _DocumentSyncHelper {
     required String mergedETag,
     required CurrentCrdtClock clock,
     required int? localUpdatedAt,
-    required Iterable<MissingGroupIndex> missingGroupIndices,
+    required Iterable<ResolvedGroupIndex> resolvedGroupIndices,
   }) async {
     final updatedAtTimestamp =
         _physicalTimestampFactory().millisecondsSinceEpoch;
@@ -1777,7 +1777,7 @@ class _DocumentSyncHelper {
       documentIri: documentIri,
       physicalTime: clock.physicalTime,
       resourceTypeIri: typeIri,
-      missingGroupIndices: missingGroupIndices,
+      resolvedGroupIndices: resolvedGroupIndices,
       updatedAt: updatedAtTimestamp,
     );
     return (
@@ -1818,7 +1818,7 @@ class _DocumentSyncHelper {
     required String? etag,
     required CurrentCrdtClock clock,
     required int? localUpdatedAt,
-    required Iterable<MissingGroupIndex> missingGroupIndices,
+    required Iterable<ResolvedGroupIndex> resolvedGroupIndices,
     required DateTime syncTime,
     String debugName = '',
     bool deferLocalCommit = false,
@@ -1847,7 +1847,7 @@ class _DocumentSyncHelper {
         documentIri: documentIri,
         physicalTime: physicalTime,
         resourceTypeIri: typeIri,
-        missingGroupIndices: missingGroupIndices,
+        resolvedGroupIndices: resolvedGroupIndices,
         updatedAt: updatedAtTimestamp,
       );
       return (
@@ -1909,7 +1909,7 @@ class _DocumentSyncHelper {
       documentIri: documentIri,
       physicalTime: physicalTime,
       resourceTypeIri: typeIri,
-      missingGroupIndices: missingGroupIndices,
+      resolvedGroupIndices: resolvedGroupIndices,
       updatedAt: updatedAtTimestamp,
     );
     // Success
@@ -2537,7 +2537,7 @@ class _ShardSyncOrchestrator {
           minDurationMs: 5,
         );
 
-        final (_, documentToUpload, clock2, missingGroupIndices) =
+        final (_, documentToUpload, clock2, resolvedGroupIndices) =
             await _docSync.reconcileDocumentShards(
           shardDocumentIri,
           finalShardDocument,
@@ -2586,7 +2586,7 @@ class _ShardSyncOrchestrator {
             clock: clock2,
             documentToUpload: finalDocumentToUpload,
             localUpdatedAt: merged.localUpdatedAt,
-            missingGroupIndices: missingGroupIndices,
+            resolvedGroupIndices: resolvedGroupIndices,
             syncTime: syncTime,
             typeIri: IdxShard.classIri,
             etag: merged.etag,
@@ -2701,7 +2701,7 @@ class _ShardSyncOrchestrator {
           minDurationMs: 5,
         );
 
-        final (typeIri, documentToUpload, clock2, missingGroupIndices) =
+        final (typeIri, documentToUpload, clock2, resolvedGroupIndices) =
             await _docSync.reconcileDocumentShards(
           shardDocumentIri,
           finalShardDocument,
@@ -2748,7 +2748,7 @@ class _ShardSyncOrchestrator {
                 mergedETag: etag,
                 clock: clock2,
                 localUpdatedAt: merged.localUpdatedAt,
-                missingGroupIndices: missingGroupIndices,
+                resolvedGroupIndices: resolvedGroupIndices,
               );
             }
 
