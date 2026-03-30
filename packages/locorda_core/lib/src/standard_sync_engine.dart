@@ -712,6 +712,8 @@ the streams yourself.''');
           documentManager: crdtDocumentManager,
           shardDocGen: shardDocumentGenerator,
           indexRdfGenerator: indexRdfGenerator,
+          indexDiscovery: indexDiscovery,
+          shardDeterminer: shardDeterminer,
           config: effectiveConfig,
         );
     final syncFunction = SyncFunction(

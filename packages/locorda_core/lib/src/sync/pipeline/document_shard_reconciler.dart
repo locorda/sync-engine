@@ -9,12 +9,13 @@
 /// encoded for DB and uploaded.
 library;
 
+import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/hlc_service.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart';
 import 'package:locorda_core/src/local_document_merger.dart';
+import 'package:locorda_core/src/mapping/merge_contract.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_rdf_core/core.dart';
 
 /// Result of document shard reconciliation.
@@ -22,6 +23,11 @@ typedef ReconciledDocument = ({
   RdfGraph graph,
   CurrentCrdtClock clock,
   List<ResolvedGroupIndex> resolvedGroupIndices,
+
+  /// Whether shard reconciliation changed the document (e.g. updated
+  /// [idx:belongsToIndexShard] triples). Used together with clock-hash
+  /// comparison to decide [needsUpload] / [needsDbWrite] in Stage 7c.
+  bool hasChanges,
 });
 
 /// Recomputes shard assignments for a merged document and updates the
@@ -49,6 +55,7 @@ class DocumentShardReconciler {
   /// via CRDT metadata (so remote peers can CRDT-merge this update), and
   /// returns the reconciled document together with the CRDT clock and any
   /// missing GroupIndex documents.
+  @Deprecated('delete me ')
   Future<ReconciledDocument> reconcile(
     IriTerm documentIri,
     RdfGraph mergedDocument,
@@ -57,7 +64,7 @@ class DocumentShardReconciler {
     final resourceIri = mergedDocument.expectSingleObject<IriTerm>(
         documentIri, SyncManagedDocument.foafPrimaryTopic)!;
 
-    final shards = await _shardDeterminer.determineShards(
+    final shards = await _shardDeterminer.determineShardsFromStorage(
       typeIri,
       resourceIri,
       // Full document contains app data alongside framework data.
@@ -72,26 +79,96 @@ class DocumentShardReconciler {
         .getMergedGovernanceIris([mergedDocument], documentIri);
     final mergeContract = await _mergeContractLoader.load(governanceIris);
 
+    final hasChanges = _shardsChanged(mergedDocument, documentIri, shards.shards);
+
     // Replace shard assignments with CRDT metadata.
-    final reconciledGraph = _localDocumentMerger.replaceInDocument(
-      documentIri: documentIri,
-      document: mergedDocument,
-      mergeContract: mergeContract,
-      physicalClock: clock.physicalTime,
-      changes: [
-        (
-          subject: documentIri,
-          subjectTypeIri: SyncManagedDocument.classIri,
-          predicate: SyncManagedDocument.idxBelongsToIndexShard,
-          newObjects: shards.shards,
-        )
-      ],
-    );
+    final reconciledGraph = hasChanges
+        ? _localDocumentMerger.replaceInDocument(
+            documentIri: documentIri,
+            document: mergedDocument,
+            mergeContract: mergeContract,
+            physicalClock: clock.physicalTime,
+            changes: [
+              (
+                subject: documentIri,
+                subjectTypeIri: SyncManagedDocument.classIri,
+                predicate: SyncManagedDocument.idxBelongsToIndexShard,
+                newObjects: shards.shards,
+              )
+            ],
+          )
+        : mergedDocument;
 
     return (
       graph: reconciledGraph,
       clock: clock,
       resolvedGroupIndices: shards.resolvedGroupIndices.toList(),
+      hasChanges: hasChanges,
     );
+  }
+
+  /// Sync variant using pre-loaded data. All I/O (merge contract loading,
+  /// index discovery, document loading) must be completed beforehand.
+  ///
+  /// Used by Stage 7c where batch preloading (7b) provides everything needed.
+  ReconciledDocument reconcileSync({
+    required IriTerm documentIri,
+    required RdfGraph mergedDocument,
+    required IriTerm typeIri,
+    required IriTerm resourceIri,
+    required MergeContract mergeContract,
+    required Iterable<CrdtIndexData> indexConfigs,
+    required DocumentLookup getDocument,
+  }) {
+    final shards = _shardDeterminer.determineShards(
+      typeIri,
+      resourceIri,
+      mergedDocument,
+      mode: ShardDeterminationMode.strict,
+      indexConfigs: indexConfigs,
+      getDocument: getDocument,
+    );
+
+    final clock = _hlcService.getCurrentClock(mergedDocument, documentIri);
+
+    final hasChanges = _shardsChanged(mergedDocument, documentIri, shards.shards);
+
+    final reconciledGraph = hasChanges
+        ? _localDocumentMerger.replaceInDocument(
+            documentIri: documentIri,
+            document: mergedDocument,
+            mergeContract: mergeContract,
+            physicalClock: clock.physicalTime,
+            changes: [
+              (
+                subject: documentIri,
+                subjectTypeIri: SyncManagedDocument.classIri,
+                predicate: SyncManagedDocument.idxBelongsToIndexShard,
+                newObjects: shards.shards,
+              )
+            ],
+          )
+        : mergedDocument;
+
+    return (
+      graph: reconciledGraph,
+      clock: clock,
+      resolvedGroupIndices: shards.resolvedGroupIndices.toList(),
+      hasChanges: hasChanges,
+    );
+  }
+
+  /// Compares current shard assignments in [document] with [newShards].
+  bool _shardsChanged(
+      RdfGraph document, IriTerm documentIri, Set<IriTerm> newShards) {
+    final existing = document
+        .findTriples(
+          subject: documentIri,
+          predicate: SyncManagedDocument.idxBelongsToIndexShard,
+        )
+        .map((t) => t.object)
+        .toSet();
+    return existing.length != newShards.length ||
+        !newShards.every(existing.contains);
   }
 }

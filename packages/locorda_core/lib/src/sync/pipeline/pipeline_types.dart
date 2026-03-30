@@ -6,11 +6,15 @@ library;
 
 import 'dart:typed_data';
 
+import 'package:locorda_core/src/config/sync_engine_config.dart'
+    show CrdtIndexData;
 import 'package:locorda_core/src/hlc_service.dart' show CurrentCrdtClock;
 import 'package:locorda_core/src/index/index_config_base.dart'
     show RootResourceFetchPolicy;
 import 'package:locorda_core/src/index/shard_determiner.dart'
     show ResolvedGroupIndex;
+import 'package:locorda_core/src/mapping/merge_contract.dart'
+    show MergeContract;
 import 'package:locorda_core/src/storage/storage_interface.dart'
     show IndexEntryWithIri, StoredDocument;
 import 'package:locorda_rdf_core/core.dart';
@@ -95,6 +99,8 @@ class ShardComplete extends Boundary
     implements
         SyncCandidateEvent,
         FetchedCandidateEvent,
+        DecodedCandidateEvent,
+        PreloadedCandidateEvent,
         LoadedCandidateEvent,
         MergedResourceEvent,
         UploadedResourceEvent,
@@ -137,11 +143,15 @@ class PhaseComplete extends Boundary
         ParsedShardEvent,
         SyncCandidateEvent,
         FetchedCandidateEvent,
+        DecodedCandidateEvent,
+        PreloadedCandidateEvent,
         LoadedCandidateEvent,
         MergedResourceEvent,
         UploadedResourceEvent,
         CommittedResourceEvent,
         LoadedShardEntriesEvent,
+        PreparedShardEvent,
+        ContractLoadedShardEvent,
         MergedShardEvent,
         UploadedShardEvent,
         CommittedShardEvent {
@@ -561,6 +571,72 @@ class FetchedCandidate implements FetchedCandidateEvent {
 }
 
 // ---------------------------------------------------------------------------
+// Stage 7a output: Decode & Classify
+// ---------------------------------------------------------------------------
+
+/// A candidate with decoded graphs and classified sync direction.
+class DecodedCandidate implements DecodedCandidateEvent {
+  final IriTerm resourceIri;
+  final IriTerm documentIri;
+  final IriTerm typeIri;
+  final RdfGraph? localGraph;
+  final RdfGraph? remoteGraph;
+
+  /// Direction after upgrade (e.g. remoteOnly → conflictCandidate when local
+  /// graph exists).
+  final SyncDirection effectiveDirection;
+
+  /// Governance IRIs extracted from local/remote graphs.
+  final List<IriTerm> governanceIris;
+
+  final int? localUpdatedAt;
+  final String? remoteEtag;
+
+  /// Clock hash from the local shard index entry (Stage 4).
+  final String? localClockHash;
+
+  /// Clock hash from the remote shard index entry (Stage 4).
+  final String? remoteClockHash;
+
+  const DecodedCandidate({
+    required this.resourceIri,
+    required this.documentIri,
+    required this.typeIri,
+    required this.localGraph,
+    required this.remoteGraph,
+    required this.effectiveDirection,
+    required this.governanceIris,
+    this.localUpdatedAt,
+    this.remoteEtag,
+    this.localClockHash,
+    this.remoteClockHash,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Stage 7b output: Preload
+// ---------------------------------------------------------------------------
+
+/// A decoded candidate enriched with pre-loaded merge contract and index data.
+class PreloadedCandidate implements PreloadedCandidateEvent {
+  final DecodedCandidate decoded;
+  final MergeContract mergeContract;
+
+  /// Index configurations for this resource type (from [IndexDiscovery]).
+  final Iterable<CrdtIndexData> indexConfigs;
+
+  /// Pre-loaded index documents for sync [ShardDeterminer.determineShards].
+  final Map<IriTerm, StoredDocument?> documents;
+
+  const PreloadedCandidate({
+    required this.decoded,
+    required this.mergeContract,
+    required this.indexConfigs,
+    required this.documents,
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Stage 7 output: CRDT Merge
 // ---------------------------------------------------------------------------
 
@@ -705,6 +781,56 @@ class LoadedShardEntries implements LoadedShardEntriesEvent {
 }
 
 // ---------------------------------------------------------------------------
+// Stage 11a output: Prepare Shard
+// ---------------------------------------------------------------------------
+
+/// A shard with pre-computed entry triples and extracted governance IRIs,
+/// ready for merge contract loading.
+class PreparedShard implements PreparedShardEvent {
+  final IriTerm shardIri;
+  final IriStorageId shardStorageId;
+  final StoredDocument? localDoc;
+
+  /// Index IRI this shard belongs to (from remote or local shard graph).
+  final IriTerm indexIri;
+
+  /// New RDF triples for shard entries (from [ShardDocumentGenerator]).
+  final Iterable<Triple> entryTriples;
+
+  /// Governance IRIs for merge contract loading in Stage 11b.
+  final List<IriTerm> governanceIris;
+
+  final String? newEtag;
+  final bool existsOnRemote;
+
+  const PreparedShard({
+    required this.shardIri,
+    required this.shardStorageId,
+    required this.localDoc,
+    required this.indexIri,
+    required this.entryTriples,
+    required this.governanceIris,
+    this.newEtag,
+    this.existsOnRemote = false,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Stage 11b output: Shard Contract Load
+// ---------------------------------------------------------------------------
+
+/// A prepared shard enriched with its merge contract.
+class ContractLoadedShard implements ContractLoadedShardEvent {
+  final PreparedShard prepared;
+  final MergeContract mergeContract;
+
+  const ContractLoadedShard({
+    required this.prepared,
+    required this.mergeContract,
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Stage 11 output: Shard CRDT Merge
 // ---------------------------------------------------------------------------
 
@@ -831,10 +957,16 @@ sealed class SyncCandidateEvent {}
 /// Stream elements emitted by Stage 5 (Local Content Load) — input to Stage 6.
 sealed class LoadedCandidateEvent {}
 
-/// Stream elements emitted by Stage 6 (Resource Fetch) — input to Stage 7.
+/// Stream elements emitted by Stage 6 (Resource Fetch) — input to Stage 7a.
 sealed class FetchedCandidateEvent {}
 
-/// Stream elements emitted by Stage 7 (CRDT Merge) — input to Stage 8.
+/// Stream elements emitted by Stage 7a (Decode) — input to Stage 7b.
+sealed class DecodedCandidateEvent {}
+
+/// Stream elements emitted by Stage 7b (Preload) — input to Stage 7c.
+sealed class PreloadedCandidateEvent {}
+
+/// Stream elements emitted by Stage 7c (CRDT Merge) — input to Stage 8.
 sealed class MergedResourceEvent {}
 
 /// Stream elements emitted by Stage 8 (Resource Upload) — input to Stage 9.
@@ -843,10 +975,16 @@ sealed class UploadedResourceEvent {}
 /// Stream elements emitted by Stage 9 (DB Commit) — input to Stage 10.
 sealed class CommittedResourceEvent {}
 
-/// Stream elements emitted by Stage 10 (Shard Entry Load) — input to Stage 11.
+/// Stream elements emitted by Stage 10 (Shard Entry Load) — input to Stage 11a.
 sealed class LoadedShardEntriesEvent {}
 
-/// Stream elements emitted by Stage 11 (Shard CRDT Merge) — input to Stage 12.
+/// Stream elements emitted by Stage 11a (Prepare Shard) — input to Stage 11b.
+sealed class PreparedShardEvent {}
+
+/// Stream elements emitted by Stage 11b (Contract Load) — input to Stage 11c.
+sealed class ContractLoadedShardEvent {}
+
+/// Stream elements emitted by Stage 11c (Shard CRDT Merge) — input to Stage 12.
 sealed class MergedShardEvent {}
 
 /// Stream elements emitted by Stage 12 (Shard Upload) — input to Stage 13.

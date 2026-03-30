@@ -12,22 +12,28 @@ import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/crdt_document_manager.dart';
+import 'package:locorda_core/src/index/index_discovery.dart';
 import 'package:locorda_core/src/index/index_manager.dart';
 import 'package:locorda_core/src/index/index_rdf_generator.dart';
+import 'package:locorda_core/src/index/shard_determiner.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/sync/pipeline/document_shard_reconciler.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage10_shard_entry_load.dart';
-import 'package:locorda_core/src/sync/pipeline/stages/stage11_shard_crdt_merge.dart';
+import 'package:locorda_core/src/sync/pipeline/stages/stage11a_prepare.dart';
+import 'package:locorda_core/src/sync/pipeline/stages/stage11b_contract_load.dart';
+import 'package:locorda_core/src/sync/pipeline/stages/stage11c_shard_merge.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage13_shard_db_commit.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage14_feedback.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage1_shard_resolution.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage3_shard_parse.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage4_change_detection.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage5_local_content_load.dart';
-import 'package:locorda_core/src/sync/pipeline/stages/stage7_crdt_merge.dart';
+import 'package:locorda_core/src/sync/pipeline/stages/stage7a_decode.dart';
+import 'package:locorda_core/src/sync/pipeline/stages/stage7b_preload.dart';
+import 'package:locorda_core/src/sync/pipeline/stages/stage7c_crdt_merge.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage9_db_commit.dart';
 import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/sync/remote_document_merger.dart';
@@ -52,6 +58,8 @@ class StreamingRemoteSyncOrchestrator {
   final CrdtDocumentManager _documentManager;
   final ShardDocumentGenerator _shardDocGen;
   final IndexRdfGenerator _indexRdfGenerator;
+  final IndexDiscovery _indexDiscovery;
+  final ShardDeterminer _shardDeterminer;
   final SyncEngineConfig _config;
 
   StreamingRemoteSyncOrchestrator({
@@ -67,6 +75,8 @@ class StreamingRemoteSyncOrchestrator {
     required CrdtDocumentManager documentManager,
     required ShardDocumentGenerator shardDocGen,
     required IndexRdfGenerator indexRdfGenerator,
+    required IndexDiscovery indexDiscovery,
+    required ShardDeterminer shardDeterminer,
     required SyncEngineConfig config,
   })  : _storage = storage,
         _saveService = documentSaveService,
@@ -80,6 +90,8 @@ class StreamingRemoteSyncOrchestrator {
         _documentManager = documentManager,
         _shardDocGen = shardDocGen,
         _indexRdfGenerator = indexRdfGenerator,
+        _indexDiscovery = indexDiscovery,
+        _shardDeterminer = shardDeterminer,
         _config = config;
 
   Future<void> sync(
@@ -122,14 +134,17 @@ class StreamingRemoteSyncOrchestrator {
                 changeDetection(_storage, lastSyncTimestamp)) // Stage 4
             .transform(localContentLoad(_storage, _remoteId)) // Stage 5
             .transform(_remote.resourceFetch()) // Stage 6
-            .asyncExpand(crdtMerge(_merger, _mergeContractLoader, _reconciler,
-                _rdfCore)) // Stage 7
+            .map(decodeCandidates(_mergeContractLoader, _rdfCore)) // Stage 7a
+            .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
+                _shardDeterminer, _storage)) // Stage 7b
+            .expand(mergeCandidates(_merger, _reconciler, _rdfCore)) // Stage 7c
             .transform(_remote.resourceUpload()) // Stage 8
             .asyncExpand(dbCommit(
                 _storage, _indexManager, _remoteId, _saveService)) // Stage 9
             .asyncExpand(shardEntryLoad(_storage)) // Stage 10
-            .asyncExpand(shardCrdtMerge(
-                _documentManager, _shardDocGen, _rdfCore)) // Stage 11
+            .expand(prepareShards(_shardDocGen, config)) // Stage 11a
+            .asyncMap(loadShardContracts(_mergeContractLoader)) // Stage 11b
+            .expand(mergeShards(_documentManager, _rdfCore)) // Stage 11c
             .transform(_remote.shardUpload()) // Stage 12
             .asyncExpand(shardDbCommit(_storage, _remoteId)) // Stage 13
             .asyncExpand(feedback(inputController.sink, _storage,

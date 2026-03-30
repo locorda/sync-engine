@@ -215,7 +215,7 @@ class IndexManager {
       return;
     }
 
-    final shardResult = await _shardDeterminer.determineShards(
+    final shardResult = await _shardDeterminer.determineShardsFromStorage(
       IdxFullIndex.classIri,
       indexResourceIri,
       storedDoc.document,

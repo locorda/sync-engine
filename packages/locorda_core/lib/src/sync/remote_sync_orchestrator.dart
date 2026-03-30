@@ -171,7 +171,6 @@ class _ShardPhase1Result {
   final Future<_PreparedShardUpload?> Function(
     DateTime syncTime,
     Map<IriTerm, RdfGraph> canonicalResourceGraphs,
-    ShardDeterminationLookupCache? lookupCache,
     List<IndexEntryWithIri>? preloadedActiveEntries,
   ) prepareFinalize;
 
@@ -677,7 +676,6 @@ class RemoteSyncOrchestrator {
               await _storage.getActiveIndexEntriesForShards(
                   phase1Results.map((r) => r.shardIri));
           final preparedUploads = <_PreparedShardUpload>[];
-          final phase3ShardLookupCache = ShardDeterminationLookupCache();
           await _perflog.measure(
             'content.phase3Finalize',
             () => _executeInChunks(
@@ -685,7 +683,6 @@ class RemoteSyncOrchestrator {
                     final prepared = await result.prepareFinalize(
                       syncTime,
                       canonicalGraphs,
-                      phase3ShardLookupCache,
                       preloadedPhase3IndexEntries[result.shardIri],
                     );
                     if (prepared != null) preparedUploads.add(prepared);
@@ -1444,7 +1441,6 @@ class _DocumentSyncHelper {
       String? ifMatch,
       String debugName,
     })>[];
-    final shardLookupCache = ShardDeterminationLookupCache();
 
     await _perflog.measure(
       'batch.mergeLoop',
@@ -1472,7 +1468,6 @@ class _DocumentSyncHelper {
             candidate.documentIri,
             merged.mergedDocument,
             merged.mergeContract,
-            lookupCache: shardLookupCache,
           );
 
           prepared.add((
@@ -1695,9 +1690,8 @@ class _DocumentSyncHelper {
       )> reconcileDocumentShards(
     IriTerm documentIri,
     RdfGraph mergedDocument,
-    MergeContract mergeContract, {
-    ShardDeterminationLookupCache? lookupCache,
-  }) async {
+    MergeContract mergeContract,
+  ) async {
     return _perflog.measure(
       'doc.reconcileShards',
       () async {
@@ -1705,7 +1699,7 @@ class _DocumentSyncHelper {
             documentIri, SyncManagedDocument.foafPrimaryTopic)!;
         final typeIri =
             mergedDocument.expectSingleObject<IriTerm>(resourceIri, Rdf.type)!;
-        final shards = await _shardDeterminer.determineShards(
+        final shards = await _shardDeterminer.determineShardsFromStorage(
           typeIri,
           resourceIri,
           // app data is requested here, but since this is an rdf graph
@@ -1713,7 +1707,6 @@ class _DocumentSyncHelper {
           mergedDocument,
           // Important: we really have to be able to compute all shards here, better be strict and fail early.
           mode: ShardDeterminationMode.strict,
-          lookupCache: lookupCache,
         );
         final clock = _hlcService.getCurrentClock(mergedDocument, documentIri);
 
@@ -2416,9 +2409,8 @@ class _ShardSyncOrchestrator {
         syncTime: syncTime,
         canonicalResourceGraphs: canonicalGraphs,
       ),
-      prepareFinalize:
-          (syncTime, canonicalGraphs, lookupCache, preloadedActiveEntries) =>
-              _prepareShardUpload<T, G>(
+      prepareFinalize: (syncTime, canonicalGraphs, preloadedActiveEntries) =>
+          _prepareShardUpload<T, G>(
         merged: merged,
         documentQueue: documentQueue,
         shard: shard,
@@ -2429,7 +2421,6 @@ class _ShardSyncOrchestrator {
         graphSyncStorage: graphSyncStorage,
         syncTime: syncTime,
         canonicalResourceGraphs: canonicalGraphs,
-        lookupCache: lookupCache,
         preloadedActiveEntries: preloadedActiveEntries,
       ),
     );
@@ -2454,7 +2445,6 @@ class _ShardSyncOrchestrator {
     required G graphSyncStorage,
     required DateTime syncTime,
     required Map<IriTerm, RdfGraph> canonicalResourceGraphs,
-    ShardDeterminationLookupCache? lookupCache,
   }) async {
     return await _perflog.measure(
       '_finalizeShard.finalize',
@@ -2542,7 +2532,6 @@ class _ShardSyncOrchestrator {
           shardDocumentIri,
           finalShardDocument,
           merged.mergeContract,
-          lookupCache: lookupCache,
         );
 
         // For dataset mode: inject canonical resource graphs into Named Graphs
@@ -2613,7 +2602,6 @@ class _ShardSyncOrchestrator {
     required G graphSyncStorage,
     required DateTime syncTime,
     required Map<IriTerm, RdfGraph> canonicalResourceGraphs,
-    ShardDeterminationLookupCache? lookupCache,
     List<IndexEntryWithIri>? preloadedActiveEntries,
   }) async {
     return await _perflog.measure(
@@ -2706,7 +2694,6 @@ class _ShardSyncOrchestrator {
           shardDocumentIri,
           finalShardDocument,
           merged.mergeContract,
-          lookupCache: lookupCache,
         );
 
         final G effectiveStorage;

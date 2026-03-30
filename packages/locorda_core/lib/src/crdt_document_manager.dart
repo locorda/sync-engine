@@ -245,7 +245,11 @@ Iterable<Triple> toBlankNodeMappingTriples(
   }
 }
 
-List<IriTerm> _computeIsGovernedBy(RdfGraph? oldFrameworkGraph,
+/// Computes the governance IRI list for a document.
+///
+/// Reads `sync:isGovernedBy` from the existing graph and ensures our
+/// config's crdtMapping IRI is included.
+List<IriTerm> computeIsGovernedBy(RdfGraph? oldFrameworkGraph,
     IriTerm documentIri, SyncEngineConfig config, IriTerm resourceType) {
   final oldIsGovernedByFiles = oldFrameworkGraph?.getListObjects<IriTerm>(
           documentIri, SyncManagedDocument.isGovernedBy) ??
@@ -387,6 +391,7 @@ class CrdtDocumentManager {
   /// [Storage.saveDocuments] call instead of one isolate roundtrip per document.
   ///
   /// Returns null if no property changes are detected (document unchanged).
+  @Deprecated('delete me')
   Future<PreparedDocumentSave?> prepareModify(
     IriTerm type,
     IriTerm primaryResourceIri,
@@ -400,7 +405,7 @@ class CrdtDocumentManager {
     final oldUpdatedAt = preloadedDoc?.metadata.updatedAt;
 
     final governedByFiles =
-        _computeIsGovernedBy(oldDocument, documentIri, _config, type);
+        computeIsGovernedBy(oldDocument, documentIri, _config, type);
     final mergeContract = await _mergeContractLoader.load(governedByFiles);
 
     final (appGraph: oldAppData, frameworkGraph: oldFrameworkGraph) =
@@ -422,6 +427,54 @@ class CrdtDocumentManager {
       oldFrameworkGraph,
       mergeContract,
       governedByFiles,
+      physicalTime: physicalTime,
+      oldUpdatedAt: oldUpdatedAt,
+    );
+  }
+
+  /// Sync variant of [prepareModify] using a pre-loaded [MergeContract].
+  ///
+  /// Shard calculation is skipped — callers must pass the expected shards
+  /// directly. For shard documents ([IdxShard]), this is always empty.
+  PreparedDocumentSave? prepareModifyWithContract(
+    IriTerm type,
+    IriTerm primaryResourceIri,
+    RdfGraph Function(RdfGraph oldAppData) modifier,
+    StoredDocument? preloadedDoc,
+    MergeContract mergeContract, {
+    Set<IriTerm> shards = const {},
+    List<ResolvedGroupIndex> resolvedGroupIndices = const [],
+    int? physicalTime,
+    bool acceptMissing = false,
+  }) {
+    final documentIri = primaryResourceIri.getDocumentIri();
+    final oldDocument = preloadedDoc?.document;
+    final oldUpdatedAt = preloadedDoc?.metadata.updatedAt;
+
+    final governedByFiles =
+        computeIsGovernedBy(oldDocument, documentIri, _config, type);
+
+    final (appGraph: oldAppData, frameworkGraph: oldFrameworkGraph) =
+        oldDocument == null
+            ? (appGraph: null, frameworkGraph: null)
+            : splitDocument(oldDocument, documentIri, mergeContract);
+
+    if (oldAppData == null && !acceptMissing) {
+      throw ArgumentError(
+          'Cannot patch non-existing document ${documentIri.debug} - use save() instead');
+    }
+    final appData = modifier(oldAppData ?? RdfGraph());
+    return _computeSaveCore(
+      type,
+      primaryResourceIri,
+      documentIri,
+      appData,
+      oldAppData,
+      oldFrameworkGraph,
+      mergeContract,
+      governedByFiles,
+      allShards: shards,
+      resolvedGroupIndices: resolvedGroupIndices,
       physicalTime: physicalTime,
       oldUpdatedAt: oldUpdatedAt,
     );
@@ -450,7 +503,7 @@ class CrdtDocumentManager {
     final oldUpdatedAt = existingStoredDocument?.metadata.updatedAt;
 
     final governedByFiles =
-        _computeIsGovernedBy(oldDocument, documentIri, _config, type);
+        computeIsGovernedBy(oldDocument, documentIri, _config, type);
 
     // load the governing documents / merge contracts for correct document splitting
     final mergeContract = await _mergeContractLoader.load(governedByFiles);
@@ -486,6 +539,57 @@ class CrdtDocumentManager {
     int? logicalTime,
     int? oldUpdatedAt,
   }) async {
+    final (allShards, _, resolvedGroupIndices, missingIndexDocuments) =
+        await _shardDeterminer.calculateShards(
+      type,
+      resourceIri,
+      documentIri,
+      appData,
+      oldAppData,
+      oldFrameworkGraph,
+      mode: ShardDeterminationMode.lenient,
+    );
+
+    if (missingIndexDocuments.isNotEmpty) {
+      _log.info(
+          'Some index documents not yet available for ${resourceIri.debug}, '
+          'shards will be recalculated on next sync: $missingIndexDocuments');
+    }
+
+    return _computeSaveCore(
+      type,
+      resourceIri,
+      documentIri,
+      appData,
+      oldAppData,
+      oldFrameworkGraph,
+      mergeContract,
+      governedByFiles,
+      allShards: allShards,
+      resolvedGroupIndices: resolvedGroupIndices,
+      physicalTime: physicalTime,
+      logicalTime: logicalTime,
+      oldUpdatedAt: oldUpdatedAt,
+    );
+  }
+
+  /// Sync core of [_computeSave]. All I/O (shard calculation, contract
+  /// loading) must be completed beforehand.
+  PreparedDocumentSave? _computeSaveCore(
+    IriTerm type,
+    IriTerm resourceIri,
+    IriTerm documentIri,
+    RdfGraph appData,
+    RdfGraph? oldAppData,
+    RdfGraph? oldFrameworkGraph,
+    MergeContract mergeContract,
+    List<IriTerm> governedByFiles, {
+    required Set<IriTerm> allShards,
+    required List<ResolvedGroupIndex> resolvedGroupIndices,
+    int? physicalTime,
+    int? logicalTime,
+    int? oldUpdatedAt,
+  }) {
     RdfGraph? crdtDocument;
     RdfGraph? frameworkGraph;
     try {
@@ -531,23 +635,6 @@ class CrdtDocumentManager {
       final createdAt = oldFrameworkGraph?.findMaxDateTimeObject(
               documentIri, SyncManagedDocument.crdtCreatedAt) ??
           LiteralTermExtensions.dateTime(updatedAtTimestamp);
-
-      final (allShards, _, resolvedGroupIndices, missingIndexDocuments) =
-          await _shardDeterminer.calculateShards(
-        type,
-        resourceIri,
-        documentIri,
-        appData,
-        oldAppData,
-        oldFrameworkGraph,
-        mode: ShardDeterminationMode.lenient,
-      );
-
-      if (missingIndexDocuments.isNotEmpty) {
-        _log.info(
-            'Some index documents not yet available for ${resourceIri.debug}, '
-            'shards will be recalculated on next sync: $missingIndexDocuments');
-      }
 
       final documentTriples = _constructCrdtDocument(
         documentIri,
