@@ -33,10 +33,6 @@ class IndexRdfGenerator {
   final ResourceLocator _resourceLocator;
   final ShardManager _shardManager;
 
-  /// Exposes the resource locator for pipeline stages that need IRI inference
-  /// (e.g. tombstoned shard → parent index IRI in Stage 7c).
-  ResourceLocator get resourceLocator => _resourceLocator;
-
   const IndexRdfGenerator(
       {required ResourceLocator resourceLocator,
       required ShardManager shardManager})

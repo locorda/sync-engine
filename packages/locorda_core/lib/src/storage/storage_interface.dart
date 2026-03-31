@@ -374,6 +374,19 @@ abstract interface class Storage {
     }
   }
 
+  /// Looks up the stored `indexIri` for each (shard, resource) pair.
+  ///
+  /// Used by Stage 9 to resolve `indexIri` for tombstoned shard entries,
+  /// where the index IRI cannot be determined from pre-loaded pipeline data.
+  ///
+  /// Looks up the structural shard→index mapping (from the IndexShards table),
+  /// NOT the per-resource IndexEntries table.
+  ///
+  /// Returns a map from shard IRI to the stored index IRI. Shards not found
+  /// in the database are omitted from the result.
+  Future<Map<IriTerm, IriTerm>> getIndexIrisForShards(
+      Iterable<IriTerm> shardIris);
+
   /// Get all active (non-deleted) index entries for a shard.
   ///
   /// Used by SyncFunction to generate shard documents for sync.

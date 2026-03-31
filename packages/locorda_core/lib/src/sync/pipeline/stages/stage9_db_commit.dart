@@ -50,13 +50,21 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
   final pendingGroupIndices = <IriTerm, ResolvedGroupIndex>{};
   // Track GroupIndex IRIs already confirmed to exist (avoids repeated DB lookups).
   final ensuredGroupIndices = <IriTerm>{};
+  // Tombstoned shard IRIs awaiting indexIri resolution in _flush().
+  final pendingTombstones = <({
+    IriTerm shardIri,
+    IriTerm typeIri,
+    IriTerm resourceIri,
+    int physicalTime
+  })>[];
 
   // Writes the entire pending batch atomically and yields CommitResults.
   // No internal chunking — the caller controls batch size via [batchSize].
   Stream<CommitResult> _flush() async* {
     if (pendingSaves.isEmpty &&
         pendingEtags.isEmpty &&
-        pendingGroupIndices.isEmpty) return;
+        pendingGroupIndices.isEmpty &&
+        pendingTombstones.isEmpty) return;
 
     // Ensure GroupIndex documents exist before writing index entries.
     if (pendingGroupIndices.isNotEmpty) {
@@ -72,6 +80,32 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
         }
       }
       pendingGroupIndices.clear();
+    }
+
+    // Resolve tombstone indexIris from IndexShards table before entering the transaction.
+    if (pendingTombstones.isNotEmpty) {
+      final allShardIris = pendingTombstones.map((t) => t.shardIri).toSet();
+      final indexMap = await storage.getIndexIrisForShards(allShardIris);
+      final now = DateTime.now().millisecondsSinceEpoch;
+      for (final t in pendingTombstones) {
+        final indexIri = indexMap[t.shardIri];
+        if (indexIri == null) {
+          _log.fine('No stored indexIri for tombstoned shard '
+              '${t.shardIri} — skipping');
+          continue;
+        }
+        pendingIndexEntries.add(SaveIndexEntryRequest(
+          shardIri: t.shardIri,
+          indexIri: indexIri,
+          resourceIri: t.resourceIri,
+          resourceType: t.typeIri,
+          clockHash: '',
+          isDeleted: true,
+          ourPhysicalClock: t.physicalTime,
+          updatedAt: now,
+        ));
+      }
+      pendingTombstones.clear();
     }
 
     await storage.inTransaction(() async {
@@ -137,6 +171,16 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
         // Stamp pre-built index entries with the actual commit timestamp.
         for (final entry in mergeResult.indexEntries) {
           pendingIndexEntries.add(entry.withUpdatedAt(now));
+        }
+
+        // Collect tombstoned shard IRIs for batched indexIri resolution in _flush().
+        for (final shardIri in mergeResult.tombstonedShardIris) {
+          pendingTombstones.add((
+            shardIri: shardIri,
+            resourceIri: mergeResult.resourceIri,
+            typeIri: mergeResult.typeIri,
+            physicalTime: mergeResult.clock.physicalTime,
+          ));
         }
 
         // Collect resolved GroupIndices for batched creation in _flush().

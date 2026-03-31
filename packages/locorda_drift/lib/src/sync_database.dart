@@ -962,6 +962,7 @@ class PropertyChangeInfo {
   GroupIndexSubscriptions,
   SyncIris,
   IndexIriIdSetVersions,
+  IndexShards,
 ])
 class IndexDao extends DatabaseAccessor<SyncDatabase>
     with _$IndexDaoMixin, IriBatchLoader {
@@ -1185,6 +1186,20 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
 
     if (version.indexIriIds.isEmpty) return [];
     return version.indexIriIds.split(',').map(int.parse).toList();
+  }
+
+  /// Looks up the stored `indexIriId` for each given shard from the
+  /// structural [IndexShards] table (shard→index mapping).
+  ///
+  /// Returns a map from shardIriId to indexIriId. Shards not found are omitted.
+  Future<Map<int, int>> getIndexIriIdsForShards(List<int> shardIriIds) async {
+    if (shardIriIds.isEmpty) return const {};
+
+    final query = select(db.indexShards)
+      ..where((s) => s.shardIriId.isIn(shardIriIds));
+
+    final rows = await query.get();
+    return {for (final row in rows) row.shardIriId: row.indexIriId};
   }
 
   /// Save or update an index entry (overwrites existing entry).
@@ -1797,6 +1812,7 @@ class BatchIndexEntrySaveOperation {
 /// Populated by [DocumentSaveService] whenever an [IdxFullIndex] or
 /// [IdxGroupIndex] document is saved.  Enables Stage 1 to resolve shards
 /// with a single DB query instead of parsing full RDF documents.
+@TableIndex(name: 'idx_index_shards_index_iri', columns: {#indexIriId})
 class IndexShards extends Table {
   @ReferenceName('indexIri')
   IntColumn get indexIriId => integer().references(SyncIris, #id)();
@@ -1805,7 +1821,10 @@ class IndexShards extends Table {
   IntColumn get shardIriId => integer().references(SyncIris, #id)();
 
   @override
-  Set<Column> get primaryKey => {indexIriId, shardIriId};
+  Set<Column> get primaryKey => {shardIriId};
+
+  @override
+  bool get withoutRowId => true;
 }
 
 /// Main sync database class

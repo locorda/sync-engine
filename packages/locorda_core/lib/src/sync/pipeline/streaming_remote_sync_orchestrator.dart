@@ -137,8 +137,7 @@ class StreamingRemoteSyncOrchestrator {
             .map(decodeCandidates(_mergeContractLoader, _rdfCore)) // Stage 7a
             .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
                 _shardDeterminer, _storage, _indexRdfGenerator)) // Stage 7b
-            .expand(mergeCandidates(_merger, _reconciler, _rdfCore,
-                _indexRdfGenerator.resourceLocator)) // Stage 7c
+            .expand(mergeCandidates(_merger, _reconciler, _rdfCore)) // Stage 7c
             .transform(_remote.resourceUpload()) // Stage 8
             .asyncExpand(dbCommit(
                 _storage, _indexManager, _remoteId, _saveService)) // Stage 9

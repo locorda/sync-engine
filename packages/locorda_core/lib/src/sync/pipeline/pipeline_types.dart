@@ -682,12 +682,19 @@ class MergeResult implements MergedResourceEvent {
   /// batched existence check and on-demand creation.
   final List<ResolvedGroupIndex> resolvedGroupIndices;
 
-  /// Pre-built index entry requests for this resource.
+  /// Pre-built index entry requests for active shards of this resource.
   ///
   /// Built in Stage 7c from pre-loaded data (no I/O). Entries have
   /// `updatedAt: 0` — Stage 9 stamps them with the actual commit timestamp
   /// via [SaveIndexEntryRequest.withUpdatedAt].
   final List<SaveIndexEntryRequest> indexEntries;
+
+  /// Shard IRIs with CRDT deletion tombstones, extracted in Stage 7c.
+  ///
+  /// Stage 9 resolves the corresponding `indexIri` from the IndexShards
+  /// DB table (batched query per flush) and builds tombstone
+  /// [SaveIndexEntryRequest]s with `isDeleted: true`.
+  final Set<IriTerm> tombstonedShardIris;
 
   const MergeResult(
     this.resourceIri,
@@ -699,6 +706,7 @@ class MergeResult implements MergedResourceEvent {
     required this.clock,
     required this.resolvedGroupIndices,
     required this.indexEntries,
+    this.tombstonedShardIris = const {},
     this.resourceEtag,
     this.localUpdatedAt,
   });
@@ -717,6 +725,7 @@ class MergeResult implements MergedResourceEvent {
         clock: clock,
         resolvedGroupIndices: resolvedGroupIndices,
         indexEntries: indexEntries,
+        tombstonedShardIris: tombstonedShardIris,
         resourceEtag: resourceEtag,
         localUpdatedAt: localUpdatedAt,
       );

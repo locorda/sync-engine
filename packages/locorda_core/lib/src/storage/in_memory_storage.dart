@@ -562,6 +562,23 @@ class InMemoryStorage implements Storage {
   }
 
   @override
+  Future<Map<IriTerm, IriTerm>> getIndexIrisForShards(
+      Iterable<IriTerm> shardIris) async {
+    final result = <IriTerm, IriTerm>{};
+    for (final shardIri in shardIris) {
+      // Reverse-lookup: find the indexIri that contains this shardIri
+      for (final MapEntry(key: indexIri, value: shards)
+          in _indexShards.entries) {
+        if (shards.contains(shardIri)) {
+          result[shardIri] = indexIri;
+          break;
+        }
+      }
+    }
+    return result;
+  }
+
+  @override
   Future<List<IndexEntryWithIri>> getActiveIndexEntriesForShard(
       IriTerm shardIri) async {
     _logger.finer(

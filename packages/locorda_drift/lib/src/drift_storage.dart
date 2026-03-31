@@ -29,6 +29,7 @@ class DriftStorage implements core.Storage {
   final IriTermFactory _iriTermFactory;
   final core.Perflog _perflog;
   final LRUCache<String, int> _iriIdCache;
+  final LRUCache<int, IriTerm> _idIriCache;
   final LRUCache<String, int> _shardIriIdCache;
 
   static const int _iriIdCacheSize = 20000;
@@ -49,6 +50,7 @@ class DriftStorage implements core.Storage {
         _iriTermFactory = iriTermFactory,
         _perflog = perflog.create('Storage', 'DriftStorage'),
         _iriIdCache = LRUCache<String, int>(maxCacheSize: _iriIdCacheSize),
+        _idIriCache = LRUCache<int, IriTerm>(maxCacheSize: _iriIdCacheSize),
         _shardIriIdCache =
             LRUCache<String, int>(maxCacheSize: _shardIriIdCacheSize),
         _codec = JellyGraphCodec(/*iriTermFactory: iriTermFactory*/);
@@ -161,17 +163,18 @@ class DriftStorage implements core.Storage {
       return const [];
     }
 
+    final allIriTerms = <IriTerm>{};
+    for (final request in requestList) {
+      allIriTerms.add(request.documentIri);
+      allIriTerms.add(request.typeIri);
+    }
+
     final documentIriValues = requestList
         .map((request) => request.documentIri.value)
         .toList(growable: false);
     final typeIriValues = requestList
         .map((request) => request.typeIri.value)
         .toList(growable: false);
-
-    final allIriValues = {
-      ...documentIriValues,
-      ...typeIriValues,
-    };
 
     // Use pre-encoded content if available (pipeline optimization),
     // otherwise encode here before the transaction
@@ -187,17 +190,7 @@ class DriftStorage implements core.Storage {
         );
 
     return _database.transaction(() async {
-      final iriIdByValue = await _perflog.measure(
-        'saveDocuments.tx.iriLookup',
-        () => documentDao.getOrCreateIriIdsBatch(allIriValues),
-        args: ['count=${allIriValues.length}'],
-        minDurationMs: 5,
-      );
-
-      // Populate _iriIdCache so subsequent saveIndexEntries gets cache hits
-      for (final entry in iriIdByValue.entries) {
-        _iriIdCache[entry.key] = entry.value;
-      }
+      final iriIdByValue = await _getOrCreateIriIdsMap(allIriTerms);
 
       final documentIriIds = documentIriValues
           .map((iri) => iriIdByValue[iri]!)
@@ -502,15 +495,15 @@ class DriftStorage implements core.Storage {
 
   @override
   Future<void> warmupIriIds(Iterable<IriTerm> iris) async {
-    final iriValues = iris.map((iri) => iri.value).toSet();
-    if (iriValues.isEmpty) {
+    if (iris.isEmpty) {
       return;
     }
 
+    final iriTermByValue = {for (final iri in iris) iri.value: iri};
     final resolveResult = await _perflog.measure(
       'storage.iri.warmup',
-      () => indexDao.getOrCreateIriIdsBatchWithStats(iriValues),
-      args: ['requestCount=${iriValues.length}'],
+      () => indexDao.getOrCreateIriIdsBatchWithStats(iriTermByValue.keys),
+      args: ['requestCount=${iriTermByValue.length}'],
       resultArgsBuilder: (stats) => [
         'existingCount=${stats.existingCount}',
         'createdCount=${stats.createdCount}',
@@ -520,6 +513,7 @@ class DriftStorage implements core.Storage {
 
     for (final entry in resolveResult.ids.entries) {
       _iriIdCache[entry.key] = entry.value;
+      _idIriCache[entry.value] = iriTermByValue[entry.key]!;
       _shardIriIdCache[entry.key] = entry.value;
     }
   }
@@ -530,28 +524,30 @@ class DriftStorage implements core.Storage {
 
   /// Internal helper: Get or create IRI ID from SyncIris table
   /// IndexDao has IriBatchLoader mixin which provides these methods
-  Future<int> _getOrCreateIriId(String iri) async {
+  Future<int> _getOrCreateIriId(IriTerm iri) async {
     final result = await _getOrCreateIriIdsMap([iri]);
     return result[iri]!;
   }
 
   /// Internal helper: Batch get IRI IDs
 
-  Future<Set<int>> _getOrCreateIriIds(Iterable<String> iris) async {
+  Future<Set<int>> _getOrCreateIriIds(Iterable<IriTerm> iris) async {
     return (await _getOrCreateIriIdsMap(iris)).values.toSet();
   }
 
-  Future<Map<String, int>> _getOrCreateIriIdsMap(Iterable<String> iris) async {
-    final uniqueIris = iris.toSet();
-    if (uniqueIris.isEmpty) {
+  Future<Map<IriTerm, int>> _getOrCreateIriIdsMap(
+      Iterable<IriTerm> iris) async {
+    // Build value→IriTerm map for dedup and reverse cache population
+
+    if (iris.isEmpty) {
       return const {};
     }
 
-    final result = <String, int>{};
-    final misses = <String>{};
+    final result = <IriTerm, int>{};
+    final misses = <IriTerm>{};
 
-    for (final iri in uniqueIris) {
-      final cached = _iriIdCache[iri];
+    for (final iri in iris) {
+      final cached = _iriIdCache[iri.value];
       if (cached != null) {
         result[iri] = cached;
       } else {
@@ -560,9 +556,11 @@ class DriftStorage implements core.Storage {
     }
 
     if (misses.isNotEmpty) {
+      final missesIriTermByValue = {for (final iri in misses) iri.value: iri};
       final resolveResult = await _perflog.measure(
         'storage.iri.getOrCreateBatch',
-        () => indexDao.getOrCreateIriIdsBatchWithStats(misses),
+        () =>
+            indexDao.getOrCreateIriIdsBatchWithStats(missesIriTermByValue.keys),
         args: ['requestCount=${misses.length}'],
         resultArgsBuilder: (stats) => [
           'existingCount=${stats.existingCount}',
@@ -572,9 +570,11 @@ class DriftStorage implements core.Storage {
       );
       final loaded = resolveResult.ids;
       for (final entry in loaded.entries) {
+        final iriTerm = missesIriTermByValue[entry.key]!;
         _iriIdCache[entry.key] = entry.value;
+        _idIriCache[entry.value] = iriTerm;
+        result[iriTerm] = entry.value;
       }
-      result.addAll(loaded);
     }
 
     final hitCount = result.length - misses.length;
@@ -583,7 +583,7 @@ class DriftStorage implements core.Storage {
         'storage.iri.cacheStats',
         () async => null,
         args: [
-          'requestCount=${uniqueIris.length}',
+          'requestCount=${iris.length}',
           'cacheHitCount=$hitCount',
           'cacheMissCount=${misses.length}',
         ],
@@ -626,6 +626,7 @@ class DriftStorage implements core.Storage {
     final shardIriId = resolveResult.ids[shardIriValue]!;
     _shardIriIdCache[shardIriValue] = shardIriId;
     _iriIdCache[shardIriValue] = shardIriId;
+    _idIriCache[shardIriId] = shardIri;
 
     _perflog.measure(
       'storage.iri.shard.cacheStats',
@@ -678,9 +679,31 @@ class DriftStorage implements core.Storage {
     }
   }
 
-  /// Internal helper: Batch get IRIs from IDs
-  Future<Map<int, String>> _getIris(Set<int> ids) async {
-    return await indexDao.getIrisBatch(ids);
+  /// Internal helper: Batch get IRIs from IDs (with cache)
+  Future<Map<int, IriTerm>> _getIris(Set<int> ids) async {
+    if (ids.isEmpty) return const {};
+
+    final result = <int, IriTerm>{};
+    final misses = <int>{};
+    for (final id in ids) {
+      final cached = _idIriCache[id];
+      if (cached != null) {
+        result[id] = cached;
+      } else {
+        misses.add(id);
+      }
+    }
+
+    if (misses.isNotEmpty) {
+      final loaded = await indexDao.getIrisBatch(misses);
+      for (final entry in loaded.entries) {
+        final iriTerm = _iriTermFactory(entry.value);
+        _idIriCache[entry.key] = iriTerm;
+        _iriIdCache[entry.value] = entry.key;
+        result[entry.key] = iriTerm;
+      }
+    }
+    return result;
   }
 
   @override
@@ -690,9 +713,7 @@ class DriftStorage implements core.Storage {
     int limit = 100,
   }) async {
     // Translate index IRIs to IDs internally
-    final indexIds = await _getOrCreateIriIds(
-      indexIris.map((iri) => iri.value),
-    );
+    final indexIds = await _getOrCreateIriIds(indexIris);
 
     // Query directly by index IDs
     final page = await indexDao.getIndexEntries(
@@ -724,9 +745,7 @@ class DriftStorage implements core.Storage {
     int? cursorTimestamp,
   }) async* {
     // Translate index IRIs to IDs internally
-    final indexIds = await _getOrCreateIriIds(
-      indexIris.map((iri) => iri.value),
-    );
+    final indexIds = await _getOrCreateIriIds(indexIris);
 
     // Watch using internal IDs
     yield* indexDao
@@ -753,8 +772,7 @@ class DriftStorage implements core.Storage {
     final indexIriList = indexIris.toList(growable: false);
     if (indexIriList.isEmpty) return const {};
 
-    final iriIdMap =
-        await _getOrCreateIriIdsMap(indexIriList.map((iri) => iri.value));
+    final iriIdMap = await _getOrCreateIriIdsMap(indexIriList);
     final indexIriIds = iriIdMap.values.toSet();
 
     final rows = await (_database.select(_database.indexShards)
@@ -766,9 +784,9 @@ class DriftStorage implements core.Storage {
     final shardIriIds = rows.map((r) => r.shardIriId).toSet();
     final shardIriStrings = await indexDao.getIrisBatch(shardIriIds);
 
-    // Reverse-map indexIriId → IriTerm.
+    // Reverse-map indexIriId → IriTerm using the original objects.
     final idToIndexIri = {
-      for (final e in iriIdMap.entries) e.value: _iriTermFactory(e.key),
+      for (final iri in indexIriList) iriIdMap[iri]!: iri,
     };
 
     final result = <IriTerm, List<IriTerm>>{};
@@ -785,18 +803,17 @@ class DriftStorage implements core.Storage {
   Future<void> saveIndexShards(
       List<(IriTerm, List<IriTerm>)> indexShards) async {
     if (indexShards.isEmpty) return;
-    final allIris =
-        indexShards.expand((e) => [e.$1, ...e.$2]).map((t) => t.value).toList();
-    final iriIdMap = await _getOrCreateIriIdsMap(allIris);
+    final allIriTerms = indexShards.expand((e) => [e.$1, ...e.$2]).toList();
+    final iriIdMap = await _getOrCreateIriIdsMap(allIriTerms);
 
     await _database.transaction(() async {
       // Diff-based delete: remove only shards no longer present.
       // OR-Set semantics mean shards are rarely removed, so this avoids
       // the unnecessary delete+reinsert of the common case.
       for (final (indexIri, shardIris) in indexShards) {
-        final indexIriId = iriIdMap[indexIri.value]!;
+        final indexIriId = iriIdMap[indexIri]!;
         final shardIriIds =
-            shardIris.map((s) => iriIdMap[s.value]!).toList(growable: false);
+            shardIris.map((s) => iriIdMap[s]!).toList(growable: false);
         final deleteQuery = _database.delete(_database.indexShards)
           ..where((s) => shardIriIds.isEmpty
               ? s.indexIriId.equals(indexIriId)
@@ -808,13 +825,13 @@ class DriftStorage implements core.Storage {
       // call instead of N sequential round-trips.
       await _database.batch((batch) {
         for (final (indexIri, shardIris) in indexShards) {
-          final indexIriId = iriIdMap[indexIri.value]!;
+          final indexIriId = iriIdMap[indexIri]!;
           for (final shardIri in shardIris) {
             batch.insert(
               _database.indexShards,
               IndexShardsCompanion.insert(
                 indexIriId: indexIriId,
-                shardIriId: iriIdMap[shardIri.value]!,
+                shardIriId: iriIdMap[shardIri]!,
               ),
               mode: InsertMode.insertOrIgnore,
             );
@@ -834,11 +851,11 @@ class DriftStorage implements core.Storage {
   }) async {
     // Translate IRIs to IDs internally
     final ids = await _getOrCreateIriIdsMap(
-      [groupIndexIri.value, groupIndexTemplateIri.value, indexedType.value],
+      [groupIndexIri, groupIndexTemplateIri, indexedType],
     );
-    final groupIndexIriId = ids[groupIndexIri.value]!;
-    final groupIndexTemplateIriId = ids[groupIndexTemplateIri.value]!;
-    final indexedTypeIriId = ids[indexedType.value]!;
+    final groupIndexIriId = ids[groupIndexIri]!;
+    final groupIndexTemplateIriId = ids[groupIndexTemplateIri]!;
+    final indexedTypeIriId = ids[indexedType]!;
     return indexDao.saveGroupIndexSubscription(
       groupIndexIriId: groupIndexIriId,
       groupIndexTemplateIriId: groupIndexTemplateIriId,
@@ -868,7 +885,7 @@ class DriftStorage implements core.Storage {
   Stream<Set<IriTerm>> watchSubscribedGroupIndexIris(
       IriTerm templateIri) async* {
     // Translate template IRI to ID
-    final templateId = await _getOrCreateIriId(templateIri.value);
+    final templateId = await _getOrCreateIriId(templateIri);
 
     // Watch subscribed index IDs from DAO
     await for (final indexIds
@@ -878,7 +895,7 @@ class DriftStorage implements core.Storage {
         yield const {};
       } else {
         final idToIri = await _getIris(indexIds);
-        yield idToIri.values.map((iri) => _iriTermFactory(iri)).toSet();
+        yield idToIri.values.toSet();
       }
     }
   }
@@ -889,9 +906,7 @@ class DriftStorage implements core.Storage {
     required int createdAt,
   }) async {
     // Translate index IRIs to IDs internally
-    final indexIds = await _getOrCreateIriIds(
-      indexIris.map((iri) => iri.value),
-    );
+    final indexIds = await _getOrCreateIriIds(indexIris);
 
     // Store version with IDs (implementation detail)
     return indexDao.ensureIndexIdSetVersion(
@@ -909,7 +924,40 @@ class DriftStorage implements core.Storage {
     if (indexIds.isEmpty) return const {};
 
     final idToIri = await _getIris(indexIds.toSet());
-    return idToIri.values.map((iri) => _iriTermFactory(iri)).toSet();
+    return idToIri.values.toSet();
+  }
+
+  @override
+  Future<Map<IriTerm, IriTerm>> getIndexIrisForShards(
+      Iterable<IriTerm> shardIris) async {
+    final shardIriList = shardIris.toList();
+    if (shardIriList.isEmpty) return const {};
+
+    // Resolve shard IRIs to IDs
+    final iriIds = await _getOrCreateIriIdsMap(shardIriList);
+    final shardIriIds = shardIriList.map((iri) => iriIds[iri]!).toList();
+
+    // Batch lookup from IndexShards table
+    final shardIdToIndexId =
+        await indexDao.getIndexIriIdsForShards(shardIriIds);
+    if (shardIdToIndexId.isEmpty) return const {};
+
+    // Resolve index IRI IDs back to IRIs
+    final indexIdToIri = await _getIris(shardIdToIndexId.values.toSet());
+
+    // Build the shard IRI → index IRI result map
+    final result = <IriTerm, IriTerm>{};
+    for (final shardIri in shardIriList) {
+      final shardId = iriIds[shardIri]!;
+      final indexId = shardIdToIndexId[shardId];
+      if (indexId != null) {
+        final indexIri = indexIdToIri[indexId];
+        if (indexIri != null) {
+          result[shardIri] = indexIri;
+        }
+      }
+    }
+    return result;
   }
 
   @override
@@ -926,16 +974,16 @@ class DriftStorage implements core.Storage {
   }) async {
     // Translate IRIs to IDs
     final iriIds = await _getOrCreateIriIdsMap([
-      shardIri.value,
-      indexIri.value,
-      resourceIri.value,
-      resourceType.value,
+      shardIri,
+      indexIri,
+      resourceIri,
+      resourceType,
     ]);
 
-    final shardIriId = iriIds[shardIri.value]!;
-    final indexIriId = iriIds[indexIri.value]!;
-    final resourceIriId = iriIds[resourceIri.value]!;
-    final resourceTypeIriId = iriIds[resourceType.value]!;
+    final shardIriId = iriIds[shardIri]!;
+    final indexIriId = iriIds[indexIri]!;
+    final resourceIriId = iriIds[resourceIri]!;
+    final resourceTypeIriId = iriIds[resourceType]!;
 
     // Save entry to database
     await indexDao.saveIndexEntry(
@@ -959,23 +1007,23 @@ class DriftStorage implements core.Storage {
       return;
     }
 
-    final allIris = <String>{};
+    final allIriTerms = <IriTerm>{};
     for (final request in requestList) {
-      allIris.add(request.shardIri.value);
-      allIris.add(request.indexIri.value);
-      allIris.add(request.resourceIri.value);
-      allIris.add(request.resourceType.value);
+      allIriTerms.add(request.shardIri);
+      allIriTerms.add(request.indexIri);
+      allIriTerms.add(request.resourceIri);
+      allIriTerms.add(request.resourceType);
     }
 
-    final iriIds = await _getOrCreateIriIdsMap(allIris);
+    final iriIds = await _getOrCreateIriIdsMap(allIriTerms);
 
     final operations = requestList
         .map(
           (request) => BatchIndexEntrySaveOperation(
-            shardIriId: iriIds[request.shardIri.value]!,
-            indexIriId: iriIds[request.indexIri.value]!,
-            resourceIriId: iriIds[request.resourceIri.value]!,
-            resourceTypeIriId: iriIds[request.resourceType.value]!,
+            shardIriId: iriIds[request.shardIri]!,
+            indexIriId: iriIds[request.indexIri]!,
+            resourceIriId: iriIds[request.resourceIri]!,
+            resourceTypeIriId: iriIds[request.resourceType]!,
             clockHash: request.clockHash,
             headerProperties: _encodeHeaderProperties(request.headerProperties),
             isDeleted: request.isDeleted,
@@ -1126,14 +1174,11 @@ class DriftStorage implements core.Storage {
     required Set<IriTerm> excludeIndexIris,
   }) async {
     // Convert IRIs to IDs for efficient querying
-    final resourceTypeIriId = await _getOrCreateIriId(resourceType.value);
+    final resourceTypeIriId = await _getOrCreateIriId(resourceType);
 
     final excludeIndexIriIds = excludeIndexIris.isEmpty
         ? <int>{}
-        : (await _getOrCreateIriIdsMap(
-                excludeIndexIris.map((iri) => iri.value).toList()))
-            .values
-            .toSet();
+        : (await _getOrCreateIriIdsMap(excludeIndexIris)).values.toSet();
 
     final result = await indexDao.getForeignIndexShardsToSync(
       resourceTypeIriId: resourceTypeIriId,
@@ -1174,7 +1219,7 @@ class DriftStorage implements core.Storage {
   @override
   Future<String?> getRemoteETag(
       core.RemoteId remoteId, IriTerm documentIri) async {
-    final documentIriId = await _getOrCreateIriId(documentIri.value);
+    final documentIriId = await _getOrCreateIriId(documentIri);
     final remoteIdInt = await remoteSyncStateDao.getOrCreateRemoteId(
         remoteId.backend, remoteId.id);
 
@@ -1192,9 +1237,7 @@ class DriftStorage implements core.Storage {
       return const {};
     }
 
-    final iriIdByIriValue = await _getOrCreateIriIdsMap(
-      iris.map((iri) => iri.value),
-    );
+    final iriIdByIriValue = await _getOrCreateIriIdsMap(iris);
     final remoteIdInt = await remoteSyncStateDao.getOrCreateRemoteId(
       remoteId.backend,
       remoteId.id,
@@ -1206,7 +1249,7 @@ class DriftStorage implements core.Storage {
 
     final result = <IriTerm, String?>{};
     for (final iri in iris) {
-      final iriId = iriIdByIriValue[iri.value]!;
+      final iriId = iriIdByIriValue[iri]!;
       result[iri] = etagByDocumentId[iriId];
     }
     return result;
@@ -1215,7 +1258,7 @@ class DriftStorage implements core.Storage {
   @override
   Future<void> setRemoteETag(
       core.RemoteId remoteId, IriTerm documentIri, String etag) async {
-    final documentIriId = await _getOrCreateIriId(documentIri.value);
+    final documentIriId = await _getOrCreateIriId(documentIri);
     final remoteIdInt = await remoteSyncStateDao.getOrCreateRemoteId(
         remoteId.backend, remoteId.id);
 
@@ -1233,9 +1276,7 @@ class DriftStorage implements core.Storage {
       return;
     }
 
-    final iriIdByIriValue = await _getOrCreateIriIdsMap(
-      etagsByDocument.keys.map((iri) => iri.value),
-    );
+    final iriIdByIriValue = await _getOrCreateIriIdsMap(etagsByDocument.keys);
     final remoteIdInt = await remoteSyncStateDao.getOrCreateRemoteId(
       remoteId.backend,
       remoteId.id,
@@ -1243,7 +1284,7 @@ class DriftStorage implements core.Storage {
 
     final etagsByDocumentIriId = <int, String>{};
     for (final entry in etagsByDocument.entries) {
-      etagsByDocumentIriId[iriIdByIriValue[entry.key.value]!] = entry.value;
+      etagsByDocumentIriId[iriIdByIriValue[entry.key]!] = entry.value;
     }
 
     await remoteSyncStateDao.setETags(
@@ -1255,7 +1296,7 @@ class DriftStorage implements core.Storage {
   @override
   Future<void> clearRemoteETag(
       core.RemoteId remoteId, IriTerm documentIri) async {
-    final documentIriId = await _getOrCreateIriId(documentIri.value);
+    final documentIriId = await _getOrCreateIriId(documentIri);
     final remoteIdInt = await remoteSyncStateDao.getOrCreateRemoteId(
         remoteId.backend, remoteId.id);
 
@@ -1302,7 +1343,7 @@ class DriftStorage implements core.Storage {
     // Get resource type IRI ID if filtering
     int? resourceTypeIriId;
     if (resourceType != null) {
-      resourceTypeIriId = await _getOrCreateIriId(resourceType.value);
+      resourceTypeIriId = await _getOrCreateIriId(resourceType);
     }
 
     // Query DAO for missing document IRI IDs
@@ -1314,7 +1355,7 @@ class DriftStorage implements core.Storage {
 
     // Convert IRI IDs back to IriTerms
     final idToIri = await _getIris(missingIriIds);
-    return idToIri.values.map((iri) => _iriTermFactory(iri)).toList();
+    return idToIri.values.toList();
   }
 
   DateTime? _fromUtcMs(int? value) {
@@ -1351,7 +1392,7 @@ class DriftStorage implements core.Storage {
     DateTime? lastAttemptFinishedAt,
     String? lastErrorMessage,
   }) async {
-    final indexInstanceIriId = await _getOrCreateIriId(indexInstanceIri.value);
+    final indexInstanceIriId = await _getOrCreateIriId(indexInstanceIri);
     final remoteSettingId = await remoteSyncStateDao.getOrCreateRemoteId(
       remoteId.backend,
       remoteId.id,

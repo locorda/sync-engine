@@ -46,6 +46,7 @@ mixin _$IndexDaoMixin on DatabaseAccessor<SyncDatabase> {
       attachedDatabase.groupIndexSubscriptions;
   $IndexIriIdSetVersionsTable get indexIriIdSetVersions =>
       attachedDatabase.indexIriIdSetVersions;
+  $IndexShardsTable get indexShards => attachedDatabase.indexShards;
   IndexDaoManager get managers => IndexDaoManager(this);
 }
 
@@ -62,6 +63,8 @@ class IndexDaoManager {
   $$IndexIriIdSetVersionsTableTableManager get indexIriIdSetVersions =>
       $$IndexIriIdSetVersionsTableTableManager(
           _db.attachedDatabase, _db.indexIriIdSetVersions);
+  $$IndexShardsTableTableManager get indexShards =>
+      $$IndexShardsTableTableManager(_db.attachedDatabase, _db.indexShards);
 }
 
 mixin _$RemoteSyncStateDaoMixin on DatabaseAccessor<SyncDatabase> {
@@ -3470,7 +3473,7 @@ class $IndexShardsTable extends IndexShards
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {indexIriId, shardIriId};
+  Set<GeneratedColumn> get $primaryKey => {shardIriId};
   @override
   IndexShard map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -3486,6 +3489,9 @@ class $IndexShardsTable extends IndexShards
   $IndexShardsTable createAlias(String alias) {
     return $IndexShardsTable(attachedDatabase, alias);
   }
+
+  @override
+  bool get withoutRowId => true;
 }
 
 class IndexShard extends DataClass implements Insertable<IndexShard> {
@@ -3559,36 +3565,30 @@ class IndexShard extends DataClass implements Insertable<IndexShard> {
 class IndexShardsCompanion extends UpdateCompanion<IndexShard> {
   final Value<int> indexIriId;
   final Value<int> shardIriId;
-  final Value<int> rowid;
   const IndexShardsCompanion({
     this.indexIriId = const Value.absent(),
     this.shardIriId = const Value.absent(),
-    this.rowid = const Value.absent(),
   });
   IndexShardsCompanion.insert({
     required int indexIriId,
     required int shardIriId,
-    this.rowid = const Value.absent(),
   })  : indexIriId = Value(indexIriId),
         shardIriId = Value(shardIriId);
   static Insertable<IndexShard> custom({
     Expression<int>? indexIriId,
     Expression<int>? shardIriId,
-    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (indexIriId != null) 'index_iri_id': indexIriId,
       if (shardIriId != null) 'shard_iri_id': shardIriId,
-      if (rowid != null) 'rowid': rowid,
     });
   }
 
   IndexShardsCompanion copyWith(
-      {Value<int>? indexIriId, Value<int>? shardIriId, Value<int>? rowid}) {
+      {Value<int>? indexIriId, Value<int>? shardIriId}) {
     return IndexShardsCompanion(
       indexIriId: indexIriId ?? this.indexIriId,
       shardIriId: shardIriId ?? this.shardIriId,
-      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -3601,9 +3601,6 @@ class IndexShardsCompanion extends UpdateCompanion<IndexShard> {
     if (shardIriId.present) {
       map['shard_iri_id'] = Variable<int>(shardIriId.value);
     }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
     return map;
   }
 
@@ -3611,8 +3608,7 @@ class IndexShardsCompanion extends UpdateCompanion<IndexShard> {
   String toString() {
     return (StringBuffer('IndexShardsCompanion(')
           ..write('indexIriId: $indexIriId, ')
-          ..write('shardIriId: $shardIriId, ')
-          ..write('rowid: $rowid')
+          ..write('shardIriId: $shardIriId')
           ..write(')'))
         .toString();
   }
@@ -3637,6 +3633,8 @@ abstract class _$SyncDatabase extends GeneratedDatabase {
   late final $RemoteSyncStateTable remoteSyncState =
       $RemoteSyncStateTable(this);
   late final $IndexShardsTable indexShards = $IndexShardsTable(this);
+  late final Index idxIndexShardsIndexIri = Index('idx_index_shards_index_iri',
+      'CREATE INDEX idx_index_shards_index_iri ON index_shards (index_iri_id)');
   late final SyncDocumentDao syncDocumentDao =
       SyncDocumentDao(this as SyncDatabase);
   late final SyncPropertyChangeDao syncPropertyChangeDao =
@@ -3659,7 +3657,8 @@ abstract class _$SyncDatabase extends GeneratedDatabase {
         indexInstanceSyncStates,
         indexIriIdSetVersions,
         remoteSyncState,
-        indexShards
+        indexShards,
+        idxIndexShardsIndexIri
       ];
 }
 
@@ -7931,13 +7930,11 @@ typedef $$IndexShardsTableCreateCompanionBuilder = IndexShardsCompanion
     Function({
   required int indexIriId,
   required int shardIriId,
-  Value<int> rowid,
 });
 typedef $$IndexShardsTableUpdateCompanionBuilder = IndexShardsCompanion
     Function({
   Value<int> indexIriId,
   Value<int> shardIriId,
-  Value<int> rowid,
 });
 
 final class $$IndexShardsTableReferences
@@ -8150,22 +8147,18 @@ class $$IndexShardsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<int> indexIriId = const Value.absent(),
             Value<int> shardIriId = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
           }) =>
               IndexShardsCompanion(
             indexIriId: indexIriId,
             shardIriId: shardIriId,
-            rowid: rowid,
           ),
           createCompanionCallback: ({
             required int indexIriId,
             required int shardIriId,
-            Value<int> rowid = const Value.absent(),
           }) =>
               IndexShardsCompanion.insert(
             indexIriId: indexIriId,
             shardIriId: shardIriId,
-            rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

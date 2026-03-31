@@ -8,7 +8,6 @@
 library;
 
 import 'package:locorda_core/src/index/index_entry_builder.dart';
-import 'package:locorda_core/src/mapping/resource_locator.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/sync/pipeline/document_shard_reconciler.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart'
@@ -32,13 +31,11 @@ Iterable<pipeline.MergedResourceEvent> Function(
   merger_lib.RemoteDocumentMerger merger,
   DocumentShardReconciler reconciler,
   RdfCore rdfCore,
-  ResourceLocator resourceLocator,
 ) {
   return (pipeline.PreloadedCandidateEvent event) => switch (event) {
         PhaseComplete() => [event],
         ShardComplete() => [event],
-        PreloadedCandidate() =>
-          _merge(event, merger, reconciler, rdfCore, resourceLocator),
+        PreloadedCandidate() => _merge(event, merger, reconciler, rdfCore),
       };
 }
 
@@ -47,7 +44,6 @@ List<pipeline.MergeResult> _merge(
   merger_lib.RemoteDocumentMerger merger,
   DocumentShardReconciler reconciler,
   RdfCore rdfCore,
-  ResourceLocator resourceLocator,
 ) {
   final d = preloaded.decoded;
   final RdfGraph mergedGraph;
@@ -97,19 +93,23 @@ List<pipeline.MergeResult> _merge(
   final needsDbWrite =
       mergedClockHash != d.localClockHash || reconciled.hasChanges;
 
-  // Build index entries from pre-loaded data (pure CPU, no I/O).
-  final indexEntries = buildIndexEntries(
+  // Build active index entries from pre-loaded data (pure CPU, no I/O).
+  final indexEntries = buildActiveIndexEntries(
     resourceIri: d.resourceIri,
     typeIri: d.typeIri,
     clockHash: mergedClockHash,
     graph: reconciled.graph,
-    documentIri: d.documentIri,
     shardToIndex: reconciled.shardToIndex,
     resolvedGroupIndices: reconciled.resolvedGroupIndices,
     indexedProperties: preloaded.indexedProperties,
-    resourceLocator: resourceLocator,
     physicalTime: reconciled.clock.physicalTime,
   );
+
+  // Extract tombstoned shard IRIs (pure CPU graph traversal).
+  // Stage 9 resolves indexIri per shard from the DB and builds tombstone entries.
+  final tombstonedShardIris =
+      collectTombstonedShards(reconciled.graph, d.documentIri)
+        ..removeAll(reconciled.shardToIndex.keys); // active wins over tombstone
 
   final decoded = DecodedGraphSource(reconciled.graph);
   // encode for the database.
@@ -128,6 +128,7 @@ List<pipeline.MergeResult> _merge(
       clock: reconciled.clock,
       resolvedGroupIndices: reconciled.resolvedGroupIndices,
       indexEntries: indexEntries,
+      tombstonedShardIris: tombstonedShardIris,
       localUpdatedAt: d.localUpdatedAt,
       resourceEtag: d.remoteEtag,
     ),
