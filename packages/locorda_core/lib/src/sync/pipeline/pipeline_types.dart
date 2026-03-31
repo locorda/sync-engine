@@ -39,8 +39,9 @@ typedef IriStorageId = dynamic;
 class IndexInputInfo {
   final RootResourceFetchPolicy fetchPolicy;
   final IriTerm typeIri;
+  final IriTerm iri;
 
-  const IndexInputInfo(this.fetchPolicy, this.typeIri);
+  const IndexInputInfo(this.iri, this.fetchPolicy, this.typeIri);
 }
 
 /// A batch of index IRIs to be processed by the pipeline.

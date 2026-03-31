@@ -1144,7 +1144,45 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
     }).toList();
   }
 
-  /// Get or create a index id set version for the given index IDs.
+  /// Batch variant of [getSubscribedGroupIndices] for a set of indexed type IDs.
+  ///
+  /// Issues a single `WHERE indexedTypeIriId IN (...)` query instead of one
+  /// query per type. Returns all matching rows; callers group by type as needed.
+  Future<List<SubscribedGroupIndexData>> getAllSubscribedGroupIndices(
+      Set<int> typeIriIds) async {
+    if (typeIriIds.isEmpty) return const [];
+
+    final groupIndexIriTable = alias(db.syncIris, 'group_index_iris');
+    final indexedTypeIriTable = alias(db.syncIris, 'indexed_type_iris');
+
+    final query = select(db.groupIndexSubscriptions).join([
+      innerJoin(
+        groupIndexIriTable,
+        groupIndexIriTable.id
+            .equalsExp(db.groupIndexSubscriptions.groupIndexIriId),
+      ),
+      innerJoin(
+        indexedTypeIriTable,
+        indexedTypeIriTable.id
+            .equalsExp(db.groupIndexSubscriptions.indexedTypeIriId),
+      ),
+    ])
+      ..where(db.groupIndexSubscriptions.indexedTypeIriId
+          .isIn(typeIriIds.toList()));
+
+    final results = await query.get();
+    return results.map((row) {
+      final subscription = row.readTable(db.groupIndexSubscriptions);
+      final groupIndexIri = row.readTable(groupIndexIriTable);
+      final indexedTypeIri = row.readTable(indexedTypeIriTable);
+      return SubscribedGroupIndexData(
+        groupIndexIri: groupIndexIri.iri,
+        indexedTypeIri: indexedTypeIri.iri,
+        rootResourceFetchPolicy: subscription.itemFetchPolicy,
+      );
+    }).toList();
+  }
+
   ///
   /// Returns the version ID that can be used in cursor strings.
   /// Index IDs are automatically sorted to ensure consistent hashing.
@@ -1511,6 +1549,137 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
       final shardMap = indexToShards.putIfAbsent(indexIri, () => {});
       shardMap.putIfAbsent(shardIri, () => <String, String>{})[resourceIri] =
           clockHash;
+    }
+  }
+
+  /// Batch variant of [getForeignIndexShardsToSync] for multiple resource types.
+  ///
+  /// Uses a single pair of SQL queries with `IN (...)` for resource types
+  /// instead of one pair per type, reducing round-trips from 2N to 2.
+  Future<Map<String, Map<String, Map<String, Map<String, String>>>>>
+      getForeignIndexShardsToSyncForTypes({
+    required Set<int> resourceTypeIriIds,
+    required int sinceTimestamp,
+    required Set<int> excludeIndexIriIds,
+  }) async {
+    if (resourceTypeIriIds.isEmpty) return {};
+    final result = <String, Map<String, Map<String, Map<String, String>>>>{};
+
+    final dirtyResults = await _queryDirtyForeignEntriesForTypes(
+      resourceTypeIriIds: resourceTypeIriIds,
+      sinceTimestamp: sinceTimestamp,
+      excludeIndexIriIds: excludeIndexIriIds,
+    );
+    _groupResultsByType(dirtyResults, result);
+
+    final uncoveredResults = await _queryUncoveredForeignEntriesForTypes(
+      resourceTypeIriIds: resourceTypeIriIds,
+      excludeIndexIriIds: excludeIndexIriIds,
+    );
+    _groupResultsByType(uncoveredResults, result);
+
+    return result;
+  }
+
+  Future<List<QueryRow>> _queryDirtyForeignEntriesForTypes({
+    required Set<int> resourceTypeIriIds,
+    required int sinceTimestamp,
+    required Set<int> excludeIndexIriIds,
+  }) async {
+    final typeInClause = resourceTypeIriIds.join(',');
+    final whereConditions = [
+      'e.resource_type_iri_id IN ($typeInClause)',
+      if (excludeIndexIriIds.isNotEmpty)
+        'e.index_iri_id NOT IN (${excludeIndexIriIds.join(',')})',
+      'e.our_physical_clock > ?',
+    ];
+
+    return customSelect(
+      '''
+      SELECT
+        rt.iri as resource_type_iri,
+        idx.iri as index_iri,
+        shard.iri as shard_iri,
+        res.iri as resource_iri,
+        e.clock_hash as clock_hash
+      FROM index_entries e
+      JOIN sync_iris rt ON rt.id = e.resource_type_iri_id
+      JOIN sync_iris idx ON idx.id = e.index_iri_id
+      JOIN sync_iris shard ON shard.id = e.shard_iri
+      JOIN sync_iris res ON res.id = e.resource_iri_id
+      WHERE ${whereConditions.join(' AND ')}
+      ''',
+      variables: [Variable.withInt(sinceTimestamp)],
+      readsFrom: {db.indexEntries, db.syncIris},
+    ).get();
+  }
+
+  Future<List<QueryRow>> _queryUncoveredForeignEntriesForTypes({
+    required Set<int> resourceTypeIriIds,
+    required Set<int> excludeIndexIriIds,
+  }) async {
+    final typeInClause = resourceTypeIriIds.join(',');
+    if (excludeIndexIriIds.isEmpty) {
+      return customSelect(
+        '''
+        SELECT
+          rt.iri as resource_type_iri,
+          idx.iri as index_iri,
+          shard.iri as shard_iri,
+          res.iri as resource_iri,
+          e.clock_hash as clock_hash
+        FROM index_entries e
+        JOIN sync_iris rt ON rt.id = e.resource_type_iri_id
+        JOIN sync_iris idx ON idx.id = e.index_iri_id
+        JOIN sync_iris shard ON shard.id = e.shard_iri
+        JOIN sync_iris res ON res.id = e.resource_iri_id
+        WHERE e.resource_type_iri_id IN ($typeInClause)
+        ''',
+        variables: [],
+        readsFrom: {db.indexEntries, db.syncIris},
+      ).get();
+    }
+
+    final excludeClause = excludeIndexIriIds.join(',');
+    return customSelect(
+      '''
+      SELECT
+        rt.iri as resource_type_iri,
+        idx.iri as index_iri,
+        shard.iri as shard_iri,
+        res.iri as resource_iri,
+        e.clock_hash as clock_hash
+      FROM index_entries e
+      JOIN sync_iris rt ON rt.id = e.resource_type_iri_id
+      JOIN sync_iris idx ON idx.id = e.index_iri_id
+      JOIN sync_iris shard ON shard.id = e.shard_iri
+      JOIN sync_iris res ON res.id = e.resource_iri_id
+      LEFT JOIN index_entries configured
+        ON e.resource_iri_id = configured.resource_iri_id
+        AND configured.index_iri_id IN ($excludeClause)
+      WHERE e.resource_type_iri_id IN ($typeInClause)
+        AND e.index_iri_id NOT IN ($excludeClause)
+        AND configured.resource_iri_id IS NULL
+      ''',
+      variables: [],
+      readsFrom: {db.indexEntries, db.syncIris},
+    ).get();
+  }
+
+  void _groupResultsByType(
+    List<QueryRow> results,
+    Map<String, Map<String, Map<String, Map<String, String>>>> typeToIndex,
+  ) {
+    for (final row in results) {
+      final resourceTypeIri = row.read<String>('resource_type_iri');
+      final indexIri = row.read<String>('index_iri');
+      final shardIri = row.read<String>('shard_iri');
+      final resourceIri = row.read<String>('resource_iri');
+      final clockHash = row.read<String>('clock_hash');
+      typeToIndex
+          .putIfAbsent(resourceTypeIri, () => {})
+          .putIfAbsent(indexIri, () => {})
+          .putIfAbsent(shardIri, () => {})[resourceIri] = clockHash;
     }
   }
 

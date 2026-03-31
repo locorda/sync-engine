@@ -188,9 +188,8 @@ class DriftStorage implements core.Storage {
       final documentIriIds = requestList
           .map((r) => iriIdMap[r.documentIri]!)
           .toList(growable: false);
-      final typeIriIds = requestList
-          .map((r) => iriIdMap[r.typeIri]!)
-          .toList(growable: false);
+      final typeIriIds =
+          requestList.map((r) => iriIdMap[r.typeIri]!).toList(growable: false);
 
       final maxUpdatedAtByTypeId = await _perflog.measure(
         'saveDocuments.tx.maxUpdatedAt',
@@ -875,6 +874,32 @@ class DriftStorage implements core.Storage {
   }
 
   @override
+  Future<Map<IriTerm, List<(IriTerm, IriTerm, core.RootResourceFetchPolicy)>>>
+      getAllSubscribedGroupIndices(Iterable<IriTerm> indexedTypes) async {
+    final typesList = indexedTypes.toList();
+    if (typesList.isEmpty) return {};
+
+    final iriToId = await _getOrCreateIriIdsMap(typesList);
+    final typeIriIds = iriToId.values.toSet();
+
+    final subscriptions =
+        await indexDao.getAllSubscribedGroupIndices(typeIriIds);
+
+    final result =
+        <IriTerm, List<(IriTerm, IriTerm, core.RootResourceFetchPolicy)>>{};
+    for (final sub in subscriptions) {
+      final groupIndexIri = _iriTermFactory(sub.groupIndexIri);
+      final indexedTypeIri = _iriTermFactory(sub.indexedTypeIri);
+      final fetchPolicy = core.RootResourceFetchPolicy.fromMap(
+          json.decode(sub.rootResourceFetchPolicy));
+      result
+          .putIfAbsent(indexedTypeIri, () => [])
+          .add((groupIndexIri, indexedTypeIri, fetchPolicy));
+    }
+    return result;
+  }
+
+  @override
   Stream<Set<IriTerm>> watchSubscribedGroupIndexIris(
       IriTerm templateIri) async* {
     // Translate template IRI to ID
@@ -1198,6 +1223,54 @@ class DriftStorage implements core.Storage {
     }
 
     return iriMap;
+  }
+
+  @override
+  Future<Map<IriTerm, Map<IriTerm, Map<IriTerm, Map<IriTerm, String>>>>>
+      getForeignIndexShardsToSyncForTypes({
+    required Iterable<IriTerm> resourceTypes,
+    required int sinceTimestamp,
+    required Set<IriTerm> excludeIndexIris,
+  }) async {
+    final typesList = resourceTypes.toList();
+    if (typesList.isEmpty) return {};
+
+    // Single batch IRI→ID translation for all types + exclude set
+    final allIris = [...typesList, ...excludeIndexIris];
+    final iriToId = await _getOrCreateIriIdsMap(allIris);
+
+    final resourceTypeIriIds = typesList.map((t) => iriToId[t]!).toSet();
+    final excludeIndexIriIds = excludeIndexIris.isEmpty
+        ? <int>{}
+        : excludeIndexIris.map((iri) => iriToId[iri]!).toSet();
+
+    final rawResult = await indexDao.getForeignIndexShardsToSyncForTypes(
+      resourceTypeIriIds: resourceTypeIriIds,
+      sinceTimestamp: sinceTimestamp,
+      excludeIndexIriIds: excludeIndexIriIds,
+    );
+
+    final result =
+        <IriTerm, Map<IriTerm, Map<IriTerm, Map<IriTerm, String>>>>{};
+    for (final typeEntry in rawResult.entries) {
+      final typeIri = _iriTermFactory(typeEntry.key);
+      final indexMap = <IriTerm, Map<IriTerm, Map<IriTerm, String>>>{};
+      for (final indexEntry in typeEntry.value.entries) {
+        final indexIri = _iriTermFactory(indexEntry.key);
+        final shardMap = <IriTerm, Map<IriTerm, String>>{};
+        for (final shardEntry in indexEntry.value.entries) {
+          final shardIri = _iriTermFactory(shardEntry.key);
+          final resourceMap = <IriTerm, String>{
+            for (final e in shardEntry.value.entries)
+              _iriTermFactory(e.key): e.value,
+          };
+          shardMap[shardIri] = resourceMap;
+        }
+        indexMap[indexIri] = shardMap;
+      }
+      result[typeIri] = indexMap;
+    }
+    return result;
   }
 
   // Note: Sync timestamp helpers are provided by SyncTimestampStorage extension

@@ -308,6 +308,34 @@ abstract interface class Storage {
             RootResourceFetchPolicy
           )>> getSubscribedGroupIndices(IriTerm indexedType);
 
+  /// Batch variant of [getSubscribedGroupIndices] for multiple indexed types.
+  ///
+  /// Returns a map from indexed type IRI to the subscribed group indices for
+  /// that type. Types with no subscriptions are absent from the result.
+  /// Prefer this over calling [getSubscribedGroupIndices] in a loop to avoid
+  /// N round-trips to the storage backend.
+  ///
+  /// Default implementation delegates sequentially — override in backends for
+  /// a true single-query batch.
+  Future<
+      Map<
+          IriTerm,
+          List<
+              (
+                IriTerm groupIndexIri,
+                IriTerm indexedType,
+                RootResourceFetchPolicy
+              )>>> getAllSubscribedGroupIndices(
+      Iterable<IriTerm> indexedTypes) async {
+    final result =
+        <IriTerm, List<(IriTerm, IriTerm, RootResourceFetchPolicy)>>{};
+    for (final type in indexedTypes) {
+      final subs = await getSubscribedGroupIndices(type);
+      if (subs.isNotEmpty) result[type] = subs;
+    }
+    return result;
+  }
+
   /// Get or create an index set version for cursor tracking.
   ///
   /// Returns a version ID that can be embedded in cursor strings.
@@ -455,6 +483,32 @@ abstract interface class Storage {
     required int sinceTimestamp,
     required Set<IriTerm> excludeIndexIris,
   });
+
+  /// Batch variant of [getForeignIndexShardsToSync] for multiple resource types.
+  ///
+  /// Returns: resourceType -> indexIri -> shardIri -> resourceIri -> clockHash
+  ///
+  /// Prefer this over calling [getForeignIndexShardsToSync] in a loop.
+  /// Default implementation delegates sequentially — override in backends for
+  /// a true single-query batch.
+  Future<Map<IriTerm, Map<IriTerm, Map<IriTerm, Map<IriTerm, String>>>>>
+      getForeignIndexShardsToSyncForTypes({
+    required Iterable<IriTerm> resourceTypes,
+    required int sinceTimestamp,
+    required Set<IriTerm> excludeIndexIris,
+  }) async {
+    final result =
+        <IriTerm, Map<IriTerm, Map<IriTerm, Map<IriTerm, String>>>>{};
+    for (final type in resourceTypes) {
+      final shards = await getForeignIndexShardsToSync(
+        resourceType: type,
+        sinceTimestamp: sinceTimestamp,
+        excludeIndexIris: excludeIndexIris,
+      );
+      if (shards.isNotEmpty) result[type] = shards;
+    }
+    return result;
+  }
 
   // ========================================================================
   // Remote Sync State Management (Multi-Remote Support)

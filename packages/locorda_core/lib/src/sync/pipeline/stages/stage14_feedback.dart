@@ -13,11 +13,10 @@ library;
 
 import 'dart:async' show StreamSink;
 
-import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart' show Storage;
+import 'package:locorda_core/src/sync/pipeline/clock_hash_reader.dart';
+import 'package:locorda_core/src/sync/pipeline/content_index_resolver.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
-import 'package:locorda_core/src/vocab/generated/_index.dart';
-import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger('Stage14.Feedback');
@@ -27,20 +26,16 @@ const _maxRetries = 4;
 
 /// Returns an asyncExpand function for Stage 14.
 ///
-/// Usage: `stream.asyncExpand(feedback(inputController, storage, contentIndicesFactory))`
+/// Usage: `stream.asyncExpand(feedback(inputController, storage, indexResolver))`
 ///
-/// [contentIndicesFactory] is called exactly once (when transitioning from
-/// meta to content phase) and must return the full set of content indices
-/// with their [IndexInputInfo] (fetch policy + resource type IRI).
-///
-/// The factory is provided by [StreamingRemoteSyncOrchestrator] and
-/// encapsulates the effective config + DB queries needed to enumerate all
-/// FullIndex IRIs (from IoI entries) and subscribed GroupIndex IRIs.
+/// [indexResolver] is called exactly once (when transitioning from meta to
+/// content phase) to resolve the full set of content indices with their
+/// [IndexInputInfo] (fetch policy + resource type IRI).
 Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
   // ignore: close_sinks — closed by feedback logic, not by the caller
   StreamSink<SyncInput> inputSink,
   Storage storage,
-  Future<Map<IriTerm, IndexInputInfo>> Function() contentIndicesFactory,
+  ContentIndexResolver indexResolver,
 ) {
   return (CommittedShardEvent event) async* {
     switch (event) {
@@ -51,6 +46,7 @@ Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
         final source = event.source;
 
         // Safety net: re-inject indices that had 0 shards.
+        // TODO: is this really useful? When would it help? Should we simply remove it?
         if (event.zeroShardIndices.isNotEmpty) {
           if (source.retryCount >= _maxRetries) {
             _log.severe('Indices have no shards after $_maxRetries retries: '
@@ -79,21 +75,19 @@ Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
         if (isMetaPhase) {
           // Check stability of ALL meta-index documents.
           final snapshots = source.metaIndexClockHashes!;
-          final newHashes = <IriTerm, String>{};
-          var anyChanged = false;
-
-          for (final entry in snapshots.entries) {
-            final docIri = entry.key;
-            final snapshot = entry.value;
-            final doc = await storage.getDocument(docIri);
-            final currentHash = doc?.document
-                    .findSingleObject<LiteralTerm>(
-                        docIri, SyncManagedDocument.crdtClockHash)
-                    ?.value ??
-                '';
-            newHashes[docIri] = currentHash;
-            if (currentHash != snapshot) anyChanged = true;
+          final newHashes = await readClockHashes(storage, snapshots.keys);
+          // Every key in snapshots had a clock hash when we snapshotted — if
+          // one disappears after a pipeline pass that is data corruption, not
+          // a normal change.
+          final missingKeys =
+              snapshots.keys.where((k) => !newHashes.containsKey(k)).toList();
+          if (missingKeys.isNotEmpty) {
+            throw StateError(
+                'Meta-index document(s) lost their clock hash during sync: '
+                '$missingKeys');
           }
+          final anyChanged =
+              snapshots.entries.any((e) => newHashes[e.key] != e.value);
 
           if (anyChanged) {
             if (source.retryCount >= _maxRetries) {
@@ -113,7 +107,7 @@ Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
             // Meta-indices stable → transition to content phase.
             _log.fine('Meta-indices stable — transitioning to content phase');
 
-            final contentIndices = await contentIndicesFactory();
+            final contentIndices = await indexResolver.resolveContentIndices();
             if (contentIndices.isEmpty) {
               _log.info('No content indices found — closing pipeline');
               inputSink.close();

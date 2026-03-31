@@ -475,6 +475,21 @@ class InMemoryStorage implements Storage {
   }
 
   @override
+  Future<Map<IriTerm, List<(IriTerm, IriTerm, RootResourceFetchPolicy)>>>
+      getAllSubscribedGroupIndices(Iterable<IriTerm> indexedTypes) async {
+    final typeSet = indexedTypes.toSet();
+    if (typeSet.isEmpty) return {};
+    final result =
+        <IriTerm, List<(IriTerm, IriTerm, RootResourceFetchPolicy)>>{};
+    for (final sub in _groupIndexSubscriptions.values) {
+      if (!typeSet.contains(sub.indexedType)) continue;
+      result.putIfAbsent(sub.indexedType, () => []).add(
+          (sub.groupIndexIri, sub.indexedType, sub.rootResourceFetchPolicy));
+    }
+    return result;
+  }
+
+  @override
   Future<int> ensureIndexSetVersion({
     required Set<IriTerm> indexIris,
     required int createdAt,
@@ -722,6 +737,49 @@ class InMemoryStorage implements Storage {
       }
     }
 
+    return result;
+  }
+
+  @override
+  Future<Map<IriTerm, Map<IriTerm, Map<IriTerm, Map<IriTerm, String>>>>>
+      getForeignIndexShardsToSyncForTypes({
+    required Iterable<IriTerm> resourceTypes,
+    required int sinceTimestamp,
+    required Set<IriTerm> excludeIndexIris,
+  }) async {
+    final typeSet = resourceTypes.toSet();
+    if (typeSet.isEmpty) return {};
+
+    // Build covered-resources set per type from configured indices
+    final coveredByType = <IriTerm, Set<IriTerm>>{};
+    for (final entry in _indexEntries.values) {
+      if (!typeSet.contains(entry.resourceType)) continue;
+      if (excludeIndexIris.contains(entry.indexIri)) {
+        coveredByType
+            .putIfAbsent(entry.resourceType, () => {})
+            .add(entry.resourceIri);
+      }
+    }
+
+    final result =
+        <IriTerm, Map<IriTerm, Map<IriTerm, Map<IriTerm, String>>>>{};
+    for (final entry in _indexEntries.values) {
+      if (!typeSet.contains(entry.resourceType)) continue;
+      if (excludeIndexIris.contains(entry.indexIri)) continue;
+
+      final isDirty = entry.ourPhysicalClock > sinceTimestamp;
+      final isUncovered =
+          !(coveredByType[entry.resourceType]?.contains(entry.resourceIri) ??
+              false);
+
+      if (isDirty || isUncovered) {
+        result
+                .putIfAbsent(entry.resourceType, () => {})
+                .putIfAbsent(entry.indexIri, () => {})
+                .putIfAbsent(entry.shardIri, () => {})[entry.resourceIri] =
+            entry.clockHash;
+      }
+    }
     return result;
   }
 
