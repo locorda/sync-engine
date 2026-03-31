@@ -16,6 +16,8 @@
 library;
 
 import 'package:locorda_core/src/index/index_manager.dart';
+import 'package:locorda_core/src/index/shard_determiner.dart'
+    show ResolvedGroupIndex;
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/storage/remote_id.dart';
@@ -44,11 +46,25 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
   final pendingIndexEntries = <SaveIndexEntryRequest>[];
   final pendingEtags = <IriTerm, String>{};
   final pendingResourceIris = <IriTerm>[];
+  // Collect resolved GroupIndices across the batch for batched creation.
+  final pendingGroupIndices = <IriTerm, ResolvedGroupIndex>{};
 
   // Writes the entire pending batch atomically and yields CommitResults.
   // No internal chunking — the caller controls batch size via [batchSize].
   Stream<CommitResult> _flush() async* {
-    if (pendingSaves.isEmpty && pendingEtags.isEmpty) return;
+    if (pendingSaves.isEmpty &&
+        pendingEtags.isEmpty &&
+        pendingGroupIndices.isEmpty) return;
+
+    // Ensure GroupIndex documents exist before writing index entries.
+    if (pendingGroupIndices.isNotEmpty) {
+      try {
+        await indexManager.ensureGroupIndicesExist(pendingGroupIndices.values);
+      } catch (e, st) {
+        _log.warning('ensureGroupIndicesExist failed: $e', e, st);
+      }
+      pendingGroupIndices.clear();
+    }
 
     await storage.inTransaction(() async {
       if (pendingSaves.isNotEmpty) {
@@ -110,20 +126,14 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
           ifMatchUpdatedAt: mergeResult.localUpdatedAt,
         ));
 
-        try {
-          // FIXME: potentially expensive to prepare index entry writes for every merged document
-          final indexEntries = await indexManager.prepareIndexEntryWrites(
-            document: mergeResult.mergedGraph.graph,
-            documentIri: documentIri,
-            resourceTypeIri: mergeResult.typeIri,
-            physicalTime: mergeResult.clock.physicalTime,
-            updatedAt: now,
-            resolvedGroupIndices: mergeResult.resolvedGroupIndices,
-          );
-          pendingIndexEntries.addAll(indexEntries);
-        } catch (e, st) {
-          _log.warning(
-              'prepareIndexEntryWrites failed for $documentIri: $e', e, st);
+        // Stamp pre-built index entries with the actual commit timestamp.
+        for (final entry in mergeResult.indexEntries) {
+          pendingIndexEntries.add(entry.withUpdatedAt(now));
+        }
+
+        // Collect resolved GroupIndices for batched creation in _flush().
+        for (final resolved in mergeResult.resolvedGroupIndices) {
+          pendingGroupIndices[resolved.groupIndexIri] = resolved;
         }
 
         // Prefer upload-response ETag; fall back to stored remote ETag from

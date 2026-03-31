@@ -7,6 +7,8 @@
 /// **Output**: `Stream<MergedResourceEvent>`
 library;
 
+import 'package:locorda_core/src/index/index_entry_builder.dart';
+import 'package:locorda_core/src/mapping/resource_locator.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/sync/pipeline/document_shard_reconciler.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart'
@@ -23,18 +25,20 @@ final _log = Logger('Stage7c.CrdtMerge');
 
 /// Returns an `.expand()` function for Stage 7c.
 ///
-/// Performs sync CRDT merge, shard reconciliation, and binary encoding.
-/// All I/O data was pre-loaded by Stage 7b.
+/// Performs sync CRDT merge, shard reconciliation, index entry building,
+/// and binary encoding. All I/O data was pre-loaded by Stage 7b.
 Iterable<pipeline.MergedResourceEvent> Function(
     pipeline.PreloadedCandidateEvent) mergeCandidates(
   merger_lib.RemoteDocumentMerger merger,
   DocumentShardReconciler reconciler,
   RdfCore rdfCore,
+  ResourceLocator resourceLocator,
 ) {
   return (pipeline.PreloadedCandidateEvent event) => switch (event) {
         PhaseComplete() => [event],
         ShardComplete() => [event],
-        PreloadedCandidate() => _merge(event, merger, reconciler, rdfCore),
+        PreloadedCandidate() =>
+          _merge(event, merger, reconciler, rdfCore, resourceLocator),
       };
 }
 
@@ -43,6 +47,7 @@ List<pipeline.MergeResult> _merge(
   merger_lib.RemoteDocumentMerger merger,
   DocumentShardReconciler reconciler,
   RdfCore rdfCore,
+  ResourceLocator resourceLocator,
 ) {
   final d = preloaded.decoded;
   final RdfGraph mergedGraph;
@@ -92,6 +97,20 @@ List<pipeline.MergeResult> _merge(
   final needsDbWrite =
       mergedClockHash != d.localClockHash || reconciled.hasChanges;
 
+  // Build index entries from pre-loaded data (pure CPU, no I/O).
+  final indexEntries = buildIndexEntries(
+    resourceIri: d.resourceIri,
+    typeIri: d.typeIri,
+    clockHash: mergedClockHash,
+    graph: reconciled.graph,
+    documentIri: d.documentIri,
+    shardToIndex: reconciled.shardToIndex,
+    resolvedGroupIndices: reconciled.resolvedGroupIndices,
+    indexedProperties: preloaded.indexedProperties,
+    resourceLocator: resourceLocator,
+    physicalTime: reconciled.clock.physicalTime,
+  );
+
   final decoded = DecodedGraphSource(reconciled.graph);
   // encode for the database.
   final encodedBytes = rdfCore.encodeBinary(reconciled.graph);
@@ -108,6 +127,7 @@ List<pipeline.MergeResult> _merge(
       needsDbWrite: needsDbWrite,
       clock: reconciled.clock,
       resolvedGroupIndices: reconciled.resolvedGroupIndices,
+      indexEntries: indexEntries,
       localUpdatedAt: d.localUpdatedAt,
       resourceEtag: d.remoteEtag,
     ),

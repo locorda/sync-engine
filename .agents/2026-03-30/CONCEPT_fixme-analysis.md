@@ -235,6 +235,8 @@ This avoids copy-paste between pipeline and non-pipeline paths — the sync shar
 
 ## FIXME 3: `prepareIndexEntryWrites` Cost in Stage 9
 
+> **Updated 2026-03-31**: Complete redesign — move index entry preparation into the pipeline's explicit data-passing model. CPU work moves to Stage 7c, I/O stays batched in Stage 9. No implicit cache-sharing between stages.
+
 ### The Problem
 
 In Stage 9 (`stage9_db_commit.dart`, L113):
@@ -243,94 +245,157 @@ In Stage 9 (`stage9_db_commit.dart`, L113):
 final indexEntries = await indexManager.prepareIndexEntryWrites(...);
 ```
 
-`prepareIndexEntryWrites` is called **per document** inside the buffered flush loop. Its cost:
+`prepareIndexEntryWrites` is called **per document** inside the buffered flush loop. It mixes CPU work (graph traversal, property extraction, request building) with I/O work (property resolver storage reads, GroupIndex existence checks, GroupIndex creation).
 
-1. **`_createMissingGroupIndex(missing)`** — **Heavy I/O**: Loads template config via `_indexDiscovery`, creates GroupIndex document + shard via `_documentManager.save()`, `_storage.saveIndexEntries()`. Called per missing group index.
+### What `prepareIndexEntryWrites` Does (Decomposition)
 
-2. **`_propertyResolver.resolveIndexedPropertiesBatch(shardDocumentIris)`** — **Storage I/O**: Up to 3 batched storage reads (shard docs, index docs, template docs). Has internal LRU cache (100 entries).
+| # | Step | CPU/I/O | Input | Notes |
+|---|------|---------|-------|-------|
+| 1 | GroupIndex existence check | **I/O Read** | `resolvedGroupIndices` | `storage.getDocumentsByIri(groupIndexIris)` |
+| 2 | Create missing GroupIndices | **I/O Write** | missing from step 1 | Loads template, generates graph, saves document + shard |
+| 3 | Extract shard IRIs from graph | CPU | merged graph | `getMultiValueObjectList(belongsToIndexShard)` |
+| 4 | Extract clockHash, resourceIri, type | CPU | merged graph | **Redundant** — all already available in `MergeResult` |
+| 5 | Collect tombstoned shards | CPU | merged graph | Reified statement traversal for `crdt:deletedAt` |
+| 6 | Resolve indexed properties | **I/O Read** | shard doc IRIs | Traverses shard→index→template hierarchy. LRU cached. |
+| 7 | Build tombstone `SaveIndexEntryRequest`s | CPU | tombstoned shards + resolved properties | Needs `indexIri` per tombstoned shard |
+| 8 | Build active `SaveIndexEntryRequest`s | CPU | active shards + resolved properties | Extracts header properties, builds requests |
 
-3. **`_buildTombstonedShardEntryWrites(...)`** — **Sync**: Triple extraction and entry construction from the document graph. No I/O.
+### Key Insights (from analysis)
 
-4. **`_buildShardIndexEntryWrites(...)`** — **Sync**: Property extraction, header property resolution, entry construction per shard. No I/O.
+1. **clockHash is NOT computed here** — `RemoteDocumentMerger.merge()` computes it in 7c and writes it as a `crdt:clockHash` triple into the merged graph. `prepareIndexEntryWrites` redundantly re-reads it from the graph. We already have `mergeResult.clock.hash` as an explicit value.
 
-### Analysis
+2. **Indexed properties can be extracted from already-loaded data** — Stage 7b already loads Index and Template documents via `collectRequiredDocumentIris` + `storage.getDocumentsByIri`. The `IndexPropertyResolver` logic (shard→index→template→`idx:indexedProperty`) traverses the same documents. We can extract indexed properties in 7b from already-loaded docs and pass them through explicitly.
 
-The per-document cost is:
-- **0-N calls** to `_createMissingGroupIndex` (typically 0 for existing resources)
-- **1 call** to `resolveIndexedPropertiesBatch` (batched within the single document's shards, but repeated across documents)
-- **Sync work**: Graph traversal per shard per document — O(shards × properties)
+3. **Tombstone `indexIri` is available from the DB** — The `IndexEntries` table stores `indexIriId` per (shard, resource) pair. For tombstoned shards, we can look up the `indexIri` from existing index entries instead of traversing shard documents. No I/O into shard documents needed.
 
-The `_propertyResolver` has LRU caching, so repeated calls for the same shard IRIs hit cache. For a typical sync batch of ~990 resources across a small number of shards, the cache hit rate should be very high after the first few documents.
+4. **Shard→Index mapping is produced by `determineShards`** — `_determineShardsForFullIndex` and `_determineShardsForGroupIndex` already know which shardIri maps to which indexIri (they generate both). This mapping just isn't returned today.
 
-### Proposed Solution
+5. **Principle: Pipeline stages pass data explicitly** — No implicit cache-warming between stages. 7b loads, 7c computes, data flows through `MergeResult` to Stage 9. Stage 9 only does batched DB commits.
 
-#### Option A: Batch `resolveIndexedPropertiesBatch` Across Documents (Recommended)
+### Chosen Solution: Explicit Data Flow Through Pipeline
 
-Pre-resolve all indexed properties for all shard IRIs across all documents in the flush batch:
+#### Overview
+
+| Stage | What changes |
+|-------|-------------|
+| **7b** | Extract indexed properties from already-loaded Index/Template docs. Pass through `PreloadedCandidate`. |
+| **7c** | Build `List<SaveIndexEntryRequest>` for **active** shards (pure CPU). Build tombstoned shard IRI list (pure CPU). Both added to `MergeResult`. |
+| **9** | For active shards: just `pendingIndexEntries.addAll(mergeResult.indexEntries)` — no `await`. For tombstones: batch-resolve `indexIri` from DB (1 query per flush), build tombstone requests, add to batch. GroupIndex existence check: batched per flush. |
+
+#### Step 1: Indexed Properties in 7b (I/O, already loaded)
+
+Stage 7b already loads Index and Template documents. We add extraction of indexed properties from these same documents:
 
 ```dart
-// In _flush():
-// 1. Collect all shard IRIs from all pending documents
-final allShardIris = <IriTerm>{};
-for (final save in pendingSaves) {
-  final shards = save.document.getMultiValueObjectList<IriTerm>(
-    save.documentIri, SyncManagedDocument.idxBelongsToIndexShard);
-  allShardIris.addAll(shards.map((s) => s.getDocumentIri()));
-  // Also collect tombstoned shards
-  allShardIris.addAll(_collectTombstonedShards(save.document, save.documentIri)
-    .map((s) => s.getDocumentIri()));
-}
-
-// 2. Single batch resolve
-final resolvedProperties = await propertyResolver.resolveIndexedPropertiesBatch(allShardIris);
-
-// 3. Pass to per-document index entry construction (now sync)
-for (final save in pendingSaves) {
-  final entries = indexManager.prepareIndexEntryWritesSync(
-    document: save.document,
-    documentIri: save.documentIri,
-    resourceTypeIri: save.typeIri,
-    physicalTime: save.metadata.ourPhysicalClock,
-    updatedAt: save.metadata.updatedAt,
-    missingGroupIndices: save.missingGroupIndices,
-    preResolvedProperties: resolvedProperties,
-  );
-  pendingIndexEntries.addAll(entries);
+// In preloadChunk() — after loading index/template documents:
+final indexedProperties = <IriTerm, Set<IriTerm>>{};
+for (final candidate in chunk) {
+  final configs = indexConfigCache[candidate.typeIri]!;
+  for (final config in configs) {
+    final indexOrTemplateIri = switch (config) {
+      FullIndexData() => shardDeterminer.generateFullIndexIri(config, candidate.typeIri),
+      GroupIndexData() => shardDeterminer.generateGroupIndexTemplateIri(config, candidate.typeIri),
+    };
+    if (!indexedProperties.containsKey(indexOrTemplateIri)) {
+      final docIri = indexOrTemplateIri.getDocumentIri();
+      final doc = loadedDocs[docIri];
+      if (doc != null) {
+        indexedProperties[indexOrTemplateIri] =
+            IndexPropertyResolver.extractIndexedProperties(doc.document, indexOrTemplateIri);
+      }
+    }
+  }
 }
 ```
 
-This requires:
-- A new `prepareIndexEntryWritesSync` variant that accepts pre-resolved properties
-- Or refactoring `prepareIndexEntryWrites` to accept an optional `preResolvedProperties` parameter
+`PreloadedCandidate` gets new field: `Map<IriTerm, Set<IriTerm>> indexedProperties`.
 
-**Benefit**: 1 batch I/O call per flush instead of N (one per document). The sync construction work stays the same (unavoidable per-document cost).
+`IndexPropertyResolver._extractIndexedProperties()` needs to become a public static method (no state dependency — pure graph traversal).
 
-#### Option B: Lazy Index Entry Preparation
+#### Step 2: `shardToIndex` Mapping from `ShardDeterminer` (no code change needed)
 
-Defer index entry preparation entirely to a post-commit stage. Stage 9 would only save documents and ETags; a new stage would compute and save index entries in batch.
+`determineShards()` already returns `ShardDeterminationResult` with `shards` and `resolvedGroupIndices`. The mapping from shard→index is implicit:
 
-**Downside**: Index entries would be temporarily stale between commit and the lazy update pass. This could cause issues if other pipeline stages or app code relies on up-to-date index entries immediately after commit.
+- **FullIndex**: shardIri is generated from `fullIndexIri` → the index IRI can be extracted from the sharding config that produced the shard IRI.
+- **GroupIndex**: shardIri is generated from `groupIndexIri` → available via `resolvedGroupIndices[].groupIndexIri`.
 
-#### Option C: Accept Current Cost
+**Proposal**: Add `Map<IriTerm, IriTerm> shardToIndex` to `ShardDeterminationResult`. `_determineShardsForFullIndex` and `_determineShardsForGroupIndex` already compute both IRIs — they just discard the mapping.
 
-If the `_propertyResolver` LRU cache has a high hit rate (which it should for typical sync batches), the actual I/O cost is:
-- First ~10 documents: cache cold → storage reads
-- Remaining ~980 documents: cache hot → no I/O
+#### Step 3: Build Active Index Entries in 7c (CPU)
 
-The sync construction work per document (graph traversal, property extraction) is O(shards × indexed_properties) which is generally cheap.
+After reconciliation in 7c, we have everything needed for active `SaveIndexEntryRequest`s:
 
-**Recommendation**: **Option A** — batch the property resolution at flush-time. This is a clean optimization that fits the existing batching architecture. The `_createMissingGroupIndex` calls are harder to batch (they're write operations with retry logic), but they're rare (only for newly-discovered group indices).
+- `reconciled.graph` → extract `idx:belongsToIndexShard` triples (shard IRIs)
+- `mergeResult.clock.hash` → clockHash
+- `shardToIndex` map → indexIri per shard
+- `indexedProperties` from 7b → which properties to include in headers
+- `reconciled.graph` → extract header property values
 
-#### Missing GroupIndex Creation
+```dart
+// In 7c _merge(), after reconciliation:
+final activeIndexEntries = _buildActiveIndexEntries(
+  reconciled, d, preloaded.indexedProperties, shardToIndex);
+```
 
-A separate concern: `_createMissingGroupIndex` in `prepareIndexEntryWrites` creates new GroupIndex documents via `_documentManager.save()`. This is a **write operation inside what should be a read-prepare step**.
+No I/O needed — all data explicitly pre-loaded.
 
-**Proposal**: Separate missing GroupIndex creation from index entry preparation:
-1. Collect all `missingGroupIndices` across the batch
-2. Create them in a single batch before preparing entries
-3. Pass the "all group indices exist now" guarantee to the entry preparation (which can then skip the creation check)
+#### Step 4: Tombstone Handling (Partially in 7c, Partially in 9)
 
-This aligns better with the I/O separation principle.
+**CPU part (7c)**: Extract tombstoned shard IRIs from the reconciled graph. These are reified `idx:belongsToIndexShard` statements with `crdt:deletedAt`. This is pure graph traversal — the old shard IRIs were already present as active or tombstoned triples in the local/remote graph before merge; reconciliation may create new tombstones when shard assignments change.
+
+**I/O part (9)**: For each tombstoned shard IRI, look up the corresponding `indexIri` from the `IndexEntries` DB table (which already stores `indexIriId` per shard+resource pair). This is a single batched DB query per flush. Then build `SaveIndexEntryRequest(isDeleted: true)` entries.
+
+`MergeResult` gets new fields:
+- `List<SaveIndexEntryRequest> indexEntries` — active shard entries (built in 7c)
+- `Set<IriTerm> tombstonedShardIris` — shard IRIs with CRDT deletion tombstones (extracted in 7c)
+
+#### Step 5: GroupIndex Existence Check + Creation (Batched in 9)
+
+GroupIndex existence check and creation stays in Stage 9 (it's I/O Write), but **batched** per flush:
+
+1. Collect all `resolvedGroupIndices` from all `MergeResult`s in the pending batch
+2. Deduplicate by `groupIndexIri`
+3. Single batched `storage.getDocumentsByIri(allGroupIndexIris)` for existence check
+4. Create missing ones (reuse `_createMissingGroupIndex` logic)
+
+This replaces the current per-document call.
+
+#### Resulting Stage 9
+
+```dart
+// Simplified Stage 9 — no per-document I/O for index entries:
+case UploadResult():
+  final mergeResult = event.mergeResult;
+  if (mergeResult.needsDbWrite) {
+    pendingSaves.add(SaveDocumentRequest(...));
+    pendingIndexEntries.addAll(mergeResult.indexEntries);
+    pendingTombstones.addAll(mergeResult.tombstonedShardIris.map(
+        (shardIri) => (shardIri: shardIri, resourceIri: mergeResult.resourceIri, typeIri: mergeResult.typeIri)));
+    pendingResolvedGroupIndices.addAll(mergeResult.resolvedGroupIndices);
+  }
+  // ...
+
+// In _flush():
+// 1. Batch-resolve tombstone indexIris from DB (1 query)
+// 2. Build tombstone SaveIndexEntryRequests
+// 3. Batched GroupIndex existence check + creation
+// 4. Atomic transaction: saveDocuments + saveIndexEntries + setRemoteETags
+```
+
+### Impact on Non-Pipeline Path
+
+The classical (non-pipeline) sync path in `remote_sync_orchestrator.dart` continues to use the existing `prepareIndexEntryWrites` method unchanged — it's async and handles its own I/O. The refactoring only affects the pipeline path.
+
+### Required API Changes
+
+| Component | Change |
+|-----------|--------|
+| `IndexPropertyResolver._extractIndexedProperties` | Make **public static** (pure graph traversal, no state) |
+| `ShardDeterminationResult` | Add `shardToIndex: Map<IriTerm, IriTerm>` |
+| `_determineShardsForFullIndex/GroupIndex` | Populate `shardToIndex` mapping |
+| `PreloadedCandidate` | Add `indexedProperties: Map<IriTerm, Set<IriTerm>>` |
+| `MergeResult` | Add `indexEntries: List<SaveIndexEntryRequest>`, `tombstonedShardIris: Set<IriTerm>` |
+| `IndexManager` | New method for batched tombstone `indexIri` lookup by shard+resource, new method for batched GroupIndex existence check + creation |
 
 ---
 
@@ -655,16 +720,49 @@ Then pipeline code uses `event.candidate.direction.isLocalUploadOnly` instead of
 18. Add `isLocalUploadOnly` getter
 19. Update all pipeline stages + `backend_pipeline.dart`
 
-### Phase 6: Stage 9 Index Entry Batching & GroupIndex Creation (Independent)
+### Phase 6: Index Entry Preparation — Explicit Pipeline Data Flow
 
-20. Batch `resolveIndexedPropertiesBatch` at flush-time (1 call per flush instead of N)
-21. Refactor `prepareIndexEntryWrites` to accept `resolvedGroupIndices` (instead of `missingGroupIndices`):
-    - Batched existence check: collect all `groupIndexIri` from `resolvedGroupIndices`, check which exist locally in one batch
-    - Create missing GroupIndex documents for the non-existing ones (reuse existing `_createMissingGroupIndex` logic, adapted for `ResolvedGroupIndex`)
-    - This is the **single shared method** used by both pipeline (Stage 9) and non-pipeline (`IndexManager.updateIndices`)
-22. Delete `MissingGroupIndex` class — `ResolvedGroupIndex` covers all use cases
-23. Remove `missingGroupIndices` from `DocumentSaveResult`, `PreparedDocumentSave`, `ShardDeterminationResult`
-24. Add sync `prepareIndexEntryWritesSync(preResolvedProperties: ...)` variant for future batching optimization
+> **Updated 2026-03-31**: Replaces flush-time batching approach with explicit data passing through pipeline stages. See FIXME 3 section above for full analysis.
+
+**Sub-phase 6a: Make indexed property extraction reusable**
+
+20. Make `IndexPropertyResolver._extractIndexedProperties()` a **public static method** — it's pure graph traversal (no instance state), extracts `idx:indexedProperty` / `idx:trackedProperty` from index/template graph.
+
+**Sub-phase 6b: Extend 7b to preload indexed properties**
+
+21. In `stage7b_preload.dart`, after loading index/template documents (already loaded for `collectRequiredDocumentIris`), extract indexed properties per index/template IRI using the now-public `extractIndexedProperties`.
+22. Add `indexedProperties: Map<IriTerm, Set<IriTerm>>` to `PreloadedCandidate` — maps index/template IRI → set of property IRIs to include in headers.
+
+**Sub-phase 6c: Extend `ShardDeterminationResult` with shard→index mapping**
+
+23. Add `shardToIndex: Map<IriTerm, IriTerm>` to `ShardDeterminationResult`.
+24. Populate in `_determineShardsForFullIndex` and `_determineShardsForGroupIndex` — both already compute the index IRI alongside the shard IRI.
+
+**Sub-phase 6d: Build active index entries in 7c**
+
+25. After reconciliation in 7c, build `List<SaveIndexEntryRequest>` for active shards (pure CPU):
+    - Shard IRIs from reconciled graph's `idx:belongsToIndexShard` triples
+    - `indexIri` from `shardToIndex` mapping
+    - `clockHash` from `reconciled.clock.hash` (already computed by merger)
+    - Header properties extracted using preloaded `indexedProperties`
+26. Extract tombstoned shard IRIs in 7c (pure CPU): reified `idx:belongsToIndexShard` statements with `crdt:deletedAt` in reconciled graph.
+27. Add to `MergeResult`:
+    - `indexEntries: List<SaveIndexEntryRequest>` — active shard entries
+    - `tombstonedShardIris: Set<IriTerm>` — shard IRIs needing deletion entries
+
+**Sub-phase 6e: Simplify Stage 9 to batched DB commit**
+
+28. Stage 9 event handling becomes: `pendingIndexEntries.addAll(mergeResult.indexEntries)` + collect tombstones and resolvedGroupIndices. No per-document `await`.
+29. In `_flush()`:
+    - Batch-resolve tombstone `indexIri` from `IndexEntries` DB table (single query per flush, using `indexIriId` column)
+    - Build tombstone `SaveIndexEntryRequest(isDeleted: true)` entries
+    - Batched GroupIndex existence check: collect all `groupIndexIri` from pending `resolvedGroupIndices`, single `storage.getDocumentsByIri()`, create missing ones
+    - Atomic transaction: `saveDocuments` + `saveIndexEntries` + `setRemoteETags`
+30. Refactor `prepareIndexEntryWrites` to accept `resolvedGroupIndices` (instead of `missingGroupIndices`):
+    - This keeps the method usable for the non-pipeline path (`IndexManager.updateIndices`)
+    - Pipeline path calls the batched variant in Stage 9 instead
+31. Delete `MissingGroupIndex` class — `ResolvedGroupIndex` covers all use cases
+32. Remove `missingGroupIndices` from `DocumentSaveResult`, `PreparedDocumentSave`, `ShardDeterminationResult`
 
 ### Dependency Graph
 
@@ -672,12 +770,16 @@ Then pipeline code uses `event.candidate.direction.isLocalUploadOnly` instead of
 Phase 1 (Types + 7a)        [independent]
   └── Phase 2 (7b + data)   [depends on Phase 1]
       └── Phase 3 (7c sync) [depends on Phase 2]
+          └── Phase 6 (Index entry pipeline flow) [depends on Phase 2+3]
+              Sub-phase 6a: Make extractIndexedProperties public [independent]
+              Sub-phase 6b: Extend 7b with indexed properties [depends on 6a + Phase 2]
+              Sub-phase 6c: Extend ShardDeterminationResult [independent]
+              Sub-phase 6d: Build index entries in 7c [depends on 6b + 6c + Phase 3]
+              Sub-phase 6e: Simplify Stage 9 [depends on 6d]
 
-Phase 4 (Stage 11)          [independent of Phases 1-3]
+Phase 4 (Stage 11)          [independent of Phases 1-3, 6]
 
 Phase 5 (SyncDirection)     [independent]
-
-Phase 6 (Stage 9 batching)  [independent]
 ```
 
 ### Pipeline Composition After All Phases
@@ -701,7 +803,11 @@ Phase 6 (Stage 9 batching)  [independent]
 
 ### Risks and Considerations
 
-- **GroupIndex Creation During Content Phase**: `prepareIndexEntryWrites` in Stage 9 receives `resolvedGroupIndices`, does a batched existence check, and creates missing GroupIndex documents before building index entries. This is the **same method** called by `IndexManager.updateIndices` in the non-pipeline path — no code duplication. GroupIndex creation in Stage 9 only matters for _subsequent_ pipeline iterations (Stage 14 feedback loop), where 7b would re-load fresh data.
+- **GroupIndex Creation During Content Phase**: Stage 9 does a batched existence check per flush for all `resolvedGroupIndices` and creates missing GroupIndex documents. This I/O stays in Stage 9 because it's a write operation that depends on the accumulated batch. GroupIndex creation only affects _subsequent_ pipeline iterations (Stage 14 feedback loop), where 7b would re-load fresh data.
+
+- **Tombstone Index IRI Resolution**: Stage 9 resolves `indexIri` for tombstoned shards from the `IndexEntries` DB table (single batched query). This is a DB read, not a document storage read. If a tombstoned shard has no existing `IndexEntries` row (edge case: never-synced shard), the tombstone entry is skipped — the shard was never indexed, so no deletion entry needed.
+
+- **Non-Pipeline Path**: The classical sync path continues using the existing `prepareIndexEntryWrites` method with its own I/O. Phase 6 only changes the pipeline path. The `_extractIndexedProperties` method becoming public benefits both paths.
 
 - **First Sync (Cold Start)**: On very first sync, index-of-indices are synced in the meta phase. Stage 7b's `discoverIndices()` then finds the newly-synced indices. No special cold-start handling needed — the meta → content phase ordering guarantees data availability.
 

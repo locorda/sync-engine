@@ -148,10 +148,18 @@ class ShardDeterminationResult {
   final List<ResolvedGroupIndex> resolvedGroupIndices;
   final List<MissingIndexDocument> missingIndexDocuments;
 
+  /// Maps each shard IRI to its parent index IRI (FullIndex or GroupIndex).
+  ///
+  /// Used by Stage 7c to build [SaveIndexEntryRequest]s without I/O —
+  /// the index IRI is needed per entry but was previously resolved via
+  /// storage reads in [IndexPropertyResolver].
+  final Map<IriTerm, IriTerm> shardToIndex;
+
   const ShardDeterminationResult({
     required this.shards,
     required this.resolvedGroupIndices,
     required this.missingIndexDocuments,
+    this.shardToIndex = const {},
   });
 
   bool get hasMissingIndexDocuments => missingIndexDocuments.isNotEmpty;
@@ -387,6 +395,7 @@ class ShardDeterminer {
     }
 
     // Process each discovered index configuration
+    final shardToIndex = <IriTerm, IriTerm>{};
     for (final indexConfig in indexConfigs) {
       switch (indexConfig) {
         case FullIndexData _:
@@ -400,6 +409,7 @@ class ShardDeterminer {
           shards.addAll(result.shards);
           resolvedGroupIndices.addAll(result.resolvedGroupIndices);
           missingIndexDocuments.addAll(result.missingIndexDocuments);
+          shardToIndex.addAll(result.shardToIndex);
 
         case GroupIndexData _:
           final result = _determineShardsForGroupIndex(
@@ -413,6 +423,7 @@ class ShardDeterminer {
           shards.addAll(result.shards);
           resolvedGroupIndices.addAll(result.resolvedGroupIndices);
           missingIndexDocuments.addAll(result.missingIndexDocuments);
+          shardToIndex.addAll(result.shardToIndex);
       }
     }
 
@@ -420,6 +431,7 @@ class ShardDeterminer {
       shards: shards,
       resolvedGroupIndices: resolvedGroupIndices,
       missingIndexDocuments: missingIndexDocuments,
+      shardToIndex: shardToIndex,
     );
   }
 
@@ -555,6 +567,7 @@ class ShardDeterminer {
       shards: shards.toSet(),
       resolvedGroupIndices: const [],
       missingIndexDocuments: missingIndexDocuments,
+      shardToIndex: {shardIri: indexResourceIri},
     );
   }
 
@@ -646,6 +659,7 @@ class ShardDeterminer {
     }
 
     // Process each group key
+    final shardToIndex = <IriTerm, IriTerm>{};
     for (final groupKey in groupKeys) {
       // Generate GroupIndex IRI
       final groupIndexIri =
@@ -677,12 +691,14 @@ class ShardDeterminer {
       );
 
       shards.add(shardIri);
+      shardToIndex[shardIri] = groupIndexIri;
     }
 
     return ShardDeterminationResult(
       shards: shards.toSet(),
       resolvedGroupIndices: resolvedGroupIndices,
       missingIndexDocuments: missingIndexDocuments,
+      shardToIndex: shardToIndex,
     );
   }
 

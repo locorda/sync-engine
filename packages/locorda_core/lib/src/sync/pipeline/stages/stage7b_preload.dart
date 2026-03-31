@@ -12,9 +12,12 @@ import 'dart:async';
 
 import 'package:locorda_core/src/config/sync_engine_config.dart';
 import 'package:locorda_core/src/index/index_discovery.dart';
+import 'package:locorda_core/src/index/index_property_resolver.dart';
+import 'package:locorda_core/src/index/index_rdf_generator.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart';
 import 'package:locorda_core/src/mapping/merge_contract.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
+import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/util/lru_cache.dart';
@@ -24,65 +27,83 @@ import 'package:locorda_rdf_core/core.dart';
 ///
 /// Buffers [DecodedCandidate] events and flushes on boundary or batch-size cap.
 /// For each batch:
-/// 1. Loads unique merge contracts (LRU cached across batches)
-/// 2. Discovers index configurations per resource type (LRU cached across batches)
-/// 3. Batch-loads all index/template documents needed by sync [determineShards]
+/// 1. Loads merge contracts, index configs, and collects required doc IRIs
+/// 2. Batch-loads all index/template documents needed by sync [determineShards]
+/// 3. Extracts indexed property IRIs and emits [PreloadedCandidate]s
 StreamTransformer<DecodedCandidateEvent, PreloadedCandidateEvent>
     preloadCandidates(
   MergeContractLoader mergeContractLoader,
   IndexDiscovery indexDiscovery,
   ShardDeterminer shardDeterminer,
-  Storage storage, {
+  Storage storage,
+  IndexRdfGenerator indexRdfGenerator, {
   int batchSize = defaultPipelineBatchSize,
 }) {
   return StreamTransformer.fromBind((stream) async* {
     final buffer = <DecodedCandidate>[];
     final contractCache = LRUCache<String, MergeContract>();
     final indexConfigCache = LRUCache<IriTerm, Iterable<CrdtIndexData>>();
+    // Cache: index/template resource IRI → extracted property IRIs
+    final indexedPropertiesCache = LRUCache<IriTerm, Set<IriTerm>>();
 
     Stream<PreloadedCandidate> preloadChunk(
         List<DecodedCandidate> chunk) async* {
-      // 1. Load merge contracts for unique governance IRI sets.
+      // 1. Load merge contracts, discover index configs, and collect
+      //    all index/template document IRIs (all LRU cached across batches).
+      final allDocIris = <IriTerm>{};
       for (final candidate in chunk) {
         final key = _governanceKey(candidate.governanceIris);
         if (!contractCache.containsKey(key)) {
           contractCache[key] =
               await mergeContractLoader.load(candidate.governanceIris);
         }
-      }
-
-      // 2. Discover index configs for unique resource types.
-      for (final candidate in chunk) {
         final typeIri = candidate.typeIri;
         if (!indexConfigCache.containsKey(typeIri)) {
           indexConfigCache[typeIri] =
               await indexDiscovery.discoverIndices(typeIri);
         }
-      }
-
-      // 3. Collect all index/template document IRIs needed by determineShards.
-      final allDocIris = <IriTerm>{};
-      for (final candidate in chunk) {
-        final configs = indexConfigCache[candidate.typeIri]!;
         allDocIris.addAll(
           shardDeterminer.collectRequiredDocumentIris(
-              configs, candidate.typeIri),
+              indexConfigCache[typeIri]!, typeIri),
         );
       }
 
-      // 4. Batch-load all required documents in one I/O call.
+      // 2. Batch-load all required documents in one I/O call.
       final loadedDocs = allDocIris.isNotEmpty
           ? await storage.getDocumentsByIri(allDocIris.toList())
           : const <IriTerm, StoredDocument?>{};
 
-      // 5. Emit PreloadedCandidate for each buffered item.
+      // 3. Extract indexed properties and emit PreloadedCandidates.
       for (final candidate in chunk) {
+        final configs = indexConfigCache[candidate.typeIri]!;
+        final indexedProperties = <IriTerm, Set<IriTerm>>{};
+        for (final config in configs) {
+          final indexOrTemplateIri = indexRdfGenerator
+              .generateIndexOrTemplateIri(config, candidate.typeIri);
+          if (!indexedPropertiesCache.containsKey(indexOrTemplateIri)) {
+            final docIri = indexOrTemplateIri.getDocumentIri();
+            final storedDoc = loadedDocs[docIri];
+            if (storedDoc != null) {
+              indexedPropertiesCache[indexOrTemplateIri] =
+                  IndexPropertyResolver.extractIndexedProperties(
+                      storedDoc.document, indexOrTemplateIri);
+            } else {
+              indexedPropertiesCache[indexOrTemplateIri] = const {};
+            }
+          }
+          final props = indexedPropertiesCache[indexOrTemplateIri]!;
+          if (props.isNotEmpty) {
+            indexedProperties[indexOrTemplateIri] = props;
+          }
+        }
+
         yield PreloadedCandidate(
           decoded: candidate,
           mergeContract:
               contractCache[_governanceKey(candidate.governanceIris)]!,
-          indexConfigs: indexConfigCache[candidate.typeIri]!,
+          indexConfigs: configs,
           documents: loadedDocs,
+          indexedProperties: indexedProperties,
         );
       }
     }

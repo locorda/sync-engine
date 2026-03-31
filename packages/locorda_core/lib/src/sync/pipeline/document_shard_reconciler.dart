@@ -24,6 +24,11 @@ typedef ReconciledDocument = ({
   CurrentCrdtClock clock,
   List<ResolvedGroupIndex> resolvedGroupIndices,
 
+  /// Maps each shard IRI to its parent index IRI (FullIndex or GroupIndex).
+  /// Propagated from [ShardDeterminationResult] for Stage 7c index entry
+  /// building without I/O.
+  Map<IriTerm, IriTerm> shardToIndex,
+
   /// Whether shard reconciliation changed the document (e.g. updated
   /// [idx:belongsToIndexShard] triples). Used together with clock-hash
   /// comparison to decide [needsUpload] / [needsDbWrite] in Stage 7c.
@@ -79,7 +84,8 @@ class DocumentShardReconciler {
         .getMergedGovernanceIris([mergedDocument], documentIri);
     final mergeContract = await _mergeContractLoader.load(governanceIris);
 
-    final hasChanges = _shardsChanged(mergedDocument, documentIri, shards.shards);
+    final hasChanges =
+        _shardsChanged(mergedDocument, documentIri, shards.shards);
 
     // Replace shard assignments with CRDT metadata.
     final reconciledGraph = hasChanges
@@ -103,6 +109,7 @@ class DocumentShardReconciler {
       graph: reconciledGraph,
       clock: clock,
       resolvedGroupIndices: shards.resolvedGroupIndices.toList(),
+      shardToIndex: shards.shardToIndex,
       hasChanges: hasChanges,
     );
   }
@@ -131,7 +138,8 @@ class DocumentShardReconciler {
 
     final clock = _hlcService.getCurrentClock(mergedDocument, documentIri);
 
-    final hasChanges = _shardsChanged(mergedDocument, documentIri, shards.shards);
+    final hasChanges =
+        _shardsChanged(mergedDocument, documentIri, shards.shards);
 
     final reconciledGraph = hasChanges
         ? _localDocumentMerger.replaceInDocument(
@@ -154,6 +162,7 @@ class DocumentShardReconciler {
       graph: reconciledGraph,
       clock: clock,
       resolvedGroupIndices: shards.resolvedGroupIndices.toList(),
+      shardToIndex: shards.shardToIndex,
       hasChanges: hasChanges,
     );
   }

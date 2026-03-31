@@ -42,7 +42,6 @@ DecodedCandidate _decode(
   final remoteGraph = fetched.remoteSource?.decodeWith(rdfCore).graph;
   final localGraph = fetched.loaded.localSource?.decodeWith(rdfCore).graph;
 
-  // FIXME: review effective direction mogic
   // Upgrade remoteOnly → conflictCandidate when local graph already exists
   // (e.g. resource modified via a different shard).
   final effectiveDirection =

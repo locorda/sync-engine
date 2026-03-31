@@ -390,6 +390,28 @@ class IndexManager {
     await _storage.saveIndexEntries(requests);
   }
 
+  /// Ensures all resolved GroupIndex documents exist in local storage.
+  ///
+  /// Performs a batched existence check and creates missing GroupIndex
+  /// documents on demand. Called by Stage 9 once per flush with the
+  /// deduplicated set of resolved group indices from the batch.
+  Future<void> ensureGroupIndicesExist(
+      Iterable<ResolvedGroupIndex> resolvedGroupIndices) async {
+    if (resolvedGroupIndices.isEmpty) return;
+
+    final groupIndexIris =
+        resolvedGroupIndices.map((r) => r.groupIndexIri).toList();
+    final existingDocs = await _storage.getDocumentsByIri(groupIndexIris);
+    for (final resolved in resolvedGroupIndices) {
+      if (existingDocs[resolved.groupIndexIri] == null) {
+        _log.info(
+            'Creating missing GroupIndex for group "${resolved.groupKey}" '
+            'at ${resolved.groupIndexIri}');
+        await _createMissingGroupIndex(resolved);
+      }
+    }
+  }
+
   Future<List<SaveIndexEntryRequest>> prepareIndexEntryWrites({
     required RdfGraph document,
     required IriTerm documentIri,
@@ -398,21 +420,8 @@ class IndexManager {
     required int updatedAt,
     required Iterable<ResolvedGroupIndex> resolvedGroupIndices,
   }) async {
-    // Check which resolved GroupIndices don't exist locally yet and create them.
-    // Batched existence check: collect all IRIs, query storage once.
-    if (resolvedGroupIndices.isNotEmpty) {
-      final groupIndexIris =
-          resolvedGroupIndices.map((r) => r.groupIndexIri).toList();
-      final existingDocs = await _storage.getDocumentsByIri(groupIndexIris);
-      for (final resolved in resolvedGroupIndices) {
-        if (existingDocs[resolved.groupIndexIri] == null) {
-          _log.info(
-              'Creating missing GroupIndex for group "${resolved.groupKey}" '
-              'at ${resolved.groupIndexIri}');
-          await _createMissingGroupIndex(resolved);
-        }
-      }
-    }
+    // Ensure GroupIndex documents exist (delegates to shared method).
+    await ensureGroupIndicesExist(resolvedGroupIndices);
 
     // Update the Index Shards
     final allShards = document.getMultiValueObjectList<IriTerm>(

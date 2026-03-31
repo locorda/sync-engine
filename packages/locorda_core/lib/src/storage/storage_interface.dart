@@ -823,6 +823,22 @@ class SaveIndexEntryRequest {
     required this.ourPhysicalClock,
     required this.updatedAt,
   });
+
+  /// Returns a copy with [updatedAt] replaced.
+  ///
+  /// Used by Stage 9 to stamp entries built in Stage 7c with the actual
+  /// DB commit timestamp.
+  SaveIndexEntryRequest withUpdatedAt(int updatedAt) => SaveIndexEntryRequest(
+        shardIri: shardIri,
+        indexIri: indexIri,
+        resourceIri: resourceIri,
+        resourceType: resourceType,
+        clockHash: clockHash,
+        headerProperties: headerProperties,
+        isDeleted: isDeleted,
+        ourPhysicalClock: ourPhysicalClock,
+        updatedAt: updatedAt,
+      );
 }
 
 /// Result of querying documents with pagination support.

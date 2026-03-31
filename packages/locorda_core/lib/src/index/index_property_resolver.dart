@@ -157,7 +157,7 @@ class IndexPropertyResolver {
             }
             return (
               indexIri,
-              _extractIndexedProperties(graph, indexOrTemplateIri!),
+              extractIndexedProperties(graph, indexOrTemplateIri!),
             );
           }(),
       };
@@ -199,7 +199,7 @@ class IndexPropertyResolver {
     }
 
     // 5. Extract idx:indexedProperty list
-    final properties = _extractIndexedProperties(
+    final properties = extractIndexedProperties(
       indexOrTemplateGraph,
       indexOrTemplateIri,
     );
@@ -296,7 +296,11 @@ class IndexPropertyResolver {
   ///   idx:trackedProperty schema:keywords
   /// ] .
   /// ```
-  Set<IriTerm> _extractIndexedProperties(
+  ///
+  /// Pure graph traversal — no instance state needed. Made static for
+  /// reuse in Stage 7b (pipeline preload) without an [IndexPropertyResolver]
+  /// instance.
+  static Set<IriTerm> extractIndexedProperties(
     RdfGraph indexGraph,
     IriTerm indexResourceIri,
   ) {

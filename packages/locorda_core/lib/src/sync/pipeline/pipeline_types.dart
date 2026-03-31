@@ -16,7 +16,7 @@ import 'package:locorda_core/src/index/shard_determiner.dart'
 import 'package:locorda_core/src/mapping/merge_contract.dart'
     show MergeContract;
 import 'package:locorda_core/src/storage/storage_interface.dart'
-    show IndexEntryWithIri, StoredDocument;
+    show IndexEntryWithIri, SaveIndexEntryRequest, StoredDocument;
 import 'package:locorda_rdf_core/core.dart';
 
 // ---------------------------------------------------------------------------
@@ -628,11 +628,19 @@ class PreloadedCandidate implements PreloadedCandidateEvent {
   /// Pre-loaded index documents for sync [ShardDeterminer.determineShards].
   final Map<IriTerm, StoredDocument?> documents;
 
+  /// Pre-extracted indexed property IRIs per index/template resource IRI.
+  ///
+  /// Keyed by FullIndex or GroupIndexTemplate resource IRI (with fragment).
+  /// Values are the set of `idx:trackedProperty` IRIs to include in
+  /// index entry headers — extracted from the already-loaded documents in 7b.
+  final Map<IriTerm, Set<IriTerm>> indexedProperties;
+
   const PreloadedCandidate({
     required this.decoded,
     required this.mergeContract,
     required this.indexConfigs,
     required this.documents,
+    required this.indexedProperties,
   });
 }
 
@@ -674,6 +682,13 @@ class MergeResult implements MergedResourceEvent {
   /// batched existence check and on-demand creation.
   final List<ResolvedGroupIndex> resolvedGroupIndices;
 
+  /// Pre-built index entry requests for this resource.
+  ///
+  /// Built in Stage 7c from pre-loaded data (no I/O). Entries have
+  /// `updatedAt: 0` — Stage 9 stamps them with the actual commit timestamp
+  /// via [SaveIndexEntryRequest.withUpdatedAt].
+  final List<SaveIndexEntryRequest> indexEntries;
+
   const MergeResult(
     this.resourceIri,
     this.typeIri,
@@ -683,6 +698,7 @@ class MergeResult implements MergedResourceEvent {
     required this.needsDbWrite,
     required this.clock,
     required this.resolvedGroupIndices,
+    required this.indexEntries,
     this.resourceEtag,
     this.localUpdatedAt,
   });
@@ -700,6 +716,7 @@ class MergeResult implements MergedResourceEvent {
         needsDbWrite: needsDbWrite,
         clock: clock,
         resolvedGroupIndices: resolvedGroupIndices,
+        indexEntries: indexEntries,
         resourceEtag: resourceEtag,
         localUpdatedAt: localUpdatedAt,
       );
