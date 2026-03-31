@@ -10,7 +10,6 @@ import 'package:locorda_core/src/config/sync_engine_config.dart'
 import 'package:locorda_core/src/index/index_config_base.dart'
     show RootResourceFetchPolicy;
 import 'package:locorda_core/src/index/index_rdf_generator.dart';
-import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/remote_id.dart' show RemoteId;
 import 'package:locorda_core/src/storage/storage_interface.dart' show Storage;
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart'
@@ -83,8 +82,8 @@ class ContentIndexResolver {
     }
 
     // Subscribed GroupIndex IRIs — all types in a single batch query
-    final allGroupIndices = await _storage.getAllSubscribedGroupIndices(
-        contentResources.map((r) => r.typeIri));
+    final allGroupIndices = await _storage
+        .getAllSubscribedGroupIndices(contentResources.map((r) => r.typeIri));
     for (final resourceConfig in contentResources) {
       final typeIri = resourceConfig.typeIri;
       final groupSubs = allGroupIndices[typeIri];
@@ -108,72 +107,19 @@ class ContentIndexResolver {
       for (final indexIri in indexMap.keys) {
         // Foreign indices use OnRequest fetch policy — Stage 4 skips
         // remoteOnly entries, giving upload-only behavior.
-        result[indexIri] =
-            IndexInputInfo(indexIri, RootResourceFetchPolicy.onRequest, typeIri);
+        // TODO(perf): The non-pipeline uses PartialIndexSync to limit sync to
+        //   only the specific shards with dirty/uncovered entries. Here we
+        //   sync all shards of the foreign index (downloading all shard
+        //   documents) even though only a subset is relevant. Consider
+        //   introducing a PartialIndexInputInfo type that carries the shard
+        //   set from getForeignIndexShardsToSyncForTypes so Stage 1 can apply
+        //   the same pruning.
+        result[indexIri] = IndexInputInfo(
+            indexIri, RootResourceFetchPolicy.onRequest, typeIri);
       }
     }
-
-    // Foreign indices discovered from meta-phase: FullIndex/GroupIndex
-    // instance documents downloaded during meta-phase may reference content
-    // types not covered by the local config.
-    await _discoverForeignIndicesFromMeta(metaTypes, result);
 
     _log.fine('Resolved ${result.length} content indices');
     return result;
-  }
-
-  /// Discover foreign indices by reading index instance documents downloaded
-  /// during the meta-phase. Batches all DB access into three queries regardless
-  /// of how many meta-index shards or candidate entries exist.
-  Future<void> _discoverForeignIndicesFromMeta(
-    Set<IriTerm> metaTypes,
-    Map<IriTerm, IndexInputInfo> result,
-  ) async {
-    final contentTypes = _config.resources
-        .where((r) => !metaTypes.contains(r.typeIri))
-        .map((r) => r.typeIri)
-        .toSet();
-
-    // 1. Resolve all shard IRIs for IoI + IoGI meta-indices in one query
-    final ioiMetaIri = _computeMetaIndexIri(IdxFullIndex.classIri).iri;
-    final iogiMetaIri = _computeMetaIndexIri(IdxGroupIndex.classIri).iri;
-    final shardsByMeta =
-        await _storage.getIndexShards([ioiMetaIri, iogiMetaIri]);
-    final allShardIris = [
-      ...?shardsByMeta[ioiMetaIri],
-      ...?shardsByMeta[iogiMetaIri],
-    ];
-    if (allShardIris.isEmpty) return;
-
-    // 2. Batch-load all entries across all shards
-    final entriesByShard =
-        await _storage.getActiveIndexEntriesForShards(allShardIris);
-
-    // Collect candidate instance document IRIs, skipping already-known indices
-    final candidateDocToResource = <IriTerm, IriTerm>{}; // docIri → resourceIri
-    for (final entries in entriesByShard.values) {
-      for (final entry in entries) {
-        if (!result.containsKey(entry.resourceIri)) {
-          candidateDocToResource[entry.resourceIri.getDocumentIri()] =
-              entry.resourceIri;
-        }
-      }
-    }
-    if (candidateDocToResource.isEmpty) return;
-
-    // 3. Batch-fetch all candidate instance documents
-    final docs = await _storage.getDocumentsByIri(candidateDocToResource.keys);
-    for (final MapEntry(:key, :value) in candidateDocToResource.entries) {
-      final doc = docs[key];
-      if (doc == null) continue;
-      final indexedClass =
-          doc.document.findSingleObject<IriTerm>(value, IdxIndex.indexesClass);
-      if (indexedClass != null && contentTypes.contains(indexedClass)) {
-        result[value] = IndexInputInfo(
-            value, RootResourceFetchPolicy.prefetch, indexedClass);
-        _log.fine(
-            'Discovered foreign index: ${value.debug} for ${indexedClass.debug}');
-      }
-    }
   }
 }
