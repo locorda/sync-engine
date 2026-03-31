@@ -108,7 +108,7 @@ Stream<SyncCandidateEvent> _handleParsedShard(
   );
 }
 
-/// ShardNotModified: emit localOnly for locally-changed entries.
+/// ShardNotModified: emit remoteShardUnchanged for locally-changed entries.
 Stream<SyncCandidateEvent> _handleNotModified(
   ShardResultNotModified result,
   Storage storage,
@@ -121,7 +121,7 @@ Stream<SyncCandidateEvent> _handleNotModified(
       yield SyncCandidate(
         entry.resourceIri,
         result.shardStorageId,
-        SyncDirection.localOnly,
+        SyncDirection.remoteShardUnchanged,
         result.typeIri,
         localClockHash: entry.clockHash,
       );
@@ -132,7 +132,7 @@ Stream<SyncCandidateEvent> _handleNotModified(
       existsOnRemote: result.existsOnRemote);
 }
 
-/// ShardGone: emit all local entries as remoteRemoved.
+/// ShardGone: emit all local entries as shardGone.
 Stream<SyncCandidateEvent> _handleGone(
   ShardResultGone result,
   Storage storage,
@@ -144,10 +144,7 @@ Stream<SyncCandidateEvent> _handleGone(
     yield SyncCandidate(
       entry.resourceIri,
       result.shardStorageId,
-      // FIXME: Is this really "remoteRemoved"? The resource is removed from 
-      // the remote shard, but it may still exist in some other shard. This situation
-      // here actually says nothing about the resource's state, only about the shard's state!
-      SyncDirection.remoteRemoved,
+      SyncDirection.shardGone,
       result.typeIri,
       localClockHash: entry.clockHash,
     );
@@ -272,7 +269,7 @@ SyncCandidate? _classify({
     return SyncCandidate(
       resourceIri,
       shardStorageId,
-      SyncDirection.localOnly,
+      SyncDirection.notInRemoteShard,
       typeIri,
       localClockHash: localClockHash,
     );

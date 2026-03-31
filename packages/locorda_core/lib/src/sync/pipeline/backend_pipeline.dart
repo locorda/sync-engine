@@ -151,16 +151,11 @@ class FilePerResourceRemoteSyncSupport implements RemoteSyncPipelineSupport {
             await for (final event in stream) {
               switch (event) {
                 case LoadedCandidate():
-                  if (event.candidate.direction == SyncDirection.localOnly ||
+                  if (event.candidate.direction ==
+                          SyncDirection.remoteShardUnchanged ||
                       event.candidate.direction ==
-                          SyncDirection.remoteRemoved) {
-                    // FIXME: I wonder if this is correct - or maybe: I rather
-                    // wonder if localOnly and remoteRemoved are set correctly.
-                    // Maybe it is also the wording that irritates me, because
-                    // localOnly rather means remoteUnchanged, no? And it does
-                    // not really matter if remote has an older state we already
-                    // incorporated or if it did not exist yet.
-
+                          SyncDirection.notInRemoteShard ||
+                      event.candidate.direction == SyncDirection.shardGone) {
                     passThrough.add(event);
                   } else {
                     buffer.add(event);

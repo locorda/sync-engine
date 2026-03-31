@@ -460,18 +460,32 @@ class ShardResultGone extends ShardResult {
 // ---------------------------------------------------------------------------
 
 /// Classification of how a resource should be synced.
+///
+/// These values describe the relationship between a resource's local state
+/// and its presence in a specific remote shard. Note that a resource may
+/// exist in multiple shards — these classifications are always relative to
+/// the shard currently being processed.
 enum SyncDirection {
   /// New from remote — not present locally.
   remoteOnly,
 
-  /// Exists locally, not in remote shard — needs upload.
-  localOnly,
+  /// Remote shard unchanged (HTTP 304), but resource was locally modified
+  /// since last sync. The resource itself may have been changed remotely in
+  /// a different shard — this only indicates *this* shard has not changed.
+  remoteShardUnchanged,
+
+  /// Resource exists locally but not in this remote shard's entries
+  /// (parsed HTTP 200). Could be a new local resource never synced,
+  /// a resource that moved shards, or a resource removed from this shard
+  /// by another installation.
+  notInRemoteShard,
 
   /// Both sides have different clockHash — needs merge.
   conflictCandidate,
 
-  /// Shard was removed remotely — local entries need cleanup.
-  remoteRemoved,
+  /// Entire shard was removed remotely (HTTP 404/410).
+  /// The resource itself may still exist in other shards.
+  shardGone,
 }
 
 /// A resource classified for sync by Stage 4.
@@ -549,11 +563,12 @@ class FetchedCandidate implements FetchedCandidateEvent {
   /// The local-loaded candidate from Stage 5.
   final LoadedCandidate loaded;
 
-  /// Remote graph source — null for [SyncDirection.localOnly].
+  /// Remote graph source — null for [SyncDirection.remoteShardUnchanged],
+  /// [SyncDirection.notInRemoteShard], and [SyncDirection.shardGone].
   final RdfGraphSource? remoteSource;
 
   /// ETag of the remote resource from the HTTP response, for conditional
-  /// upload in Stage 8. For `localOnly` direction, this carries the stored
+  /// upload in Stage 8. For non-fetch directions, this carries the stored
   /// ETag from [LoadedCandidate.storedRemoteEtag].
   final String? remoteEtag;
 

@@ -52,7 +52,8 @@ List<pipeline.MergeResult> _merge(
     case SyncDirection.remoteOnly:
       mergedGraph = d.remoteGraph!;
 
-    case SyncDirection.localOnly:
+    case SyncDirection.remoteShardUnchanged:
+    case SyncDirection.notInRemoteShard:
       mergedGraph = d.localGraph!;
 
     case SyncDirection.conflictCandidate:
@@ -64,10 +65,9 @@ List<pipeline.MergeResult> _merge(
       );
       mergedGraph = mergeResult.mergedGraph;
 
-    case SyncDirection.remoteRemoved:
+    case SyncDirection.shardGone:
       if (d.localGraph == null) {
-        _log.warning(
-            'remoteRemoved but no local graph for ${d.resourceIri.debug}');
+        _log.warning('shardGone but no local graph for ${d.resourceIri.debug}');
         return const [];
       }
       mergedGraph = d.localGraph!;
