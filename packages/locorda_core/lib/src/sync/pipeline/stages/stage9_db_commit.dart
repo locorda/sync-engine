@@ -48,6 +48,8 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
   final pendingResourceIris = <IriTerm>[];
   // Collect resolved GroupIndices across the batch for batched creation.
   final pendingGroupIndices = <IriTerm, ResolvedGroupIndex>{};
+  // Track GroupIndex IRIs already confirmed to exist (avoids repeated DB lookups).
+  final ensuredGroupIndices = <IriTerm>{};
 
   // Writes the entire pending batch atomically and yields CommitResults.
   // No internal chunking — the caller controls batch size via [batchSize].
@@ -58,10 +60,16 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
 
     // Ensure GroupIndex documents exist before writing index entries.
     if (pendingGroupIndices.isNotEmpty) {
-      try {
-        await indexManager.ensureGroupIndicesExist(pendingGroupIndices.values);
-      } catch (e, st) {
-        _log.warning('ensureGroupIndicesExist failed: $e', e, st);
+      final unchecked = pendingGroupIndices.values
+          .where((r) => !ensuredGroupIndices.contains(r.groupIndexIri))
+          .toList();
+      if (unchecked.isNotEmpty) {
+        try {
+          await indexManager.ensureGroupIndicesExist(unchecked);
+          ensuredGroupIndices.addAll(unchecked.map((r) => r.groupIndexIri));
+        } catch (e, st) {
+          _log.warning('ensureGroupIndicesExist failed: $e', e, st);
+        }
       }
       pendingGroupIndices.clear();
     }
