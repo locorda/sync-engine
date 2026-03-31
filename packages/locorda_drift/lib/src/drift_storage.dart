@@ -169,13 +169,6 @@ class DriftStorage implements core.Storage {
       allIriTerms.add(request.typeIri);
     }
 
-    final documentIriValues = requestList
-        .map((request) => request.documentIri.value)
-        .toList(growable: false);
-    final typeIriValues = requestList
-        .map((request) => request.typeIri.value)
-        .toList(growable: false);
-
     // Use pre-encoded content if available (pipeline optimization),
     // otherwise encode here before the transaction
     final List<Uint8List> encodedContents = preEncodedContents ??
@@ -190,13 +183,13 @@ class DriftStorage implements core.Storage {
         );
 
     return _database.transaction(() async {
-      final iriIdByValue = await _getOrCreateIriIdsMap(allIriTerms);
+      final iriIdMap = await _getOrCreateIriIdsMap(allIriTerms);
 
-      final documentIriIds = documentIriValues
-          .map((iri) => iriIdByValue[iri]!)
+      final documentIriIds = requestList
+          .map((r) => iriIdMap[r.documentIri]!)
           .toList(growable: false);
-      final typeIriIds = typeIriValues
-          .map((iri) => iriIdByValue[iri]!)
+      final typeIriIds = requestList
+          .map((r) => iriIdMap[r.typeIri]!)
           .toList(growable: false);
 
       final maxUpdatedAtByTypeId = await _perflog.measure(
