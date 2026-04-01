@@ -139,7 +139,7 @@ class StreamingRemoteSyncOrchestrator {
             .asyncExpand(shardEntryLoad(_storage)) // Stage 10
             .expand(prepareShards(_shardDocGen, config)) // Stage 11a
             .asyncMap(loadShardContracts(_mergeContractLoader)) // Stage 11b
-            .expand(mergeShards(_documentManager, _rdfCore)) // Stage 11c
+            .expand(mergeShards(_documentManager, _merger, _rdfCore)) // Stage 11c
             .transform(_remote.shardUpload()) // Stage 12
             .asyncExpand(shardDbCommit(_storage, _remoteId)) // Stage 13
             .asyncExpand(feedback(

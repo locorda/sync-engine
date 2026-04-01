@@ -1287,6 +1287,16 @@ class $IndexEntriesTable extends IndexEntries
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("is_deleted" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _isRemoteOnlyMeta =
+      const VerificationMeta('isRemoteOnly');
+  @override
+  late final GeneratedColumn<bool> isRemoteOnly = GeneratedColumn<bool>(
+      'is_remote_only', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("is_remote_only" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         shardIri,
@@ -1297,7 +1307,8 @@ class $IndexEntriesTable extends IndexEntries
         headerProperties,
         updatedAt,
         ourPhysicalClock,
-        isDeleted
+        isDeleted,
+        isRemoteOnly
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1369,6 +1380,12 @@ class $IndexEntriesTable extends IndexEntries
       context.handle(_isDeletedMeta,
           isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta));
     }
+    if (data.containsKey('is_remote_only')) {
+      context.handle(
+          _isRemoteOnlyMeta,
+          isRemoteOnly.isAcceptableOrUnknown(
+              data['is_remote_only']!, _isRemoteOnlyMeta));
+    }
     return context;
   }
 
@@ -1396,6 +1413,8 @@ class $IndexEntriesTable extends IndexEntries
           DriftSqlType.int, data['${effectivePrefix}our_physical_clock'])!,
       isDeleted: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
+      isRemoteOnly: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_remote_only'])!,
     );
   }
 
@@ -1432,6 +1451,11 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
 
   /// Tombstone marker - true if entry was removed from index
   final bool isDeleted;
+
+  /// Placeholder flag — true when this entry was observed in the remote shard
+  /// but not yet fetched locally (onRequest / unmatched PrefetchFiltered).
+  /// Prevents shard regeneration from tombstoning entries we haven't downloaded.
+  final bool isRemoteOnly;
   const IndexEntry(
       {required this.shardIri,
       required this.indexIriId,
@@ -1441,7 +1465,8 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
       this.headerProperties,
       required this.updatedAt,
       required this.ourPhysicalClock,
-      required this.isDeleted});
+      required this.isDeleted,
+      required this.isRemoteOnly});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1456,6 +1481,7 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
     map['updated_at'] = Variable<int>(updatedAt);
     map['our_physical_clock'] = Variable<int>(ourPhysicalClock);
     map['is_deleted'] = Variable<bool>(isDeleted);
+    map['is_remote_only'] = Variable<bool>(isRemoteOnly);
     return map;
   }
 
@@ -1472,6 +1498,7 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
       updatedAt: Value(updatedAt),
       ourPhysicalClock: Value(ourPhysicalClock),
       isDeleted: Value(isDeleted),
+      isRemoteOnly: Value(isRemoteOnly),
     );
   }
 
@@ -1489,6 +1516,7 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       ourPhysicalClock: serializer.fromJson<int>(json['ourPhysicalClock']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      isRemoteOnly: serializer.fromJson<bool>(json['isRemoteOnly']),
     );
   }
   @override
@@ -1504,6 +1532,7 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
       'updatedAt': serializer.toJson<int>(updatedAt),
       'ourPhysicalClock': serializer.toJson<int>(ourPhysicalClock),
       'isDeleted': serializer.toJson<bool>(isDeleted),
+      'isRemoteOnly': serializer.toJson<bool>(isRemoteOnly),
     };
   }
 
@@ -1516,7 +1545,8 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
           Value<Uint8List?> headerProperties = const Value.absent(),
           int? updatedAt,
           int? ourPhysicalClock,
-          bool? isDeleted}) =>
+          bool? isDeleted,
+          bool? isRemoteOnly}) =>
       IndexEntry(
         shardIri: shardIri ?? this.shardIri,
         indexIriId: indexIriId ?? this.indexIriId,
@@ -1529,6 +1559,7 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
         updatedAt: updatedAt ?? this.updatedAt,
         ourPhysicalClock: ourPhysicalClock ?? this.ourPhysicalClock,
         isDeleted: isDeleted ?? this.isDeleted,
+        isRemoteOnly: isRemoteOnly ?? this.isRemoteOnly,
       );
   IndexEntry copyWithCompanion(IndexEntriesCompanion data) {
     return IndexEntry(
@@ -1550,6 +1581,9 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
           ? data.ourPhysicalClock.value
           : this.ourPhysicalClock,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      isRemoteOnly: data.isRemoteOnly.present
+          ? data.isRemoteOnly.value
+          : this.isRemoteOnly,
     );
   }
 
@@ -1564,7 +1598,8 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
           ..write('headerProperties: $headerProperties, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('ourPhysicalClock: $ourPhysicalClock, ')
-          ..write('isDeleted: $isDeleted')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('isRemoteOnly: $isRemoteOnly')
           ..write(')'))
         .toString();
   }
@@ -1579,7 +1614,8 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
       $driftBlobEquality.hash(headerProperties),
       updatedAt,
       ourPhysicalClock,
-      isDeleted);
+      isDeleted,
+      isRemoteOnly);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1593,7 +1629,8 @@ class IndexEntry extends DataClass implements Insertable<IndexEntry> {
               other.headerProperties, this.headerProperties) &&
           other.updatedAt == this.updatedAt &&
           other.ourPhysicalClock == this.ourPhysicalClock &&
-          other.isDeleted == this.isDeleted);
+          other.isDeleted == this.isDeleted &&
+          other.isRemoteOnly == this.isRemoteOnly);
 }
 
 class IndexEntriesCompanion extends UpdateCompanion<IndexEntry> {
@@ -1606,6 +1643,7 @@ class IndexEntriesCompanion extends UpdateCompanion<IndexEntry> {
   final Value<int> updatedAt;
   final Value<int> ourPhysicalClock;
   final Value<bool> isDeleted;
+  final Value<bool> isRemoteOnly;
   final Value<int> rowid;
   const IndexEntriesCompanion({
     this.shardIri = const Value.absent(),
@@ -1617,6 +1655,7 @@ class IndexEntriesCompanion extends UpdateCompanion<IndexEntry> {
     this.updatedAt = const Value.absent(),
     this.ourPhysicalClock = const Value.absent(),
     this.isDeleted = const Value.absent(),
+    this.isRemoteOnly = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   IndexEntriesCompanion.insert({
@@ -1629,6 +1668,7 @@ class IndexEntriesCompanion extends UpdateCompanion<IndexEntry> {
     required int updatedAt,
     required int ourPhysicalClock,
     this.isDeleted = const Value.absent(),
+    this.isRemoteOnly = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : shardIri = Value(shardIri),
         indexIriId = Value(indexIriId),
@@ -1647,6 +1687,7 @@ class IndexEntriesCompanion extends UpdateCompanion<IndexEntry> {
     Expression<int>? updatedAt,
     Expression<int>? ourPhysicalClock,
     Expression<bool>? isDeleted,
+    Expression<bool>? isRemoteOnly,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1659,6 +1700,7 @@ class IndexEntriesCompanion extends UpdateCompanion<IndexEntry> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (ourPhysicalClock != null) 'our_physical_clock': ourPhysicalClock,
       if (isDeleted != null) 'is_deleted': isDeleted,
+      if (isRemoteOnly != null) 'is_remote_only': isRemoteOnly,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1673,6 +1715,7 @@ class IndexEntriesCompanion extends UpdateCompanion<IndexEntry> {
       Value<int>? updatedAt,
       Value<int>? ourPhysicalClock,
       Value<bool>? isDeleted,
+      Value<bool>? isRemoteOnly,
       Value<int>? rowid}) {
     return IndexEntriesCompanion(
       shardIri: shardIri ?? this.shardIri,
@@ -1684,6 +1727,7 @@ class IndexEntriesCompanion extends UpdateCompanion<IndexEntry> {
       updatedAt: updatedAt ?? this.updatedAt,
       ourPhysicalClock: ourPhysicalClock ?? this.ourPhysicalClock,
       isDeleted: isDeleted ?? this.isDeleted,
+      isRemoteOnly: isRemoteOnly ?? this.isRemoteOnly,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1718,6 +1762,9 @@ class IndexEntriesCompanion extends UpdateCompanion<IndexEntry> {
     if (isDeleted.present) {
       map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
+    if (isRemoteOnly.present) {
+      map['is_remote_only'] = Variable<bool>(isRemoteOnly.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1736,6 +1783,7 @@ class IndexEntriesCompanion extends UpdateCompanion<IndexEntry> {
           ..write('updatedAt: $updatedAt, ')
           ..write('ourPhysicalClock: $ourPhysicalClock, ')
           ..write('isDeleted: $isDeleted, ')
+          ..write('isRemoteOnly: $isRemoteOnly, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5695,6 +5743,7 @@ typedef $$IndexEntriesTableCreateCompanionBuilder = IndexEntriesCompanion
   required int updatedAt,
   required int ourPhysicalClock,
   Value<bool> isDeleted,
+  Value<bool> isRemoteOnly,
   Value<int> rowid,
 });
 typedef $$IndexEntriesTableUpdateCompanionBuilder = IndexEntriesCompanion
@@ -5708,6 +5757,7 @@ typedef $$IndexEntriesTableUpdateCompanionBuilder = IndexEntriesCompanion
   Value<int> updatedAt,
   Value<int> ourPhysicalClock,
   Value<bool> isDeleted,
+  Value<bool> isRemoteOnly,
   Value<int> rowid,
 });
 
@@ -5801,6 +5851,9 @@ class $$IndexEntriesTableFilterComposer
 
   ColumnFilters<bool> get isDeleted => $composableBuilder(
       column: $table.isDeleted, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isRemoteOnly => $composableBuilder(
+      column: $table.isRemoteOnly, builder: (column) => ColumnFilters(column));
 
   $$SyncIrisTableFilterComposer get shardIri {
     final $$SyncIrisTableFilterComposer composer = $composerBuilder(
@@ -5909,6 +5962,10 @@ class $$IndexEntriesTableOrderingComposer
   ColumnOrderings<bool> get isDeleted => $composableBuilder(
       column: $table.isDeleted, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get isRemoteOnly => $composableBuilder(
+      column: $table.isRemoteOnly,
+      builder: (column) => ColumnOrderings(column));
+
   $$SyncIrisTableOrderingComposer get shardIri {
     final $$SyncIrisTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -6013,6 +6070,9 @@ class $$IndexEntriesTableAnnotationComposer
 
   GeneratedColumn<bool> get isDeleted =>
       $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<bool> get isRemoteOnly => $composableBuilder(
+      column: $table.isRemoteOnly, builder: (column) => column);
 
   $$SyncIrisTableAnnotationComposer get shardIri {
     final $$SyncIrisTableAnnotationComposer composer = $composerBuilder(
@@ -6131,6 +6191,7 @@ class $$IndexEntriesTableTableManager extends RootTableManager<
             Value<int> updatedAt = const Value.absent(),
             Value<int> ourPhysicalClock = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
+            Value<bool> isRemoteOnly = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               IndexEntriesCompanion(
@@ -6143,6 +6204,7 @@ class $$IndexEntriesTableTableManager extends RootTableManager<
             updatedAt: updatedAt,
             ourPhysicalClock: ourPhysicalClock,
             isDeleted: isDeleted,
+            isRemoteOnly: isRemoteOnly,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -6155,6 +6217,7 @@ class $$IndexEntriesTableTableManager extends RootTableManager<
             required int updatedAt,
             required int ourPhysicalClock,
             Value<bool> isDeleted = const Value.absent(),
+            Value<bool> isRemoteOnly = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               IndexEntriesCompanion.insert(
@@ -6167,6 +6230,7 @@ class $$IndexEntriesTableTableManager extends RootTableManager<
             updatedAt: updatedAt,
             ourPhysicalClock: ourPhysicalClock,
             isDeleted: isDeleted,
+            isRemoteOnly: isRemoteOnly,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

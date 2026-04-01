@@ -367,11 +367,43 @@ class RemoteDocumentMerger {
     final mergedClock =
         _hlcService.getCurrentClock(preliminaryGraph, documentIri);
 
+    // Materialize statement triples so we can inspect which statement IRIs
+    // are already covered by property-level CRDT merges.
+    final statementTriplesList = statementTriples.toList();
+
+    // Preserve tombstone detail triples whose owning property was deleted on
+    // both sides.  Property-level CRDT merges only run for predicates still
+    // present on at least one side, so tombstone statements referencing a
+    // fully-deleted property are never collected in mergedStatements.  Their
+    // sync:hasStatement *references* survive (the OR-Set merge keeps the IRI
+    // values), but the rdf:subject / rdf:predicate / rdf:object / cm:deletedAt
+    // detail triples on the statement subject would be lost without this step.
+    final coveredStatementIris = statementTriplesList
+        .where((t) =>
+            t.subject == documentIri &&
+            t.predicate == SyncManagedDocument.hasStatement)
+        .map((t) => t.object)
+        .toSet();
+    final referencedStatementIris = allTriples
+        .where((t) =>
+            t.subject == documentIri &&
+            t.predicate == SyncManagedDocument.hasStatement)
+        .map((t) => t.object)
+        .whereType<RdfSubject>()
+        .toSet();
+    final orphanedStatementTriples = referencedStatementIris
+        .difference(coveredStatementIris)
+        .expand((stmtIri) => <Triple>{
+              ...localGraph.findTriples(subject: stmtIri),
+              ...remoteGraph.findTriples(subject: stmtIri),
+            });
+
     final mergedGraph = preliminaryGraph.withTriples([
       Triple(documentIri, SyncManagedDocument.crdtClockHash,
           LiteralTerm(mergedClock.hash)),
       ...identifiedBlankNodeTriples,
-      ...statementTriples,
+      ...statementTriplesList,
+      ...orphanedStatementTriples,
     ]);
 
     return MergeResult(

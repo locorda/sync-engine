@@ -53,10 +53,12 @@ Stream<ShardRefEvent> Function(SyncInput) shardResolution(
       indexShards[indexIri] = (shardIris, info);
     }
 
-    // Bulk ETag query for all shards across all indices.
-    final etags = allShardIris.isNotEmpty
-        ? await storage.getRemoteETags(remoteId, allShardIris)
-        : <IriTerm, String>{};
+    // Bulk ETag query — ETags are keyed by document IRI (without fragment),
+    // matching Stage 13 which stores them via shardIri.getDocumentIri().
+    final shardDocIris = allShardIris.map((s) => s.getDocumentIri()).toSet();
+    final etagsByDocIri = shardDocIris.isNotEmpty
+        ? await storage.getRemoteETags(remoteId, shardDocIris)
+        : <IriTerm, String?>{};
 
     for (final entry in indexShards.entries) {
       final indexIri = entry.key;
@@ -69,7 +71,7 @@ Stream<ShardRefEvent> Function(SyncInput) shardResolution(
           shardIri, // shardStorageId — use IRI as opaque ID for now
           info.fetchPolicy,
           info.typeIri,
-          storedEtag: etags[shardIri],
+          storedEtag: etagsByDocIri[shardIri.getDocumentIri()],
         );
         processedShardCount++;
       }

@@ -101,7 +101,9 @@ final _defaultManagedDocumentLevelPredicates = <IriTerm>{
   SyncManagedDocument.isGovernedBy,
   SyncManagedDocument.crdtHasClockEntry,
   SyncManagedDocument.crdtClockHash,
-  SyncManagedDocument.crdtCreatedAt,
+  // crdtCreatedAt is intentionally absent: all existing cm:createdAt values
+  // are pre-copied into allTriples in step 7, so step 10's dynamic skip-set
+  // naturally covers them — no copy-through needed and no tombstones generated.
   SyncManagedDocument.crdtDeletedAt,
   SyncManagedDocument.hasBlankNodeMapping,
   SyncManagedDocument.hasStatement
@@ -166,8 +168,18 @@ List<Triple> _constructCrdtDocument(
   allTriples.add(Triple(
       documentIri, SyncManagedDocument.crdtClockHash, LiteralTerm(clock.hash)));
 
-  // 7. Add creation timestamp (OR-Set semantics for document lifecycle)
-
+  // 7. Add creation timestamp (OR-Set semantics: union all existing values + new one).
+  // All old values must be added to allTriples HERE — Step 10 dynamically builds its
+  // skip-set from allTriples, so any predicate already present there will be skipped
+  // when copying from oldFrameworkGraph. Without pre-copying the old values, Step 10
+  // would omit them entirely, causing localValueChange to see them as "removed" and
+  // emit tombstones — violating OR-Set add-wins semantics.
+  if (oldFrameworkGraph != null) {
+    allTriples.addAll(oldFrameworkGraph.findTriples(
+      subject: documentIri,
+      predicate: SyncManagedDocument.crdtCreatedAt,
+    ));
+  }
   allTriples.add(Triple(
     documentIri,
     SyncManagedDocument.crdtCreatedAt,

@@ -360,13 +360,16 @@ class ShardNotModified extends FetchedShard {
   /// Whether the shard exists on remote (true for 304, false for 404-never-existed).
   final bool existsOnRemote;
 
+  /// The ETag that was sent as If-None-Match and confirmed by the 304 response.
+  final String? storedEtag;
+
   const ShardNotModified(
       this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri,
-      {this.existsOnRemote = true});
+      {this.existsOnRemote = true, this.storedEtag});
 
   ShardNotModified copyWith({IriTerm? shardIri}) => ShardNotModified(
       shardIri ?? this.shardIri, shardStorageId, fetchPolicy, typeIri,
-      existsOnRemote: existsOnRemote);
+      existsOnRemote: existsOnRemote, storedEtag: storedEtag);
 }
 
 /// HTTP 404/410: shard removed.
@@ -440,9 +443,12 @@ class ShardResultNotModified extends ShardResult {
   /// Whether the shard exists on remote (true for 304, false for 404-never-existed).
   final bool existsOnRemote;
 
+  /// The ETag confirmed by the 304 response — valid for use as If-Match on upload.
+  final String? storedEtag;
+
   const ShardResultNotModified(
       this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri,
-      {this.existsOnRemote = true});
+      {this.existsOnRemote = true, this.storedEtag});
 }
 
 /// Shard gone — pass-through from Stage 2.
@@ -842,6 +848,14 @@ class PreparedShard implements PreparedShardEvent {
   /// Governance IRIs for merge contract loading in Stage 11b.
   final List<IriTerm> governanceIris;
 
+  /// Remote shard graph from Stage 2's HTTP response (200 only).
+  ///
+  /// Propagated from [LoadedShardEntries] so Stage 11c can CRDT-merge
+  /// foreign installation metadata (clock entries, tombstones) from the
+  /// remote shard into the locally-generated shard document. Null for
+  /// 304 (not modified) and 404 (not found) responses.
+  final DecodedGraphSource? remoteShardGraph;
+
   final String? newEtag;
   final bool existsOnRemote;
 
@@ -852,6 +866,7 @@ class PreparedShard implements PreparedShardEvent {
     required this.indexIri,
     required this.entryTriples,
     required this.governanceIris,
+    this.remoteShardGraph,
     this.newEtag,
     this.existsOnRemote = false,
   });

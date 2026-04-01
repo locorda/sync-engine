@@ -14,32 +14,23 @@
 <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1kMDZlYzkxOS9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=> a sync:ManagedDocument;
     foaf:primaryTopic ns4:shard;
     cm:clockHash "75624161520a0034adee8d01eaab8a68";
-    cm:createdAt "2024-01-01T02:10:00.011Z"^^xsd:dateTime;
+    cm:createdAt "2024-01-01T02:10:00.011Z"^^xsd:dateTime, "2024-01-01T00:00:00.014Z"^^xsd:dateTime;
     cm:hasClockEntry ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-    sync:hasStatement ns4:lcrd-stmt-md5-5779e5f32213ce4142f01c8b3ddf7d0c, ns4:lcrd-stmt-md5-f8799dd15aaa321957e1f12ecf26fec3;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
-ns4:entry-9c4afa0052fbf6bf78d6bcab30280fa8 cm:clockHash "1203068cee83c5b8a28cb68df793bc96", "26823e087858420cdfa5e055c21b8634";
+ns4:entry-9c4afa0052fbf6bf78d6bcab30280fa8 cm:clockHash "1203068cee83c5b8a28cb68df793bc96";
     idx:resource ns2:index .
 
 ns4:entry-c34a65e8aaabca687ad30dc757ab9ce1 cm:clockHash "e47da075e07a2fec7dd714916ca403ff";
     idx:resource ns3:index .
 
 ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
-    cm:physicalTime 1704074400003 .
+    cm:physicalTime 1704074700003 .
 
 ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
-    cm:physicalTime 1704088800006 .
-
-ns4:lcrd-stmt-md5-5779e5f32213ce4142f01c8b3ddf7d0c rdf:subject ns4:entry-9c4afa0052fbf6bf78d6bcab30280fa8;
-    cm:deletedAt "1970-01-01T00:00:00.000Z"^^xsd:dateTime .
-
-ns4:lcrd-stmt-md5-f8799dd15aaa321957e1f12ecf26fec3 rdf:object "2024-01-01T00:00:00.014Z"^^xsd:dateTime;
-    rdf:predicate cm:createdAt;
-    rdf:subject <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1kMDZlYzkxOS9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=>;
-    cm:deletedAt "2024-01-01T06:00:00.006Z"^^xsd:dateTime .
+    cm:physicalTime 1704088800004 .
 
 ns4:shard a idx:Shard;
-    idx:containsEntry ns4:entry-c34a65e8aaabca687ad30dc757ab9ce1, ns4:entry-9c4afa0052fbf6bf78d6bcab30280fa8;
+    idx:containsEntry ns4:entry-9c4afa0052fbf6bf78d6bcab30280fa8, ns4:entry-c34a65e8aaabca687ad30dc757ab9ce1;
     idx:isShardOf ns1:index .

@@ -80,6 +80,7 @@ Iterable<PreparedShardEvent> _prepare(
       indexIri: indexIri,
       entryTriples: entryTriples,
       governanceIris: governanceIris,
+      remoteShardGraph: loaded.remoteShardGraph,
       newEtag: loaded.newEtag,
       existsOnRemote: loaded.existsOnRemote,
     ),

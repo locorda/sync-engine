@@ -93,6 +93,11 @@ class IndexEntries extends Table {
   /// Tombstone marker - true if entry was removed from index
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
 
+  /// Placeholder flag — true when this entry was observed in the remote shard
+  /// but not yet fetched locally (onRequest / unmatched PrefetchFiltered).
+  /// Prevents shard regeneration from tombstoning entries we haven't downloaded.
+  BoolColumn get isRemoteOnly => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {shardIri, resourceIriId};
 }
@@ -1249,6 +1254,7 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
     required String clockHash,
     Uint8List? headerProperties,
     bool isDeleted = false,
+    bool isRemoteOnly = false,
     required int ourPhysicalClock,
     required int updatedAt,
   }) async {
@@ -1263,6 +1269,7 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
         updatedAt: updatedAt,
         ourPhysicalClock: ourPhysicalClock,
         isDeleted: Value(isDeleted),
+        isRemoteOnly: Value(isRemoteOnly),
       ),
     );
   }
@@ -1289,9 +1296,82 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
             updatedAt: operation.updatedAt,
             ourPhysicalClock: operation.ourPhysicalClock,
             isDeleted: Value(operation.isDeleted),
+            isRemoteOnly: Value(operation.isRemoteOnly),
           ),
           mode: InsertMode.insertOrReplace,
         );
+      }
+    });
+  }
+
+  /// Persist remote-only shard entries — entries seen in the remote shard but
+  /// not yet fetched locally. Upserts [entriesToUpsert] with is_remote_only = 1
+  /// (only when the row does not already exist with is_remote_only = 0),
+  /// then deletes stale remote-only rows no longer present in
+  /// [allCurrentRemoteIriIds].
+  ///
+  /// Chunked to respect SQLite's 999-variable limit.
+  Future<void> syncRemoteOnlyShardEntries({
+    required int shardIriId,
+    required int indexIriId,
+    required int typeIriId,
+    required List<({int resourceIriId, String clockHash})> entriesToUpsert,
+    required List<int> allCurrentRemoteIriIds,
+  }) async {
+    await db.transaction(() async {
+      // Upsert: insert new rows as remote-only, or update clock_hash for
+      // existing remote-only rows. Skip rows with is_remote_only = 0 to
+      // protect genuinely local entries.
+      for (final entry in entriesToUpsert) {
+        await db.customStatement(
+          'INSERT INTO index_entries'
+          ' (shard_iri, index_iri_id, resource_iri_id, resource_type_iri_id,'
+          '  clock_hash, header_properties, updated_at, our_physical_clock,'
+          '  is_deleted, is_remote_only)'
+          ' VALUES (?, ?, ?, ?, ?, NULL, 0, 0, 0, 1)'
+          ' ON CONFLICT(shard_iri, resource_iri_id) DO UPDATE SET'
+          '  clock_hash = excluded.clock_hash,'
+          '  index_iri_id = excluded.index_iri_id,'
+          '  resource_type_iri_id = excluded.resource_type_iri_id'
+          ' WHERE is_remote_only = 1',
+          [
+            shardIriId,
+            indexIriId,
+            entry.resourceIriId,
+            typeIriId,
+            entry.clockHash,
+          ],
+        );
+      }
+
+      // Determine stale remote-only entries (in DB but no longer in remote shard).
+      final existingRows = await db.customSelect(
+        'SELECT resource_iri_id FROM index_entries'
+        ' WHERE shard_iri = ? AND is_remote_only = 1',
+        variables: [Variable.withInt(shardIriId)],
+        readsFrom: {db.indexEntries},
+      ).get();
+
+      final currentSet = allCurrentRemoteIriIds.toSet();
+      final staleIds = existingRows
+          .map((r) => r.read<int>('resource_iri_id'))
+          .where((id) => !currentSet.contains(id))
+          .toList();
+
+      if (staleIds.isNotEmpty) {
+        // Chunk the IN-list to respect SQLite's 999-variable limit.
+        // Each DELETE uses shard_iri (1 var) + chunk (N vars) = N+1 total.
+        const chunkSize = 498;
+        for (var i = 0; i < staleIds.length; i += chunkSize) {
+          final end = i + chunkSize > staleIds.length ? staleIds.length : i + chunkSize;
+          final chunk = staleIds.sublist(i, end);
+          await (db.delete(db.indexEntries)
+                ..where((e) =>
+                    e.shardIri.equals(shardIriId) &
+                    e.isRemoteOnly.equals(true) &
+                    e.resourceIriId.isIn(chunk)))
+              .go();
+        }
       }
     });
   }
@@ -1960,6 +2040,7 @@ class BatchIndexEntrySaveOperation {
   final String clockHash;
   final Uint8List? headerProperties;
   final bool isDeleted;
+  final bool isRemoteOnly;
   final int ourPhysicalClock;
   final int updatedAt;
 
@@ -1971,6 +2052,7 @@ class BatchIndexEntrySaveOperation {
     required this.clockHash,
     required this.headerProperties,
     required this.isDeleted,
+    this.isRemoteOnly = false,
     required this.ourPhysicalClock,
     required this.updatedAt,
   });
@@ -2021,7 +2103,7 @@ class SyncDatabase extends _$SyncDatabase {
   SyncDatabase.forExecutor(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -2205,6 +2287,12 @@ class SyncDatabase extends _$SyncDatabase {
               CREATE INDEX IF NOT EXISTS idx_index_shards_index_iri
               ON index_shards(index_iri_id);
             ''');
+          }
+          if (from < 11) {
+            // Add is_remote_only placeholder flag to index_entries.
+            await m.database.customStatement(
+              'ALTER TABLE index_entries ADD COLUMN is_remote_only INTEGER NOT NULL DEFAULT 0',
+            );
           }
         },
       );

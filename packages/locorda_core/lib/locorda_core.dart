@@ -130,7 +130,8 @@ export 'src/storage/storage_interface.dart'
         SaveDocumentResult,
         DocumentsResult,
         IndexEntriesPage,
-        IndexEntryWithIri;
+        IndexEntryWithIri,
+        RemoteOnlyEntry;
 export 'src/storage/concurrent_update_exception.dart'
     show ConcurrentUpdateException;
 export 'src/storage/in_memory_storage.dart' show InMemoryStorage;

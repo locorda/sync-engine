@@ -124,7 +124,8 @@ class FilePerResourceRemoteSyncSupport implements PipelineRemoteSyncStorage {
 
       if (result.notModified) {
         yield ShardNotModified(event.shardIri, event.shardStorageId,
-            event.fetchPolicy, event.typeIri);
+            event.fetchPolicy, event.typeIri,
+            storedEtag: event.storedEtag);
       } else if (result.graph == null && event.storedEtag != null) {
         yield ShardGone(event.shardIri, event.shardStorageId, event.fetchPolicy,
             event.typeIri);

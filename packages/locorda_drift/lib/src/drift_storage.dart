@@ -723,6 +723,7 @@ class DriftStorage implements core.Storage {
                     _decodeHeaderProperties(e.entry.headerProperties),
                 updatedAt: e.entry.updatedAt,
                 isDeleted: e.entry.isDeleted,
+                isRemoteOnly: e.entry.isRemoteOnly,
                 ourPhysicalClock: e.entry.ourPhysicalClock,
               ))
           .toList(),
@@ -754,6 +755,7 @@ class DriftStorage implements core.Storage {
                   updatedAt: e.entry.updatedAt,
                   ourPhysicalClock: e.entry.ourPhysicalClock,
                   isDeleted: e.entry.isDeleted,
+                  isRemoteOnly: e.entry.isRemoteOnly,
                 ))
             .toList());
   }
@@ -987,6 +989,7 @@ class DriftStorage implements core.Storage {
     required String clockHash,
     RdfGraph? headerProperties,
     bool isDeleted = false,
+    bool isRemoteOnly = false,
     required int ourPhysicalClock,
     required int updatedAt,
   }) async {
@@ -1012,6 +1015,7 @@ class DriftStorage implements core.Storage {
       clockHash: clockHash,
       headerProperties: _encodeHeaderProperties(headerProperties),
       isDeleted: isDeleted,
+      isRemoteOnly: isRemoteOnly,
       ourPhysicalClock: ourPhysicalClock,
       updatedAt: updatedAt,
     );
@@ -1045,6 +1049,7 @@ class DriftStorage implements core.Storage {
             clockHash: request.clockHash,
             headerProperties: _encodeHeaderProperties(request.headerProperties),
             isDeleted: request.isDeleted,
+            isRemoteOnly: request.isRemoteOnly,
             ourPhysicalClock: request.ourPhysicalClock,
             updatedAt: request.updatedAt,
           ),
@@ -1090,6 +1095,7 @@ class DriftStorage implements core.Storage {
                 updatedAt: driftEntry.entry.updatedAt,
                 ourPhysicalClock: driftEntry.entry.ourPhysicalClock,
                 isDeleted: driftEntry.entry.isDeleted,
+                isRemoteOnly: driftEntry.entry.isRemoteOnly,
               ))
           .toList(growable: false),
       resultArgsBuilder: (entries) => ['resultCount=${entries.length}'],
@@ -1150,10 +1156,49 @@ class DriftStorage implements core.Storage {
                 updatedAt: driftEntry.entry.updatedAt,
                 ourPhysicalClock: driftEntry.entry.ourPhysicalClock,
                 isDeleted: driftEntry.entry.isDeleted,
+                isRemoteOnly: driftEntry.entry.isRemoteOnly,
               ))
           .toList(growable: false);
     }
     return result;
+  }
+
+  @override
+  Future<void> syncRemoteOnlyShardEntries({
+    required IriTerm shardIri,
+    required IriTerm indexIri,
+    required IriTerm typeIri,
+    required List<core.RemoteOnlyEntry> entriesToUpsert,
+    required Set<IriTerm> allCurrentRemoteIris,
+  }) async {
+    // Batch-resolve all IRIs in one round-trip.
+    final allIris = <IriTerm>{shardIri, indexIri, typeIri};
+    for (final e in entriesToUpsert) {
+      allIris.add(e.resourceIri);
+    }
+    for (final iri in allCurrentRemoteIris) {
+      allIris.add(iri);
+    }
+    final iriIds = await _getOrCreateIriIdsMap(allIris);
+
+    final mappedEntries = entriesToUpsert
+        .map((e) => (
+              resourceIriId: iriIds[e.resourceIri]!,
+              clockHash: e.clockHash,
+            ))
+        .toList(growable: false);
+
+    final allCurrentRemoteIriIds = allCurrentRemoteIris
+        .map((iri) => iriIds[iri]!)
+        .toList(growable: false);
+
+    await indexDao.syncRemoteOnlyShardEntries(
+      shardIriId: iriIds[shardIri]!,
+      indexIriId: iriIds[indexIri]!,
+      typeIriId: iriIds[typeIri]!,
+      entriesToUpsert: mappedEntries,
+      allCurrentRemoteIriIds: allCurrentRemoteIriIds,
+    );
   }
 
   @override

@@ -71,7 +71,6 @@ Stream<CommittedShardEvent> Function(UploadedShardEvent) shardDbCommit(
       case UploadedShard():
         final merged = event.mergedShard;
         final shardDocumentIri = merged.shardIri.getDocumentIri();
-
         pendingSaves.add(SaveDocumentRequest(
           documentIri: shardDocumentIri,
           typeIri: IdxShard.classIri,

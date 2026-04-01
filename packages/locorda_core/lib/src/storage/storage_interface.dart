@@ -377,6 +377,7 @@ abstract interface class Storage {
     required String clockHash,
     RdfGraph? headerProperties,
     bool isDeleted = false,
+    bool isRemoteOnly = false,
     required int ourPhysicalClock,
     required int updatedAt,
   });
@@ -396,6 +397,7 @@ abstract interface class Storage {
         clockHash: request.clockHash,
         headerProperties: request.headerProperties,
         isDeleted: request.isDeleted,
+        isRemoteOnly: request.isRemoteOnly,
         ourPhysicalClock: request.ourPhysicalClock,
         updatedAt: request.updatedAt,
       );
@@ -443,6 +445,30 @@ abstract interface class Storage {
     }
     return result;
   }
+
+  /// Persist remote-only shard entries — entries seen in the remote shard but
+  /// not yet fetched locally (deferred by [RootResourceFetchPolicy.onRequest]
+  /// or an unmatched [PrefetchFiltered] filter).
+  ///
+  /// Stores placeholder entries with [IndexEntryWithIri.isRemoteOnly] = true
+  /// so that [ShardDocumentGenerator] includes them when regenerating the shard,
+  /// preventing the CRDT merge from tombstoning entries we simply haven't
+  /// downloaded yet.
+  ///
+  /// - [entriesToUpsert]: entries to INSERT (or update if already remote-only).
+  ///   For each entry, the clockHash is stored verbatim from the remote shard.
+  ///   Entries that already exist with [isRemoteOnly] = false (genuine local)
+  ///   are never overwritten.
+  /// - [allCurrentRemoteIris]: complete set of resource IRIs currently present
+  ///   in the remote shard. Any existing remote-only entry whose IRI is not in
+  ///   this set is considered stale and is deleted.
+  Future<void> syncRemoteOnlyShardEntries({
+    required IriTerm shardIri,
+    required IriTerm indexIri,
+    required IriTerm typeIri,
+    required List<RemoteOnlyEntry> entriesToUpsert,
+    required Set<IriTerm> allCurrentRemoteIris,
+  });
 
   /// Get shard IRIs that have entries modified after the given timestamp.
   ///
@@ -626,6 +652,10 @@ abstract interface class Storage {
   Future<void> updateLastRemoteSyncTimestamp(RemoteId remoteId, int timestamp);
 }
 
+/// Lightweight descriptor for a remote shard entry used by
+/// [Storage.syncRemoteOnlyShardEntries].
+typedef RemoteOnlyEntry = ({IriTerm resourceIri, String clockHash});
+
 /// Sync phase for a single remote × index instance combination.
 enum RemoteSyncPhase {
   notSynced,
@@ -801,6 +831,11 @@ class IndexEntryWithIri {
   /// Tombstone marker - true if entry was removed from index
   final bool isDeleted;
 
+  /// True when this entry was seen in the remote shard but not fetched locally
+  /// (due to [RootResourceFetchPolicy.onRequest] or unmatched [PrefetchFiltered]).
+  /// Stored as a placeholder so shard generation does not tombstone the entry.
+  final bool isRemoteOnly;
+
   IndexEntryWithIri({
     required this.resourceIri,
     required this.clockHash,
@@ -808,6 +843,7 @@ class IndexEntryWithIri {
     required this.updatedAt,
     required this.ourPhysicalClock,
     required this.isDeleted,
+    this.isRemoteOnly = false,
   });
 }
 
@@ -879,6 +915,10 @@ class SaveIndexEntryRequest {
   final int ourPhysicalClock;
   final int updatedAt;
 
+  /// When true, entry was seen on remote but not fetched locally; acts as a
+  /// shard-generation placeholder. Never set by normal save paths.
+  final bool isRemoteOnly;
+
   const SaveIndexEntryRequest({
     required this.shardIri,
     required this.indexIri,
@@ -887,6 +927,7 @@ class SaveIndexEntryRequest {
     required this.clockHash,
     this.headerProperties,
     this.isDeleted = false,
+    this.isRemoteOnly = false,
     required this.ourPhysicalClock,
     required this.updatedAt,
   });
@@ -903,6 +944,7 @@ class SaveIndexEntryRequest {
         clockHash: clockHash,
         headerProperties: headerProperties,
         isDeleted: isDeleted,
+        isRemoteOnly: isRemoteOnly,
         ourPhysicalClock: ourPhysicalClock,
         updatedAt: updatedAt,
       );

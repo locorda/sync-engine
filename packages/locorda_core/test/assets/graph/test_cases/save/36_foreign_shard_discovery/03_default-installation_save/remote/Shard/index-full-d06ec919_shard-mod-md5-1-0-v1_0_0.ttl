@@ -4,6 +4,7 @@
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
 @prefix ifd: <https://example.com/fullindex/index-full-d06ec919%2Findex#> .
+@prefix ige: <https://example.com/groupindex/index-grouped-e093655c%2Fgroups%2F20_ad221effd73057a647d96bab312c4886%2Findex#> .
 @prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
@@ -11,26 +12,18 @@
 
 <> a sync:ManagedDocument;
     foaf:primaryTopic :shard;
-    cm:clockHash "75624161520a0034adee8d01eaab8a68";
-    cm:createdAt "2024-01-01T02:10:00.011Z"^^xsd:dateTime, "2024-01-01T00:00:00.014Z"^^xsd:dateTime;
-    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-    sync:hasStatement :lcrd-stmt-md5-5779e5f32213ce4142f01c8b3ddf7d0c, :lcrd-stmt-md5-346cf86b860998ba34d2b21609e7c825;
+    cm:clockHash "a8fac811c794c1a869170b71f18c2871";
+    cm:createdAt "2024-01-01T00:00:00.014Z"^^xsd:dateTime;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
+
+:entry-9c4afa0052fbf6bf78d6bcab30280fa8 cm:clockHash "514e4c99616741433c51bf14165f0da4";
+    idx:resource ige:index .
 
 :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
     cm:physicalTime 1704074700003 .
 
-:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
-    cm:physicalTime 1704075000020 .
-
-:lcrd-stmt-md5-346cf86b860998ba34d2b21609e7c825 rdf:object :entry-9c4afa0052fbf6bf78d6bcab30280fa8;
-    rdf:predicate idx:containsEntry;
-    rdf:subject :shard;
-    cm:deletedAt "2024-01-01T02:10:00.020Z"^^xsd:dateTime .
-
-:lcrd-stmt-md5-5779e5f32213ce4142f01c8b3ddf7d0c rdf:subject :entry-9c4afa0052fbf6bf78d6bcab30280fa8;
-    cm:deletedAt "2024-01-01T02:10:00.020Z"^^xsd:dateTime .
-
 :shard a idx:Shard;
+    idx:containsEntry :entry-9c4afa0052fbf6bf78d6bcab30280fa8;
     idx:isShardOf ifd:index .

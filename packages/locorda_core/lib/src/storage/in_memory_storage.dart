@@ -415,6 +415,7 @@ class InMemoryStorage implements Storage {
               updatedAt: e.updatedAt,
               ourPhysicalClock: e.ourPhysicalClock,
               isDeleted: e.isDeleted,
+              isRemoteOnly: e.isRemoteOnly,
             ))
         .toList();
 
@@ -526,6 +527,7 @@ class InMemoryStorage implements Storage {
     required String clockHash,
     RdfGraph? headerProperties,
     bool isDeleted = false,
+    bool isRemoteOnly = false,
     required int updatedAt,
     required int ourPhysicalClock,
   }) async {
@@ -540,6 +542,7 @@ class InMemoryStorage implements Storage {
       clockHash: clockHash,
       headerProperties: headerProperties,
       isDeleted: isDeleted,
+      isRemoteOnly: isRemoteOnly,
       updatedAt: updatedAt,
       ourPhysicalClock: ourPhysicalClock,
     );
@@ -563,6 +566,7 @@ class InMemoryStorage implements Storage {
         clockHash: request.clockHash,
         headerProperties: request.headerProperties,
         isDeleted: request.isDeleted,
+        isRemoteOnly: request.isRemoteOnly,
         updatedAt: request.updatedAt,
         ourPhysicalClock: request.ourPhysicalClock,
       );
@@ -614,6 +618,7 @@ class InMemoryStorage implements Storage {
               updatedAt: entry.updatedAt,
               ourPhysicalClock: entry.ourPhysicalClock,
               isDeleted: entry.isDeleted,
+              isRemoteOnly: entry.isRemoteOnly,
             ))
         .toList();
     _logger.finer(
@@ -637,9 +642,50 @@ class InMemoryStorage implements Storage {
         updatedAt: entry.updatedAt,
         ourPhysicalClock: entry.ourPhysicalClock,
         isDeleted: entry.isDeleted,
+        isRemoteOnly: entry.isRemoteOnly,
       ));
     }
     return result;
+  }
+
+  @override
+  Future<void> syncRemoteOnlyShardEntries({
+    required IriTerm shardIri,
+    required IriTerm indexIri,
+    required IriTerm typeIri,
+    required List<RemoteOnlyEntry> entriesToUpsert,
+    required Set<IriTerm> allCurrentRemoteIris,
+  }) async {
+    // Upsert: insert new, or update clock_hash for existing remote-only entries.
+    // Genuine local entries (isRemoteOnly = false) are never overwritten.
+    for (final entry in entriesToUpsert) {
+      final key = '${shardIri.value}|${entry.resourceIri.value}';
+      final existing = _indexEntries[key];
+      if (existing != null && !existing.isRemoteOnly) continue; // protect local
+      _indexEntries[key] = _IndexEntry(
+        shardIri: shardIri,
+        indexIri: indexIri,
+        resourceType: typeIri,
+        resourceIri: entry.resourceIri,
+        clockHash: entry.clockHash,
+        isDeleted: false,
+        isRemoteOnly: true,
+        updatedAt: 0,
+        ourPhysicalClock: 0,
+      );
+    }
+
+    // Delete stale remote-only entries (those no longer present in remote shard).
+    final staleKeys = _indexEntries.entries
+        .where((e) =>
+            e.value.shardIri == shardIri &&
+            e.value.isRemoteOnly &&
+            !allCurrentRemoteIris.contains(e.value.resourceIri))
+        .map((e) => e.key)
+        .toList();
+    for (final key in staleKeys) {
+      _indexEntries.remove(key);
+    }
   }
 
   @override
@@ -915,6 +961,7 @@ class _IndexEntry {
   final String clockHash;
   final RdfGraph? headerProperties;
   final bool isDeleted;
+  final bool isRemoteOnly;
   final int updatedAt;
   final int ourPhysicalClock;
 
@@ -926,6 +973,7 @@ class _IndexEntry {
     required this.clockHash,
     this.headerProperties,
     required this.isDeleted,
+    this.isRemoteOnly = false,
     required this.updatedAt,
     required this.ourPhysicalClock,
   });

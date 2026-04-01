@@ -62,6 +62,14 @@
           "local_graph": "test_cases/basic_merge/02_shard_of_indices-group/local.ttl",
           "remote_graph": "test_cases/basic_merge/02_shard_of_indices-group/remote.ttl",
           "expected_merged_graph": "test_cases/basic_merge/02_shard_of_indices-group/expected.ttl"
+        },
+        {
+          "id": "merge_03",
+          "description": "Merge shard with orphaned tombstones - preserve tombstone details when property deleted on both sides",
+          "document_iri": "https://test.example/shard/orphan-tombstone-1",
+          "local_graph": "test_cases/basic_merge/03_shard_orphaned_tombstones/local.ttl",
+          "remote_graph": "test_cases/basic_merge/03_shard_orphaned_tombstones/remote.ttl",
+          "expected_merged_graph": "test_cases/basic_merge/03_shard_orphaned_tombstones/expected.ttl"
         }
       ]
     }

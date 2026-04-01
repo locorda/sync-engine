@@ -1,0 +1,35 @@
+@base <https://test.example/shard/orphan-tombstone-1> .
+@prefix : <#> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<> a sync:ManagedDocument;
+    foaf:primaryTopic :shard;
+    cm:clockHash "eeee5555ffff6666aaaa7777bbbb8888";
+    cm:createdAt "2024-01-01T00:00:00.001Z"^^xsd:dateTime;
+    cm:hasClockEntry :lcrd-clk-md5-inst-a, :lcrd-clk-md5-inst-b;
+    sync:hasStatement :lcrd-stmt-md5-triple-tombstone, :lcrd-stmt-md5-resource-tombstone;
+    sync:isGovernedBy (mappings:shard-v1);
+    sync:managedResourceType idx:Shard .
+
+:lcrd-clk-md5-inst-a cm:logicalTime 1;
+    cm:physicalTime 1704067200001 .
+
+:lcrd-clk-md5-inst-b cm:logicalTime 2;
+    cm:physicalTime 1704070800001 .
+
+:lcrd-stmt-md5-triple-tombstone rdf:object :entry-dead;
+    rdf:predicate idx:containsEntry;
+    rdf:subject :shard;
+    cm:deletedAt "2024-01-01T01:00:00.010Z"^^xsd:dateTime .
+
+:lcrd-stmt-md5-resource-tombstone rdf:subject :entry-dead;
+    cm:deletedAt "2024-01-01T01:00:00.010Z"^^xsd:dateTime .
+
+:shard a idx:Shard;
+    idx:isShardOf <https://test.example/index/test-1#index> .

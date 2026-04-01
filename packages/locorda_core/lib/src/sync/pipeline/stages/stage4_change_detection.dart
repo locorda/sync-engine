@@ -70,9 +70,13 @@ Stream<SyncCandidateEvent> _handleParsedShard(
   // Build remote entry map from parsed entries + shard graph for filter values
   final remoteEntries = _buildRemoteEntryMap(parsed, filterPredicate);
 
-  // Load local entries
+  // Load local entries; exclude remote-only placeholders from classification
+  // so they are never confused with genuine local state during diffing.
   final localEntries = await storage.getActiveIndexEntriesForShard(shardIri);
-  final localByResource = _buildLocalEntryMap(localEntries, filterPredicate);
+  final genuineLocalEntries =
+      localEntries.where((e) => !e.isRemoteOnly).toList(growable: false);
+  final localByResource =
+      _buildLocalEntryMap(genuineLocalEntries, filterPredicate);
 
   // Diff: all resource IRIs present on either side
   final allResources = <IriTerm>{
@@ -96,6 +100,32 @@ Stream<SyncCandidateEvent> _handleParsedShard(
 
     if (candidate != null) {
       yield candidate;
+    }
+  }
+
+  // Persist remote-only placeholders for entries skipped by onRequest policy.
+  // Without this, shard regeneration (Stage 11a) would omit those entries and
+  // Stage 11c CRDT-merge would generate tombstones for them.
+  if (!parsed.allResourcesAvailable) {
+    final indexIriMap = await storage.getIndexIrisForShards([shardIri]);
+    final indexIri = indexIriMap[shardIri];
+    if (indexIri != null) {
+      final entriesToUpsert = [
+        for (final entry in parsed.entries)
+          if (!localByResource.containsKey(entry.resourceIri) &&
+              !_shouldFetchRemoteOnly(
+                  effectiveFetchPolicy,
+                  remoteEntries[entry.resourceIri]?.filterValues,
+                  null))
+            (resourceIri: entry.resourceIri, clockHash: entry.clockHash),
+      ];
+      await storage.syncRemoteOnlyShardEntries(
+        shardIri: shardIri,
+        indexIri: indexIri,
+        typeIri: typeIri,
+        entriesToUpsert: entriesToUpsert,
+        allCurrentRemoteIris: remoteEntries.keys.toSet(),
+      );
     }
   }
 
@@ -129,7 +159,7 @@ Stream<SyncCandidateEvent> _handleNotModified(
   }
 
   yield ShardComplete(result.shardIri, result.shardStorageId,
-      existsOnRemote: result.existsOnRemote);
+      existsOnRemote: result.existsOnRemote, newEtag: result.storedEtag);
 }
 
 /// ShardGone: emit all local entries as shardGone.

@@ -14,12 +14,14 @@
     cm:clockHash "26c361e61d16d6887a2ad46d1bd97ed0";
     cm:createdAt "2024-01-01T02:10:00.008Z"^^xsd:dateTime, "2024-01-01T00:00:00.011Z"^^xsd:dateTime;
     cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-    sync:hasStatement :lcrd-stmt-md5-2159b6a19495124cdd3d0216ea4e299e, :lcrd-stmt-md5-1ad48b19a9c67fdf5c739acd5b63a736;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
 :entry-ab448ead48ff8785a91ce1fe1a078e40 cm:clockHash "e6d45b5423963ad4bfdab0cbab7d4616";
     idx:resource </clientinstallation/default-installation#installation> .
+
+:entry-dab29d46a8ad65d767b685c8ca60fbd8 cm:clockHash "3f58569d335f669135c40722e62298c9";
+    idx:resource </clientinstallation/foreign-device-installation#installation> .
 
 :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
     cm:physicalTime 1704074700009 .
@@ -27,14 +29,6 @@
 :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
     cm:physicalTime 1704075000030 .
 
-:lcrd-stmt-md5-1ad48b19a9c67fdf5c739acd5b63a736 rdf:object :entry-dab29d46a8ad65d767b685c8ca60fbd8;
-    rdf:predicate idx:containsEntry;
-    rdf:subject :shard;
-    cm:deletedAt "2024-01-01T02:10:00.030Z"^^xsd:dateTime .
-
-:lcrd-stmt-md5-2159b6a19495124cdd3d0216ea4e299e rdf:subject :entry-dab29d46a8ad65d767b685c8ca60fbd8;
-    cm:deletedAt "2024-01-01T02:10:00.030Z"^^xsd:dateTime .
-
 :shard a idx:Shard;
-    idx:containsEntry :entry-ab448ead48ff8785a91ce1fe1a078e40;
+    idx:containsEntry :entry-ab448ead48ff8785a91ce1fe1a078e40, :entry-dab29d46a8ad65d767b685c8ca60fbd8;
     idx:isShardOf if3:index .
