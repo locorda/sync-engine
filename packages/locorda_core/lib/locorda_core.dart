@@ -12,7 +12,7 @@ library locorda_core;
 
 // Core interfaces
 export 'src/auth/auth_interface.dart' show Auth, AuthValueListenable;
-export 'src/backend/backend.dart' show Backend;
+export 'src/backend/backend.dart' show Backend, PipelineBackend;
 // TODO: do we really want to expose those? Or should we have a separate utils package or at least utils.dart toplevel export?
 export 'src/backend/perflog_backend.dart' show PerflogBackend, Perflog;
 

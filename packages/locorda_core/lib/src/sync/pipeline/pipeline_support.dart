@@ -24,7 +24,7 @@ import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 /// - Pass [Boundary] events through unchanged (after flushing any in-flight
 ///   operations when receiving boundaries).
 /// - Process only events of the documented input type.
-abstract interface class RemoteSyncPipelineSupport {
+abstract interface class PipelineRemoteSyncStorage {
   /// Stage 2: Shard Fetch — conditionally download shard documents.
   ///
   /// Input: [ShardRefEvent] ([ShardRef] data + [PhaseComplete] boundary).
@@ -58,4 +58,6 @@ abstract interface class RemoteSyncPipelineSupport {
   /// Input: [MergedShardEvent] ([MergedShard] data + [PhaseComplete] boundary).
   /// Output: [UploadedShardEvent] ([UploadedShard] data + [PhaseComplete] boundary).
   StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload();
+
+  Future<void> finalizeSync();
 }

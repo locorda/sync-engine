@@ -1,4 +1,5 @@
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_core/src/backend/backend.dart';
 import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/storage/sync_timestamp_storage.dart';
@@ -16,7 +17,7 @@ typedef OrchestratorFactory = RemoteSyncOrchestrator Function(
 });
 
 typedef StreamingOrchestratorFactory = StreamingRemoteSyncOrchestrator Function(
-  RemoteSyncPipelineSupport pipelineSupport,
+  PipelineRemoteSyncStorage pipelineSupport,
   RemoteId remoteId,
   SyncEngineConfig config,
 );
@@ -46,6 +47,7 @@ class SyncFunction {
   final ShardDocumentGenerator _shardDocumentGenerator;
   final Storage _storage;
   final List<Backend> _backends;
+  final List<PipelineBackend> _pipelineBackends;
   final ConfigService _configService;
   final OrchestratorFactory _remoteSyncOrchestratorFactory;
   final StreamingOrchestratorFactory? _streamingOrchestratorFactory;
@@ -53,6 +55,7 @@ class SyncFunction {
 
   SyncFunction({
     required List<Backend> backends,
+    required List<PipelineBackend> pipelineBackends,
     required Storage storage,
     required ConfigService configService,
     required OrchestratorFactory remoteSyncOrchestratorFactory,
@@ -60,6 +63,7 @@ class SyncFunction {
     required ShardDocumentGenerator shardDocumentGenerator,
     required Perflog perflog,
   })  : _backends = backends,
+        _pipelineBackends = pipelineBackends,
         _storage = storage,
         _configService = configService,
         _shardDocumentGenerator = shardDocumentGenerator,
@@ -68,11 +72,19 @@ class SyncFunction {
         _perflog = perflog.create('SyncFunction', 'sync');
 
   Future<void> call(DateTime syncTime) async {
-    // Phase 0: Sync Preparation (materialize local shard state)
-    await _perflog.measure('sync.phase0', () => _prepareSync(syncTime));
+    if (_streamingOrchestratorFactory != null &&
+        (await Future.wait(_pipelineBackends
+                .expand((b) => b.pipelineRemotes.map((r) => r.isAvailable()))))
+            .any((available) => available)) {
+      await _perflog.measure(
+          'sync.pipeline', () => _syncRemotePipeline(syncTime));
+    } else {
+      // Phase 0: Sync Preparation (materialize local shard state)
+      await _perflog.measure('sync.phase0', () => _prepareSync(syncTime));
 
-    // Phase A+B: Remote Synchronization (metadata + documents + shards)
-    await _perflog.measure('sync.remote', () => _syncRemote(syncTime));
+      // Phase A+B: Remote Synchronization (metadata + documents + shards)
+      await _perflog.measure('sync.remote', () => _syncRemote(syncTime));
+    }
   }
 
   /// Validate that configuration and data support the given backend's dataset mode.
@@ -87,7 +99,7 @@ class SyncFunction {
   ///
   /// Throws [StateError] if constraints are violated.
   Future<void> _validateDatasetCompatibilityForBackend(
-      RemoteSyncStorage backend, SyncEngineConfig config) async {
+      SyncEngineConfig config) async {
     _log.fine(
         'Validating dataset compatibility for backend using shard datasets');
 
@@ -159,7 +171,7 @@ class SyncFunction {
       // This materializes current_local_shard_state in the DB
       await _perflog.measure(
         'prepareSync.generate',
-        () => _shardDocumentGenerator(syncTime, lastSyncTimestamp),
+        () => _shardDocumentGenerator.prepareSync(syncTime, lastSyncTimestamp),
         minDurationMs: 20,
       );
 
@@ -205,8 +217,7 @@ class SyncFunction {
 
         // Validate dataset compatibility if this backend uses shard datasets
         if (remote.useShardDatasets) {
-          await _validateDatasetCompatibilityForBackend(
-              remoteSyncStorage, config);
+          await _validateDatasetCompatibilityForBackend(config);
         }
 
         _log.info('Starting Phase A+B: Remote Synchronization');
@@ -215,32 +226,79 @@ class SyncFunction {
             await _storage.getLastRemoteSyncTimestamp(remote.remoteId);
         try {
           // Select streaming or legacy orchestrator based on backend support
-          if (_streamingOrchestratorFactory != null &&
-              remoteSyncStorage is RemoteSyncPipelineSupport) {
-            _log.fine('Using streaming pipeline orchestrator');
-            final orchestrator = _streamingOrchestratorFactory(
-              remoteSyncStorage as RemoteSyncPipelineSupport,
-              remote.remoteId,
-              config,
-            );
-            await orchestrator.sync(
-              syncTime,
-              lastSyncTimestamp,
-              config: config,
-            );
-          } else {
-            _log.fine('Using legacy orchestrator');
-            final orchestrator = _remoteSyncOrchestratorFactory(
-              remoteSyncStorage,
-              remote.remoteId,
-              useShardDatasets: remote.useShardDatasets,
-            );
-            await orchestrator.sync(
-              syncTime,
-              lastSyncTimestamp,
-              config: config,
-            );
-          }
+          _log.fine('Using legacy orchestrator');
+          final orchestrator = _remoteSyncOrchestratorFactory(
+            remoteSyncStorage,
+            remote.remoteId,
+            useShardDatasets: remote.useShardDatasets,
+          );
+          await orchestrator.sync(
+            syncTime,
+            lastSyncTimestamp,
+            config: config,
+          );
+
+          _log.info('Remote synchronization completed successfully');
+          await _storage.updateLastRemoteSyncTimestamp(
+              remote.remoteId, syncTime.millisecondsSinceEpoch);
+        } catch (e, st) {
+          _log.severe('Error during remote synchronization', e, st);
+          // Don't update any timestamps on failure - will retry next sync
+          // FIXME: Really rethrow? Shouldn't we just log and continue with next remote?
+          rethrow;
+        } finally {
+          // Always finalize, even on error
+          await remoteSyncStorage.finalizeSync();
+        }
+      }
+    }
+  }
+
+  Future<void> _syncRemotePipeline(DateTime syncTime) async {
+    assert(_streamingOrchestratorFactory != null);
+    final config = await _configService.currentConfig;
+    for (final backend in _pipelineBackends) {
+      _log.fine('Using backend: ${backend.name}');
+      for (final remote in backend.pipelineRemotes) {
+        _log.fine('Configured remote: ${remote.remoteId}');
+
+        // Check if remote storage is available
+        final remoteAvailable = await remote.isAvailable();
+        if (!remoteAvailable) {
+          _log.info(
+              'Remote storage $remote not available - skipping remote sync');
+          continue;
+        }
+
+        // Create sync session with backend (e.g., load type index)
+        _log.fine(
+            'Creating sync storage session for backend: ${remote.remoteId}');
+        final remoteSyncStorage =
+            await remote.createPipelineSyncStorage(config);
+
+        // Validate dataset compatibility if this backend uses shard datasets
+        if (remote.useShardDatasets) {
+          await _validateDatasetCompatibilityForBackend(config);
+        }
+
+        _log.info('Starting Phase A+B: Remote Synchronization');
+
+        final lastSyncTimestamp =
+            await _storage.getLastRemoteSyncTimestamp(remote.remoteId);
+        try {
+          // Select streaming or legacy orchestrator based on backend support
+          _log.fine('Using streaming pipeline orchestrator');
+          final orchestrator = _streamingOrchestratorFactory!(
+            remoteSyncStorage,
+            remote.remoteId,
+            config,
+          );
+          await orchestrator.sync(
+            syncTime,
+            lastSyncTimestamp,
+            config: config,
+          );
+
           _log.info('Remote synchronization completed successfully');
           await _storage.updateLastRemoteSyncTimestamp(
               remote.remoteId, syncTime.millisecondsSinceEpoch);

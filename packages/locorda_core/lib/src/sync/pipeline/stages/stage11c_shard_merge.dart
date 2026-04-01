@@ -53,7 +53,8 @@ List<MergedShardEvent> _merge(
     final localGraph = p.localDoc?.document;
     if (localGraph == null) return const [];
 
-    final encodedBytes = rdfCore.encodeBinary(localGraph);
+    final encodedBytes =
+        rdfCore.encodeBinary(localGraph, contentType: jelly.primaryMimeType);
     return [
       MergedShard(
         shardIri,

@@ -1,7 +1,7 @@
 /// Streaming pipeline orchestrator for remote synchronization.
 ///
 /// Composes the 14-stage streaming pipeline from proposal 007 and runs it
-/// against a [RemoteSyncPipelineSupport]-capable backend.
+/// against a [PipelineRemoteSyncStorage]-capable backend.
 ///
 /// Replaces [RemoteSyncOrchestrator] when the backend supports streaming.
 /// Both orchestrators share the same [Storage], [CrdtDocumentManager],
@@ -49,7 +49,7 @@ class StreamingRemoteSyncOrchestrator {
   final Storage _storage;
   final DocumentSaveService _saveService;
   final RemoteId _remoteId;
-  final RemoteSyncPipelineSupport _remote;
+  final PipelineRemoteSyncStorage _remote;
   final RdfCore _rdfCore;
   final RemoteDocumentMerger _merger;
   final MergeContractLoader _mergeContractLoader;
@@ -68,7 +68,7 @@ class StreamingRemoteSyncOrchestrator {
     required Storage storage,
     required DocumentSaveService documentSaveService,
     required RemoteId remoteId,
-    required RemoteSyncPipelineSupport pipelineSupport,
+    required PipelineRemoteSyncStorage pipelineSupport,
     required RdfCore rdfCore,
     required RemoteDocumentMerger merger,
     required MergeContractLoader mergeContractLoader,

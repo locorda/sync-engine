@@ -696,7 +696,7 @@ the streams yourself.''');
       mergeContractLoader: mergeContractLoader,
     );
     final streamingOrchestratorFactory = (
-      RemoteSyncPipelineSupport pipelineSupport,
+      PipelineRemoteSyncStorage pipelineSupport,
       RemoteId remoteId,
       SyncEngineConfig effectiveConfig,
     ) =>
@@ -727,6 +727,7 @@ the streams yourself.''');
       configService: configService,
       shardDocumentGenerator: shardDocumentGenerator,
       backends: backends,
+      pipelineBackends: backends.whereType<PipelineBackend>().toList(),
       remoteSyncOrchestratorFactory: remoteSyncOrchestratorFactory,
       streamingOrchestratorFactory: streamingOrchestratorFactory,
       perflog: perflog,

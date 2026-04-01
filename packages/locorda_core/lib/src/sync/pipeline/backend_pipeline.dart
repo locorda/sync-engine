@@ -74,7 +74,7 @@ abstract class SimpleFPRBackend implements FPRBackend {
   }
 }
 
-class FilePerResourceRemoteSyncSupport implements RemoteSyncPipelineSupport {
+class FilePerResourceRemoteSyncSupport implements PipelineRemoteSyncStorage {
   final _logger = Logger('FilePerResourceRemoteSyncSupport');
   final FPRBackend backend;
   final int batchSize;
@@ -83,6 +83,9 @@ class FilePerResourceRemoteSyncSupport implements RemoteSyncPipelineSupport {
     this.backend, {
     this.batchSize = defaultPipelineBatchSize,
   });
+
+  @override
+  Future<void> finalizeSync() => Future.value();
 
   @override
   StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch() =>

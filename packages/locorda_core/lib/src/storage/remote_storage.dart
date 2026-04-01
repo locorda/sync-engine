@@ -294,6 +294,45 @@ abstract interface class RemoteStorage {
   Future<void> dispose() async {}
 }
 
+abstract class PipelineRemoteStorage {
+  /// Remote endpoint identifier for this storage backend
+  RemoteId get remoteId;
+
+  /// Check if remote storage is available/authenticated.
+  ///
+  /// Called before sync to determine if sync should be attempted.
+  /// Returns false if backend is offline, unauthenticated, or unavailable.
+  Future<bool> isAvailable();
+
+  /// Create a new sync storage session with cached configuration state.
+  ///
+  /// Called once at the start of each sync cycle. The returned [RemoteSyncStorage]
+  /// can cache configuration-derived state for efficient document operations.
+  ///
+  /// **Backend-specific setup examples:**
+  /// - **GDrive**: Load/update gdrive-index.ttl, cache folder ID mappings
+  /// - **Solid**: Verify Pod access, prepare IRI translators
+  /// - **InMemory**: No setup needed, return lightweight wrapper
+  ///
+  /// The [config] provides access to all registered resource types and their
+  /// index configurations.
+  ///
+  /// Throws if backend cannot be initialized (e.g., auth failure, missing config).
+  Future<PipelineRemoteSyncStorage> createPipelineSyncStorage(SyncEngineConfig config);
+
+  /// Whether this remote storage uses shard datasets (all resources in one file per shard).
+  ///
+  /// **Important Implications:**
+  /// - When true: All RootResourceFetchPolicy must be Prefetch() (lazy loading impossible)
+  /// - When true: All index entries must have corresponding documents in storage
+  /// - Backend switch: Can only switch to dataset mode if storage is complete
+  ///
+  /// This is a global flag (not per-type) to simplify the experimental phase.
+  bool get useShardDatasets => false;
+
+  Future<void> dispose() async {}
+}
+
 /// Exception thrown when remote storage operations fail due to authentication or authorization issues.
 ///
 /// This exception signals that credentials are invalid, expired, or revoked,
@@ -544,10 +583,10 @@ class IriTranslatingRemoteSyncStorage extends RemoteSyncStorage {
     required IriTranslator iriTranslator,
     required RdfCore rdfCore,
   }) =>
-      storage is RemoteSyncPipelineSupport
-          ? IriTranslatingRemoteSyncPipelineStorage(
+      storage is PipelineRemoteSyncStorage
+          ? PipelineIriTranslatingRemoteSyncStorage(
               storage: storage,
-              pipelineSupport: storage as RemoteSyncPipelineSupport,
+              pipelineSupport: storage as PipelineRemoteSyncStorage,
               iriTranslator: iriTranslator,
               rdfCore: rdfCore,
             )
@@ -609,15 +648,15 @@ class IriTranslatingRemoteSyncStorage extends RemoteSyncStorage {
   }
 }
 
-class IriTranslatingRemoteSyncPipelineStorage
+class PipelineIriTranslatingRemoteSyncStorage
     extends IriTranslatingRemoteSyncStorage
-    implements RemoteSyncPipelineSupport {
-  final RemoteSyncPipelineSupport _pipelineSupport;
+    implements PipelineRemoteSyncStorage {
+  final PipelineRemoteSyncStorage _pipelineSupport;
   final RdfCore _rdfCore;
 
-  IriTranslatingRemoteSyncPipelineStorage({
+  PipelineIriTranslatingRemoteSyncStorage({
     required RemoteSyncStorage storage,
-    required RemoteSyncPipelineSupport pipelineSupport,
+    required PipelineRemoteSyncStorage pipelineSupport,
     required IriTranslator iriTranslator,
     required RdfCore rdfCore,
   })  : _pipelineSupport = pipelineSupport,

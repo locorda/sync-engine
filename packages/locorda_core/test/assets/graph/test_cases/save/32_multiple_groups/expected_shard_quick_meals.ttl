@@ -22,7 +22,7 @@ ns2:entry-dd88431b1a86bfe7fc8ce7afac0f4f80 cm:clockHash "f699bc8f6b8e7c4409e34ed
     idx:resource ns3:it .
 
 ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 2;
-    cm:physicalTime 1704074400000 .
+    cm:physicalTime 1704074401011 .
 
 ns2:shard a idx:Shard;
     idx:containsEntry ns2:entry-dd88431b1a86bfe7fc8ce7afac0f4f80;

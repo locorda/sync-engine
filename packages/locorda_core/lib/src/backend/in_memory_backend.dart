@@ -1,10 +1,14 @@
 import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_core/src/sync/pipeline/backend_pipeline.dart';
-import 'package:locorda_core/src/storage/remote_storage.dart'
-    show RemoteDownloadRequest, RemoteUploadRequest;
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
+import 'package:locorda_core/src/storage/remote_storage.dart'
+    show
+        PipelineIriTranslatingRemoteSyncStorage,
+        PipelineRemoteStorage,
+        RemoteDownloadRequest,
+        RemoteUploadRequest;
+import 'package:locorda_core/src/sync/pipeline/backend_pipeline.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_rdf_core/core.dart';
@@ -37,12 +41,12 @@ final _logger = Logger('InMemoryBackend');
 /// ```
 ///
 /// For real remote storage, use [SolidBackend] from the `locorda_solid` package.
-class InMemoryBackend implements Backend {
+class InMemoryBackend implements PipelineBackend, Backend {
   @override
   String get name => 'in-memory';
 
   final List<InMemoryRemoteStorage> _remotes;
-  final BehaviorSubject<List<RemoteStorage>> _remotesChangedSubject;
+  final BehaviorSubject<List<InMemoryRemoteStorage>> _remotesChangedSubject;
   final IriTranslator? iriTranslator;
 
   InMemoryBackend(
@@ -57,7 +61,8 @@ class InMemoryBackend implements Backend {
             rdfCore: rdfCore,
           )
         ],
-        _remotesChangedSubject = BehaviorSubject<List<RemoteStorage>>() {
+        _remotesChangedSubject =
+            BehaviorSubject<List<InMemoryRemoteStorage>>() {
     // Emit initial state
     _remotesChangedSubject.add(_remotes);
   }
@@ -67,6 +72,13 @@ class InMemoryBackend implements Backend {
 
   @override
   Stream<List<RemoteStorage>> get remotesChanged =>
+      _remotesChangedSubject.stream;
+
+  @override
+  List<PipelineRemoteStorage> get pipelineRemotes => _remotes;
+
+  @override
+  Stream<List<PipelineRemoteStorage>> get pipelineRemotesChanged =>
       _remotesChangedSubject.stream;
 
   @override
@@ -81,7 +93,7 @@ class InMemoryBackend implements Backend {
 /// - If-None-Match: * (create only)
 /// - If-Match: <etag> (update only if unchanged)
 /// - If-None-Match: <etag> (download only if changed)
-class InMemoryRemoteStorage implements RemoteStorage {
+class InMemoryRemoteStorage implements PipelineRemoteStorage, RemoteStorage {
   @override
   final RemoteId remoteId;
   @override
@@ -128,6 +140,28 @@ class InMemoryRemoteStorage implements RemoteStorage {
   Future<bool> isAvailable() async {
     // In-memory storage is always available
     return true;
+  }
+
+  @override
+  Future<PipelineRemoteSyncStorage> createPipelineSyncStorage(
+      SyncEngineConfig config) async {
+    // In-memory backend needs no initialization, just wrap access
+    final storage = InMemorySyncStorage(
+        storage: _store,
+        rdfCore: _rdfCore,
+        pipelineSupportFactory: ({required storage}) => useShardDatasets
+            ? throw UnimplementedError(
+                'Shard datasets not implemented in in-memory backend yet',
+              )
+            : FilePerResourceRemoteSyncSupport(storage));
+
+    return iriTranslator == null
+        ? storage
+        : PipelineIriTranslatingRemoteSyncStorage(
+            storage: storage,
+            pipelineSupport: storage,
+            iriTranslator: iriTranslator!,
+            rdfCore: _rdfCore);
   }
 
   @override
@@ -232,21 +266,21 @@ class RemoteStoredDocument {
 /// Lightweight wrapper around [InMemoryRemoteStorage] providing upload/download
 /// access during sync operations.
 class InMemorySyncStorage extends RemoteSyncStorage
-    implements RemoteSyncPipelineSupport, FPRBackend {
+    implements PipelineRemoteSyncStorage, FPRBackend {
   final _Store _storage;
   final RdfCore _rdfCore;
-  late final RemoteSyncPipelineSupport _pipelineSupport =
+  late final PipelineRemoteSyncStorage _pipelineSupport =
       _pipelineSupportFactory(storage: this);
 
   _Store storage;
 
-  RemoteSyncPipelineSupport Function({required InMemorySyncStorage storage})
+  PipelineRemoteSyncStorage Function({required InMemorySyncStorage storage})
       _pipelineSupportFactory;
 
   InMemorySyncStorage(
       {required this.storage,
       required RdfCore rdfCore,
-      required RemoteSyncPipelineSupport Function(
+      required PipelineRemoteSyncStorage Function(
               {required InMemorySyncStorage storage})
           pipelineSupportFactory})
       : _storage = storage,

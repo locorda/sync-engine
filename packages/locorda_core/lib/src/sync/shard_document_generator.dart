@@ -33,7 +33,7 @@ class ShardDocumentGenerator {
         _documentManager = documentManager,
         _indexManager = indexManager;
 
-  Future<void> call(DateTime syncTime, int lastSyncTimestamp) async {
+  Future<void> prepareSync(DateTime syncTime, int lastSyncTimestamp) async {
     _log.info('Sync triggered - finding shards to update');
     _log.fine('Last sync timestamp: $lastSyncTimestamp');
 
@@ -62,6 +62,9 @@ class ShardDocumentGenerator {
   /// modified between the Phase 1 reads and the Phase 3 write; the caller
   /// ([retryOnConflict]) will retry the entire batch in that case.
   Future<void> _syncShardsBatch(List<_ShardInfo> shardsToUpdate) async {
+    // FIXME: there are loops with inner db access in here - partly indirectly within awaited function calls.
+    // We should refactor this to use sync variants where available and to
+    // adhere to our batching concept.
     final allShardIris = shardsToUpdate.map((s) => s.shardIri).toList();
     final allShardDocumentIris =
         allShardIris.map((iri) => iri.getDocumentIri()).toList();

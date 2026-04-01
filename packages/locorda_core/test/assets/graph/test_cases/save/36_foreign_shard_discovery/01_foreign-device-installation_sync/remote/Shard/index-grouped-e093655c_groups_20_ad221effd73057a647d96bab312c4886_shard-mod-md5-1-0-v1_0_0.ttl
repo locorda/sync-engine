@@ -21,7 +21,7 @@
     idx:resource </recipe/chocolate-cake#it> .
 
 :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
-    cm:physicalTime 1704074400000 .
+    cm:physicalTime 1704074700011 .
 
 :shard a idx:Shard;
     idx:containsEntry :entry-c93b50159754d7a665032fc90e56af1d;

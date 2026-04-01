@@ -26,3 +26,27 @@ abstract interface class Backend {
 
   Future<void> dispose();
 }
+
+abstract interface class PipelineBackend {
+  String get name;
+
+  /// Remote storage operations (GET/PUT/DELETE)
+  List<PipelineRemoteStorage> get pipelineRemotes;
+
+  /// Stream that emits when remote list changes.
+  ///
+  /// Fires when:
+  /// - A remote is added/removed from the list (e.g., user logs in/out)
+  /// - Backend configuration changes affecting remotes
+  ///
+  /// Note that it does not fire when remote's availability status changes.
+  ///
+  /// Consumers (e.g., StandardSyncEngine) listen to this to dynamically
+  /// adjust RootResourceFetchPolicy when useShardDatasets remotes become available.
+  ///
+  /// Uses BehaviorSubject to provide current state on subscription and
+  /// enable synchronous access to last emitted value.
+  Stream<List<PipelineRemoteStorage>> get pipelineRemotesChanged;
+
+  Future<void> dispose();
+}
