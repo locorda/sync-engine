@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:locorda_core/src/storage/remote_storage.dart';
 import 'package:locorda_rdf_core/src/dataset/rdf_dataset.dart';
 import 'package:locorda_rdf_core/src/graph/rdf_graph.dart';
 import 'package:locorda_rdf_core/src/graph/rdf_term.dart';
@@ -210,6 +209,53 @@ class LoggingPerflog implements Perflog {
   }
 }
 
+class PerflogPipelineBackend implements PipelineBackend {
+  final PipelineBackend _inner;
+  final Perflog _perflog;
+  late final BehaviorSubject<List<PipelineRemoteStorage>> _remotesSubject;
+  late final StreamSubscription _remotesSubscription;
+
+  PerflogPipelineBackend(
+    this._inner, {
+    String name = 'PipelineBackend',
+    bool? includeArgs,
+    required Perflog perflog,
+  }) : _perflog = perflog.create(name, _inner, includeArgs: includeArgs) {
+    _remotesSubject =
+        BehaviorSubject.seeded(wrapRemotes(_inner.pipelineRemotes));
+    _remotesSubscription = _inner.pipelineRemotesChanged.listen((remotes) {
+      _remotesSubject.add(wrapRemotes(remotes));
+    });
+  }
+  List<PipelineRemoteStorage> wrapRemotes(
+          List<PipelineRemoteStorage> remotes) =>
+      remotes
+          .map((r) => PerflogPipelineRemoteStorage(r, perflog: _perflog))
+          .toList();
+
+  @override
+  Future<void> dispose() async {
+    await _perflog.measure('PipelineBackend.dispose', () async {
+      await _remotesSubscription.cancel();
+      return _inner.dispose();
+    });
+    await _perflog.dispose();
+  }
+
+  @override
+  String get name => _inner.name;
+
+  @override
+  List<PipelineRemoteStorage> get pipelineRemotes => _remotesSubject.value;
+
+  @override
+  Stream<List<PipelineRemoteStorage>> get pipelineRemotesChanged =>
+      _remotesSubject.stream;
+
+  @override
+  String toString() => 'Perflog(${_inner.toString()})';
+}
+
 class PerflogBackend implements ClassicBackend {
   final ClassicBackend _inner;
   final Perflog _perflog;
@@ -270,6 +316,44 @@ class PerflogRemoteStorage implements RemoteStorage {
           () async => PerflogRemoteSyncStorage(
               await _inner.createSyncStorage(config),
               perflog: _perflog));
+
+  @override
+  Future<bool> isAvailable() =>
+      _perflog.measure('isAvailable', () => _inner.isAvailable());
+
+  @override
+  RemoteId get remoteId => _inner.remoteId;
+
+  @override
+  bool get useShardDatasets => _inner.useShardDatasets;
+
+  @override
+  Future<void> dispose() async {
+    await _perflog.dispose();
+  }
+
+  @override
+  String toString() => 'Perflog(${_inner.toString()})';
+}
+
+class PerflogPipelineRemoteStorage implements PipelineRemoteStorage {
+  final PipelineRemoteStorage _inner;
+  final Perflog _perflog;
+
+  PerflogPipelineRemoteStorage(
+    this._inner, {
+    required Perflog perflog,
+    String name = 'RemoteStorage',
+    bool? includeArgs,
+  }) : _perflog = perflog.create(name, _inner, includeArgs: includeArgs);
+
+  @override
+  Future<PipelineRemoteSyncStorage> createPipelineSyncStorage(
+          SyncEngineConfig config) =>
+      _perflog.measure(
+        'createPipelineSyncStorage',
+        () => _inner.createPipelineSyncStorage(config),
+      );
 
   @override
   Future<bool> isAvailable() =>

@@ -60,9 +60,10 @@ class DirWorkerHandler implements RemoteWorkerHandler {
       rdfCore: _rdfCore,
       useShardDatasets: dirConfig.useShardDatasets,
       perflog: context.perflog,
+      resourceGraphLoader: context.resourceGraphLoader,
     );
     if (context.perflog != Perflog.disabled) {
-      return PerflogBackend(backend, perflog: context.perflog);
+      return PerflogPipelineBackend(backend, perflog: context.perflog);
     } else {
       return backend;
     }

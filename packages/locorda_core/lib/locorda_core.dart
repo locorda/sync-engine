@@ -15,7 +15,8 @@ export 'src/auth/auth_interface.dart' show Auth, AuthValueListenable;
 export 'src/backend/backend.dart' show Backend, PipelineBackend, ClassicBackend;
 export 'src/backend/in_memory_backend.dart' show InMemoryBackend;
 // TODO: do we really want to expose those? Or should we have a separate utils package or at least utils.dart toplevel export?
-export 'src/backend/perflog_backend.dart' show PerflogBackend, Perflog;
+export 'src/backend/perflog_backend.dart'
+    show PerflogBackend, Perflog, PerflogPipelineBackend;
 // Resource-focused configuration
 export 'src/config/config_base.dart' show ResourceConfigBase, ConfigBase;
 export 'src/config/config_base_validator.dart' show ConfigBaseValidator;
@@ -75,13 +76,28 @@ export 'src/storage/remote_storage.dart'
         RemoteStorage,
         RemoteSyncStorage,
         IriTranslatingRemoteSyncStorage,
+        PipelineIriTranslatingRemoteSyncStorage,
+        PipelineRemoteStorage,
         RemoteUploadResult,
         SuccessUploadResult,
         ConflictUploadResult,
         RemoteDownloadResult,
+        RemoteDownloadRequest,
+        RemoteUploadRequest,
         AuthAwareRemoteStorage,
         AuthException,
         AuthRetryConfig;
+export 'package:locorda_core/src/sync/pipeline/pipeline_types.dart'
+    show
+        ShardRefEvent,
+        FetchedShardEvent,
+        LoadedCandidateEvent,
+        FetchedCandidateEvent,
+        MergedResourceEvent,
+        UploadedResourceEvent,
+        MergedShardEvent,
+        UploadedShardEvent;
+
 export 'src/storage/storage_interface.dart'
     show
         Storage,
@@ -99,9 +115,18 @@ export 'src/storage/storage_interface.dart'
         IndexEntryWithIri,
         RemoteOnlyEntry;
 export 'src/sync/pipeline/pipeline_support.dart'
-    show ResourceGraphLoader, ResourceGraphLoaderImpl;
+    show
+        ResourceGraphLoader,
+        ResourceGraphLoaderImpl,
+        PipelineRemoteSyncStorage;
 export 'src/sync/pipeline/backend/remote_sync_backend.dart'
-    show RemoteSyncBackend, RawContent, TextContent, BinaryContent;
+    show
+        RemoteSyncBackend,
+        RawContent,
+        TextContent,
+        BinaryContent,
+        isBinaryContentType,
+        isDatasetContentType;
 export 'src/sync/pipeline/backend/remote_sync_storages.dart'
     show RemoteSyncStorages, RemoteStorageMode;
 export 'src/sync/standard_sync_manager.dart' show StandardSyncManager;

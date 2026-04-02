@@ -117,9 +117,8 @@ class InMemoryRemoteStorage implements PipelineRemoteStorage {
   @override
   Future<PipelineRemoteSyncStorage> createPipelineSyncStorage(
       SyncEngineConfig config) async {
-    final mode = useShardDatasets
-        ? RemoteStorageMode.shardDataset
-        : RemoteStorageMode.filePerResource;
+    final mode =
+        RemoteStorageMode.fromFlags(useShardDatasets: useShardDatasets);
     final contentType = mode.defaultContentType;
     final isBinary = isBinaryContentType(contentType);
     final backend = _InMemorySyncBackend(

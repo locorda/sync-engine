@@ -9,6 +9,7 @@ sealed class Backend {
   Future<void> dispose();
 }
 
+@Deprecated('non-pipeline backends are deprecated, use PipelineBackend instead')
 abstract interface class ClassicBackend implements Backend {
   String get name;
 

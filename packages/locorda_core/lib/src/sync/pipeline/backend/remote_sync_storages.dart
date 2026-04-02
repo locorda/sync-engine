@@ -17,6 +17,14 @@ enum RemoteStorageMode {
   final String defaultContentType;
 
   const RemoteStorageMode({required this.defaultContentType});
+
+  static RemoteStorageMode fromFlags({
+    required bool useShardDatasets,
+  }) {
+    return useShardDatasets
+        ? RemoteStorageMode.shardDataset
+        : RemoteStorageMode.filePerResource;
+  }
 }
 
 /// Factory for creating [PipelineRemoteSyncStorage] implementations backed
