@@ -1363,7 +1363,8 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
         // Each DELETE uses shard_iri (1 var) + chunk (N vars) = N+1 total.
         const chunkSize = 498;
         for (var i = 0; i < staleIds.length; i += chunkSize) {
-          final end = i + chunkSize > staleIds.length ? staleIds.length : i + chunkSize;
+          final end =
+              i + chunkSize > staleIds.length ? staleIds.length : i + chunkSize;
           final chunk = staleIds.sublist(i, end);
           await (db.delete(db.indexEntries)
                 ..where((e) =>
@@ -2103,7 +2104,7 @@ class SyncDatabase extends _$SyncDatabase {
   SyncDatabase.forExecutor(QueryExecutor executor) : super(executor);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -2293,6 +2294,16 @@ class SyncDatabase extends _$SyncDatabase {
             await m.database.customStatement(
               'ALTER TABLE index_entries ADD COLUMN is_remote_only INTEGER NOT NULL DEFAULT 0',
             );
+          }
+          if (from < 12) {
+            // Backfill index_shards from existing index_entries data.
+            // v10 created the table but didn't populate it from pre-existing entries.
+            await m.database.customStatement('''
+              INSERT OR IGNORE INTO index_shards (shard_iri_id, index_iri_id)
+              SELECT DISTINCT shard_iri, index_iri_id
+              FROM index_entries
+              WHERE is_deleted = 0
+            ''');
           }
         },
       );
