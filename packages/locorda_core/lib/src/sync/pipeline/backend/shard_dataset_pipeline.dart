@@ -12,37 +12,25 @@ import 'dart:async';
 
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/remote_storage.dart';
+import 'package:locorda_core/src/sync/pipeline/backend/remote_sync_backend.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 
-/// Backend interface for shard-dataset storage.
-///
-/// Analogous to [FPRBackend] for file-per-resource mode. Implementations
-/// provide dataset-level download/upload. [InMemorySyncStorage] and
-/// directory-based backends implement this interface.
-abstract interface class SDSBackend {
-  /// Download multiple shard datasets, returning complete datasets.
-  Future<List<RemoteDownloadResult<RdfDataset>>> downloadDatasets(
-      Iterable<RemoteDownloadRequest> requests);
-
-  /// Upload multiple shard datasets to remote storage.
-  Future<List<RemoteUploadResult>> uploadDatasets(
-      Iterable<RemoteUploadRequest<RdfDataset>> requests);
-}
-
 /// [PipelineRemoteSyncStorage] for shard-dataset backends.
 ///
 /// Each shard lives in one dataset file. The four pipeline stages work as:
 ///
-/// - **Stage 2 (shardFetch)**: Downloads the dataset per shard. The default
-///   graph becomes the shard source; named graphs are cached internally for
-///   Stage 6. Emits [ShardContent] with `allResourcesAvailable = true`.
+/// - **Stage 2 (shardFetch)**: Downloads the dataset per shard via
+///   [RemoteSyncBackend.download]. The raw content is decoded to an
+///   [RdfDataset]; the default graph becomes the shard source, named graphs
+///   are cached internally for Stage 6. Emits [ShardContent] with
+///   `allResourcesAvailable = true`.
 ///
 /// - **Stage 6 (resourceFetch)**: Serves resource graphs from the internal
-///   cache populated by Stage 2 — no HTTP. Cache is cleared per shard on
+///   cache populated by Stage 2 — no I/O. Cache is cleared per shard on
 ///   [ShardComplete].
 ///
 /// - **Stage 8 (resourceUpload)**: Stores merged graphs into an accumulator
@@ -52,11 +40,13 @@ abstract interface class SDSBackend {
 ///   from the merged shard graph (defaultGraph) and resource graphs
 ///   (namedGraphs). Changed resources come from the Stage 8 accumulator;
 ///   unchanged resources are loaded from the local DB via
-///   [ResourceGraphLoader].
+///   [ResourceGraphLoader]. The dataset is encoded and uploaded via
+///   [RemoteSyncBackend.upload].
 class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
   final _log = Logger('ShardDatasetRemoteSyncStorage');
-  final SDSBackend backend;
-  final int batchSize;
+  final RemoteSyncBackend backend;
+  final RdfCore _rdfCore;
+  final String _contentType;
 
   /// Per-shard resource graph cache from Stage 2 downloads.
   ///
@@ -82,15 +72,45 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
   ///
   /// Loads resource graphs from the local DB for dataset assembly in Stage 12.
   ResourceGraphLoader _resourceGraphLoader;
+  final bool _isBinary;
 
   ShardDatasetRemoteSyncStorage(
     this.backend, {
+    required RdfCore rdfCore,
+    required String contentType,
     required ResourceGraphLoader resourceGraphLoader,
-    this.batchSize = defaultPipelineBatchSize,
-  }) : _resourceGraphLoader = resourceGraphLoader;
+    bool? isBinary,
+  })  : _rdfCore = rdfCore,
+        _contentType = contentType,
+        _resourceGraphLoader = resourceGraphLoader,
+        _isBinary = isBinary ?? isBinaryContentType(contentType);
 
   @override
   Future<void> finalizeSync() => Future.value();
+
+  // ---------------------------------------------------------------------------
+  // Encoding helpers
+  // ---------------------------------------------------------------------------
+
+  /// Decode [RawContent] from backend into an [RdfDataset].
+  RdfDataset _decodeDataset(RawContent raw) => switch (raw) {
+        TextContent(:final text, :final contentType) =>
+          _rdfCore.decodeDataset(text, contentType: contentType),
+        BinaryContent(:final bytes, :final contentType) =>
+          _rdfCore.decodeBinaryDataset(bytes, contentType: contentType),
+      };
+
+  /// Encode an [RdfDataset] to [RawContent] for the backend.
+  RawContent _encodeDataset(RdfDataset dataset) {
+    if (_isBinary) {
+      final encodedBytes =
+          _rdfCore.encodeBinaryDataset(dataset, contentType: _contentType);
+      return BinaryContent(encodedBytes, contentType: _contentType);
+    }
+
+    final encoded = _rdfCore.encodeDataset(dataset, contentType: _contentType);
+    return TextContent(encoded, contentType: _contentType);
+  }
 
   // ---------------------------------------------------------------------------
   // Stage 2: Shard Fetch — download datasets, cache named graphs
@@ -101,74 +121,76 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
       StreamTransformer.fromBind((stream) async* {
         final buffer = <ShardRef>[];
 
+        Stream<FetchedShardEvent> flush() async* {
+          if (buffer.isEmpty) return;
+
+          final requests = buffer.map((e) => RemoteDownloadRequest(
+                documentIri: e.shardIri.getDocumentIri(),
+                ifNoneMatch: e.storedEtag,
+              ));
+
+          final results =
+              await backend.download(Stream.fromIterable(requests)).toList();
+
+          for (var i = 0; i < buffer.length; i++) {
+            yield* _processShardResult(buffer[i], results[i]);
+          }
+          buffer.clear();
+        }
+
         await for (final event in stream) {
           switch (event) {
             case ShardRef():
               buffer.add(event);
-              if (buffer.length >= batchSize) {
-                yield* _fetchShardChunk(buffer);
-                buffer.clear();
-              }
             case PhaseComplete():
-              if (buffer.isNotEmpty) {
-                yield* _fetchShardChunk(buffer);
-                buffer.clear();
-              }
+              yield* flush();
               yield event;
           }
         }
+
+        yield* flush();
       });
 
-  Stream<FetchedShardEvent> _fetchShardChunk(List<ShardRef> chunk) async* {
-    final requests = chunk.map((e) => RemoteDownloadRequest(
-          documentIri: e.shardIri.getDocumentIri(),
-          ifNoneMatch: e.storedEtag,
-        ));
+  Stream<FetchedShardEvent> _processShardResult(
+      ShardRef event, RemoteDownloadResult<RawContent> result) async* {
+    if (result.notModified) {
+      yield ShardNotModified(event.shardIri, event.shardStorageId,
+          event.fetchPolicy, event.typeIri,
+          storedEtag: event.storedEtag);
+    } else if (result.graph == null && event.storedEtag != null) {
+      yield ShardGone(event.shardIri, event.shardStorageId, event.fetchPolicy,
+          event.typeIri);
+    } else if (result.graph == null) {
+      yield ShardNotModified(event.shardIri, event.shardStorageId,
+          event.fetchPolicy, event.typeIri,
+          existsOnRemote: false);
+    } else {
+      // CPU: decode raw content to dataset.
+      final dataset = _decodeDataset(result.graph!);
+      final shardDocIri = event.shardIri.getDocumentIri();
 
-    final results = await backend.downloadDatasets(requests);
-
-    for (var i = 0; i < chunk.length; i++) {
-      final event = chunk[i];
-      final result = results[i];
-
-      if (result.notModified) {
-        yield ShardNotModified(event.shardIri, event.shardStorageId,
-            event.fetchPolicy, event.typeIri,
-            storedEtag: event.storedEtag);
-      } else if (result.graph == null && event.storedEtag != null) {
-        yield ShardGone(event.shardIri, event.shardStorageId, event.fetchPolicy,
-            event.typeIri);
-      } else if (result.graph == null) {
-        yield ShardNotModified(event.shardIri, event.shardStorageId,
-            event.fetchPolicy, event.typeIri,
-            existsOnRemote: false);
-      } else {
-        final dataset = result.graph!;
-        final shardDocIri = event.shardIri.getDocumentIri();
-
-        // Cache named graphs (resource documents) for Stage 6.
-        final resourceCache = <IriTerm, RdfGraph>{};
-        for (final graphName in dataset.graphNames) {
-          if (graphName is IriTerm) {
-            final graph = dataset.graph(graphName);
-            if (graph != null) {
-              resourceCache[graphName] = graph;
-            }
+      // Cache named graphs (resource documents) for Stage 6.
+      final resourceCache = <IriTerm, RdfGraph>{};
+      for (final graphName in dataset.graphNames) {
+        if (graphName is IriTerm) {
+          final graph = dataset.graph(graphName);
+          if (graph != null) {
+            resourceCache[graphName] = graph;
           }
         }
-        _downloadCache[shardDocIri.value] = resourceCache;
-
-        // Emit the default graph (shard metadata) as ShardContent.
-        yield ShardContent(
-          event.shardIri,
-          event.shardStorageId,
-          event.fetchPolicy,
-          event.typeIri,
-          DecodedGraphSource(dataset.defaultGraph),
-          result.etag!,
-          allResourcesAvailable: true,
-        );
       }
+      _downloadCache[shardDocIri.value] = resourceCache;
+
+      // Emit the default graph (shard metadata) as ShardContent.
+      yield ShardContent(
+        event.shardIri,
+        event.shardStorageId,
+        event.fetchPolicy,
+        event.typeIri,
+        DecodedGraphSource(dataset.defaultGraph),
+        result.etag!,
+        allResourcesAvailable: true,
+      );
     }
   }
 
@@ -278,6 +300,46 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
         final buffer = <MergedShard>[];
         final passThrough = <MergedShard>[];
 
+        Stream<UploadedShardEvent> flush() async* {
+          for (final e in passThrough) {
+            yield UploadedShard(e.shardIri, e);
+          }
+          passThrough.clear();
+
+          if (buffer.isEmpty) return;
+
+          // CPU: assemble datasets and encode to raw content.
+          final requests = <RemoteUploadRequest<RawContent>>[];
+          for (final shard in buffer) {
+            final dataset = await _assembleDataset(shard);
+            requests.add(RemoteUploadRequest<RawContent>(
+              documentIri: shard.shardIri.getDocumentIri(),
+              document: _encodeDataset(dataset),
+              ifMatch: shard.newEtag,
+            ));
+          }
+
+          // I/O: upload via backend stream.
+          final results =
+              await backend.upload(Stream.fromIterable(requests)).toList();
+
+          for (var i = 0; i < buffer.length; i++) {
+            final event = buffer[i];
+            final result = results[i];
+
+            if (result is SuccessUploadResult) {
+              yield UploadedShard(event.shardIri, event,
+                  newRemoteEtag: result.etag);
+            } else {
+              final docIri = event.shardIri.getDocumentIri();
+              _log.warning(
+                  'Dataset upload conflict for ${docIri.debug} — skipping');
+              yield UploadedShard(event.shardIri, event);
+            }
+          }
+          buffer.clear();
+        }
+
         await for (final event in stream) {
           switch (event) {
             case MergedShard():
@@ -286,68 +348,16 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
               } else {
                 buffer.add(event);
               }
-              if (buffer.length >= batchSize) {
-                yield* _yieldShardPassThrough(passThrough);
-                yield* _uploadShardDatasets(buffer);
-                buffer.clear();
-                passThrough.clear();
-              }
             case PhaseComplete():
-              if (buffer.isNotEmpty || passThrough.isNotEmpty) {
-                yield* _yieldShardPassThrough(passThrough);
-                yield* _uploadShardDatasets(buffer);
-                buffer.clear();
-                passThrough.clear();
-              }
+              yield* flush();
               // Clean up accumulator on phase boundary.
               _uploadAccumulator.clear();
               yield event;
           }
         }
+
+        yield* flush();
       });
-
-  Stream<UploadedShardEvent> _yieldShardPassThrough(
-      List<MergedShard> items) async* {
-    for (final event in items) {
-      yield UploadedShard(event.shardIri, event);
-    }
-  }
-
-  Stream<UploadedShardEvent> _uploadShardDatasets(
-      List<MergedShard> chunk) async* {
-    if (chunk.isEmpty) return;
-
-    // Build datasets for each shard.
-    final datasets = <RdfDataset>[];
-    for (final shard in chunk) {
-      datasets.add(await _assembleDataset(shard));
-    }
-
-    // Upload all datasets in batch.
-    final requests = <RemoteUploadRequest<RdfDataset>>[];
-    for (var i = 0; i < chunk.length; i++) {
-      requests.add(RemoteUploadRequest<RdfDataset>(
-        documentIri: chunk[i].shardIri.getDocumentIri(),
-        document: datasets[i],
-        ifMatch: chunk[i].newEtag,
-      ));
-    }
-
-    final results = await backend.uploadDatasets(requests);
-
-    for (var i = 0; i < chunk.length; i++) {
-      final event = chunk[i];
-      final result = results[i];
-
-      if (result is SuccessUploadResult) {
-        yield UploadedShard(event.shardIri, event, newRemoteEtag: result.etag);
-      } else {
-        final docIri = event.shardIri.getDocumentIri();
-        _log.warning('Dataset upload conflict for ${docIri.debug} — skipping');
-        yield UploadedShard(event.shardIri, event);
-      }
-    }
-  }
 
   /// Assemble a complete [RdfDataset] from the merged shard graph and
   /// resource graphs (accumulated + DB).

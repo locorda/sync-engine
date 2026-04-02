@@ -4,9 +4,8 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/remote_storage.dart'
     show PipelineRemoteStorage, RemoteDownloadRequest, RemoteUploadRequest;
-import 'package:locorda_core/src/sync/pipeline/backend/remote_sync_storages.dart';
+import 'package:locorda_core/src/sync/pipeline/backend/remote_sync_backend.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
-import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart';
@@ -118,22 +117,35 @@ class InMemoryRemoteStorage implements PipelineRemoteStorage {
   @override
   Future<PipelineRemoteSyncStorage> createPipelineSyncStorage(
       SyncEngineConfig config) async {
-    final backend = _InMemorySyncBackend(storage: _store, rdfCore: _rdfCore);
     final mode = useShardDatasets
         ? RemoteStorageMode.shardDataset
         : RemoteStorageMode.filePerResource;
+    final contentType = mode.defaultContentType;
+    final isBinary = isBinaryContentType(contentType);
+    final backend = _InMemorySyncBackend(
+      storage: _store,
+      rdfCore: _rdfCore,
+      contentType: contentType,
+      isBinary: isBinary,
+    );
     if (iriTranslator != null) {
       return RemoteSyncStorages.createIriTranslated(
           mode: mode,
+          contentType: contentType,
           backend: backend,
+          rdfCore: _rdfCore,
           resourceGraphLoader: _resourceGraphLoader,
           translator: iriTranslator!,
-          rdfCore: _rdfCore);
+          isBinary: isBinary);
     }
     return RemoteSyncStorages.create(
-        mode: mode,
-        backend: backend,
-        resourceGraphLoader: _resourceGraphLoader);
+      mode: mode,
+      backend: backend,
+      rdfCore: _rdfCore,
+      resourceGraphLoader: _resourceGraphLoader,
+      contentType: contentType,
+      isBinary: isBinary,
+    );
   }
 
   @override
@@ -218,213 +230,151 @@ class RemoteStoredDocument {
   RdfDataset get dataset => data as RdfDataset;
 }
 
-class _InMemorySyncBackend implements RemoteSyncStorageBackend {
+class _InMemorySyncBackend implements RemoteSyncBackend {
   final InMemoryBackendStore _storage;
   final RdfCore _rdfCore;
+  final String _contentType;
+  final bool _isBinary;
   _InMemorySyncBackend({
     required InMemoryBackendStore storage,
     required RdfCore rdfCore,
-  })  : _rdfCore = rdfCore,
-        _storage = storage;
+    required String contentType,
+    bool? isBinary,
+  })  : _storage = storage,
+        _rdfCore = rdfCore,
+        _contentType = contentType,
+        _isBinary = isBinary ?? isBinaryContentType(contentType);
 
   @override
-  Future<List<RemoteDownloadResult<RdfGraphSource>>> downloadSources(
-      Iterable<RemoteDownloadRequest> requests) async {
-    final results = <RemoteDownloadResult<RdfGraphSource>>[];
-    for (final request in requests) {
-      final result = await _download<RdfGraph>(_storage, request.documentIri,
-          ifNoneMatch: request.ifNoneMatch);
-      // In-memory backend holds decoded graphs directly; DecodedGraphSource is
-      // the correct source type — no encoding round-trip ever happened.
-      results.add(RemoteDownloadResult<RdfGraphSource>(
-        graph: result.graph != null ? DecodedGraphSource(result.graph!) : null,
-        etag: result.etag,
-        notModified: result.notModified,
-      ));
-    }
-    return results;
-  }
+  Stream<RemoteDownloadResult<RawContent>> download(
+      Stream<RemoteDownloadRequest> requests) {
+    return requests.asyncMap((request) async {
+      _logger.fine(
+          'Downloading document: ${request.documentIri.debug}, ifNoneMatch:${request.ifNoneMatch}');
 
-  Future<RemoteDownloadResult<T>> _download<T>(
-      InMemoryBackendStore store, IriTerm documentIri,
-      {String? ifNoneMatch}) async {
-    _logger.fine(
-        'Downloading document: ${documentIri.debug}, ifNoneMatch:$ifNoneMatch');
-    final stored = store.getDocument<T>(documentIri);
-    // Document doesn't exist
-    if (stored == null) {
-      _logger.fine('Document not found: ${documentIri.debug}');
-      return RemoteDownloadResult<T>(
-        graph: null,
-        etag: null,
+      // Try as RdfGraph first (FPR mode), then as RdfDataset (SDS mode).
+      final stored = _storage.getDocument(request.documentIri);
+
+      if (stored == null) {
+        _logger.fine('Document not found: ${request.documentIri.debug}');
+        return RemoteDownloadResult<RawContent>(
+          graph: null,
+          etag: null,
+          notModified: false,
+        );
+      }
+
+      if (request.ifNoneMatch != null && request.ifNoneMatch == stored.etag) {
+        _logger.fine('Document not modified: ${request.documentIri.debug}');
+        return RemoteDownloadResult<RawContent>.notModified(etag: stored.etag);
+      }
+
+      _logger.fine(
+          'Document downloaded: ${request.documentIri.debug}, etag:${stored.etag}');
+
+      // Encode stored data to raw content for the pipeline.
+      final RawContent content;
+      final data = stored.data;
+      if (data is RdfGraph) {
+        if (_isBinary) {
+          final encodedBytes =
+              _rdfCore.encodeBinary(data, contentType: _contentType);
+          content = BinaryContent(encodedBytes, contentType: _contentType);
+        } else {
+          final text = _rdfCore.encode(data, contentType: _contentType);
+          content = TextContent(text, contentType: _contentType);
+        }
+      } else if (data is RdfDataset) {
+        if (_isBinary) {
+          final encodedBytes =
+              _rdfCore.encodeBinaryDataset(data, contentType: _contentType);
+          content = BinaryContent(encodedBytes, contentType: _contentType);
+        } else {
+          final text = _rdfCore.encodeDataset(data, contentType: _contentType);
+          content = TextContent(text, contentType: _contentType);
+        }
+      } else {
+        throw StateError('Unknown stored data type: ${data.runtimeType}');
+      }
+
+      return RemoteDownloadResult<RawContent>(
+        graph: content,
+        etag: stored.etag,
         notModified: false,
       );
-    }
-
-    // If-None-Match: check if document changed
-    if (ifNoneMatch != null && ifNoneMatch == stored.etag) {
-      _logger.fine('Document not modified: ${documentIri.debug}');
-      // 304 Not Modified
-      return RemoteDownloadResult<T>.notModified(etag: stored.etag);
-    }
-
-    _logger.fine(
-        'Document downloaded: ${documentIri.debug}, etag:${stored.etag}, ifNoneMatch:$ifNoneMatch');
-    // 200 OK - return document
-    return RemoteDownloadResult<T>(
-      graph: stored.data,
-      etag: stored.etag,
-      notModified: false,
-    );
+    });
   }
 
   @override
-  Future<List<RemoteUploadResult>> uploadSources(
-      Iterable<RemoteUploadRequest<RdfGraphSource>> requests) async {
-    final results = <RemoteUploadResult>[];
-    for (final request in requests) {
-      // CRDT merge always produces DecodedGraphSource; it is highly unlikely
-      // that callers would pass an encoded source to uploadSources,
-      // but if they do, play it safe and decode it first to get the graph,
-      // because we store the graph in memory.
-      final source = request.document.decodeWith(_rdfCore);
-      results.add(await _upload(_storage, request.documentIri, source.graph,
-          ifMatch: request.ifMatch));
-    }
-    return results;
+  Stream<RemoteUploadResult> upload(
+      Stream<RemoteUploadRequest<RawContent>> requests) {
+    return requests.asyncMap((request) async {
+      _logger.fine(
+          'Uploading document: ${request.documentIri.debug}, ifMatch:${request.ifMatch}');
+
+      // Decode raw content to the appropriate type for storage.
+      final raw = request.document;
+      final Object data;
+      final ct = raw.contentType;
+
+      // Heuristic: dataset formats → RdfDataset, otherwise → RdfGraph.
+      if (isDatasetContentType(ct)) {
+        data = switch (raw) {
+          TextContent(:final text) =>
+            _rdfCore.decodeDataset(text, contentType: ct),
+          BinaryContent(:final bytes) =>
+            _rdfCore.decodeBinaryDataset(bytes, contentType: ct),
+        };
+      } else {
+        data = switch (raw) {
+          TextContent(:final text) => _rdfCore.decode(text, contentType: ct),
+          BinaryContent(:final bytes) =>
+            _rdfCore.decodeBinary(bytes, contentType: ct),
+        };
+      }
+
+      return _uploadData(request.documentIri, data, ifMatch: request.ifMatch);
+    });
   }
 
-  @override
-  Future<List<RemoteDownloadResult<RdfDataset>>> downloadDatasets(
-      Iterable<RemoteDownloadRequest> requests) async {
-    final results = <RemoteDownloadResult<RdfDataset>>[];
-    for (final request in requests) {
-      results.add(await _download<RdfDataset>(_storage, request.documentIri,
-          ifNoneMatch: request.ifNoneMatch));
-    }
-    return results;
-  }
+  RemoteUploadResult _uploadData(IriTerm documentIri, Object data,
+      {String? ifMatch}) {
+    final stored = _storage.getDocument(documentIri);
 
-  @override
-  Future<List<RemoteUploadResult>> uploadDatasets(
-      Iterable<RemoteUploadRequest<RdfDataset>> requests) async {
-    final results = <RemoteUploadResult>[];
-    for (final request in requests) {
-      results.add(await _upload(_storage, request.documentIri, request.document,
-          ifMatch: request.ifMatch));
-    }
-    return results;
-  }
-
-  Future<RemoteUploadResult> _upload<T>(
-      InMemoryBackendStore store, IriTerm documentIri, T graph,
-      {String? ifMatch}) async {
-    _logger.fine('Uploading document: ${documentIri.debug}, ifMatch:$ifMatch');
-    final stored = store.getDocument<T>(documentIri);
-    // ifMatch: null → If-None-Match: * (create only)
     if (ifMatch == null) {
       if (stored != null) {
         _logger.fine(
-            'Document already exists: ${documentIri.debug}, cannot create (ifMatch: $ifMatch)');
-        // 409 Conflict - document already exists
+            'Document already exists: ${documentIri.debug}, cannot create');
         return RemoteUploadResult.conflict();
       }
-
-      // Create new document with new ETag
-      final newEtag = store.storeDocument<T>(documentIri, graph);
+      final newEtag = _storage.storeDocument(documentIri, data);
       _logger.fine('Document created: ${documentIri.debug}, etag:$newEtag');
       return RemoteUploadResult.success(newEtag);
     }
 
-    // ifMatch: <etag> → If-Match: <etag> (update only if unchanged)
     if (stored == null) {
-      _logger.fine(
-          'Document not found: ${documentIri.debug}, cannot update (ifMatch: $ifMatch)');
-      // 412 Precondition Failed - document doesn't exist
+      _logger.fine('Document not found: ${documentIri.debug}, cannot update');
       return RemoteUploadResult.conflict();
     }
 
     if (stored.etag != ifMatch) {
       _logger.fine(
           'ETag mismatch for document: ${documentIri.debug}, cannot update (ifMatch: $ifMatch, currentEtag: ${stored.etag})');
-      // 412 Precondition Failed - ETag mismatch
       return RemoteUploadResult.conflict();
     }
 
-    // Update document with new ETag
-    final newEtag = store.storeDocument<T>(documentIri, graph);
+    final newEtag = _storage.storeDocument(documentIri, data);
     _logger.fine('Document updated: ${documentIri.debug}, new etag:$newEtag');
     return RemoteUploadResult.success(newEtag);
   }
 
-  Future<void> delete(IriTerm documentIri, {String? ifMatch}) => _delete(
-        _storage,
-        documentIri,
-        ifMatch: ifMatch,
-      );
-
-  Future<void> _delete(InMemoryBackendStore store, IriTerm documentIri,
-      {String? ifMatch}) async {
-    final stored = store.getDocument(documentIri);
-
-    // If document doesn't exist, delete is idempotent (no-op)
-    if (stored == null) {
-      return;
-    }
-
-    // If-Match provided: check ETag
+  Future<void> delete(IriTerm documentIri, {String? ifMatch}) async {
+    final stored = _storage.getDocument(documentIri);
+    if (stored == null) return;
     if (ifMatch != null && stored.etag != ifMatch) {
       throw Exception('412 Precondition Failed - ETag mismatch on delete');
     }
-
-    // Delete document
-    store.deleteDocument(documentIri);
-  }
-}
-
-/// Per-sync-session storage for in-memory backend.
-///
-/// Lightweight wrapper around [InMemoryRemoteStorage] providing upload/download
-/// access during sync operations.
-class InMemorySyncStorage implements PipelineRemoteSyncStorage {
-  late final PipelineRemoteSyncStorage _pipelineSupport =
-      _pipelineSupportFactory(storage: this);
-
-  final InMemoryBackendStore storage;
-
-  PipelineRemoteSyncStorage Function({required InMemorySyncStorage storage})
-      _pipelineSupportFactory;
-
-  InMemorySyncStorage(
-      {required this.storage,
-      required PipelineRemoteSyncStorage Function(
-              {required InMemorySyncStorage storage})
-          pipelineSupportFactory})
-      : _pipelineSupportFactory = pipelineSupportFactory;
-
-  // ---------------------------------------------------------------------------
-  // RemoteSyncPipelineSupport — streaming pipeline transformers
-  // ---------------------------------------------------------------------------
-
-  @override
-  StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch() =>
-      _pipelineSupport.shardFetch();
-
-  @override
-  StreamTransformer<LoadedCandidateEvent, FetchedCandidateEvent>
-      resourceFetch() => _pipelineSupport.resourceFetch();
-
-  @override
-  StreamTransformer<MergedResourceEvent, UploadedResourceEvent>
-      resourceUpload() => _pipelineSupport.resourceUpload();
-
-  @override
-  StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload() =>
-      _pipelineSupport.shardUpload();
-
-  @override
-  Future<void> finalizeSync() async {
-    // In-memory backend needs no finalization
+    _storage.deleteDocument(documentIri);
   }
 }
 

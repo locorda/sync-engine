@@ -1,360 +1,340 @@
 import 'dart:async';
 
 import 'package:locorda_core/src/storage/remote_storage.dart';
+import 'package:locorda_core/src/sync/pipeline/backend/remote_sync_backend.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 
-abstract interface class FPRBackend {
-  /// Download multiple documents, returning raw/source form — no decoding.
-  ///
-  /// Backends return [EncodedRdfGraphSource] (raw bytes/text) or, if they
-  /// already hold a decoded graph (e.g. in-memory backends), [DecodedGraphSource].
-  /// Decoding is deferred to the CPU stage that first needs the parsed graph.
-  Future<List<RemoteDownloadResult<RdfGraphSource>>> downloadSources(
-      Iterable<RemoteDownloadRequest> requests);
-
-  /// Upload multiple documents to remote storage, accepting source form.
-  ///
-  /// Callers pass [RdfGraphSource] so backends can use pre-encoded bytes
-  /// (via [DecodedGraphSource.originalSource]) when available, avoiding a
-  /// redundant encode/decode round-trip. In practice the source after CRDT
-  /// merge is always [DecodedGraphSource]; backends that need encoded bytes
-  /// must encode inside this method.
-  Future<List<RemoteUploadResult>> uploadSources(
-      Iterable<RemoteUploadRequest<RdfGraphSource>> requests);
-}
-
-abstract class SimpleFPRBackend implements FPRBackend {
-  /// Download a single document, returning raw/source form — no decoding.
-  Future<RemoteDownloadResult<RdfGraphSource>> downloadSource(
-      IriTerm documentIri,
-      {String? ifNoneMatch});
-
-  /// Upload a single document from source form.
-  Future<RemoteUploadResult> uploadSource(
-      IriTerm documentIri, RdfGraphSource source,
-      {String? ifMatch});
-
-  /// Download multiple documents from remote storage.
-  ///
-  /// Default implementation maps each request to [downloadSource].
-  /// Backends may override this for transport-level batching.
-  @override
-  Future<List<RemoteDownloadResult<RdfGraphSource>>> downloadSources(
-      Iterable<RemoteDownloadRequest> requests) async {
-    final results = <RemoteDownloadResult<RdfGraphSource>>[];
-    for (final request in requests) {
-      results.add(await downloadSource(
-        request.documentIri,
-        ifNoneMatch: request.ifNoneMatch,
-      ));
-    }
-    return results;
-  }
-
-  /// Upload multiple documents from source form.
-  ///
-  /// Default implementation maps each request to [uploadSource].
-  /// Backends may override this for transport-level batching.
-  @override
-  Future<List<RemoteUploadResult>> uploadSources(
-      Iterable<RemoteUploadRequest<RdfGraphSource>> requests) async {
-    final results = <RemoteUploadResult>[];
-    for (final request in requests) {
-      results.add(await uploadSource(
-        request.documentIri,
-        request.document,
-        ifMatch: request.ifMatch,
-      ));
-    }
-    return results;
-  }
-}
-
+/// [PipelineRemoteSyncStorage] for file-per-resource backends.
+///
+/// Each resource and shard lives in its own file. The four pipeline stages
+/// pipe events through [RemoteSyncBackend.download] / [.upload] streams,
+/// handling RDF encoding/decoding (CPU) in the adapter while the backend
+/// handles only I/O.
+///
+/// Boundary events ([PhaseComplete], [ShardComplete]) are never sent to
+/// the backend — the adapter drains outstanding results before forwarding
+/// boundaries downstream.
 class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
   final _logger = Logger('FilePerResourceRemoteSyncStorage');
-  final FPRBackend backend;
-  final int batchSize;
+  final RemoteSyncBackend backend;
+  final RdfCore _rdfCore;
+  final String _contentType;
+  final bool _isBinary;
 
-  FilePerResourceRemoteSyncStorage(
-    this.backend, {
-    this.batchSize = defaultPipelineBatchSize,
-  });
+  FilePerResourceRemoteSyncStorage(this.backend,
+      {required RdfCore rdfCore, required String contentType, bool? isBinary})
+      : _rdfCore = rdfCore,
+        _contentType = contentType,
+        _isBinary = isBinary ?? isBinaryContentType(contentType);
 
   @override
   Future<void> finalizeSync() => Future.value();
 
+  // ---------------------------------------------------------------------------
+  // Encoding helpers
+  // ---------------------------------------------------------------------------
+
+  /// Convert [RawContent] from backend to pipeline [RdfGraphSource].
+  RdfGraphSource _toGraphSource(RawContent raw) => switch (raw) {
+        TextContent(:final text, :final contentType) =>
+          TextGraphSource(text, contentType: contentType),
+        BinaryContent(:final bytes, :final contentType) =>
+          BinaryGraphSource(bytes, contentType: contentType),
+      };
+
+  /// Encode a [DecodedGraphSource] to [RawContent] for the backend.
+  RawContent _encodeGraph(DecodedGraphSource source) {
+    // If already encoded in the target content type, reuse raw bytes.
+    final orig = source.originalSource;
+    if (orig != null && orig.contentType == _contentType) {
+      return switch (orig) {
+        TextGraphSource(:final text, :final contentType) =>
+          TextContent(text, contentType: contentType),
+        BinaryGraphSource(:final bytes, :final contentType) =>
+          BinaryContent(bytes, contentType: contentType),
+      };
+    }
+    // Encode graph to target content type.
+    if (_isBinary) {
+      final encodedBytes =
+          _rdfCore.encodeBinary(source.graph, contentType: _contentType);
+      return BinaryContent(encodedBytes, contentType: _contentType);
+    }
+
+    final encoded = _rdfCore.encode(source.graph, contentType: _contentType);
+    return TextContent(encoded, contentType: _contentType);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Stage 2: Shard Fetch
+  // ---------------------------------------------------------------------------
+
   @override
   StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch() =>
       StreamTransformer.fromBind((stream) async* {
-        final buffer = <ShardRef>[];
-
-        await for (final event in stream) {
-          switch (event) {
-            case ShardRef():
-              buffer.add(event);
-              if (buffer.length >= batchSize) {
-                yield* _fetchShardChunk(buffer);
-                buffer.clear();
-              }
-            case PhaseComplete():
-              if (buffer.isNotEmpty) {
-                yield* _fetchShardChunk(buffer);
-                buffer.clear();
-              }
-              yield event;
-          }
-        }
+        yield* _pipeDownload<ShardRef, ShardRefEvent, FetchedShardEvent>(
+          stream,
+          extract: (e) => switch (e) {
+            ShardRef() => e,
+            PhaseComplete() => null,
+          },
+          toRequest: (e) => RemoteDownloadRequest(
+            documentIri: e.shardIri.getDocumentIri(),
+            ifNoneMatch: e.storedEtag,
+          ),
+          toOutput: (event, result) {
+            if (result.notModified) {
+              return ShardNotModified(event.shardIri, event.shardStorageId,
+                  event.fetchPolicy, event.typeIri,
+                  storedEtag: event.storedEtag);
+            } else if (result.graph == null && event.storedEtag != null) {
+              return ShardGone(event.shardIri, event.shardStorageId,
+                  event.fetchPolicy, event.typeIri);
+            } else if (result.graph == null) {
+              return ShardNotModified(event.shardIri, event.shardStorageId,
+                  event.fetchPolicy, event.typeIri,
+                  existsOnRemote: false);
+            } else {
+              return ShardContent(
+                event.shardIri,
+                event.shardStorageId,
+                event.fetchPolicy,
+                event.typeIri,
+                _toGraphSource(result.graph!),
+                result.etag!,
+              );
+            }
+          },
+          passBoundary: (e) => e as FetchedShardEvent,
+        );
       });
 
-  Stream<FetchedShardEvent> _fetchShardChunk(List<ShardRef> chunk) async* {
-    final requests = chunk.map((e) => RemoteDownloadRequest(
-          documentIri: e.shardIri.getDocumentIri(),
-          ifNoneMatch: e.storedEtag,
-        ));
-
-    final results = await backend.downloadSources(requests);
-
-    for (var i = 0; i < chunk.length; i++) {
-      final event = chunk[i];
-      final result = results[i];
-
-      if (result.notModified) {
-        yield ShardNotModified(event.shardIri, event.shardStorageId,
-            event.fetchPolicy, event.typeIri,
-            storedEtag: event.storedEtag);
-      } else if (result.graph == null && event.storedEtag != null) {
-        yield ShardGone(event.shardIri, event.shardStorageId, event.fetchPolicy,
-            event.typeIri);
-      } else if (result.graph == null) {
-        yield ShardNotModified(event.shardIri, event.shardStorageId,
-            event.fetchPolicy, event.typeIri,
-            existsOnRemote: false);
-      } else {
-        yield ShardContent(
-          event.shardIri,
-          event.shardStorageId,
-          event.fetchPolicy,
-          event.typeIri,
-          result.graph!,
-          result.etag!,
-        );
-      }
-    }
-  }
+  // ---------------------------------------------------------------------------
+  // Stage 6: Resource Fetch
+  // ---------------------------------------------------------------------------
 
   @override
   StreamTransformer<LoadedCandidateEvent, FetchedCandidateEvent>
       resourceFetch() => StreamTransformer.fromBind((stream) async* {
-            final buffer = <LoadedCandidate>[];
-            final passThrough = <LoadedCandidate>[];
-
-            await for (final event in stream) {
-              switch (event) {
-                case LoadedCandidate():
-                  if (event.candidate.direction ==
-                          SyncDirection.remoteShardUnchanged ||
-                      event.candidate.direction ==
-                          SyncDirection.notInRemoteShard ||
-                      event.candidate.direction == SyncDirection.shardGone) {
-                    passThrough.add(event);
-                  } else {
-                    buffer.add(event);
-                  }
-                  if (buffer.length >= batchSize) {
-                    yield* _yieldPassThrough(passThrough);
-                    yield* _fetchResourceChunk(buffer);
-                    buffer.clear();
-                    passThrough.clear();
-                  }
-                case ShardComplete():
-                  if (buffer.isNotEmpty || passThrough.isNotEmpty) {
-                    yield* _yieldPassThrough(passThrough);
-                    yield* _fetchResourceChunk(buffer);
-                    buffer.clear();
-                    passThrough.clear();
-                  }
-                  yield event;
-                case PhaseComplete():
-                  if (buffer.isNotEmpty || passThrough.isNotEmpty) {
-                    yield* _yieldPassThrough(passThrough);
-                    yield* _fetchResourceChunk(buffer);
-                    buffer.clear();
-                    passThrough.clear();
-                  }
-                  yield event;
-              }
-            }
+            yield* _pipeDownload<LoadedCandidate, LoadedCandidateEvent,
+                FetchedCandidateEvent>(
+              stream,
+              extract: (e) => switch (e) {
+                LoadedCandidate() => _needsResourceFetch(e) ? e : null,
+                ShardComplete() => null,
+                PhaseComplete() => null,
+              },
+              toRequest: (e) => RemoteDownloadRequest(
+                documentIri: e.candidate.resourceIri.getDocumentIri(),
+                ifNoneMatch: e.storedRemoteEtag,
+              ),
+              toOutput: (event, result) {
+                if (result.graph != null) {
+                  return FetchedCandidate(
+                    event,
+                    remoteSource: _toGraphSource(result.graph!),
+                    remoteEtag: result.etag,
+                  );
+                }
+                return FetchedCandidate(event,
+                    remoteEtag: event.storedRemoteEtag);
+              },
+              passBoundary: (e) => switch (e) {
+                LoadedCandidate() =>
+                  FetchedCandidate(e, remoteEtag: e.storedRemoteEtag),
+                ShardComplete() => e,
+                PhaseComplete() => e,
+              },
+            );
           });
 
-  Stream<FetchedCandidateEvent> _yieldPassThrough(
-      List<LoadedCandidate> items) async* {
-    for (final event in items) {
-      yield FetchedCandidate(event, remoteEtag: event.storedRemoteEtag);
-    }
-  }
+  bool _needsResourceFetch(LoadedCandidate e) =>
+      e.candidate.direction != SyncDirection.remoteShardUnchanged &&
+      e.candidate.direction != SyncDirection.notInRemoteShard &&
+      e.candidate.direction != SyncDirection.shardGone;
 
-  Stream<FetchedCandidateEvent> _fetchResourceChunk(
-      List<LoadedCandidate> chunk) async* {
-    if (chunk.isEmpty) return;
-    final requests = chunk.map((e) => RemoteDownloadRequest(
-          documentIri: e.candidate.resourceIri.getDocumentIri(),
-          ifNoneMatch: e.storedRemoteEtag,
-        ));
-
-    final results = await backend.downloadSources(requests);
-
-    for (var i = 0; i < chunk.length; i++) {
-      final event = chunk[i];
-      final result = results[i];
-
-      if (result.graph != null) {
-        yield FetchedCandidate(
-          event,
-          remoteSource: result.graph!,
-          remoteEtag: result.etag,
-        );
-      } else {
-        yield FetchedCandidate(event, remoteEtag: event.storedRemoteEtag);
-      }
-    }
-  }
+  // ---------------------------------------------------------------------------
+  // Stage 8: Resource Upload
+  // ---------------------------------------------------------------------------
 
   @override
   StreamTransformer<MergedResourceEvent, UploadedResourceEvent>
       resourceUpload() => StreamTransformer.fromBind((stream) async* {
-            final buffer = <MergeResult>[];
-            final passThrough = <MergeResult>[];
-
-            await for (final event in stream) {
-              switch (event) {
-                case MergeResult():
-                  if (!event.needsUpload) {
-                    passThrough.add(event);
-                  } else {
-                    buffer.add(event);
-                  }
-                  if (buffer.length >= batchSize) {
-                    yield* _yieldUploadPassThrough(passThrough);
-                    yield* _uploadResourceChunk(buffer);
-                    buffer.clear();
-                    passThrough.clear();
-                  }
-                case ShardComplete():
-                  if (buffer.isNotEmpty || passThrough.isNotEmpty) {
-                    yield* _yieldUploadPassThrough(passThrough);
-                    yield* _uploadResourceChunk(buffer);
-                    buffer.clear();
-                    passThrough.clear();
-                  }
-                  yield event;
-                case PhaseComplete():
-                  if (buffer.isNotEmpty || passThrough.isNotEmpty) {
-                    yield* _yieldUploadPassThrough(passThrough);
-                    yield* _uploadResourceChunk(buffer);
-                    buffer.clear();
-                    passThrough.clear();
-                  }
-                  yield event;
-              }
-            }
+            yield* _pipeUpload<MergeResult, MergedResourceEvent,
+                UploadedResourceEvent>(
+              stream,
+              extract: (e) => switch (e) {
+                MergeResult() => e.needsUpload ? e : null,
+                ShardComplete() => null,
+                PhaseComplete() => null,
+              },
+              toRequest: (e) => RemoteUploadRequest<RawContent>(
+                documentIri: e.resourceIri.getDocumentIri(),
+                document: _encodeGraph(e.mergedGraph),
+                ifMatch: e.resourceEtag,
+              ),
+              toOutput: (event, result) {
+                if (result is SuccessUploadResult) {
+                  return UploadResult(event, newRemoteEtag: result.etag);
+                }
+                final docIri = event.resourceIri.getDocumentIri();
+                _logger
+                    .warning('Upload conflict for ${docIri.debug} — skipping');
+                return UploadResult(event);
+              },
+              passBoundary: (e) => switch (e) {
+                MergeResult() => UploadResult(e),
+                ShardComplete() => e,
+                PhaseComplete() => e,
+              },
+            );
           });
 
-  Stream<UploadedResourceEvent> _yieldUploadPassThrough(
-      List<MergeResult> items) async* {
-    for (final event in items) {
-      yield UploadResult(event);
-    }
-  }
-
-  Stream<UploadedResourceEvent> _uploadResourceChunk(
-      List<MergeResult> chunk) async* {
-    if (chunk.isEmpty) return;
-    final requests = chunk.map((e) => RemoteUploadRequest<RdfGraphSource>(
-          documentIri: e.resourceIri.getDocumentIri(),
-          document: e.mergedGraph,
-          ifMatch: e.resourceEtag,
-        ));
-
-    final results = await backend.uploadSources(requests);
-
-    for (var i = 0; i < chunk.length; i++) {
-      final event = chunk[i];
-      final result = results[i];
-
-      if (result is SuccessUploadResult) {
-        yield UploadResult(event, newRemoteEtag: result.etag);
-      } else {
-        final docIri = event.resourceIri.getDocumentIri();
-        _logger.warning('Upload conflict for ${docIri.debug} — skipping');
-        yield UploadResult(event);
-      }
-    }
-  }
+  // ---------------------------------------------------------------------------
+  // Stage 12: Shard Upload
+  // ---------------------------------------------------------------------------
 
   @override
   StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload() =>
       StreamTransformer.fromBind((stream) async* {
-        final buffer = <MergedShard>[];
-        final passThrough = <MergedShard>[];
-
-        await for (final event in stream) {
-          switch (event) {
-            case MergedShard():
-              if (!event.needsUpload) {
-                passThrough.add(event);
-              } else {
-                buffer.add(event);
-              }
-              if (buffer.length >= batchSize) {
-                yield* _yieldShardUploadPassThrough(passThrough);
-                yield* _uploadShardChunk(buffer);
-                buffer.clear();
-                passThrough.clear();
-              }
-            case PhaseComplete():
-              if (buffer.isNotEmpty || passThrough.isNotEmpty) {
-                yield* _yieldShardUploadPassThrough(passThrough);
-                yield* _uploadShardChunk(buffer);
-                buffer.clear();
-                passThrough.clear();
-              }
-              yield event;
-          }
-        }
+        yield* _pipeUpload<MergedShard, MergedShardEvent, UploadedShardEvent>(
+          stream,
+          extract: (e) => switch (e) {
+            MergedShard() => e.needsUpload ? e : null,
+            PhaseComplete() => null,
+          },
+          toRequest: (e) => RemoteUploadRequest<RawContent>(
+            documentIri: e.shardIri.getDocumentIri(),
+            document: _encodeGraph(e.mergedGraph),
+            ifMatch: e.newEtag,
+          ),
+          toOutput: (event, result) {
+            if (result is SuccessUploadResult) {
+              return UploadedShard(event.shardIri, event,
+                  newRemoteEtag: result.etag);
+            }
+            final docIri = event.shardIri.getDocumentIri();
+            _logger.warning(
+                'Shard upload conflict for ${docIri.debug} — skipping');
+            return UploadedShard(event.shardIri, event);
+          },
+          passBoundary: (e) => switch (e) {
+            MergedShard() => UploadedShard(e.shardIri, e),
+            PhaseComplete() => e,
+          },
+        );
       });
 
-  Stream<UploadedShardEvent> _yieldShardUploadPassThrough(
-      List<MergedShard> items) async* {
-    for (final event in items) {
-      yield UploadedShard(event.shardIri, event);
+  // ---------------------------------------------------------------------------
+  // Generic stream-piping helpers
+  // ---------------------------------------------------------------------------
+
+  /// Pipes download requests through [backend.download], draining at
+  /// boundaries.
+  ///
+  /// [extract] returns the data item if the event should be fetched, or null
+  /// for pass-through/boundary events. [passBoundary] converts non-fetched
+  /// events (boundaries and pass-throughs) to output type.
+  Stream<TOut> _pipeDownload<TData, TIn, TOut>(
+    Stream<TIn> stream, {
+    required TData? Function(TIn) extract,
+    required RemoteDownloadRequest Function(TData) toRequest,
+    required TOut Function(TData, RemoteDownloadResult<RawContent>) toOutput,
+    required TOut Function(TIn) passBoundary,
+  }) async* {
+    // Buffer data events between boundaries, then send them as a batch
+    // stream through backend.download and zip results with originals.
+    final buffer = <TData>[];
+    final passThrough = <TIn>[];
+
+    Future<void> drain() async {
+      // nothing to do
     }
-  }
 
-  Stream<UploadedShardEvent> _uploadShardChunk(List<MergedShard> chunk) async* {
-    if (chunk.isEmpty) return;
-    final requests = chunk.map((e) => RemoteUploadRequest<RdfGraphSource>(
-          documentIri: e.shardIri.getDocumentIri(),
-          document: e.mergedGraph,
-          ifMatch: e.newEtag,
-        ));
+    Stream<TOut> flush() async* {
+      if (buffer.isNotEmpty) {
+        final requests = buffer.map(toRequest);
+        final resultStream = backend.download(Stream.fromIterable(requests));
+        final results = await resultStream.toList();
 
-    final results = await backend.uploadSources(requests);
+        for (var i = 0; i < buffer.length; i++) {
+          yield toOutput(buffer[i], results[i]);
+        }
+        buffer.clear();
+      }
 
-    for (var i = 0; i < chunk.length; i++) {
-      final event = chunk[i];
-      final result = results[i];
+      for (final e in passThrough) {
+        yield passBoundary(e);
+      }
+      passThrough.clear();
+    }
 
-      if (result is SuccessUploadResult) {
-        yield UploadedShard(event.shardIri, event, newRemoteEtag: result.etag);
+    await for (final event in stream) {
+      final data = extract(event);
+      if (data != null) {
+        buffer.add(data);
       } else {
-        final docIri = event.shardIri.getDocumentIri();
-        _logger.warning('Shard upload conflict for ${docIri.debug} — skipping');
-        yield UploadedShard(event.shardIri, event);
+        passThrough.add(event);
+      }
+
+      // At boundaries: drain backend, then forward boundary.
+      if (data == null) {
+        yield* flush();
       }
     }
+
+    // Flush any remaining items (shouldn't happen with well-formed streams,
+    // but be safe).
+    yield* flush();
+    await drain();
+  }
+
+  /// Pipes upload requests through [backend.upload], draining at boundaries.
+  Stream<TOut> _pipeUpload<TData, TIn, TOut>(
+    Stream<TIn> stream, {
+    required TData? Function(TIn) extract,
+    required RemoteUploadRequest<RawContent> Function(TData) toRequest,
+    required TOut Function(TData, RemoteUploadResult) toOutput,
+    required TOut Function(TIn) passBoundary,
+  }) async* {
+    final buffer = <TData>[];
+    final passThrough = <TIn>[];
+
+    Stream<TOut> flush() async* {
+      if (buffer.isNotEmpty) {
+        final requests = buffer.map(toRequest);
+        final resultStream = backend.upload(Stream.fromIterable(requests));
+        final results = await resultStream.toList();
+
+        for (var i = 0; i < buffer.length; i++) {
+          yield toOutput(buffer[i], results[i]);
+        }
+        buffer.clear();
+      }
+
+      for (final e in passThrough) {
+        yield passBoundary(e);
+      }
+      passThrough.clear();
+    }
+
+    await for (final event in stream) {
+      final data = extract(event);
+      if (data != null) {
+        buffer.add(data);
+      } else {
+        passThrough.add(event);
+      }
+
+      if (data == null) {
+        yield* flush();
+      }
+    }
+
+    yield* flush();
   }
 }
