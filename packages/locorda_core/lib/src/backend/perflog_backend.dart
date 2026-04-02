@@ -210,8 +210,8 @@ class LoggingPerflog implements Perflog {
   }
 }
 
-class PerflogBackend implements Backend {
-  final Backend _inner;
+class PerflogBackend implements ClassicBackend {
+  final ClassicBackend _inner;
   final Perflog _perflog;
   late final BehaviorSubject<List<RemoteStorage>> _remotesSubject;
   late final StreamSubscription _remotesSubscription;

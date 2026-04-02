@@ -3,7 +3,13 @@ import 'package:locorda_core/src/storage/remote_storage.dart';
 /// Backend interface for remote synchronization.
 ///
 /// Provides access to remote storage operations and change notifications.
-abstract interface class Backend {
+sealed class Backend {
+  String get name;
+
+  Future<void> dispose();
+}
+
+abstract interface class ClassicBackend implements Backend {
   String get name;
 
   /// Remote storage operations (GET/PUT/DELETE)
@@ -27,7 +33,7 @@ abstract interface class Backend {
   Future<void> dispose();
 }
 
-abstract interface class PipelineBackend {
+abstract interface class PipelineBackend implements Backend {
   String get name;
 
   /// Remote storage operations (GET/PUT/DELETE)

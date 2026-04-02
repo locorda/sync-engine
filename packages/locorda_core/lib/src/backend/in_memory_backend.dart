@@ -42,7 +42,7 @@ final _logger = Logger('InMemoryBackend');
 /// ```
 ///
 /// For real remote storage, use [SolidBackend] from the `locorda_solid` package.
-class InMemoryBackend implements PipelineBackend, Backend {
+class InMemoryBackend implements PipelineBackend, ClassicBackend {
   @override
   String get name => 'in-memory';
 

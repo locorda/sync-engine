@@ -7,7 +7,7 @@ import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_worker/worker.dart';
 import 'package:rxdart/rxdart.dart';
 
-class _DisabledDirBackend implements Backend {
+class _DisabledDirBackend implements ClassicBackend {
   final BehaviorSubject<List<RemoteStorage>> _subject =
       BehaviorSubject<List<RemoteStorage>>.seeded(const []);
 

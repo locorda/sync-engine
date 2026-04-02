@@ -50,7 +50,7 @@ http.Client _createRetryClient(http.Client inner) {
   );
 }
 
-class SolidBackend implements Backend {
+class SolidBackend implements ClassicBackend {
   String get name => 'solid';
 
   final SolidAuthProvider _authProvider;

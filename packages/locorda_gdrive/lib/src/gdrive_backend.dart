@@ -357,7 +357,7 @@ class GDriveRemoteStorage implements RemoteStorage {
   }
 }
 
-class GDriveBackend implements Backend {
+class GDriveBackend implements ClassicBackend {
   @override
   String get name => 'gdrive';
   final GDriveAuthProvider _auth;

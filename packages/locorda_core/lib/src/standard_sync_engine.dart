@@ -51,32 +51,43 @@ typedef HydrationBatch = ({
 
 /// Simple config service for testing that doesn't listen to remote changes.
 class SimpleConfigService extends ConfigService {
-  SimpleConfigService(super.initialConfig) : super(backends: []);
+  SimpleConfigService(super.initialConfig)
+      : super(classicBackends: [], pipelineBackends: []);
 }
 
 class ConfigService {
   final BehaviorSubject<SyncEngineConfig> _configSubject;
   final SyncEngineConfig _initialConfig;
-  final List<Backend> _backends;
+  final List<ClassicBackend> _classicBackends;
+  final List<PipelineBackend> _pipelineBackends;
   final List<StreamSubscription> _remoteSubscriptions = [];
   bool _needsPrefetchAll = false;
 
   Stream<SyncEngineConfig> get configChanges => _configSubject.stream;
   SyncEngineConfig get currentConfig => _configSubject.value;
 
-  ConfigService(SyncEngineConfig initialConfig,
-      {required List<Backend> backends})
-      : _configSubject =
+  ConfigService(
+    SyncEngineConfig initialConfig, {
+    required List<ClassicBackend> classicBackends,
+    required List<PipelineBackend> pipelineBackends,
+  })  : _configSubject =
             BehaviorSubject<SyncEngineConfig>.seeded(initialConfig),
         _initialConfig = initialConfig,
-        _backends = backends {
+        _classicBackends = classicBackends,
+        _pipelineBackends = pipelineBackends {
     _setupRemoteListeners();
   }
 
   /// Setup listeners for remote availability changes across all backends.
   void _setupRemoteListeners() {
-    for (final backend in _backends) {
+    for (final backend in _classicBackends) {
       final subscription = backend.remotesChanged.listen((_) {
+        _onRemotesChanged();
+      });
+      _remoteSubscriptions.add(subscription);
+    }
+    for (final backend in _pipelineBackends) {
+      final subscription = backend.pipelineRemotesChanged.listen((_) {
         _onRemotesChanged();
       });
       _remoteSubscriptions.add(subscription);
@@ -89,7 +100,10 @@ class ConfigService {
   /// Handle remote availability changes.
   void _onRemotesChanged() {
     // Check if any available remote uses shard datasets
-    final anyDatasetRemote = _backends.any((backend) {
+    // pipeline remotes do not communicate their storage model any more,
+    // they are expected to "push" extra data into the pipeline, so this
+    // setting is only for classic backends.
+    final anyDatasetRemote = _classicBackends.any((backend) {
       return backend.remotes.any((remote) {
         // Remote must be available to be considered
         // We can't check availability synchronously here, but remotes list
@@ -540,10 +554,23 @@ the streams yourself.''');
 
     final timestampFactory =
         physicalTimestampFactory ?? defaultPhysicalTimestampFactory;
-
+    final (classicBackends, pipelineBackends) = backends
+        .fold((<ClassicBackend>[], <PipelineBackend>[]), (acc, backend) {
+      switch (backend) {
+        // priority to PipelineBackend
+        case PipelineBackend():
+          acc.$2.add(backend);
+        case ClassicBackend():
+          acc.$1.add(backend);
+      }
+      return acc;
+    });
     // Automatically add configuration for Framework-Owned resources
-    final configService =
-        ConfigService(buildEffectiveConfig(config), backends: backends);
+    final configService = ConfigService(
+      buildEffectiveConfig(config),
+      classicBackends: classicBackends,
+      pipelineBackends: pipelineBackends,
+    );
 
     // Validate configuration before proceeding
     final configValidationResult =
@@ -726,8 +753,8 @@ the streams yourself.''');
       storage: storage,
       configService: configService,
       shardDocumentGenerator: shardDocumentGenerator,
-      backends: backends,
-      pipelineBackends: backends.whereType<PipelineBackend>().toList(),
+      classicBackends: classicBackends,
+      pipelineBackends: pipelineBackends,
       remoteSyncOrchestratorFactory: remoteSyncOrchestratorFactory,
       streamingOrchestratorFactory: streamingOrchestratorFactory,
       perflog: perflog,

@@ -1,5 +1,4 @@
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_core/src/backend/backend.dart';
 import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/storage/sync_timestamp_storage.dart';
@@ -46,7 +45,7 @@ typedef StreamingOrchestratorFactory = StreamingRemoteSyncOrchestrator Function(
 class SyncFunction {
   final ShardDocumentGenerator _shardDocumentGenerator;
   final Storage _storage;
-  final List<Backend> _backends;
+  final List<ClassicBackend> _classicBackends;
   final List<PipelineBackend> _pipelineBackends;
   final ConfigService _configService;
   final OrchestratorFactory _remoteSyncOrchestratorFactory;
@@ -54,7 +53,7 @@ class SyncFunction {
   final Perflog _perflog;
 
   SyncFunction({
-    required List<Backend> backends,
+    required List<ClassicBackend> classicBackends,
     required List<PipelineBackend> pipelineBackends,
     required Storage storage,
     required ConfigService configService,
@@ -62,7 +61,7 @@ class SyncFunction {
     StreamingOrchestratorFactory? streamingOrchestratorFactory,
     required ShardDocumentGenerator shardDocumentGenerator,
     required Perflog perflog,
-  })  : _backends = backends,
+  })  : _classicBackends = classicBackends,
         _pipelineBackends = pipelineBackends,
         _storage = storage,
         _configService = configService,
@@ -98,10 +97,12 @@ class SyncFunction {
   ///    - Dataset upload would fail with incomplete data
   ///
   /// Throws [StateError] if constraints are violated.
-  Future<void> _validateDatasetCompatibilityForBackend(
+  Future<void> _validateDatasetCompatibilityForClassicBackend(
       SyncEngineConfig config) async {
     _log.fine(
         'Validating dataset compatibility for backend using shard datasets');
+
+    // This validation is only available for classic backends.
 
     // FIXME: what about the group index fetch policies?
 
@@ -197,7 +198,7 @@ class SyncFunction {
   /// gracefully (offline-first architecture).
   Future<void> _syncRemote(DateTime syncTime) async {
     final config = await _configService.currentConfig;
-    for (final backend in _backends) {
+    for (final backend in _classicBackends) {
       _log.fine('Using backend: ${backend.name}');
       for (final remote in backend.remotes) {
         _log.fine('Configured remote: ${remote.remoteId}');
@@ -217,7 +218,7 @@ class SyncFunction {
 
         // Validate dataset compatibility if this backend uses shard datasets
         if (remote.useShardDatasets) {
-          await _validateDatasetCompatibilityForBackend(config);
+          await _validateDatasetCompatibilityForClassicBackend(config);
         }
 
         _log.info('Starting Phase A+B: Remote Synchronization');
@@ -275,11 +276,6 @@ class SyncFunction {
             'Creating sync storage session for backend: ${remote.remoteId}');
         final remoteSyncStorage =
             await remote.createPipelineSyncStorage(config);
-
-        // Validate dataset compatibility if this backend uses shard datasets
-        if (remote.useShardDatasets) {
-          await _validateDatasetCompatibilityForBackend(config);
-        }
 
         _log.info('Starting Phase A+B: Remote Synchronization');
 

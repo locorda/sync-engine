@@ -23,7 +23,7 @@ final _log = Logger('DirBackend');
 /// - Uses file modification times for ETag generation
 /// - Provides offline-first storage with local file access
 /// - Primarily for desktop platforms (macOS, Windows, Linux)
-class DirBackend implements Backend {
+class DirBackend implements ClassicBackend {
   @override
   String get name => 'local-dir';
 
