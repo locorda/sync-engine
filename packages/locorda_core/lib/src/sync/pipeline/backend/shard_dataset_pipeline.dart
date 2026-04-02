@@ -53,8 +53,8 @@ abstract interface class SDSBackend {
 ///   (namedGraphs). Changed resources come from the Stage 8 accumulator;
 ///   unchanged resources are loaded from the local DB via
 ///   [ResourceGraphLoader].
-class ShardDatasetRemoteSyncSupport implements PipelineRemoteSyncStorage {
-  final _log = Logger('ShardDatasetRemoteSyncSupport');
+class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
+  final _log = Logger('ShardDatasetRemoteSyncStorage');
   final SDSBackend backend;
   final int batchSize;
 
@@ -83,7 +83,7 @@ class ShardDatasetRemoteSyncSupport implements PipelineRemoteSyncStorage {
   /// Loads resource graphs from the local DB for dataset assembly in Stage 12.
   ResourceGraphLoader _resourceGraphLoader;
 
-  ShardDatasetRemoteSyncSupport(
+  ShardDatasetRemoteSyncStorage(
     this.backend, {
     required ResourceGraphLoader resourceGraphLoader,
     this.batchSize = defaultPipelineBatchSize,

@@ -178,7 +178,7 @@ class DirRemoteStorage implements RemoteStorage {
     );
     if (_iriTranslator != null) {
       return IriTranslatingRemoteSyncStorage(
-          storage: storage, iriTranslator: _iriTranslator, rdfCore: _rdfCore);
+          storage: storage, iriTranslator: _iriTranslator);
     }
     return storage;
   }

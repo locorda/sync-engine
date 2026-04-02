@@ -74,12 +74,12 @@ abstract class SimpleFPRBackend implements FPRBackend {
   }
 }
 
-class FilePerResourceRemoteSyncSupport implements PipelineRemoteSyncStorage {
-  final _logger = Logger('FilePerResourceRemoteSyncSupport');
+class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
+  final _logger = Logger('FilePerResourceRemoteSyncStorage');
   final FPRBackend backend;
   final int batchSize;
 
-  FilePerResourceRemoteSyncSupport(
+  FilePerResourceRemoteSyncStorage(
     this.backend, {
     this.batchSize = defaultPipelineBatchSize,
   });

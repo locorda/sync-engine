@@ -267,7 +267,7 @@ Future<void> _executeSaveTestWithSteps(
       baseTimestamp: baseTimestamp,
       baseInstallationId: stepInstallationId,
       config: config,
-      sharedBackend: installationContext.sharedBackend,
+      store: store,
       installationContext: installationContext,
       testFetcher: fetcher,
       backendIriTranslator: backendIriTranslator,
@@ -285,7 +285,7 @@ Future<void> _executeStep({
   required DateTime baseTimestamp,
   required String? baseInstallationId,
   required SyncEngineConfig config,
-  required InMemoryBackend sharedBackend,
+  required InMemoryBackendStore store,
   required _InstallationContext installationContext,
   required TestFetcher testFetcher,
   required IriTranslator backendIriTranslator,
@@ -301,9 +301,6 @@ Future<void> _executeStep({
   final action = stepJson['action'] as String;
   if (debug.logStep) {
     print('➡️ [$testId] Step $stepIndex ($action) [$baseInstallationId] ');
-  }
-  if (debug.dumpSharedBackend) {
-    _dumpSharedBackend(sharedBackend, 'before $action');
   }
 
   // Load action timestamps if provided
@@ -368,7 +365,7 @@ Future<void> _executeStep({
         config: buildEffectiveConfig(config),
         iriTranslator: iriTranslator,
         backendIriTranslator: backendIriTranslator,
-        sharedBackend: sharedBackend,
+        store: store,
       );
     }
     return;
@@ -457,7 +454,7 @@ Future<void> _executeStep({
         config: effectiveConfig,
         iriTranslator: iriTranslator,
         backendIriTranslator: backendIriTranslator,
-        sharedBackend: sharedBackend,
+        store: store,
       );
     }
     return;
@@ -519,26 +516,10 @@ Future<void> _executeStep({
       config: config,
       iriTranslator: iriTranslator,
       backendIriTranslator: backendIriTranslator,
-      sharedBackend: sharedBackend,
+      store: store,
       externalDocumentIri: externalDocumentIri,
       typeIri: typeIri,
     );
-  }
-}
-
-void _dumpSharedBackend(InMemoryBackend sharedBackend, String when) {
-  for (var remote in sharedBackend.remotes) {
-    print(
-        '🗄️  Shared Backend State ($when) - ${remote.remoteId.backend} - ${remote.remoteId.id}:');
-    /*
-    for (final entry in remote.documents.entries) {
-      print(('-' * 10) +
-          ' ${IriTerm(entry.key).debug} - ${entry.value.etag} ' +
-          ('-' * 10));
-      print(turtle.encode(entry.value.graph));
-      print('-' * 80 + '\n');
-    }
-    */
   }
 }
 
@@ -551,7 +532,7 @@ Future<void> _verifyExpectations({
   required InMemoryStorage storage,
   required SyncEngineConfig config,
   required IriTranslator iriTranslator,
-  required InMemoryBackend sharedBackend,
+  required InMemoryBackendStore store,
   required IriTranslator backendIriTranslator,
   IriTerm? externalDocumentIri,
   IriTerm? typeIri,
@@ -611,7 +592,7 @@ Future<void> _verifyExpectations({
       stepIndex: stepIndex,
       expectedDocuments: expectedRemoteDocuments,
       testAssetsDir: testAssetsDir,
-      sharedBackend: sharedBackend,
+      store: store,
     );
   }
   if (remoteDocumentsDir != null) {
@@ -620,7 +601,7 @@ Future<void> _verifyExpectations({
         testAssetsDir: testAssetsDir,
         relativeDir: remoteDocumentsDir,
         actualDocuments:
-            _getRemoteDocumentsForTesting(sharedBackend, backendIriTranslator),
+            _getRemoteDocumentsForTesting(store, backendIriTranslator),
         allowDatasets: true,
         backendIriTranslator: backendIriTranslator,
       );
@@ -631,7 +612,7 @@ Future<void> _verifyExpectations({
         testAssetsDir: testAssetsDir,
         relativeDir: remoteDocumentsDir,
         actualDocuments:
-            _getRemoteDocumentsForTesting(sharedBackend, backendIriTranslator),
+            _getRemoteDocumentsForTesting(store, backendIriTranslator),
         allowDatasets: true,
         backendIriTranslator: backendIriTranslator,
       );
@@ -843,11 +824,10 @@ Future<void> _verifyRemoteDocuments({
   required int stepIndex,
   required List<dynamic> expectedDocuments,
   required Directory testAssetsDir,
-  required InMemoryBackend sharedBackend,
+  required InMemoryBackendStore store,
 }) async {
   final resourceLocator =
       LocalResourceLocator(iriTermFactory: IriTerm.validated);
-  final remote = sharedBackend.remotes.first;
 
   for (final docJson in expectedDocuments) {
     final docMap = docJson as Map<String, dynamic>;
@@ -856,7 +836,7 @@ Future<void> _verifyRemoteDocuments({
     final path = docMap['path'] as String;
     final isDataset = path.toLowerCase().endsWith('.trig');
     if (isDataset) {
-      final dataset = remote.getStoredDataset(documentIri);
+      final dataset = store.getDocument<RdfDataset>(documentIri)?.data;
       if (dataset == null) {
         fail('No dataset found in remote for IRI: ${documentIri.value}\n'
             'Expected: ${documentIri.debug}');
@@ -876,7 +856,7 @@ Future<void> _verifyRemoteDocuments({
       continue;
     }
 
-    final storedGraph = remote.getStoredGraph(documentIri);
+    final storedGraph = store.getDocument<RdfGraph>(documentIri)?.data;
     if (storedGraph == null) {
       fail('No document found in remote for IRI: ${documentIri.value}\n'
           'Expected: ${documentIri.debug}');
@@ -908,9 +888,8 @@ List<_ActualDocument> _getLocalDocumentsForTesting(InMemoryStorage storage) {
 }
 
 List<_ActualDocument> _getRemoteDocumentsForTesting(
-    InMemoryBackend sharedBackend, IriTranslator backendIriTranslator) {
-  final remote = sharedBackend.remotes.first;
-  return remote
+    InMemoryBackendStore store, IriTranslator backendIriTranslator) {
+  return store
       .getStoredDocumentsForTesting()
       .map((doc) => _ActualDocument(
           documentIri: backendIriTranslator.externalToInternal(doc.documentIri),

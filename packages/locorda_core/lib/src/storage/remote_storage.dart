@@ -116,6 +116,7 @@ class RemoteUploadRequest<T> {
 /// - Conditional GET (If-None-Match header for ETags)
 /// - Conditional PUT (If-Match header for ETags)
 /// - HTTP status codes: 200, 304 Not Modified, 412 Precondition Failed
+@Deprecated('non-pipeline')
 abstract class RemoteSyncStorage extends GraphSyncStorage {
   Future<RemoteUploadResult> uploadDataset(
           IriTerm documentIri, RdfDataset dataset,
@@ -255,6 +256,7 @@ abstract class GraphSyncStorage {
 /// This interface handles backend initialization and creates stateful
 /// [RemoteSyncStorage] instances that cache configuration-derived state
 /// (e.g., type index mappings, folder IDs) for efficient sync operations.
+@Deprecated('non-pipeline')
 abstract interface class RemoteStorage {
   /// Remote endpoint identifier for this storage backend
   RemoteId get remoteId;
@@ -569,32 +571,16 @@ Future<T> _retryOnAuthFailure<T>(
   }
 }
 
+@Deprecated('non-pipeline')
 class IriTranslatingRemoteSyncStorage extends RemoteSyncStorage {
   final RemoteSyncStorage _storage;
   final IriTranslator _iriTranslator;
 
-  IriTranslatingRemoteSyncStorage._({
+  IriTranslatingRemoteSyncStorage({
     required RemoteSyncStorage storage,
     required IriTranslator iriTranslator,
   })  : _storage = storage,
         _iriTranslator = iriTranslator;
-
-  factory IriTranslatingRemoteSyncStorage({
-    required RemoteSyncStorage storage,
-    required IriTranslator iriTranslator,
-    required RdfCore rdfCore,
-  }) =>
-      storage is PipelineRemoteSyncStorage
-          ? PipelineIriTranslatingRemoteSyncStorage(
-              storage: storage,
-              pipelineSupport: storage as PipelineRemoteSyncStorage,
-              iriTranslator: iriTranslator,
-              rdfCore: rdfCore,
-            )
-          : IriTranslatingRemoteSyncStorage._(
-              storage: storage,
-              iriTranslator: iriTranslator,
-            );
 
   @override
   Future<RemoteDownloadResult<RdfGraph>> download(IriTerm documentIri,
@@ -650,19 +636,17 @@ class IriTranslatingRemoteSyncStorage extends RemoteSyncStorage {
 }
 
 class PipelineIriTranslatingRemoteSyncStorage
-    extends IriTranslatingRemoteSyncStorage
     implements PipelineRemoteSyncStorage {
-  final PipelineRemoteSyncStorage _pipelineSupport;
+  final PipelineRemoteSyncStorage _remote;
   final RdfCore _rdfCore;
-
+  final IriTranslator _iriTranslator;
   PipelineIriTranslatingRemoteSyncStorage({
-    required RemoteSyncStorage storage,
-    required PipelineRemoteSyncStorage pipelineSupport,
+    required PipelineRemoteSyncStorage remote,
     required IriTranslator iriTranslator,
     required RdfCore rdfCore,
-  })  : _pipelineSupport = pipelineSupport,
+  })  : _remote = remote,
         _rdfCore = rdfCore,
-        super._(storage: storage, iriTranslator: iriTranslator);
+        _iriTranslator = iriTranslator;
 
   // ---------------------------------------------------------------------------
   // RemoteSyncPipelineSupport — wraps _pipelineSupport with IRI translation.
@@ -712,7 +696,7 @@ class PipelineIriTranslatingRemoteSyncStorage
 
   @override
   StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch() => _wrap(
-        _pipelineSupport.shardFetch(),
+        _remote.shardFetch(),
         (e) => switch (e) {
           ShardRef() => e.copyWith(shardIri: _toExternal(e.shardIri)),
           PhaseComplete() => e,
@@ -734,7 +718,7 @@ class PipelineIriTranslatingRemoteSyncStorage
   @override
   StreamTransformer<LoadedCandidateEvent, FetchedCandidateEvent>
       resourceFetch() => _wrap(
-            _pipelineSupport.resourceFetch(),
+            _remote.resourceFetch(),
             (e) => switch (e) {
               LoadedCandidate() => e.copyWith(
                   candidate: e.candidate.copyWith(
@@ -763,7 +747,7 @@ class PipelineIriTranslatingRemoteSyncStorage
   @override
   StreamTransformer<MergedResourceEvent, UploadedResourceEvent>
       resourceUpload() => _wrap(
-            _pipelineSupport.resourceUpload(),
+            _remote.resourceUpload(),
             (e) => switch (e) {
               MergeResult() => e.copyWith(
                   resourceIri: _toExternal(e.resourceIri),
@@ -788,7 +772,7 @@ class PipelineIriTranslatingRemoteSyncStorage
   @override
   StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload() =>
       _wrap(
-        _pipelineSupport.shardUpload(),
+        _remote.shardUpload(),
         (e) => switch (e) {
           MergedShard() => e.copyWith(
               shardIri: _toExternal(e.shardIri),
@@ -809,7 +793,5 @@ class PipelineIriTranslatingRemoteSyncStorage
       );
 
   @override
-  Future<void> finalizeSync() async {
-    await _storage.finalizeSync();
-  }
+  Future<void> finalizeSync() => _remote.finalizeSync();
 }
