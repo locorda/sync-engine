@@ -322,8 +322,8 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
 
           if (buffer.isEmpty) return;
 
-          final sw = perf != null ? (Stopwatch()..start()) : null;
           // CPU: assemble datasets and encode to raw content.
+          final swAssemble = perf != null ? (Stopwatch()..start()) : null;
           final requests = <RemoteUploadRequest<RawContent>>[];
           for (final shard in buffer) {
             final dataset = await _assembleDataset(shard);
@@ -333,10 +333,15 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
               ifMatch: shard.newEtag,
             ));
           }
+          if (swAssemble != null)
+            perf!.record('S12.ShardUpload.assemble', swAssemble.elapsedMicroseconds);
 
           // I/O: upload via backend stream.
+          final swIo = perf != null ? (Stopwatch()..start()) : null;
           final results =
               await backend.upload(Stream.fromIterable(requests)).toList();
+          if (swIo != null)
+            perf!.record('S12.ShardUpload.io', swIo.elapsedMicroseconds);
 
           for (var i = 0; i < buffer.length; i++) {
             final event = buffer[i];
@@ -351,9 +356,6 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
                   'Dataset upload conflict for ${docIri.debug} — skipping');
               yield UploadedShard(event.shardIri, event);
             }
-          }
-          if (sw != null) {
-            perf!.record('S12.ShardUpload', sw.elapsedMicroseconds);
           }
           buffer.clear();
         }
