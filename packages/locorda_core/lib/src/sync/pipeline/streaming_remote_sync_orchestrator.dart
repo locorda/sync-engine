@@ -124,47 +124,32 @@ class StreamingRemoteSyncOrchestrator {
     final perf = PipeperfCollector();
 
     final pipeline = inputController.stream
-            .asyncExpand(perf.timedAsyncExpand(
-                'S1.ShardResolution', shardResolution(_storage, _remoteId)))
-            .transform(perf.timedTransform(
-                'S2.ShardFetch', _remote.shardFetch()))
-            .map(perf.timedMap(
-                'S3.ShardParse', shardParse(_rdfCore)))
-            .asyncExpand(perf.timedAsyncExpand(
-                'S4.ChangeDetect', changeDetection(_storage, lastSyncTimestamp)))
-            .transform(perf.timedTransform(
-                'S5.LocalLoad', localContentLoad(_storage, _remoteId)))
-            .transform(perf.timedTransform(
-                'S6.ResourceFetch', _remote.resourceFetch()))
-            .map(perf.timedMap(
-                'S7a.Decode', decodeCandidates(_mergeContractLoader, _rdfCore)))
-            .transform(perf.timedTransform(
-                'S7b.Preload', preloadCandidates(_mergeContractLoader,
-                    _indexDiscovery, _shardDeterminer, _storage,
-                    _indexRdfGenerator)))
-            .expand(perf.timedExpand(
-                'S7c.CrdtMerge', mergeCandidates(_merger, _reconciler, _rdfCore)))
-            .transform(perf.timedTransform(
-                'S8.ResourceUpload', _remote.resourceUpload()))
-            .asyncExpand(perf.timedAsyncExpand(
-                'S9.DbCommit', dbCommit(_storage, _indexManager, _remoteId,
-                    _saveService)))
-            .asyncExpand(perf.timedAsyncExpand(
-                'S10.ShardEntryLoad', shardEntryLoad(_storage)))
-            .expand(perf.timedExpand(
-                'S11a.Prepare', prepareShards(_shardDocGen, config)))
-            .asyncMap(perf.timedAsyncMap(
-                'S11b.ContractLoad', loadShardContracts(_mergeContractLoader)))
-            .expand(perf.timedExpand(
-                'S11c.ShardMerge', mergeShards(_documentManager, _merger, _rdfCore)))
-            .transform(perf.timedTransform(
-                'S12.ShardUpload', _remote.shardUpload()))
-            .asyncExpand(perf.timedAsyncExpand(
-                'S13.ShardDbCommit', shardDbCommit(_storage, _remoteId)))
-            .asyncExpand(perf.timedAsyncExpand(
-                'S14.Feedback', feedback(inputController.sink, _storage,
-                    _indexResolver)))
-        ;
+        .asyncExpand(perf.timedAsyncExpand(
+            'S1.ShardResolution', shardResolution(_storage, _remoteId)))
+        .transform(_remote.shardFetch(perf: perf))
+        .map(perf.timedMap('S3.ShardParse', shardParse(_rdfCore)))
+        .asyncExpand(perf.timedAsyncExpand(
+            'S4.ChangeDetect', changeDetection(_storage, lastSyncTimestamp)))
+        .transform(localContentLoad(_storage, _remoteId, perf: perf))
+        .transform(_remote.resourceFetch(perf: perf))
+        .map(perf.timedMap(
+            'S7a.Decode', decodeCandidates(_mergeContractLoader, _rdfCore)))
+        .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
+            _shardDeterminer, _storage, _indexRdfGenerator, perf: perf))
+        .expand(perf.timedExpand(
+            'S7c.CrdtMerge', mergeCandidates(_merger, _reconciler, _rdfCore)))
+        .transform(_remote.resourceUpload(perf: perf))
+        .asyncExpand(perf.timedAsyncExpand('S9.DbCommit',
+            dbCommit(_storage, _indexManager, _remoteId, _saveService)))
+        .asyncExpand(perf.timedAsyncExpand(
+            'S10.ShardEntryLoad', shardEntryLoad(_storage)))
+        .expand(
+            perf.timedExpand('S11a.Prepare', prepareShards(_shardDocGen, config)))
+        .asyncMap(perf.timedAsyncMap('S11b.ContractLoad', loadShardContracts(_mergeContractLoader)))
+        .expand(perf.timedExpand('S11c.ShardMerge', mergeShards(_documentManager, _merger, _rdfCore)))
+        .transform(_remote.shardUpload(perf: perf))
+        .asyncExpand(perf.timedAsyncExpand('S13.ShardDbCommit', shardDbCommit(_storage, _remoteId)))
+        .asyncExpand(perf.timedAsyncExpand('S14.Feedback', feedback(inputController.sink, _storage, _indexResolver)));
 
     // Seed with meta-index phase
     _log.fine('Seeding pipeline with meta indices: '

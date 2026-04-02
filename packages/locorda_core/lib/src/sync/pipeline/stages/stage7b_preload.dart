@@ -19,6 +19,7 @@ import 'package:locorda_core/src/mapping/merge_contract.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/util/lru_cache.dart';
 import 'package:locorda_rdf_core/core.dart';
@@ -38,6 +39,8 @@ StreamTransformer<DecodedCandidateEvent, PreloadedCandidateEvent>
   Storage storage,
   IndexRdfGenerator indexRdfGenerator, {
   int batchSize = defaultPipelineBatchSize,
+  PipeperfCollector? perf,
+  String perfStage = 'S7b.Preload',
 }) {
   return StreamTransformer.fromBind((stream) async* {
     final buffer = <DecodedCandidate>[];
@@ -48,6 +51,7 @@ StreamTransformer<DecodedCandidateEvent, PreloadedCandidateEvent>
 
     Stream<PreloadedCandidate> preloadChunk(
         List<DecodedCandidate> chunk) async* {
+      final sw = perf != null ? (Stopwatch()..start()) : null;
       // 1. Load merge contracts, discover index configs, and collect
       //    all index/template document IRIs (all LRU cached across batches).
       final allDocIris = <IriTerm>{};
@@ -72,8 +76,8 @@ StreamTransformer<DecodedCandidateEvent, PreloadedCandidateEvent>
       final loadedDocs = allDocIris.isNotEmpty
           ? await storage.getDocumentsByIri(allDocIris.toList())
           : const <IriTerm, StoredDocument?>{};
-
-      // 3. Extract indexed properties and emit PreloadedCandidates.
+      // 3. Extract indexed properties and collect PreloadedCandidates.
+      final results = <PreloadedCandidate>[];
       for (final candidate in chunk) {
         final configs = indexConfigCache[candidate.typeIri]!;
         final indexedProperties = <IriTerm, Set<IriTerm>>{};
@@ -97,14 +101,18 @@ StreamTransformer<DecodedCandidateEvent, PreloadedCandidateEvent>
           }
         }
 
-        yield PreloadedCandidate(
+        results.add(PreloadedCandidate(
           decoded: candidate,
           mergeContract:
               contractCache[_governanceKey(candidate.governanceIris)]!,
           indexConfigs: configs,
           documents: loadedDocs,
           indexedProperties: indexedProperties,
-        );
+        ));
+      }
+      if (sw != null) perf!.record(perfStage, sw.elapsedMicroseconds);
+      for (final result in results) {
+        yield result;
       }
     }
 

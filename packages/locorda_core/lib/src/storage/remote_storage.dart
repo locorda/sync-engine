@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_rdf_core/core.dart';
 
 /// Result of a remote download operation with ETag support.
@@ -685,18 +685,42 @@ class PipelineIriTranslatingRemoteSyncStorage
   StreamTransformer<T, R> _wrap<T, R>(
     StreamTransformer<T, R> stageTransformer,
     T Function(T) translateInput,
-    R Function(R) translateOutput,
-  ) =>
-      StreamTransformer.fromBind((stream) => stageTransformer
-          .bind(stream.map(
-              translateInput)) // Translate input IRIs to external before stage
-          .map(translateOutput)); // Translate output IRIs/graphs
+    R Function(R) translateOutput, {
+    PipeperfCollector? perf,
+    String? perfStage,
+  }) {
+    T timedInput(T e) {
+      if (perf == null) return translateInput(e);
+      final sw = Stopwatch()..start();
+      try {
+        return translateInput(e);
+      } finally {
+        perf.record(perfStage!, sw.elapsedMicroseconds);
+      }
+    }
+
+    R timedOutput(R e) {
+      if (perf == null) return translateOutput(e);
+      final sw = Stopwatch()..start();
+      try {
+        return translateOutput(e);
+      } finally {
+        perf.record(perfStage!, sw.elapsedMicroseconds);
+      }
+    }
+
+    return StreamTransformer.fromBind((stream) => stageTransformer
+        .bind(stream.map(timedInput)) // Translate input IRIs to external
+        .map(timedOutput)); // Translate output IRIs/graphs
+  }
 
   // --- Stage 2: Shard Fetch ---
 
   @override
-  StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch() => _wrap(
-        _remote.shardFetch(),
+  StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch(
+          {PipeperfCollector? perf}) =>
+      _wrap(
+        _remote.shardFetch(perf: perf),
         (e) => switch (e) {
           ShardRef() => e.copyWith(shardIri: _toExternal(e.shardIri)),
           PhaseComplete() => e,
@@ -711,68 +735,77 @@ class PipelineIriTranslatingRemoteSyncStorage
           ShardGone() => e.copyWith(shardIri: _toInternal(e.shardIri)),
           PhaseComplete() => e,
         },
+        perf: perf,
+        perfStage: 'S2.IriXlat',
       );
 
   // --- Stage 6: Resource Fetch ---
 
   @override
-  StreamTransformer<LoadedCandidateEvent, FetchedCandidateEvent>
-      resourceFetch() => _wrap(
-            _remote.resourceFetch(),
-            (e) => switch (e) {
-              LoadedCandidate() => e.copyWith(
-                  candidate: e.candidate.copyWith(
-                      resourceIri: _toExternal(e.candidate.resourceIri))),
-              ShardComplete() => e,
-              PhaseComplete() => e,
-            },
-            (e) => switch (e) {
-              FetchedCandidate() => e.copyWith(
-                  loaded: e.loaded.copyWith(
-                      candidate: e.loaded.candidate.copyWith(
-                          resourceIri:
-                              _toInternal(e.loaded.candidate.resourceIri))),
-                  remoteSource: e.remoteSource != null
-                      ? _translateSource(e.remoteSource!,
-                          _iriTranslator.translateGraphToInternal)
-                      : null,
-                ),
-              ShardComplete() => e,
-              PhaseComplete() => e,
-            },
-          );
+  StreamTransformer<LoadedCandidateEvent, FetchedCandidateEvent> resourceFetch(
+          {PipeperfCollector? perf}) =>
+      _wrap(
+        _remote.resourceFetch(perf: perf),
+        (e) => switch (e) {
+          LoadedCandidate() => e.copyWith(
+              candidate: e.candidate
+                  .copyWith(resourceIri: _toExternal(e.candidate.resourceIri))),
+          ShardComplete() => e,
+          PhaseComplete() => e,
+        },
+        (e) => switch (e) {
+          FetchedCandidate() => e.copyWith(
+              loaded: e.loaded.copyWith(
+                  candidate: e.loaded.candidate.copyWith(
+                      resourceIri:
+                          _toInternal(e.loaded.candidate.resourceIri))),
+              remoteSource: e.remoteSource != null
+                  ? _translateSource(
+                      e.remoteSource!, _iriTranslator.translateGraphToInternal)
+                  : null,
+            ),
+          ShardComplete() => e,
+          PhaseComplete() => e,
+        },
+        perf: perf,
+        perfStage: 'S6.IriXlat',
+      );
 
   // --- Stage 8: Resource Upload ---
 
   @override
-  StreamTransformer<MergedResourceEvent, UploadedResourceEvent>
-      resourceUpload() => _wrap(
-            _remote.resourceUpload(),
-            (e) => switch (e) {
-              MergeResult() => e.copyWith(
-                  resourceIri: _toExternal(e.resourceIri),
-                  mergedGraph: _graphToExternal(e.mergedGraph),
-                ),
-              ShardComplete() => e,
-              PhaseComplete() => e,
-            },
-            (e) => switch (e) {
-              UploadResult() => e.copyWith(
-                    mergeResult: e.mergeResult.copyWith(
-                  resourceIri: _toInternal(e.mergeResult.resourceIri),
-                  mergedGraph: _graphToInternal(e.mergeResult.mergedGraph),
-                )),
-              ShardComplete() => e,
-              PhaseComplete() => e,
-            },
-          );
+  StreamTransformer<MergedResourceEvent, UploadedResourceEvent> resourceUpload(
+          {PipeperfCollector? perf}) =>
+      _wrap(
+        _remote.resourceUpload(perf: perf),
+        (e) => switch (e) {
+          MergeResult() => e.copyWith(
+              resourceIri: _toExternal(e.resourceIri),
+              mergedGraph: _graphToExternal(e.mergedGraph),
+            ),
+          ShardComplete() => e,
+          PhaseComplete() => e,
+        },
+        (e) => switch (e) {
+          UploadResult() => e.copyWith(
+                mergeResult: e.mergeResult.copyWith(
+              resourceIri: _toInternal(e.mergeResult.resourceIri),
+              mergedGraph: _graphToInternal(e.mergeResult.mergedGraph),
+            )),
+          ShardComplete() => e,
+          PhaseComplete() => e,
+        },
+        perf: perf,
+        perfStage: 'S8.IriXlat',
+      );
 
   // --- Stage 12: Shard Upload ---
 
   @override
-  StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload() =>
+  StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload(
+          {PipeperfCollector? perf}) =>
       _wrap(
-        _remote.shardUpload(),
+        _remote.shardUpload(perf: perf),
         (e) => switch (e) {
           MergedShard() => e.copyWith(
               shardIri: _toExternal(e.shardIri),
@@ -790,6 +823,8 @@ class PipelineIriTranslatingRemoteSyncStorage
             ),
           PhaseComplete() => e,
         },
+        perf: perf,
+        perfStage: 'S12.IriXlat',
       );
 
   @override

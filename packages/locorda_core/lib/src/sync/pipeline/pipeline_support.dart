@@ -9,6 +9,7 @@ import 'dart:async';
 
 import 'package:locorda_core/src/mapping/iri_translator.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_rdf_core/core.dart';
 
@@ -94,7 +95,8 @@ abstract interface class PipelineRemoteSyncStorage {
   /// Output: [FetchedShardEvent] ([FetchedShard] variants + [PhaseComplete] boundary).
   ///
   /// Must buffer boundary events until all in-flight fetches complete, then forward.
-  StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch();
+  StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch(
+      {PipeperfCollector? perf});
 
   /// Stage 6: Resource Fetch — download resource graphs.
   ///
@@ -103,8 +105,8 @@ abstract interface class PipelineRemoteSyncStorage {
   ///
   /// `remoteOnly` / `conflictCandidate` → fetch from remote (using [LoadedCandidate.storedRemoteEtag] for conditional GET).
   /// `localOnly` / `remoteRemoved` → pass through as [FetchedCandidate] without fetch.
-  StreamTransformer<LoadedCandidateEvent, FetchedCandidateEvent>
-      resourceFetch();
+  StreamTransformer<LoadedCandidateEvent, FetchedCandidateEvent> resourceFetch(
+      {PipeperfCollector? perf});
 
   /// Stage 8: Resource Upload — upload merged resources.
   ///
@@ -113,14 +115,15 @@ abstract interface class PipelineRemoteSyncStorage {
   ///
   /// `needsUpload == true` → encode and upload to remote.
   /// Otherwise → pass through as [UploadResult].
-  StreamTransformer<MergedResourceEvent, UploadedResourceEvent>
-      resourceUpload();
+  StreamTransformer<MergedResourceEvent, UploadedResourceEvent> resourceUpload(
+      {PipeperfCollector? perf});
 
   /// Stage 12: Shard Upload — upload merged shard documents.
   ///
   /// Input: [MergedShardEvent] ([MergedShard] data + [PhaseComplete] boundary).
   /// Output: [UploadedShardEvent] ([UploadedShard] data + [PhaseComplete] boundary).
-  StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload();
+  StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload(
+      {PipeperfCollector? perf});
 
   Future<void> finalizeSync();
 }

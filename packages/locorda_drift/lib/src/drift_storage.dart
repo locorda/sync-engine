@@ -1153,9 +1153,8 @@ class DriftStorage implements core.Storage {
             ))
         .toList(growable: false);
 
-    final allCurrentRemoteIriIds = allCurrentRemoteIris
-        .map((iri) => iriIds[iri]!)
-        .toList(growable: false);
+    final allCurrentRemoteIriIds =
+        allCurrentRemoteIris.map((iri) => iriIds[iri]!).toList(growable: false);
 
     await indexDao.syncRemoteOnlyShardEntries(
       shardIriId: iriIds[shardIri]!,

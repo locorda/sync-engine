@@ -13,6 +13,7 @@ import 'dart:async';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/remote_id.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 
 /// SQLite SQLITE_MAX_VARIABLE_NUMBER default is 999; [defaultPipelineBatchSize]
@@ -28,6 +29,8 @@ StreamTransformer<SyncCandidateEvent, LoadedCandidateEvent> localContentLoad(
   Storage storage,
   RemoteId remoteId, {
   int batchSize = defaultPipelineBatchSize,
+  PipeperfCollector? perf,
+  String perfStage = 'S5.LocalLoad',
 }) {
   return StreamTransformer.fromBind((stream) async* {
     final buffer = <SyncCandidate>[];
@@ -37,18 +40,18 @@ StreamTransformer<SyncCandidateEvent, LoadedCandidateEvent> localContentLoad(
         case SyncCandidate():
           buffer.add(event);
           if (buffer.length >= batchSize) {
-            yield* _loadChunk(buffer, storage, remoteId);
+            yield* _loadChunk(buffer, storage, remoteId, perf, perfStage);
             buffer.clear();
           }
         case ShardComplete():
           if (buffer.isNotEmpty) {
-            yield* _loadChunk(buffer, storage, remoteId);
+            yield* _loadChunk(buffer, storage, remoteId, perf, perfStage);
             buffer.clear();
           }
           yield event;
         case PhaseComplete():
           if (buffer.isNotEmpty) {
-            yield* _loadChunk(buffer, storage, remoteId);
+            yield* _loadChunk(buffer, storage, remoteId, perf, perfStage);
             buffer.clear();
           }
           yield event;
@@ -62,12 +65,16 @@ Stream<LoadedCandidateEvent> _loadChunk(
   List<SyncCandidate> chunk,
   Storage storage,
   RemoteId remoteId,
+  PipeperfCollector? perf,
+  String perfStage,
 ) async* {
+  final sw = perf != null ? (Stopwatch()..start()) : null;
   final documentIris =
       chunk.map((e) => e.resourceIri.getDocumentIri()).toList();
 
   final docs = await storage.getDocumentsByIri(documentIris);
   final etags = await storage.getRemoteETags(remoteId, documentIris);
+  if (sw != null) perf!.record(perfStage, sw.elapsedMicroseconds);
 
   for (final candidate in chunk) {
     final documentIri = candidate.resourceIri.getDocumentIri();

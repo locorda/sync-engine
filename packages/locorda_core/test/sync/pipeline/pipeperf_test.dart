@@ -92,8 +92,7 @@ void main() {
 
       test('works with batching transforms', () async {
         // Simulates a batching transform that buffers 2 inputs, then flushes.
-        final inner =
-            StreamTransformer<int, String>.fromBind((stream) async* {
+        final inner = StreamTransformer<int, String>.fromBind((stream) async* {
           final buffer = <int>[];
           await for (final event in stream) {
             buffer.add(event);

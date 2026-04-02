@@ -132,15 +132,17 @@ class PipeperfCollector {
 
     final totalEvents =
         _measurements.values.fold<int>(0, (sum, m) => sum + m.length);
-    final totalUs =
-        _measurements.values.fold<int>(0, (s, m) => s + m.fold(0, (a, b) => a + b));
+    final totalUs = _measurements.values
+        .fold<int>(0, (s, m) => s + m.fold(0, (a, b) => a + b));
 
     _log.info('');
     _log.info('═══ Pipeline Stats ($totalEvents events, '
         '${_formatDuration(totalUs)} total) ═══');
     _log.info(_header());
 
-    for (final entry in _measurements.entries) {
+    final sortedEntries = _measurements.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    for (final entry in sortedEntries) {
       _log.info(_formatRow(entry.key, entry.value));
     }
 
@@ -186,9 +188,7 @@ class PipeperfCollector {
     if (microseconds < 1000) return '${microseconds}µs';
     if (microseconds < 1000000) {
       final ms = microseconds / 1000;
-      return ms < 10
-          ? '${ms.toStringAsFixed(1)}ms'
-          : '${ms.round()}ms';
+      return ms < 10 ? '${ms.toStringAsFixed(1)}ms' : '${ms.round()}ms';
     }
     final s = microseconds / 1000000;
     return '${s.toStringAsFixed(2)}s';

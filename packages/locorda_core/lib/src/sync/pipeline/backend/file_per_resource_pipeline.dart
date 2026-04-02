@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:locorda_core/src/storage/remote_storage.dart';
 import 'package:locorda_core/src/sync/pipeline/backend/remote_sync_backend.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
@@ -74,10 +75,13 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
   // ---------------------------------------------------------------------------
 
   @override
-  StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch() =>
+  StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch(
+          {PipeperfCollector? perf}) =>
       StreamTransformer.fromBind((stream) async* {
         yield* _pipeDownload<ShardRef, ShardRefEvent, FetchedShardEvent>(
           stream,
+          perf: perf,
+          perfStage: 'S2.ShardFetch',
           extract: (e) => switch (e) {
             ShardRef() => e,
             PhaseComplete() => null,
@@ -118,39 +122,41 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
   // ---------------------------------------------------------------------------
 
   @override
-  StreamTransformer<LoadedCandidateEvent, FetchedCandidateEvent>
-      resourceFetch() => StreamTransformer.fromBind((stream) async* {
-            yield* _pipeDownload<LoadedCandidate, LoadedCandidateEvent,
-                FetchedCandidateEvent>(
-              stream,
-              extract: (e) => switch (e) {
-                LoadedCandidate() => _needsResourceFetch(e) ? e : null,
-                ShardComplete() => null,
-                PhaseComplete() => null,
-              },
-              toRequest: (e) => RemoteDownloadRequest(
-                documentIri: e.candidate.resourceIri.getDocumentIri(),
-                ifNoneMatch: e.storedRemoteEtag,
-              ),
-              toOutput: (event, result) {
-                if (result.graph != null) {
-                  return FetchedCandidate(
-                    event,
-                    remoteSource: _toGraphSource(result.graph!),
-                    remoteEtag: result.etag,
-                  );
-                }
-                return FetchedCandidate(event,
-                    remoteEtag: event.storedRemoteEtag);
-              },
-              passBoundary: (e) => switch (e) {
-                LoadedCandidate() =>
-                  FetchedCandidate(e, remoteEtag: e.storedRemoteEtag),
-                ShardComplete() => e,
-                PhaseComplete() => e,
-              },
-            );
-          });
+  StreamTransformer<LoadedCandidateEvent, FetchedCandidateEvent> resourceFetch(
+          {PipeperfCollector? perf}) =>
+      StreamTransformer.fromBind((stream) async* {
+        yield* _pipeDownload<LoadedCandidate, LoadedCandidateEvent,
+            FetchedCandidateEvent>(
+          stream,
+          perf: perf,
+          perfStage: 'S6.ResourceFetch',
+          extract: (e) => switch (e) {
+            LoadedCandidate() => _needsResourceFetch(e) ? e : null,
+            ShardComplete() => null,
+            PhaseComplete() => null,
+          },
+          toRequest: (e) => RemoteDownloadRequest(
+            documentIri: e.candidate.resourceIri.getDocumentIri(),
+            ifNoneMatch: e.storedRemoteEtag,
+          ),
+          toOutput: (event, result) {
+            if (result.graph != null) {
+              return FetchedCandidate(
+                event,
+                remoteSource: _toGraphSource(result.graph!),
+                remoteEtag: result.etag,
+              );
+            }
+            return FetchedCandidate(event, remoteEtag: event.storedRemoteEtag);
+          },
+          passBoundary: (e) => switch (e) {
+            LoadedCandidate() =>
+              FetchedCandidate(e, remoteEtag: e.storedRemoteEtag),
+            ShardComplete() => e,
+            PhaseComplete() => e,
+          },
+        );
+      });
 
   bool _needsResourceFetch(LoadedCandidate e) =>
       e.candidate.direction != SyncDirection.remoteShardUnchanged &&
@@ -162,47 +168,52 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
   // ---------------------------------------------------------------------------
 
   @override
-  StreamTransformer<MergedResourceEvent, UploadedResourceEvent>
-      resourceUpload() => StreamTransformer.fromBind((stream) async* {
-            yield* _pipeUpload<MergeResult, MergedResourceEvent,
-                UploadedResourceEvent>(
-              stream,
-              extract: (e) => switch (e) {
-                MergeResult() => e.needsUpload ? e : null,
-                ShardComplete() => null,
-                PhaseComplete() => null,
-              },
-              toRequest: (e) => RemoteUploadRequest<RawContent>(
-                documentIri: e.resourceIri.getDocumentIri(),
-                document: _encodeGraph(e.mergedGraph),
-                ifMatch: e.resourceEtag,
-              ),
-              toOutput: (event, result) {
-                if (result is SuccessUploadResult) {
-                  return UploadResult(event, newRemoteEtag: result.etag);
-                }
-                final docIri = event.resourceIri.getDocumentIri();
-                _logger
-                    .warning('Upload conflict for ${docIri.debug} — skipping');
-                return UploadResult(event);
-              },
-              passBoundary: (e) => switch (e) {
-                MergeResult() => UploadResult(e),
-                ShardComplete() => e,
-                PhaseComplete() => e,
-              },
-            );
-          });
+  StreamTransformer<MergedResourceEvent, UploadedResourceEvent> resourceUpload(
+          {PipeperfCollector? perf}) =>
+      StreamTransformer.fromBind((stream) async* {
+        yield* _pipeUpload<MergeResult, MergedResourceEvent,
+            UploadedResourceEvent>(
+          stream,
+          perf: perf,
+          perfStage: 'S8.ResourceUpload',
+          extract: (e) => switch (e) {
+            MergeResult() => e.needsUpload ? e : null,
+            ShardComplete() => null,
+            PhaseComplete() => null,
+          },
+          toRequest: (e) => RemoteUploadRequest<RawContent>(
+            documentIri: e.resourceIri.getDocumentIri(),
+            document: _encodeGraph(e.mergedGraph),
+            ifMatch: e.resourceEtag,
+          ),
+          toOutput: (event, result) {
+            if (result is SuccessUploadResult) {
+              return UploadResult(event, newRemoteEtag: result.etag);
+            }
+            final docIri = event.resourceIri.getDocumentIri();
+            _logger.warning('Upload conflict for ${docIri.debug} — skipping');
+            return UploadResult(event);
+          },
+          passBoundary: (e) => switch (e) {
+            MergeResult() => UploadResult(e),
+            ShardComplete() => e,
+            PhaseComplete() => e,
+          },
+        );
+      });
 
   // ---------------------------------------------------------------------------
   // Stage 12: Shard Upload
   // ---------------------------------------------------------------------------
 
   @override
-  StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload() =>
+  StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload(
+          {PipeperfCollector? perf}) =>
       StreamTransformer.fromBind((stream) async* {
         yield* _pipeUpload<MergedShard, MergedShardEvent, UploadedShardEvent>(
           stream,
+          perf: perf,
+          perfStage: 'S12.ShardUpload',
           extract: (e) => switch (e) {
             MergedShard() => e.needsUpload ? e : null,
             PhaseComplete() => null,
@@ -245,6 +256,8 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
     required RemoteDownloadRequest Function(TData) toRequest,
     required TOut Function(TData, RemoteDownloadResult<RawContent>) toOutput,
     required TOut Function(TIn) passBoundary,
+    PipeperfCollector? perf,
+    String? perfStage,
   }) async* {
     // Buffer data events between boundaries, then send them as a batch
     // stream through backend.download and zip results with originals.
@@ -257,6 +270,7 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
 
     Stream<TOut> flush() async* {
       if (buffer.isNotEmpty) {
+        final sw = perf != null ? (Stopwatch()..start()) : null;
         final requests = buffer.map(toRequest);
         final resultStream = backend.download(Stream.fromIterable(requests));
         final results = await resultStream.toList();
@@ -264,6 +278,7 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
         for (var i = 0; i < buffer.length; i++) {
           yield toOutput(buffer[i], results[i]);
         }
+        if (sw != null) perf!.record(perfStage!, sw.elapsedMicroseconds);
         buffer.clear();
       }
 
@@ -300,12 +315,15 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
     required RemoteUploadRequest<RawContent> Function(TData) toRequest,
     required TOut Function(TData, RemoteUploadResult) toOutput,
     required TOut Function(TIn) passBoundary,
+    PipeperfCollector? perf,
+    String? perfStage,
   }) async* {
     final buffer = <TData>[];
     final passThrough = <TIn>[];
 
     Stream<TOut> flush() async* {
       if (buffer.isNotEmpty) {
+        final sw = perf != null ? (Stopwatch()..start()) : null;
         final requests = buffer.map(toRequest);
         final resultStream = backend.upload(Stream.fromIterable(requests));
         final results = await resultStream.toList();
@@ -313,6 +331,7 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
         for (var i = 0; i < buffer.length; i++) {
           yield toOutput(buffer[i], results[i]);
         }
+        if (sw != null) perf!.record(perfStage!, sw.elapsedMicroseconds);
         buffer.clear();
       }
 
