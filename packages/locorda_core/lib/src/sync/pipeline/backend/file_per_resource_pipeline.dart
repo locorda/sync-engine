@@ -81,7 +81,7 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
         yield* _pipeDownload<ShardRef, ShardRefEvent, FetchedShardEvent>(
           stream,
           perf: perf,
-          perfStage: 'S2.ShardFetch',
+          perfStage: 'S02.ShardFetch',
           extract: (e) => switch (e) {
             ShardRef() => e,
             PhaseComplete() => null,
@@ -129,7 +129,7 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
             FetchedCandidateEvent>(
           stream,
           perf: perf,
-          perfStage: 'S6.ResourceFetch',
+          perfStage: 'S06.ResourceFetch',
           extract: (e) => switch (e) {
             LoadedCandidate() => _needsResourceFetch(e) ? e : null,
             ShardComplete() => null,
@@ -175,7 +175,7 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
             UploadedResourceEvent>(
           stream,
           perf: perf,
-          perfStage: 'S8.ResourceUpload',
+          perfStage: 'S08.ResourceUpload',
           extract: (e) => switch (e) {
             MergeResult() => e.needsUpload ? e : null,
             ShardComplete() => null,

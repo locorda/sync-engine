@@ -30,7 +30,7 @@ StreamTransformer<SyncCandidateEvent, LoadedCandidateEvent> localContentLoad(
   RemoteId remoteId, {
   int batchSize = defaultPipelineBatchSize,
   PipeperfCollector? perf,
-  String perfStage = 'S5.LocalLoad',
+  String perfStage = 'S05.LocalLoad',
 }) {
   return StreamTransformer.fromBind((stream) async* {
     final buffer = <SyncCandidate>[];

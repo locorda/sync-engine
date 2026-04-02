@@ -138,7 +138,8 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
           for (var i = 0; i < buffer.length; i++) {
             yield* _processShardResult(buffer[i], results[i]);
           }
-          if (sw != null) perf!.record('S2.ShardFetch', sw.elapsedMicroseconds);
+          if (sw != null)
+            perf!.record('S02.ShardFetch', sw.elapsedMicroseconds);
           buffer.clear();
         }
 

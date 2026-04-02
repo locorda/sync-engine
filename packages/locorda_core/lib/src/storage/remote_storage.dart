@@ -736,7 +736,7 @@ class PipelineIriTranslatingRemoteSyncStorage
           PhaseComplete() => e,
         },
         perf: perf,
-        perfStage: 'S2.IriXlat',
+        perfStage: 'S02.IriXlat',
       );
 
   // --- Stage 6: Resource Fetch ---
@@ -768,7 +768,7 @@ class PipelineIriTranslatingRemoteSyncStorage
           PhaseComplete() => e,
         },
         perf: perf,
-        perfStage: 'S6.IriXlat',
+        perfStage: 'S06.IriXlat',
       );
 
   // --- Stage 8: Resource Upload ---
@@ -796,7 +796,7 @@ class PipelineIriTranslatingRemoteSyncStorage
           PhaseComplete() => e,
         },
         perf: perf,
-        perfStage: 'S8.IriXlat',
+        perfStage: 'S08.IriXlat',
       );
 
   // --- Stage 12: Shard Upload ---

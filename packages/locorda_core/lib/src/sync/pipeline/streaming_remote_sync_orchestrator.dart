@@ -125,26 +125,26 @@ class StreamingRemoteSyncOrchestrator {
 
     final pipeline = inputController.stream
         .asyncExpand(perf.timedAsyncExpand(
-            'S1.ShardResolution', shardResolution(_storage, _remoteId)))
+            'S01.ShardResolution', shardResolution(_storage, _remoteId)))
         .transform(_remote.shardFetch(perf: perf))
-        .map(perf.timedMap('S3.ShardParse', shardParse(_rdfCore)))
+        .map(perf.timedMap('S03.ShardParse', shardParse(_rdfCore)))
         .asyncExpand(perf.timedAsyncExpand(
-            'S4.ChangeDetect', changeDetection(_storage, lastSyncTimestamp)))
+            'S04.ChangeDetect', changeDetection(_storage, lastSyncTimestamp)))
         .transform(localContentLoad(_storage, _remoteId, perf: perf))
         .transform(_remote.resourceFetch(perf: perf))
         .map(perf.timedMap(
-            'S7a.Decode', decodeCandidates(_mergeContractLoader, _rdfCore)))
+            'S07a.Decode', decodeCandidates(_mergeContractLoader, _rdfCore)))
         .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
             _shardDeterminer, _storage, _indexRdfGenerator, perf: perf))
         .expand(perf.timedExpand(
-            'S7c.CrdtMerge', mergeCandidates(_merger, _reconciler, _rdfCore)))
+            'S07c.CrdtMerge', mergeCandidates(_merger, _reconciler, _rdfCore)))
         .transform(_remote.resourceUpload(perf: perf))
-        .asyncExpand(perf.timedAsyncExpand('S9.DbCommit',
+        .asyncExpand(perf.timedAsyncExpand('S09.DbCommit',
             dbCommit(_storage, _indexManager, _remoteId, _saveService)))
         .asyncExpand(perf.timedAsyncExpand(
             'S10.ShardEntryLoad', shardEntryLoad(_storage)))
-        .expand(
-            perf.timedExpand('S11a.Prepare', prepareShards(_shardDocGen, config)))
+        .expand(perf.timedExpand(
+            'S11a.Prepare', prepareShards(_shardDocGen, config)))
         .asyncMap(perf.timedAsyncMap('S11b.ContractLoad', loadShardContracts(_mergeContractLoader)))
         .expand(perf.timedExpand('S11c.ShardMerge', mergeShards(_documentManager, _merger, _rdfCore)))
         .transform(_remote.shardUpload(perf: perf))

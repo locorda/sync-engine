@@ -40,7 +40,7 @@ StreamTransformer<DecodedCandidateEvent, PreloadedCandidateEvent>
   IndexRdfGenerator indexRdfGenerator, {
   int batchSize = defaultPipelineBatchSize,
   PipeperfCollector? perf,
-  String perfStage = 'S7b.Preload',
+  String perfStage = 'S07b.Preload',
 }) {
   return StreamTransformer.fromBind((stream) async* {
     final buffer = <DecodedCandidate>[];

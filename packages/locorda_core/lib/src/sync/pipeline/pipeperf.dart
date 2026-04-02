@@ -14,8 +14,8 @@ final _log = Logger('perf.pipeline');
 /// Collects per-stage timing measurements and reports aggregated statistics.
 ///
 /// Usage:
-/// - Orchestrator stages: `perf.timedMap('S3', callback)`
-/// - Transform stages: call `perf.record('S2', microseconds)` internally
+/// - Orchestrator stages: `perf.timedMap('S03', callback)`
+/// - Transform stages: call `perf.record('S02', microseconds)` internally
 class PipeperfCollector {
   final Map<String, List<int>> _measurements = {};
 
