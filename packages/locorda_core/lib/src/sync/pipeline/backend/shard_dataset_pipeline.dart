@@ -139,11 +139,7 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
             perf!.record('S02.ShardFetch.io', swIo.elapsedMicroseconds);
 
           for (var i = 0; i < buffer.length; i++) {
-            final swDecode = perf != null ? (Stopwatch()..start()) : null;
-            yield* _processShardResult(buffer[i], results[i]);
-            if (swDecode != null)
-              perf!.record(
-                  'S02.ShardFetch.decode', swDecode.elapsedMicroseconds);
+            yield* _processShardResult(buffer[i], results[i], perf: perf);
           }
           buffer.clear();
         }
@@ -162,7 +158,8 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
       });
 
   Stream<FetchedShardEvent> _processShardResult(
-      ShardRef event, RemoteDownloadResult<RawContent> result) async* {
+      ShardRef event, RemoteDownloadResult<RawContent> result,
+      {PipeperfCollector? perf}) async* {
     if (result.notModified) {
       yield ShardNotModified(event.shardIri, event.shardStorageId,
           event.fetchPolicy, event.typeIri,
@@ -175,7 +172,10 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
           event.fetchPolicy, event.typeIri,
           existsOnRemote: false);
     } else {
-      // CPU: decode raw content to dataset.
+      // CPU: decode raw → dataset, then populate resource cache.
+      // Both steps happen before yield, so stopwatch is unaffected by
+      // downstream backpressure.
+      final sw = perf != null ? (Stopwatch()..start()) : null;
       final dataset = _decodeDataset(result.graph!);
       final shardDocIri = event.shardIri.getDocumentIri();
 
@@ -190,6 +190,8 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
         }
       }
       _downloadCache[shardDocIri.value] = resourceCache;
+      if (sw != null)
+        perf!.record('S02.ShardFetch.decode', sw.elapsedMicroseconds);
 
       // Emit the default graph (shard metadata) as ShardContent.
       yield ShardContent(
