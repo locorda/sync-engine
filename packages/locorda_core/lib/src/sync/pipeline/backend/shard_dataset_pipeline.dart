@@ -126,7 +126,7 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
         Stream<FetchedShardEvent> flush() async* {
           if (buffer.isEmpty) return;
 
-          final sw = perf != null ? (Stopwatch()..start()) : null;
+          final swIo = perf != null ? (Stopwatch()..start()) : null;
           final requests = buffer.map((e) => RemoteDownloadRequest(
                 documentIri: e.shardIri.getDocumentIri(),
                 ifNoneMatch: e.storedEtag,
@@ -135,11 +135,16 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
           final results =
               await backend.download(Stream.fromIterable(requests)).toList();
 
+          if (swIo != null)
+            perf!.record('S02.ShardFetch.io', swIo.elapsedMicroseconds);
+
           for (var i = 0; i < buffer.length; i++) {
+            final swDecode = perf != null ? (Stopwatch()..start()) : null;
             yield* _processShardResult(buffer[i], results[i]);
+            if (swDecode != null)
+              perf!.record(
+                  'S02.ShardFetch.decode', swDecode.elapsedMicroseconds);
           }
-          if (sw != null)
-            perf!.record('S02.ShardFetch', sw.elapsedMicroseconds);
           buffer.clear();
         }
 
