@@ -569,20 +569,6 @@ class DriftStorage implements core.Storage {
       }
     }
 
-    final hitCount = result.length - misses.length;
-    if (hitCount > 0 || misses.isNotEmpty) {
-      _perflog.measure(
-        'storage.iri.cacheStats',
-        () async => null,
-        args: [
-          'requestCount=${iris.length}',
-          'cacheHitCount=$hitCount',
-          'cacheMissCount=${misses.length}',
-        ],
-        minDurationMs: 0,
-      );
-    }
-
     return result;
   }
 
@@ -591,16 +577,6 @@ class DriftStorage implements core.Storage {
     final shardIriValue = shardIri.value;
     final cachedShardId = _shardIriIdCache[shardIriValue];
     if (cachedShardId != null) {
-      _perflog.measure(
-        'storage.iri.shard.cacheStats',
-        () async => null,
-        args: const [
-          'requestCount=1',
-          'cacheHitCount=1',
-          'cacheMissCount=0',
-        ],
-        minDurationMs: 0,
-      );
       return (shardIriId: cachedShardId, fromShardCache: true);
     }
 
@@ -619,17 +595,6 @@ class DriftStorage implements core.Storage {
     _shardIriIdCache[shardIriValue] = shardIriId;
     _iriIdCache[shardIriValue] = shardIriId;
     _idIriCache[shardIriId] = shardIri;
-
-    _perflog.measure(
-      'storage.iri.shard.cacheStats',
-      () async => null,
-      args: const [
-        'requestCount=1',
-        'cacheHitCount=0',
-        'cacheMissCount=1',
-      ],
-      minDurationMs: 0,
-    );
 
     return (shardIriId: shardIriId, fromShardCache: false);
   }

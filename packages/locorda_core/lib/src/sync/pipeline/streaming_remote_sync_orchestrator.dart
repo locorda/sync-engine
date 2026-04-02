@@ -21,6 +21,7 @@ import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/sync/pipeline/clock_hash_reader.dart';
 import 'package:locorda_core/src/sync/pipeline/content_index_resolver.dart';
 import 'package:locorda_core/src/sync/pipeline/document_shard_reconciler.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage10_shard_entry_load.dart';
@@ -120,31 +121,49 @@ class StreamingRemoteSyncOrchestrator {
 
     // Compose and run the pipeline
     final inputController = StreamController<SyncInput>();
+    final perf = PipeperfCollector();
 
     final pipeline = inputController.stream
-            .asyncExpand(shardResolution(_storage, _remoteId)) // Stage 1
-            .transform(_remote.shardFetch()) // Stage 2
-            .map(shardParse(_rdfCore)) // Stage 3
-            .asyncExpand(
-                changeDetection(_storage, lastSyncTimestamp)) // Stage 4
-            .transform(localContentLoad(_storage, _remoteId)) // Stage 5
-            .transform(_remote.resourceFetch()) // Stage 6
-            .map(decodeCandidates(_mergeContractLoader, _rdfCore)) // Stage 7a
-            .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
-                _shardDeterminer, _storage, _indexRdfGenerator)) // Stage 7b
-            .expand(mergeCandidates(_merger, _reconciler, _rdfCore)) // Stage 7c
-            .transform(_remote.resourceUpload()) // Stage 8
-            .asyncExpand(dbCommit(
-                _storage, _indexManager, _remoteId, _saveService)) // Stage 9
-            .asyncExpand(shardEntryLoad(_storage)) // Stage 10
-            .expand(prepareShards(_shardDocGen, config)) // Stage 11a
-            .asyncMap(loadShardContracts(_mergeContractLoader)) // Stage 11b
-            .expand(
-                mergeShards(_documentManager, _merger, _rdfCore)) // Stage 11c
-            .transform(_remote.shardUpload()) // Stage 12
-            .asyncExpand(shardDbCommit(_storage, _remoteId)) // Stage 13
-            .asyncExpand(feedback(
-                inputController.sink, _storage, _indexResolver)) // Stage 14
+            .asyncExpand(perf.timedAsyncExpand(
+                'S1.ShardResolution', shardResolution(_storage, _remoteId)))
+            .transform(perf.timedTransform(
+                'S2.ShardFetch', _remote.shardFetch()))
+            .map(perf.timedMap(
+                'S3.ShardParse', shardParse(_rdfCore)))
+            .asyncExpand(perf.timedAsyncExpand(
+                'S4.ChangeDetect', changeDetection(_storage, lastSyncTimestamp)))
+            .transform(perf.timedTransform(
+                'S5.LocalLoad', localContentLoad(_storage, _remoteId)))
+            .transform(perf.timedTransform(
+                'S6.ResourceFetch', _remote.resourceFetch()))
+            .map(perf.timedMap(
+                'S7a.Decode', decodeCandidates(_mergeContractLoader, _rdfCore)))
+            .transform(perf.timedTransform(
+                'S7b.Preload', preloadCandidates(_mergeContractLoader,
+                    _indexDiscovery, _shardDeterminer, _storage,
+                    _indexRdfGenerator)))
+            .expand(perf.timedExpand(
+                'S7c.CrdtMerge', mergeCandidates(_merger, _reconciler, _rdfCore)))
+            .transform(perf.timedTransform(
+                'S8.ResourceUpload', _remote.resourceUpload()))
+            .asyncExpand(perf.timedAsyncExpand(
+                'S9.DbCommit', dbCommit(_storage, _indexManager, _remoteId,
+                    _saveService)))
+            .asyncExpand(perf.timedAsyncExpand(
+                'S10.ShardEntryLoad', shardEntryLoad(_storage)))
+            .expand(perf.timedExpand(
+                'S11a.Prepare', prepareShards(_shardDocGen, config)))
+            .asyncMap(perf.timedAsyncMap(
+                'S11b.ContractLoad', loadShardContracts(_mergeContractLoader)))
+            .expand(perf.timedExpand(
+                'S11c.ShardMerge', mergeShards(_documentManager, _merger, _rdfCore)))
+            .transform(perf.timedTransform(
+                'S12.ShardUpload', _remote.shardUpload()))
+            .asyncExpand(perf.timedAsyncExpand(
+                'S13.ShardDbCommit', shardDbCommit(_storage, _remoteId)))
+            .asyncExpand(perf.timedAsyncExpand(
+                'S14.Feedback', feedback(inputController.sink, _storage,
+                    _indexResolver)))
         ;
 
     // Seed with meta-index phase
@@ -159,6 +178,7 @@ class StreamingRemoteSyncOrchestrator {
     ));
 
     await pipeline.drain();
+    perf.report();
     _log.info('Streaming pipeline sync completed');
   }
 }
