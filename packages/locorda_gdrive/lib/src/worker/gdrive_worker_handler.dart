@@ -38,25 +38,17 @@ import 'gdrive_auth_connector_worker.dart';
 /// );
 /// ```
 class GDriveWorkerHandler implements RemoteWorkerHandler {
-  final IriTermFactory? _iriTermFactory;
-  final RdfCore _rdfCore;
   final http.Client _httpClient;
   final String _contentType;
   final String _datasetContentType;
   final String id;
 
   GDriveWorkerHandler({
-    IriTermFactory? iriTermFactory,
-    RdfCore? rdfCore,
     http.Client? httpClient,
     String? contentType,
     String? datasetContentType,
     this.id = gDriveRemoteHandlerId,
-  })  : _iriTermFactory = iriTermFactory ?? IriTerm.validated,
-        _rdfCore = rdfCore ??
-            RdfCore.withStandardCodecs(
-                iriTermFactory: iriTermFactory ?? IriTerm.validated),
-        _httpClient = httpClient ?? http.Client(),
+  })  : _httpClient = httpClient ?? http.Client(),
         _contentType = contentType ?? turtle.primaryMimeType,
         _datasetContentType = datasetContentType ?? trig.primaryMimeType;
 
@@ -69,8 +61,8 @@ class GDriveWorkerHandler implements RemoteWorkerHandler {
     return GDriveBackend.create(
       auth: GDriveAuthConnector.receiver(context, id),
       config: config,
-      iriTermFactory: _iriTermFactory,
-      rdfCore: _rdfCore,
+      iriTermFactory: context.iriFactory,
+      rdfCore: context.rdfCore,
       httpClient: _httpClient,
       contentType: _contentType,
       datasetContentType: _datasetContentType,

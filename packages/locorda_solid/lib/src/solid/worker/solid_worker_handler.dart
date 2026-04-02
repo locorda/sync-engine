@@ -25,25 +25,17 @@ import 'solid_config_connector_worker.dart';
 /// The main thread handles authentication and sends credentials
 /// to the worker via [SolidAuthConnector].
 class SolidWorkerHandler implements RemoteWorkerHandler {
-  final RdfCore _rdfCore;
-  final IriTermFactory _iriTermFactory;
   final http.Client _httpClient;
   final String _contentType;
   final String _datasetContentType;
   final String id;
 
   SolidWorkerHandler({
-    RdfCore? rdfCore,
-    IriTermFactory? iriTermFactory,
     http.Client? httpClient,
     String? contentType,
     String? datasetContentType,
     this.id = solidRemoteHandlerId,
-  })  : _rdfCore = rdfCore ??
-            RdfCore.withStandardCodecs(
-                iriTermFactory: iriTermFactory ?? IriTerm.validated),
-        _iriTermFactory = iriTermFactory ?? IriTerm.validated,
-        _httpClient = httpClient ?? http.Client(),
+  })  : _httpClient = httpClient ?? http.Client(),
         _contentType = contentType ?? turtle.primaryMimeType,
         _datasetContentType = datasetContentType ?? trig.primaryMimeType;
 
@@ -54,8 +46,8 @@ class SolidWorkerHandler implements RemoteWorkerHandler {
 
     final backend = SolidBackend(
       auth: SolidAuthConnector.receiver(context, id),
-      rdfCore: _rdfCore,
-      iriTermFactory: _iriTermFactory,
+      rdfCore: context.rdfCore,
+      iriTermFactory: context.iriFactory ?? IriTerm.validated,
       httpClient: _httpClient,
       contentType: _contentType,
       datasetContentType: _datasetContentType,

@@ -3,15 +3,15 @@ library;
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_dir/src/shared/consts.dart';
-import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_worker/worker.dart';
 import 'package:rxdart/rxdart.dart';
 
-class _DisabledDirBackend implements ClassicBackend {
-  final BehaviorSubject<List<RemoteStorage>> _subject =
-      BehaviorSubject<List<RemoteStorage>>.seeded(const []);
+class _DisabledDirBackend implements PipelineBackend {
+  final BehaviorSubject<List<PipelineRemoteStorage>> _subject =
+      BehaviorSubject<List<PipelineRemoteStorage>>.seeded(const []);
 
-  Stream<List<RemoteStorage>> get remotesChanged => _subject.stream;
+  Stream<List<PipelineRemoteStorage>> get pipelineRemotesChanged =>
+      _subject.stream;
 
   @override
   Future<void> dispose() async {}
@@ -20,7 +20,7 @@ class _DisabledDirBackend implements ClassicBackend {
   String get name => 'local-dir-disabled';
 
   @override
-  List<RemoteStorage> get remotes => const [];
+  List<PipelineRemoteStorage> get pipelineRemotes => const [];
 }
 
 class DirWorkerHandler implements RemoteWorkerHandler {
@@ -29,13 +29,10 @@ class DirWorkerHandler implements RemoteWorkerHandler {
   final String appName;
   @override
   final String id;
-  final Perflog? perflog;
+
   DirWorkerHandler({
     this.appName = 'locorda',
-    RdfCore? rdfCore,
-    IriTermFactory? iriTermFactory,
     this.id = directoryRemoteHandlerId,
-    this.perflog,
   });
 
   @override

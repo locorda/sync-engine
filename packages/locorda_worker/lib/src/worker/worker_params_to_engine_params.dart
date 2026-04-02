@@ -54,6 +54,8 @@ Future<EngineParams> toEngineParams(
 
   final backendWorkerHandlerContext = BackendWorkerHandlerContextImpl(
       context: workerHandlerContext,
+      rdfCore: wp.rdfCore,
+      iriFactory: wp.iriFactory,
       resourceGraphLoader: ResourceGraphLoaderImpl(
         storage: storage,
       ));

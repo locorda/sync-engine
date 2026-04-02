@@ -5,7 +5,6 @@ import 'dart:io';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_dir/src/shared/consts.dart';
-import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_worker/worker.dart';
 
 import '../backend/dir_backend.dart';
@@ -30,18 +29,13 @@ class DirWorkerHandler implements RemoteWorkerHandler {
       Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
   final String appName;
-  final RdfCore _rdfCore;
   @override
   final String id;
 
   DirWorkerHandler({
     this.appName = 'locorda',
-    RdfCore? rdfCore,
-    IriTermFactory? iriTermFactory,
     this.id = directoryRemoteHandlerId,
-  }) : _rdfCore = rdfCore ??
-            RdfCore.withStandardCodecs(
-                iriTermFactory: iriTermFactory ?? IriTerm.validated);
+  });
 
   @override
   Future<Backend> createBackend(
@@ -57,7 +51,7 @@ class DirWorkerHandler implements RemoteWorkerHandler {
       auth: auth,
       contentType: dirConfig.contentType,
       datasetContentType: dirConfig.datasetContentType,
-      rdfCore: _rdfCore,
+      rdfCore: context.rdfCore,
       useShardDatasets: dirConfig.useShardDatasets,
       perflog: context.perflog,
       resourceGraphLoader: context.resourceGraphLoader,
