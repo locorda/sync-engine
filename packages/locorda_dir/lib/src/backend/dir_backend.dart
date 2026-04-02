@@ -189,7 +189,6 @@ class DirRemoteStorage implements PipelineRemoteStorage {
       contentType: effectiveContentType,
       perflog: _perflog,
       isBinary: isBinary,
-      isDataset: useShardDatasets,
     );
 
     if (_iriTranslator != null) {
@@ -228,7 +227,6 @@ class DirSyncStorage implements RemoteSyncBackend {
   final String _directoryPath;
   final String _contentType;
   final bool _isBinary;
-  final bool _isDataset;
   final ResourceLocator _resourceLocator;
   final Perflog _perflog;
 
@@ -241,11 +239,9 @@ class DirSyncStorage implements RemoteSyncBackend {
     required String contentType,
     required Perflog perflog,
     required bool isBinary,
-    required bool isDataset,
   })  : _directoryPath = directoryPath,
         _contentType = contentType,
         _isBinary = isBinary,
-        _isDataset = isDataset,
         _perflog = perflog.create('Backend', 'DirSyncStorage'),
         _resourceLocator =
             LocalResourceLocator(iriTermFactory: IriTerm.validated);
@@ -256,7 +252,7 @@ class DirSyncStorage implements RemoteSyncBackend {
   String _iriToFilePath(IriTerm documentIri) {
     final identifier = _resourceLocator.fromIri(documentIri);
     final typeLocalName = identifier.typeIri.localName;
-    final ext = _isDataset ? 'trig' : 'ttl';
+    final ext = extensionForContentType(_contentType);
     return path.join(_directoryPath, typeLocalName, '${identifier.id}.$ext');
   }
 
@@ -344,32 +340,18 @@ class DirSyncStorage implements RemoteSyncBackend {
     }
 
     if (request.ifMatch == null) {
-      final exists = await _perflog.measure(
-        '_upload.existsCheck',
-        () => file.exists(),
-        args: ['mode=create'],
-        minDurationMs: 2,
-      );
+      final exists = await file.exists();
       if (exists) {
         _log.fine('File already exists, cannot create: $filePath');
         return RemoteUploadResult.conflict();
       }
     } else {
-      final exists = await _perflog.measure(
-        '_upload.existsCheck',
-        () => file.exists(),
-        args: ['mode=update'],
-        minDurationMs: 2,
-      );
+      final exists = await file.exists();
       if (!exists) {
         _log.fine('File does not exist, cannot update: $filePath');
         return RemoteUploadResult.conflict();
       }
-      final currentETag = await _perflog.measure(
-        '_upload.computeCurrentEtag',
-        () async => _generateETag(file),
-        minDurationMs: 2,
-      );
+      final currentETag = _generateETag(file);
       if (currentETag != request.ifMatch) {
         _log.fine(
             'ETag mismatch: $filePath (current: $currentETag, expected: ${request.ifMatch})');
@@ -381,7 +363,7 @@ class DirSyncStorage implements RemoteSyncBackend {
       final raw = request.document;
       final bytesCount = raw is BinaryContent
           ? raw.bytes.length
-          : utf8.encode((raw as TextContent).text).length;
+          : (raw as TextContent).text.length;
       await _perflog.measure(
         '_upload.writeFile',
         () async {
@@ -397,11 +379,7 @@ class DirSyncStorage implements RemoteSyncBackend {
         ],
         minDurationMs: 2,
       );
-      final newETag = await _perflog.measure(
-        '_upload.computeNewEtag',
-        () async => _generateETag(file),
-        minDurationMs: 2,
-      );
+      final newETag = _generateETag(file);
       _log.fine('Uploaded: $filePath, new etag: $newETag');
       return RemoteUploadResult.success(newETag);
     } catch (e, stackTrace) {

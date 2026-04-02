@@ -126,7 +126,8 @@ export 'src/sync/pipeline/backend/remote_sync_backend.dart'
         TextContent,
         BinaryContent,
         isBinaryContentType,
-        isDatasetContentType;
+        isDatasetContentType,
+        extensionForContentType;
 export 'src/sync/pipeline/backend/remote_sync_storages.dart'
     show RemoteSyncStorages, RemoteStorageMode;
 export 'src/sync/standard_sync_manager.dart' show StandardSyncManager;
