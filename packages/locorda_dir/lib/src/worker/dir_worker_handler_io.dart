@@ -45,7 +45,7 @@ class DirWorkerHandler implements RemoteWorkerHandler {
 
   @override
   Future<Backend> createBackend(
-      WorkerHandlerContext context, SyncEngineConfig config) async {
+      BackendWorkerHandlerContext context, SyncEngineConfig config) async {
     // Get auth from connector (synced from main thread)
     final auth = DirAuthConnectorWorker.receiver(context, id);
 

@@ -2,7 +2,8 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:logging/logging.dart';
 
 import '../shared/worker_params.dart' show WorkerParams;
-import 'worker_entry_point.dart' show WorkerContext;
+import 'worker_entry_point.dart'
+    show BackendWorkerHandlerContextImpl, WorkerContext;
 import 'remote_worker_handler.dart' show RemoteMismatchException;
 
 final _log = Logger('WorkerParamsToEngineParams');
@@ -51,9 +52,15 @@ Future<EngineParams> toEngineParams(
       await selectedStorageHandler.create(workerHandlerContext, config);
   _log.info('Worker: Storage created successfully');
 
+  final backendWorkerHandlerContext = BackendWorkerHandlerContextImpl(
+      context: workerHandlerContext,
+      resourceGraphLoader: ResourceGraphLoaderImpl(
+        storage: storage,
+      ));
+
   _log.info('Worker: Creating ${selectedRemotes.length} remote backends...');
   final backends = await Future.wait(selectedRemotes
-      .map((b) => b.createBackend(workerHandlerContext, config)));
+      .map((b) => b.createBackend(backendWorkerHandlerContext, config)));
   _log.info('Worker: All remote backends created');
 
   return EngineParams(

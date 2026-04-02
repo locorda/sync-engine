@@ -8,9 +8,10 @@ import 'package:locorda_core/src/storage/remote_storage.dart'
         PipelineRemoteStorage,
         RemoteDownloadRequest,
         RemoteUploadRequest;
-import 'package:locorda_core/src/sync/pipeline/backend_pipeline.dart';
+import 'package:locorda_core/src/sync/pipeline/backend/file_per_resource_pipeline.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
+import 'package:locorda_core/src/sync/pipeline/backend/shard_dataset_pipeline.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart';
@@ -49,16 +50,20 @@ class InMemoryBackend implements PipelineBackend, Backend {
   final BehaviorSubject<List<InMemoryRemoteStorage>> _remotesChangedSubject;
   final IriTranslator? iriTranslator;
 
-  InMemoryBackend(
-      {bool useShardDatasets = false,
-      this.iriTranslator,
-      required RdfCore rdfCore})
-      : _remotes = [
+  InMemoryBackend({
+    bool useShardDatasets = false,
+    this.iriTranslator,
+    required RdfCore rdfCore,
+    required ResourceGraphLoader resourceGraphLoader,
+    required InMemoryBackendStore store,
+  })  : _remotes = [
           InMemoryRemoteStorage(
             RemoteId('in-memory', 'default'),
             useShardDatasets: useShardDatasets,
             iriTranslator: iriTranslator,
             rdfCore: rdfCore,
+            resourceGraphLoader: resourceGraphLoader,
+            store: store,
           )
         ],
         _remotesChangedSubject =
@@ -100,15 +105,21 @@ class InMemoryRemoteStorage implements PipelineRemoteStorage, RemoteStorage {
   final bool useShardDatasets;
   final IriTranslator? iriTranslator;
   final RdfCore _rdfCore;
+  final ResourceGraphLoader _resourceGraphLoader;
 
   /// Storage: documentIri -> (graph, etag)
-  late final _Store _store = _Store();
+  final InMemoryBackendStore _store;
 
-  InMemoryRemoteStorage(this.remoteId,
-      {this.useShardDatasets = false,
-      this.iriTranslator,
-      required RdfCore rdfCore})
-      : _rdfCore = rdfCore;
+  InMemoryRemoteStorage(
+    this.remoteId, {
+    this.useShardDatasets = false,
+    this.iriTranslator,
+    required RdfCore rdfCore,
+    required ResourceGraphLoader resourceGraphLoader,
+    required InMemoryBackendStore store,
+  })  : _rdfCore = rdfCore,
+        _resourceGraphLoader = resourceGraphLoader,
+        _store = store;
 
   /// Returns a stored graph for testing purposes.
   ///
@@ -146,21 +157,28 @@ class InMemoryRemoteStorage implements PipelineRemoteStorage, RemoteStorage {
   Future<PipelineRemoteSyncStorage> createPipelineSyncStorage(
       SyncEngineConfig config) async {
     // In-memory backend needs no initialization, just wrap access
+    final translator = iriTranslator;
+    final effectiveLoader = translator != null
+        ? IriTranslatingResourceGraphLoader(
+            inner: _resourceGraphLoader,
+            iriTranslator: translator,
+          )
+        : _resourceGraphLoader;
+
     final storage = InMemorySyncStorage(
         storage: _store,
         rdfCore: _rdfCore,
         pipelineSupportFactory: ({required storage}) => useShardDatasets
-            ? throw UnimplementedError(
-                'Shard datasets not implemented in in-memory backend yet',
-              )
+            ? ShardDatasetRemoteSyncSupport(storage,
+                resourceGraphLoader: effectiveLoader)
             : FilePerResourceRemoteSyncSupport(storage));
 
-    return iriTranslator == null
+    return translator == null
         ? storage
         : PipelineIriTranslatingRemoteSyncStorage(
             storage: storage,
             pipelineSupport: storage,
-            iriTranslator: iriTranslator!,
+            iriTranslator: translator,
             rdfCore: _rdfCore);
   }
 
@@ -171,9 +189,8 @@ class InMemoryRemoteStorage implements PipelineRemoteStorage, RemoteStorage {
         storage: _store,
         rdfCore: _rdfCore,
         pipelineSupportFactory: ({required storage}) => useShardDatasets
-            ? throw UnimplementedError(
-                'Shard datasets not implemented in in-memory backend yet',
-              )
+            ? ShardDatasetRemoteSyncSupport(storage,
+                resourceGraphLoader: _resourceGraphLoader)
             : FilePerResourceRemoteSyncSupport(storage));
 
     return iriTranslator == null
@@ -193,14 +210,14 @@ class InMemoryRemoteStorage implements PipelineRemoteStorage, RemoteStorage {
   }
 }
 
-class _Store {
+class InMemoryBackendStore {
   /// Counter for generating unique ETags
   int _etagCounter = 0;
 
   /// Storage: documentIri -> (graph, etag)
   final Map<String, _StoredDocument> _documents = {};
 
-  _Store();
+  InMemoryBackendStore();
 
   /// Clear all stored documents (for testing)
   void clear() {
@@ -266,13 +283,13 @@ class RemoteStoredDocument {
 /// Lightweight wrapper around [InMemoryRemoteStorage] providing upload/download
 /// access during sync operations.
 class InMemorySyncStorage extends RemoteSyncStorage
-    implements PipelineRemoteSyncStorage, FPRBackend {
-  final _Store _storage;
+    implements PipelineRemoteSyncStorage, FPRBackend, SDSBackend {
+  final InMemoryBackendStore _storage;
   final RdfCore _rdfCore;
   late final PipelineRemoteSyncStorage _pipelineSupport =
       _pipelineSupportFactory(storage: this);
 
-  _Store storage;
+  InMemoryBackendStore storage;
 
   PipelineRemoteSyncStorage Function({required InMemorySyncStorage storage})
       _pipelineSupportFactory;
@@ -330,7 +347,7 @@ class InMemorySyncStorage extends RemoteSyncStorage
   }
 
   Future<RemoteDownloadResult<T>> _download<T>(
-      _Store store, IriTerm documentIri,
+      InMemoryBackendStore store, IriTerm documentIri,
       {String? ifNoneMatch}) async {
     _logger.fine(
         'Downloading document: ${documentIri.debug}, ifNoneMatch:$ifNoneMatch');
@@ -399,8 +416,30 @@ class InMemorySyncStorage extends RemoteSyncStorage
         ifMatch: ifMatch,
       );
 
+  @override
+  Future<List<RemoteDownloadResult<RdfDataset>>> downloadDatasets(
+      Iterable<RemoteDownloadRequest> requests) async {
+    final results = <RemoteDownloadResult<RdfDataset>>[];
+    for (final request in requests) {
+      results.add(await downloadDataset(request.documentIri,
+          ifNoneMatch: request.ifNoneMatch));
+    }
+    return results;
+  }
+
+  @override
+  Future<List<RemoteUploadResult>> uploadDatasets(
+      Iterable<RemoteUploadRequest<RdfDataset>> requests) async {
+    final results = <RemoteUploadResult>[];
+    for (final request in requests) {
+      results.add(await uploadDataset(request.documentIri, request.document,
+          ifMatch: request.ifMatch));
+    }
+    return results;
+  }
+
   Future<RemoteUploadResult> _upload<T>(
-      _Store store, IriTerm documentIri, T graph,
+      InMemoryBackendStore store, IriTerm documentIri, T graph,
       {String? ifMatch}) async {
     _logger.fine('Uploading document: ${documentIri.debug}, ifMatch:$ifMatch');
     final stored = store.getDocument<T>(documentIri);
@@ -471,7 +510,7 @@ class InMemorySyncStorage extends RemoteSyncStorage
         ifMatch: ifMatch,
       );
 
-  Future<void> _delete(_Store store, IriTerm documentIri,
+  Future<void> _delete(InMemoryBackendStore store, IriTerm documentIri,
       {String? ifMatch}) async {
     final stored = store.getDocument(documentIri);
 

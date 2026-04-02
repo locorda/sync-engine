@@ -61,8 +61,8 @@ class GDriveWorkerHandler implements RemoteWorkerHandler {
         _datasetContentType = datasetContentType ?? trig.primaryMimeType;
 
   @override
-  Future<Backend> createBackend(
-      WorkerHandlerContext context, SyncEngineConfig syncEngineConfig) async {
+  Future<Backend> createBackend(BackendWorkerHandlerContext context,
+      SyncEngineConfig syncEngineConfig) async {
     // Receive config from main thread
     final config = await GDriveAuthConnector.receiveConfig(context, id);
 

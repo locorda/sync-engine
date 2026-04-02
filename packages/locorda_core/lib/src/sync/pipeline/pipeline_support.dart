@@ -7,9 +7,72 @@ library;
 
 import 'dart:async';
 
+import 'package:locorda_core/src/mapping/iri_translator.dart';
+import 'package:locorda_core/src/storage/storage_interface.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
+import 'package:locorda_rdf_core/core.dart';
 
-/// Optional interface for [RemoteSyncStorage] implementations that support
+/// Loads resource graphs from the local DB for dataset assembly.
+///
+/// Provided by Core (via the worker context) so that shard-dataset backends
+/// can query locally-stored resource documents during Stage 12 upload.
+/// Returns decoded graphs keyed by document IRI; null values indicate
+/// missing documents.
+abstract interface class ResourceGraphLoader {
+  Future<Map<IriTerm, RdfGraph?>> load(Iterable<IriTerm> documentIris);
+}
+
+class ResourceGraphLoaderImpl implements ResourceGraphLoader {
+  final Storage _storage;
+
+  ResourceGraphLoaderImpl({required Storage storage}) : _storage = storage;
+
+  Future<Map<IriTerm, RdfGraph?>> load(Iterable<IriTerm> documentIris) async {
+    final docs = await _storage.getDocumentsByIri(documentIris);
+    return docs.map((iri, doc) => MapEntry(iri, doc?.document));
+  }
+}
+
+/// [ResourceGraphLoader] adapter for IRI-translating backends.
+///
+/// When [ShardDatasetRemoteSyncSupport] is wrapped inside
+/// [PipelineIriTranslatingRemoteSyncStorage], it receives external IRIs from
+/// the pipeline. This loader bridges back to internal storage by:
+/// 1. Translating incoming external IRIs → internal before the DB query.
+/// 2. Translating internal IRIs in the returned graphs → external so that the
+///    caller (which works in external IRI space) can use them as named-graph keys.
+class IriTranslatingResourceGraphLoader implements ResourceGraphLoader {
+  final ResourceGraphLoader _inner;
+  final IriTranslator _iriTranslator;
+
+  IriTranslatingResourceGraphLoader({
+    required ResourceGraphLoader inner,
+    required IriTranslator iriTranslator,
+  })  : _inner = inner,
+        _iriTranslator = iriTranslator;
+
+  @override
+  Future<Map<IriTerm, RdfGraph?>> load(
+      Iterable<IriTerm> externalDocumentIris) async {
+    // Translate external → internal for the storage query.
+    final internalIris =
+        externalDocumentIris.map(_iriTranslator.externalToInternal).toList();
+
+    final internalResults = await _inner.load(internalIris);
+
+    // Re-key by external IRI and translate graph contents back to external.
+    final externalResults = <IriTerm, RdfGraph?>{};
+    for (var i = 0; i < internalIris.length; i++) {
+      final externalIri = externalDocumentIris.elementAt(i);
+      final graph = internalResults[internalIris[i]];
+      externalResults[externalIri] =
+          graph != null ? _iriTranslator.translateGraphToExternal(graph) : null;
+    }
+    return externalResults;
+  }
+}
+
+/// Base class for [RemoteSyncStorage] implementations that support
 /// the streaming sync pipeline.
 ///
 /// Backends implement this alongside [RemoteSyncStorage]. The pipeline

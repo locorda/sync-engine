@@ -13,10 +13,9 @@ library locorda_core;
 // Core interfaces
 export 'src/auth/auth_interface.dart' show Auth, AuthValueListenable;
 export 'src/backend/backend.dart' show Backend, PipelineBackend;
+export 'src/backend/in_memory_backend.dart' show InMemoryBackend;
 // TODO: do we really want to expose those? Or should we have a separate utils package or at least utils.dart toplevel export?
 export 'src/backend/perflog_backend.dart' show PerflogBackend, Perflog;
-
-export 'src/backend/in_memory_backend.dart' show InMemoryBackend;
 // Resource-focused configuration
 export 'src/config/config_base.dart' show ResourceConfigBase, ConfigBase;
 export 'src/config/config_base_validator.dart' show ConfigBaseValidator;
@@ -40,6 +39,79 @@ export 'src/config/validation.dart'
 // CRDT implementations
 // TODO: why do we export these?
 export 'src/crdt/crdt_types.dart' show CrdtType, LwwRegister, OrSet;
+export 'src/hlc_service.dart' show PhysicalTimestampFactory;
+export 'src/hydration_result.dart' show HydrationSubscription;
+export 'src/index/group_index_subscription_manager.dart'
+    show GroupIndexGraphSubscriptionException;
+// Index configuration
+export 'src/index/index_config_base.dart'
+    show
+        RootResourceFetchPolicy,
+        IndexItemConfigBase,
+        CrdtIndexConfigBase,
+        GroupIndexConfigBase,
+        FullIndexConfigBase,
+        RegexTransformData,
+        GroupingPropertyData;
+export 'src/installation_service.dart' show InstallationIdFactory;
+export 'src/mapping/iri_translator.dart'
+    show IriTranslator, BaseIriTranslator, NoOpIriTranslator;
+export 'src/mapping/recursive_rdf_loader.dart' show Fetcher;
+export 'src/mapping/resource_locator.dart'
+    show
+        ResourceLocator,
+        LocalResourceLocator,
+        ResourceIdentifier,
+        UnsupportedIriException;
+export 'src/mapping/root_iri_config.dart' show RootIriConfig;
+export 'src/standard_sync_engine.dart'
+    show StandardSyncEngine, SimpleConfigService;
+export 'src/storage/concurrent_update_exception.dart'
+    show ConcurrentUpdateException;
+export 'src/storage/in_memory_storage.dart' show InMemoryStorage;
+export 'src/storage/remote_id.dart' show RemoteId;
+export 'src/storage/remote_storage.dart'
+    show
+        RemoteStorage,
+        RemoteSyncStorage,
+        IriTranslatingRemoteSyncStorage,
+        RemoteUploadResult,
+        SuccessUploadResult,
+        ConflictUploadResult,
+        RemoteDownloadResult,
+        AuthAwareRemoteStorage,
+        AuthException,
+        AuthRetryConfig;
+export 'src/storage/storage_interface.dart'
+    show
+        Storage,
+        RemoteSyncPhase,
+        IndexInstanceSyncState,
+        RemoteSyncEntry,
+        StoredDocument,
+        DocumentMetadata,
+        PropertyChange,
+        SaveDocumentRequest,
+        SaveIndexEntryRequest,
+        SaveDocumentResult,
+        DocumentsResult,
+        IndexEntriesPage,
+        IndexEntryWithIri,
+        RemoteOnlyEntry;
+export 'src/sync/pipeline/pipeline_support.dart'
+    show ResourceGraphLoader, ResourceGraphLoaderImpl;
+export 'src/sync/standard_sync_manager.dart' show StandardSyncManager;
+export 'src/sync/sync_manager.dart' show SyncManager, AutoSyncConfig;
+export 'src/sync/sync_state.dart' show SyncState, SyncStatus, SyncTrigger;
+// Main API facade
+export 'src/sync_engine.dart' show SyncEngine, IdentifiedGraph;
+// NOTE: CRDT annotations have been moved to locorda_annotations package
+// Use that package for @CrdtLwwRegister, @CrdtOrSet, etc. annotations
+
+// Sync engine and manager
+export 'src/sync_engine.dart' show SyncEngine, EngineParams;
+export 'src/sync_engine.dart'
+    show HydrationBatch, IdentifiedGraph, IndexInstanceSyncFailedException;
 // Vocabularies
 export 'src/vocab/generated/_index.dart'
     show
@@ -79,76 +151,3 @@ export 'src/vocab/generated/_index.dart'
         SyncManagedDocument,
         SyncResourceStatement,
         SyncUniversalProperties;
-export 'src/hydration_result.dart' show HydrationSubscription;
-export 'src/sync_engine.dart'
-    show HydrationBatch, IdentifiedGraph, IndexInstanceSyncFailedException;
-// Index configuration
-export 'src/index/index_config_base.dart'
-    show
-        RootResourceFetchPolicy,
-        IndexItemConfigBase,
-        CrdtIndexConfigBase,
-        GroupIndexConfigBase,
-        FullIndexConfigBase,
-        RegexTransformData,
-        GroupingPropertyData;
-// Main API facade
-export 'src/sync_engine.dart' show SyncEngine, IdentifiedGraph;
-export 'src/mapping/root_iri_config.dart' show RootIriConfig;
-export 'src/mapping/resource_locator.dart'
-    show
-        ResourceLocator,
-        LocalResourceLocator,
-        ResourceIdentifier,
-        UnsupportedIriException;
-export 'src/mapping/iri_translator.dart'
-    show IriTranslator, BaseIriTranslator, NoOpIriTranslator;
-export 'src/storage/remote_id.dart' show RemoteId;
-export 'src/storage/remote_storage.dart'
-    show
-        RemoteStorage,
-        RemoteSyncStorage,
-        IriTranslatingRemoteSyncStorage,
-        RemoteUploadResult,
-        SuccessUploadResult,
-        ConflictUploadResult,
-        RemoteDownloadResult,
-        AuthAwareRemoteStorage,
-        AuthException,
-        AuthRetryConfig;
-export 'src/storage/storage_interface.dart'
-    show
-        Storage,
-        RemoteSyncPhase,
-        IndexInstanceSyncState,
-        RemoteSyncEntry,
-        StoredDocument,
-        DocumentMetadata,
-        PropertyChange,
-        SaveDocumentRequest,
-        SaveIndexEntryRequest,
-        SaveDocumentResult,
-        DocumentsResult,
-        IndexEntriesPage,
-        IndexEntryWithIri,
-        RemoteOnlyEntry;
-export 'src/storage/concurrent_update_exception.dart'
-    show ConcurrentUpdateException;
-export 'src/storage/in_memory_storage.dart' show InMemoryStorage;
-
-export 'src/hlc_service.dart' show PhysicalTimestampFactory;
-export 'src/index/group_index_subscription_manager.dart'
-    show GroupIndexGraphSubscriptionException;
-export 'src/installation_service.dart' show InstallationIdFactory;
-export 'src/mapping/recursive_rdf_loader.dart' show Fetcher;
-export 'src/standard_sync_engine.dart'
-    show StandardSyncEngine, SimpleConfigService;
-
-// NOTE: CRDT annotations have been moved to locorda_annotations package
-// Use that package for @CrdtLwwRegister, @CrdtOrSet, etc. annotations
-
-// Sync engine and manager
-export 'src/sync_engine.dart' show SyncEngine, EngineParams;
-export 'src/sync/sync_manager.dart' show SyncManager, AutoSyncConfig;
-export 'src/sync/standard_sync_manager.dart' show StandardSyncManager;
-export 'src/sync/sync_state.dart' show SyncState, SyncStatus, SyncTrigger;

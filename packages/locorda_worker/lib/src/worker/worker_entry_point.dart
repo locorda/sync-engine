@@ -48,6 +48,10 @@ abstract class WorkerHandlerContext {
   WorkerHandlerChannel createChannel(String name);
 }
 
+abstract class BackendWorkerHandlerContext implements WorkerHandlerContext {
+  ResourceGraphLoader get resourceGraphLoader;
+}
+
 class WorkerHandlerContextImpl implements WorkerHandlerContext {
   final WorkerChannel _channel;
   final Perflog perflog;
@@ -63,6 +67,23 @@ class WorkerHandlerContextImpl implements WorkerHandlerContext {
 
     return _channel.createChannel(name);
   }
+}
+
+class BackendWorkerHandlerContextImpl implements BackendWorkerHandlerContext {
+  final ResourceGraphLoader resourceGraphLoader;
+  final WorkerHandlerContext _context;
+  BackendWorkerHandlerContextImpl({
+    required WorkerHandlerContext context,
+    required this.resourceGraphLoader,
+  }) : _context = context;
+
+  @override
+  WorkerHandlerChannel createChannel(String name) {
+    return _context.createChannel(name);
+  }
+
+  @override
+  Perflog get perflog => _context.perflog;
 }
 
 /// Context for worker execution.
@@ -89,11 +110,13 @@ class WorkerContext {
   StreamSubscription<SyncState>? _syncStatusSubscription;
   final Perflog _perflog;
 
-  WorkerContext(this._sender, this._channel,
-      {required WorkerGraphEncoder encodeGraph,
-      required WorkerGraphDecoder decodeGraph,
-      required Perflog perflog})
-      : _encodeGraph = encodeGraph,
+  WorkerContext(
+    this._sender,
+    this._channel, {
+    required WorkerGraphEncoder encodeGraph,
+    required WorkerGraphDecoder decodeGraph,
+    required Perflog perflog,
+  })  : _encodeGraph = encodeGraph,
         _decodeGraph = decodeGraph,
         _perflog = perflog;
 

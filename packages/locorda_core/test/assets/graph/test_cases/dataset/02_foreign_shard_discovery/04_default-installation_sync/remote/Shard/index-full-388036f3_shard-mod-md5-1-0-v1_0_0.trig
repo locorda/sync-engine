@@ -25,31 +25,14 @@
     idx:resource </clientinstallation/foreign-device-installation#installation> .
 
 :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
-    cm:physicalTime 1704067200018 .
+    cm:physicalTime 1704074700009 .
 
 :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
-    cm:physicalTime 1704075000015 .
+    cm:physicalTime 1704075000030 .
 
 :shard a idx:Shard;
     idx:containsEntry :entry-ab448ead48ff8785a91ce1fe1a078e40, :entry-dab29d46a8ad65d767b685c8ca60fbd8;
     idx:isShardOf if3:index .
-
-GRAPH </clientinstallation/foreign-device-installation> {
-  </clientinstallation/foreign-device-installation> a sync:ManagedDocument;
-      foaf:primaryTopic </clientinstallation/foreign-device-installation#installation>;
-      cm:clockHash "3f58569d335f669135c40722e62298c9";
-      cm:createdAt "2024-01-01T00:00:00.019Z"^^xsd:dateTime;
-      cm:hasClockEntry </clientinstallation/foreign-device-installation#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f>;
-      idx:belongsToIndexShard :shard;
-      sync:isGovernedBy (mappings:client-installation-v1);
-      sync:managedResourceType cm:ClientInstallation .
-  </clientinstallation/foreign-device-installation#installation> a cm:ClientInstallation;
-      cm:createdAt "2024-01-01T00:00:00.017Z"^^xsd:dateTime;
-      cm:lastActiveAt "2024-01-01T00:00:00.017Z"^^xsd:dateTime;
-      cm:maxInactivityPeriod "P6M"^^xsd:duration .
-  </clientinstallation/foreign-device-installation#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f> cm:logicalTime 1;
-      cm:physicalTime 1704067200018 .
-}
 
 GRAPH </clientinstallation/default-installation> {
   </clientinstallation/default-installation> a sync:ManagedDocument;
@@ -66,4 +49,21 @@ GRAPH </clientinstallation/default-installation> {
       cm:maxInactivityPeriod "P6M"^^xsd:duration .
   </clientinstallation/default-installation#lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f> cm:logicalTime 1;
       cm:physicalTime 1704075000015 .
+}
+
+GRAPH </clientinstallation/foreign-device-installation> {
+  </clientinstallation/foreign-device-installation> a sync:ManagedDocument;
+      foaf:primaryTopic </clientinstallation/foreign-device-installation#installation>;
+      cm:clockHash "3f58569d335f669135c40722e62298c9";
+      cm:createdAt "2024-01-01T00:00:00.019Z"^^xsd:dateTime;
+      cm:hasClockEntry </clientinstallation/foreign-device-installation#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f>;
+      idx:belongsToIndexShard :shard;
+      sync:isGovernedBy (mappings:client-installation-v1);
+      sync:managedResourceType cm:ClientInstallation .
+  </clientinstallation/foreign-device-installation#installation> a cm:ClientInstallation;
+      cm:createdAt "2024-01-01T00:00:00.017Z"^^xsd:dateTime;
+      cm:lastActiveAt "2024-01-01T00:00:00.017Z"^^xsd:dateTime;
+      cm:maxInactivityPeriod "P6M"^^xsd:duration .
+  </clientinstallation/foreign-device-installation#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f> cm:logicalTime 1;
+      cm:physicalTime 1704067200018 .
 }

@@ -16,8 +16,8 @@ import 'package:locorda_core/src/local_document_merger.dart';
 import 'package:locorda_core/src/mapping/framework_iri_generator.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
-import 'package:locorda_core/src/sync/remote_document_merger.dart';
 import 'package:locorda_core/src/storage/document_save_service.dart';
+import 'package:locorda_core/src/sync/remote_document_merger.dart';
 import 'package:locorda_core/src/sync/remote_sync_orchestrator.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
 import 'package:locorda_core/src/util/build_effective_config.dart';
@@ -90,10 +90,13 @@ class TestOrchestratorSetup {
       additionalBinaryGraphCodecs: StandardSyncEngine.extraBinaryGraphCodecs,
     );
     final storage = InMemoryStorage();
+    final remoteStore = InMemoryBackendStore();
     final backend = InMemoryRemoteStorage(
       RemoteId('test', 'mock'),
       useShardDatasets: useShardDatasets,
       rdfCore: rdfCore,
+      resourceGraphLoader: ResourceGraphLoaderImpl(storage: storage),
+      store: remoteStore,
     );
     final timestampFactory = TestPhysicalTimestampFactory(
         baseTimestamp: baseTimestamp ?? DateTime.now());

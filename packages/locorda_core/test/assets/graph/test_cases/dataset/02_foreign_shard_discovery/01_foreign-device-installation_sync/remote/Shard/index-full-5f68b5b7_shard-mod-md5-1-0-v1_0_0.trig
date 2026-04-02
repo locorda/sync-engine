@@ -24,7 +24,7 @@
     idx:resource ige:groupIndexTemplate .
 
 :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
-    cm:physicalTime 1704067200006 .
+    cm:physicalTime 1704074700005 .
 
 :shard a idx:Shard;
     idx:containsEntry :entry-1e411ea3d0723c6581c8fe31e69280be;

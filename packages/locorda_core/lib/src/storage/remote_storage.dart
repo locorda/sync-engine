@@ -318,7 +318,8 @@ abstract class PipelineRemoteStorage {
   /// index configurations.
   ///
   /// Throws if backend cannot be initialized (e.g., auth failure, missing config).
-  Future<PipelineRemoteSyncStorage> createPipelineSyncStorage(SyncEngineConfig config);
+  Future<PipelineRemoteSyncStorage> createPipelineSyncStorage(
+      SyncEngineConfig config);
 
   /// Whether this remote storage uses shard datasets (all resources in one file per shard).
   ///

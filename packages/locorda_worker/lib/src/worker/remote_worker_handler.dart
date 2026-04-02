@@ -51,7 +51,7 @@
 library;
 
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_worker/worker.dart';
+import 'package:locorda_worker/src/worker/worker_entry_point.dart';
 
 /// Worker-thread handler for creating remote backend instances.
 ///
@@ -84,7 +84,7 @@ abstract interface class RemoteWorkerHandler {
   /// }
   /// ```
   Future<Backend> createBackend(
-      WorkerHandlerContext context, SyncEngineConfig config);
+      BackendWorkerHandlerContext context, SyncEngineConfig config);
 }
 
 /// Exception thrown when main and worker handler registrations don't match.

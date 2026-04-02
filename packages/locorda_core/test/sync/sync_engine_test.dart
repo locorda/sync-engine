@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_core/src/backend/in_memory_backend.dart';
 import 'package:locorda_core/src/crdt/crdt_types.dart';
 import 'package:locorda_core/src/crdt_document_manager.dart';
 import 'package:locorda_core/src/hlc_service.dart';
@@ -47,6 +48,7 @@ class _InstallationContext {
   final IriTranslator iriTranslator;
   final TestPhysicalTimestampFactory timestampFactory;
   final Future<SyncEngine> syncFuture;
+  final InMemoryBackend sharedBackend;
 
   _InstallationContext({
     required this.installationId,
@@ -54,6 +56,7 @@ class _InstallationContext {
     required this.iriTranslator,
     required this.timestampFactory,
     required this.syncFuture,
+    required this.sharedBackend,
   });
 }
 
@@ -145,12 +148,13 @@ RdfGraph? _readGraphFromPath(Directory testAssetsDir, String? path) {
 /// Each step can have its own input, action timestamps, and expectations.
 /// Supports multiple installations for multi-device sync testing.
 Future<void> _executeSaveTestWithSteps(
-    Map<String, dynamic> testJson,
-    Directory testAssetsDir,
-    TestFetcher fetcher,
-    DateTime baseTimestamp,
-    String? baseInstallationId,
-    RdfCore rdfCore) async {
+  Map<String, dynamic> testJson,
+  Directory testAssetsDir,
+  TestFetcher fetcher,
+  DateTime baseTimestamp,
+  String? baseInstallationId,
+  RdfCore rdfCore,
+) async {
   final testId = testJson['id'] as String;
 
   // Load configurations - either per-installation or single global config
@@ -186,11 +190,7 @@ Future<void> _executeSaveTestWithSteps(
                 'https://example.com/${config.typeIri.localName.toLowerCase()}/{id}'))
         .toList(),
   );
-  final sharedBackend = InMemoryBackend(
-    useShardDatasets: useShardDatasets,
-    iriTranslator: backendIriTranslator,
-    rdfCore: rdfCore,
-  );
+  final store = InMemoryBackendStore();
 
   // Map of installation_id -> SyncEngine instance
   // Each installation has its own storage, clock, etc.
@@ -226,6 +226,14 @@ Future<void> _executeSaveTestWithSteps(
         final timestampFactory =
             TestPhysicalTimestampFactory(baseTimestamp: baseTimestamp);
 
+        final sharedBackend = InMemoryBackend(
+          useShardDatasets: useShardDatasets,
+          iriTranslator: backendIriTranslator,
+          rdfCore: rdfCore,
+          resourceGraphLoader: ResourceGraphLoaderImpl(storage: storage),
+          store: store,
+        );
+
         // Get or create sync instance for this installation
 
         final syncFuture = SyncEngine.create(
@@ -243,6 +251,7 @@ Future<void> _executeSaveTestWithSteps(
         return _InstallationContext(
           installationId: stepInstallationId,
           storage: storage,
+          sharedBackend: sharedBackend,
           iriTranslator: iriTranslator,
           timestampFactory: timestampFactory,
           syncFuture: syncFuture,
@@ -258,7 +267,7 @@ Future<void> _executeSaveTestWithSteps(
       baseTimestamp: baseTimestamp,
       baseInstallationId: stepInstallationId,
       config: config,
-      sharedBackend: sharedBackend,
+      sharedBackend: installationContext.sharedBackend,
       installationContext: installationContext,
       testFetcher: fetcher,
       backendIriTranslator: backendIriTranslator,
@@ -1177,7 +1186,12 @@ Future<void> _executeSaveErrorTest(
     final sync = await SyncEngine.create(
       config: config,
       engineParams: EngineParams(
-        backends: [InMemoryBackend(rdfCore: rdfCore)],
+        backends: [
+          InMemoryBackend(
+              rdfCore: rdfCore,
+              store: InMemoryBackendStore(),
+              resourceGraphLoader: ResourceGraphLoaderImpl(storage: storage))
+        ],
         storage: storage,
         fetcher: fetcher,
         physicalTimestampFactory: timestampFactory,

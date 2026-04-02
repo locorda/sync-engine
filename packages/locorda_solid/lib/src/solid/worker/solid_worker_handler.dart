@@ -49,7 +49,7 @@ class SolidWorkerHandler implements RemoteWorkerHandler {
 
   @override
   Future<Backend> createBackend(
-      WorkerHandlerContext context, SyncEngineConfig config) async {
+      BackendWorkerHandlerContext context, SyncEngineConfig config) async {
     final solidConfig = await SolidConfigConnector.receiveConfig(context, id);
 
     final backend = SolidBackend(
