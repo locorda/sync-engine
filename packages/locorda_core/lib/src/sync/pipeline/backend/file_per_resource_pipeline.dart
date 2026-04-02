@@ -274,11 +274,11 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
         final requests = buffer.map(toRequest);
         final resultStream = backend.download(Stream.fromIterable(requests));
         final results = await resultStream.toList();
+        if (sw != null) perf!.record(perfStage!, sw.elapsedMicroseconds);
 
         for (var i = 0; i < buffer.length; i++) {
           yield toOutput(buffer[i], results[i]);
         }
-        if (sw != null) perf!.record(perfStage!, sw.elapsedMicroseconds);
         buffer.clear();
       }
 
@@ -327,11 +327,11 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
         final requests = buffer.map(toRequest);
         final resultStream = backend.upload(Stream.fromIterable(requests));
         final results = await resultStream.toList();
+        if (sw != null) perf!.record(perfStage!, sw.elapsedMicroseconds);
 
         for (var i = 0; i < buffer.length; i++) {
           yield toOutput(buffer[i], results[i]);
         }
-        if (sw != null) perf!.record(perfStage!, sw.elapsedMicroseconds);
         buffer.clear();
       }
 

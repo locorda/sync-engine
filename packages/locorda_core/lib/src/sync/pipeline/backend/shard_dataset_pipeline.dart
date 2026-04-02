@@ -334,7 +334,8 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
             ));
           }
           if (swAssemble != null)
-            perf!.record('S12.ShardUpload.assemble', swAssemble.elapsedMicroseconds);
+            perf!.record(
+                'S12.ShardUpload.assemble', swAssemble.elapsedMicroseconds);
 
           // I/O: upload via backend stream.
           final swIo = perf != null ? (Stopwatch()..start()) : null;
