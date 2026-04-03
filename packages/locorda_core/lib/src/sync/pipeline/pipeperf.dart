@@ -147,8 +147,10 @@ class PipeperfCollector {
     final min = 'min'.padLeft(9);
     final avg = 'avg'.padLeft(9);
     final p90 = 'p90'.padLeft(9);
+    final p95 = 'p95'.padLeft(9);
+    final p99 = 'p99'.padLeft(9);
     final max = 'max'.padLeft(9);
-    return '$stage$count$total$min$avg$p90$max';
+    return '$stage$count$total$min$avg$p90$p95$p99$max';
   }
 
   static String _formatRow(String stage, List<int> measurements) {
@@ -159,6 +161,8 @@ class PipeperfCollector {
     final max = sorted.last;
     final avg = total ~/ count;
     final p90 = sorted[((count - 1) * 0.9).round()];
+    final p95 = sorted[((count - 1) * 0.95).round()];
+    final p99 = sorted[((count - 1) * 0.99).round()];
 
     final stagePad = stage.padRight(28);
     final countPad = '$count'.padLeft(6);
@@ -166,9 +170,11 @@ class PipeperfCollector {
     final minPad = _formatDuration(min).padLeft(9);
     final avgPad = _formatDuration(avg).padLeft(9);
     final p90Pad = _formatDuration(p90).padLeft(9);
+    final p95Pad = _formatDuration(p95).padLeft(9);
+    final p99Pad = _formatDuration(p99).padLeft(9);
     final maxPad = _formatDuration(max).padLeft(9);
 
-    return '$stagePad$countPad$totalPad$minPad$avgPad$p90Pad$maxPad';
+    return '$stagePad$countPad$totalPad$minPad$avgPad$p90Pad$p95Pad$p99Pad$maxPad';
   }
 
   static String _formatDuration(int microseconds) {
