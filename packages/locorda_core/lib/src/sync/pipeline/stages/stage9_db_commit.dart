@@ -15,6 +15,8 @@
 /// **Output**: `Stream<CommittedResourceEvent>`
 library;
 
+import 'dart:typed_data';
+
 import 'package:locorda_core/src/index/index_manager.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart'
     show ResolvedGroupIndex;
@@ -43,6 +45,7 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
   int batchSize = defaultPipelineBatchSize,
 }) {
   final pendingSaves = <SaveDocumentRequest>[];
+  final pendingBytes = <Uint8List>[];
   final pendingIndexEntries = <SaveIndexEntryRequest>[];
   final pendingEtags = <IriTerm, String>{};
   final pendingResourceIris = <IriTerm>[];
@@ -110,7 +113,8 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
 
     await storage.inTransaction(() async {
       if (pendingSaves.isNotEmpty) {
-        await documentSaveService.saveDocuments(pendingSaves);
+        await documentSaveService.saveDocuments(pendingSaves,
+            preEncodedContents: pendingBytes);
       }
       if (pendingIndexEntries.isNotEmpty) {
         await storage.saveIndexEntries(pendingIndexEntries);
@@ -125,6 +129,7 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
     }
 
     pendingSaves.clear();
+    pendingBytes.clear();
     pendingIndexEntries.clear();
     pendingEtags.clear();
     pendingResourceIris.clear();
@@ -167,6 +172,7 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
           changes: const [],
           ifMatchUpdatedAt: mergeResult.localUpdatedAt,
         ));
+        pendingBytes.add(mergeResult.encodedForDb.bytes);
 
         // Stamp pre-built index entries with the actual commit timestamp.
         for (final entry in mergeResult.indexEntries) {

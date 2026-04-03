@@ -110,6 +110,7 @@ export 'src/storage/storage_interface.dart'
         SaveDocumentRequest,
         SaveIndexEntryRequest,
         SaveDocumentResult,
+        RawStoredDocument,
         DocumentsResult,
         IndexEntriesPage,
         IndexEntryWithIri,

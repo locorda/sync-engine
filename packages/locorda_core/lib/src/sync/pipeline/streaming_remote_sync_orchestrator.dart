@@ -144,7 +144,7 @@ class StreamingRemoteSyncOrchestrator {
         .asyncExpand(perf.timedAsyncExpand(
             'S10.ShardEntryLoad', shardEntryLoad(_storage)))
         .expand(perf.timedExpand(
-            'S11a.Prepare', prepareShards(_shardDocGen, config)))
+            'S11a.Prepare', prepareShards(_shardDocGen, config, _rdfCore)))
         .asyncMap(perf.timedAsyncMap('S11b.ContractLoad', loadShardContracts(_mergeContractLoader)))
         .expand(perf.timedExpand('S11c.ShardMerge', mergeShards(_documentManager, _merger, _rdfCore)))
         .transform(_remote.shardUpload(perf: perf))

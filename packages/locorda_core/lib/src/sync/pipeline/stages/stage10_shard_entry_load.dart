@@ -52,7 +52,7 @@ Stream<LoadedShardEntriesEvent> Function(CommittedResourceEvent) shardEntryLoad(
     // Two batch queries instead of 2N per-shard queries.
     final entriesByShardIri =
         await storage.getActiveIndexEntriesForShards(shardIris);
-    final docsByIri = await storage.getDocumentsByIri(shardDocumentIris);
+    final docsByIri = await storage.getRawDocumentsByIri(shardDocumentIris);
 
     for (final event in pendingShards) {
       final shardIri = event.shardIri;

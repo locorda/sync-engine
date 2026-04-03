@@ -120,6 +120,15 @@ abstract interface class Storage {
     return result;
   }
 
+  /// Get multiple documents as raw (un-decoded) bytes by IRI.
+  ///
+  /// Returns the storage-native binary content without decoding to [RdfGraph],
+  /// deferring CPU-intensive deserialization to a dedicated CPU pipeline stage.
+  Future<Map<IriTerm, RawStoredDocument?>> getRawDocumentsByIri(
+    Iterable<IriTerm> documentIris, {
+    int? ifChangedSincePhysicalClock,
+  });
+
   /// Warm up backend-internal IRI resolution caches for frequently accessed IRIs.
   ///
   /// Default implementation is a no-op. Backends may override this to pre-resolve
@@ -870,6 +879,30 @@ class StoredDocument {
       {required this.documentIri,
       required this.document,
       required this.metadata});
+}
+
+/// Document with raw (un-decoded) binary content and metadata.
+///
+/// Used by pipeline I/O stages to defer CPU-intensive RDF decoding to
+/// dedicated CPU stages. The [rawContent] bytes are in the storage backend's
+/// native format (typically Jelly/protobuf).
+class RawStoredDocument {
+  final IriTerm documentIri;
+
+  /// Raw binary content in storage-native format.
+  final Uint8List rawContent;
+
+  /// Content type of [rawContent] (e.g. Jelly MIME type).
+  final String contentType;
+
+  final DocumentMetadata metadata;
+
+  RawStoredDocument({
+    required this.documentIri,
+    required this.rawContent,
+    required this.contentType,
+    required this.metadata,
+  });
 }
 
 /// Result of saving a document, including cursor information for gap detection.

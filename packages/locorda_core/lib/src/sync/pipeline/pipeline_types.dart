@@ -16,7 +16,11 @@ import 'package:locorda_core/src/index/shard_determiner.dart'
 import 'package:locorda_core/src/mapping/merge_contract.dart'
     show MergeContract;
 import 'package:locorda_core/src/storage/storage_interface.dart'
-    show IndexEntryWithIri, SaveIndexEntryRequest, StoredDocument;
+    show
+        IndexEntryWithIri,
+        RawStoredDocument,
+        SaveIndexEntryRequest,
+        StoredDocument;
 import 'package:locorda_rdf_core/core.dart';
 
 // ---------------------------------------------------------------------------
@@ -801,12 +805,11 @@ class LoadedShardEntries implements LoadedShardEntriesEvent {
   final IriStorageId shardStorageId;
   final List<IndexEntryWithIri> entries;
 
-  /// Existing local shard document (may be absent for new shards).
+  /// Raw (un-decoded) local shard document from Stage 10's I/O read.
   ///
-  /// Carries both the decoded [RdfGraph] and [DocumentMetadata], which Stage 11
-  /// needs to pass to [CrdtDocumentManager.prepareModify] for correct HLC
-  /// clock handling and optimistic locking.
-  final StoredDocument? localDoc;
+  /// Decoding is deferred to Stage 11a (CPU stage). May be absent for new
+  /// shards. Stage 11a converts this to a [StoredDocument] after decoding.
+  final RawStoredDocument? localDoc;
 
   /// Remote shard graph from Stage 2's HTTP response.
   final DecodedGraphSource? remoteShardGraph;

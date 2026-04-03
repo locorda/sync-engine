@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_jelly/jelly.dart';
 import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -153,6 +154,30 @@ class InMemoryStorage implements Storage {
         documentIri,
         ifChangedSincePhysicalClock: ifChangedSincePhysicalClock,
       );
+    }
+    return result;
+  }
+
+  @override
+  Future<Map<IriTerm, RawStoredDocument?>> getRawDocumentsByIri(
+    Iterable<IriTerm> documentIris, {
+    int? ifChangedSincePhysicalClock,
+  }) async {
+    final result = <IriTerm, RawStoredDocument?>{};
+    for (final iri in documentIris) {
+      final doc = _documents[iri];
+      if (doc != null &&
+          (ifChangedSincePhysicalClock == null ||
+              doc.metadata.updatedAt > ifChangedSincePhysicalClock)) {
+        result[iri] = RawStoredDocument(
+          documentIri: iri,
+          rawContent: jellyGraph.encoder.convert(doc.document),
+          contentType: jellyGraph.primaryMimeType,
+          metadata: doc.metadata,
+        );
+      } else {
+        result[iri] = null;
+      }
     }
     return result;
   }

@@ -12,6 +12,8 @@ import 'package:locorda_core/src/config/sync_engine_config.dart';
 import 'package:locorda_core/src/crdt_document_manager.dart'
     show computeIsGovernedBy;
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
+import 'package:locorda_core/src/storage/storage_interface.dart'
+    show RawStoredDocument, StoredDocument;
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
@@ -25,13 +27,18 @@ final _log = Logger('Stage11a.Prepare');
 /// Extracts the index IRI from shard graphs, generates entry triples from
 /// committed index entries, and computes governance IRIs for Stage 11b.
 /// Drops shards where the index IRI cannot be determined.
+///
+/// Decodes raw shard documents (from Stage 10's I/O read) into
+/// [StoredDocument] for downstream usage — keeping decode CPU in this
+/// CPU stage rather than in Stage 10's I/O stage.
 Iterable<PreparedShardEvent> Function(LoadedShardEntriesEvent) prepareShards(
   ShardDocumentGenerator shardDocGen,
   SyncEngineConfig config,
+  RdfCore rdfCore,
 ) {
   return (LoadedShardEntriesEvent event) => switch (event) {
         PhaseComplete() => [event],
-        LoadedShardEntries() => _prepare(event, shardDocGen, config),
+        LoadedShardEntries() => _prepare(event, shardDocGen, config, rdfCore),
       };
 }
 
@@ -39,12 +46,16 @@ Iterable<PreparedShardEvent> _prepare(
   LoadedShardEntries loaded,
   ShardDocumentGenerator shardDocGen,
   SyncEngineConfig config,
+  RdfCore rdfCore,
 ) {
   final shardIri = loaded.shardIri;
   final shardDocumentIri = shardIri.getDocumentIri();
 
+  // 0. Decode raw shard document (CPU work deferred from Stage 10 I/O).
+  final localDoc = _decodeRawDocument(loaded.localDoc, rdfCore);
+
   // 1. Extract index IRI from remote or local shard graph.
-  final indexIri = _extractIndexIri(shardIri, loaded);
+  final indexIri = _extractIndexIri(shardIri, localDoc, loaded);
   if (indexIri == null) {
     _log.warning(
         'Cannot determine indexIri for shard ${shardIri.debug} — skipping');
@@ -66,7 +77,7 @@ Iterable<PreparedShardEvent> _prepare(
 
   // 3. Compute governance IRIs for merge contract loading in 11b.
   final governanceIris = computeIsGovernedBy(
-    loaded.localDoc?.document,
+    localDoc?.document,
     shardDocumentIri,
     config,
     IdxShard.classIri,
@@ -76,7 +87,7 @@ Iterable<PreparedShardEvent> _prepare(
     PreparedShard(
       shardIri: shardIri,
       shardStorageId: loaded.shardStorageId,
-      localDoc: loaded.localDoc,
+      localDoc: localDoc,
       indexIri: indexIri,
       entryTriples: entryTriples,
       governanceIris: governanceIris,
@@ -87,17 +98,35 @@ Iterable<PreparedShardEvent> _prepare(
   ];
 }
 
+/// Decodes a [RawStoredDocument] into a [StoredDocument].
+StoredDocument? _decodeRawDocument(
+  RawStoredDocument? raw,
+  RdfCore rdfCore,
+) {
+  if (raw == null) return null;
+  return StoredDocument(
+    documentIri: raw.documentIri,
+    document:
+        rdfCore.decodeBinary(raw.rawContent, contentType: raw.contentType),
+    metadata: raw.metadata,
+  );
+}
+
 /// Extract the index IRI for a shard from available graphs.
 ///
 /// Prefers the remote shard graph (always fresh); falls back to local.
-IriTerm? _extractIndexIri(IriTerm shardIri, LoadedShardEntries loaded) {
+IriTerm? _extractIndexIri(
+  IriTerm shardIri,
+  StoredDocument? localDoc,
+  LoadedShardEntries loaded,
+) {
   if (loaded.remoteShardGraph != null) {
     final iri = loaded.remoteShardGraph!.graph
         .findSingleObject<IriTerm>(shardIri, IdxShard.isShardOf);
     if (iri != null) return iri;
   }
-  if (loaded.localDoc != null) {
-    final iri = loaded.localDoc!.document
+  if (localDoc != null) {
+    final iri = localDoc.document
         .findSingleObject<IriTerm>(shardIri, IdxShard.isShardOf);
     if (iri != null) return iri;
   }

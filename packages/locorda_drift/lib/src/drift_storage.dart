@@ -352,6 +352,47 @@ class DriftStorage implements core.Storage {
   }
 
   @override
+  Future<Map<IriTerm, core.RawStoredDocument?>> getRawDocumentsByIri(
+    Iterable<IriTerm> documentIris, {
+    int? ifChangedSincePhysicalClock,
+  }) async {
+    final iris = documentIris.toList(growable: false);
+    if (iris.isEmpty) {
+      return const {};
+    }
+
+    final documents = await documentDao.getDocumentsByIri(
+      iris.map((iri) => iri.value),
+      ifChangedSincePhysicalClock: ifChangedSincePhysicalClock,
+    );
+
+    final byIri = {
+      for (final document in documents) document.iri: document.document,
+    };
+
+    final result = <IriTerm, core.RawStoredDocument?>{};
+    for (final documentIri in iris) {
+      final document = byIri[documentIri.value];
+      if (document == null) {
+        result[documentIri] = null;
+        continue;
+      }
+
+      result[documentIri] = core.RawStoredDocument(
+        documentIri: documentIri,
+        rawContent: document.documentContent,
+        contentType: jellyGraph.primaryMimeType,
+        metadata: core.DocumentMetadata(
+          ourPhysicalClock: document.ourPhysicalClock,
+          updatedAt: document.updatedAt,
+        ),
+      );
+    }
+
+    return result;
+  }
+
+  @override
   Future<List<core.PropertyChange>> getPropertyChanges(IriTerm documentIri,
       {int? sinceLogicalClock}) async {
     final documentId = await documentDao.getDocumentId(documentIri.value);

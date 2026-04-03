@@ -322,15 +322,20 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
 
           if (buffer.isEmpty) return;
 
-          // CPU: assemble (DB load) and encode (serialise) per shard.
-          final requests = <RemoteUploadRequest<RawContent>>[];
+          // Pass 1 — I/O: load resource graphs from DB and assemble datasets.
+          final datasets = <(MergedShard, RdfDataset)>[];
           for (final shard in buffer) {
             final swDbLoad = perf != null ? (Stopwatch()..start()) : null;
             final dataset = await _assembleDataset(shard);
             if (swDbLoad != null)
               perf!.record(
                   'S12.ShardUpload.dbLoad', swDbLoad.elapsedMicroseconds);
+            datasets.add((shard, dataset));
+          }
 
+          // Pass 2 — CPU: encode all datasets to wire format.
+          final requests = <RemoteUploadRequest<RawContent>>[];
+          for (final (shard, dataset) in datasets) {
             final swEncode = perf != null ? (Stopwatch()..start()) : null;
             final encoded = _encodeDataset(dataset);
             if (swEncode != null)
@@ -344,7 +349,7 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
             ));
           }
 
-          // I/O: upload via backend stream.
+          // Pass 3 — I/O: upload via backend stream.
           final swIo = perf != null ? (Stopwatch()..start()) : null;
           final results =
               await backend.upload(Stream.fromIterable(requests)).toList();

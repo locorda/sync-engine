@@ -72,15 +72,20 @@ Stream<LoadedCandidateEvent> _loadChunk(
   final documentIris =
       chunk.map((e) => e.resourceIri.getDocumentIri()).toList();
 
-  final docs = await storage.getDocumentsByIri(documentIris);
+  final docs = await storage.getRawDocumentsByIri(documentIris);
   final etags = await storage.getRemoteETags(remoteId, documentIris);
   if (sw != null) perf!.record(perfStage, sw.elapsedMicroseconds);
 
   for (final candidate in chunk) {
     final documentIri = candidate.resourceIri.getDocumentIri();
     final doc = docs[documentIri];
-    final RdfGraphSource? localSource =
-        doc != null ? DecodedGraphSource(doc.document) : null;
+    final RdfGraphSource? localSource;
+    if (doc == null) {
+      localSource = null;
+    } else {
+      localSource =
+          BinaryGraphSource(doc.rawContent, contentType: doc.contentType);
+    }
 
     yield LoadedCandidate(
       candidate,
