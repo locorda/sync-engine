@@ -213,7 +213,7 @@ class IdentifiedBlankNodeBuilder {
 
   IdentifiedBlankNodes<T> computeIdentifiedBlankNodes<T>(RdfGraph graph,
       MergeContract mergeContract, T Function(IdentifiedBlankNode) converter) {
-    final blankNodeSubjects = graph.subjects.whereType<BlankNodeTerm>();
+    final blankNodeSubjects = graph.subjects.whereType<BlankNodeTerm>().toSet();
 
     // 1st: find the identifying properties for each blank node. If there are none,
     // then we do not need to go further - the blank node cannot be identified
@@ -223,8 +223,8 @@ class IdentifiedBlankNodeBuilder {
     };
 
     // 2nd: find the parent path(s) - store full triples to access predicates
-    final parentTriples = graph.triples
-        .where((t) => blankNodeSubjects.contains(t.object))
+    final parentTriples = graph.findTriples(
+            objectIn: blankNodeSubjects)
         .fold(<BlankNodeTerm, List<Triple>>{}, (r, t) {
       r.putIfAbsent(t.object as BlankNodeTerm, () => <Triple>[]).add(t);
       return r;

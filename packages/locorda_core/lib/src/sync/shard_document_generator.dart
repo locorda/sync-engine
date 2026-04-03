@@ -260,11 +260,10 @@ class ShardDocumentGenerator {
       Map<IriTerm, List<RdfObject>>? headerProperties;
       if (entry.headerProperties != null) {
         headerProperties = {};
-        for (final triple in entry.headerProperties!.triples) {
-          if (triple.subject == entry.resourceIri) {
-            headerProperties.putIfAbsent(triple.predicate as IriTerm, () => []);
-            headerProperties[triple.predicate as IriTerm]!.add(triple.object);
-          }
+        for (final triple in entry.headerProperties!
+            .findTriples(subject: entry.resourceIri)) {
+          headerProperties.putIfAbsent(triple.predicate as IriTerm, () => []);
+          headerProperties[triple.predicate as IriTerm]!.add(triple.object);
         }
         if (headerProperties.isEmpty) {
           headerProperties = null;
