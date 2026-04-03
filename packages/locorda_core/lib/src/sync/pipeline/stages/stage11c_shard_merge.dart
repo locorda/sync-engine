@@ -10,6 +10,7 @@ library;
 import 'package:locorda_core/src/crdt_document_manager.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/sync/remote_document_merger.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
@@ -30,12 +31,13 @@ import 'package:locorda_rdf_jelly/jelly.dart';
 Iterable<MergedShardEvent> Function(ContractLoadedShardEvent) mergeShards(
   CrdtDocumentManager documentManager,
   RemoteDocumentMerger merger,
-  RdfCore rdfCore,
-) {
+  RdfCore rdfCore, {
+  PipeperfCollector? perf,
+}) {
   return (ContractLoadedShardEvent event) => switch (event) {
         PhaseComplete() => [event],
         ContractLoadedShard() =>
-          _merge(event, documentManager, merger, rdfCore),
+          _merge(event, documentManager, merger, rdfCore, perf),
       };
 }
 
@@ -44,10 +46,12 @@ List<MergedShardEvent> _merge(
   CrdtDocumentManager documentManager,
   RemoteDocumentMerger merger,
   RdfCore rdfCore,
+  PipeperfCollector? perf,
 ) {
   final p = loaded.prepared;
   final shardIri = p.shardIri;
   final shardDocumentIri = shardIri.getDocumentIri();
+  final sw = Stopwatch()..start();
 
   // When a 200 response was received, merge remote CRDT framework metadata
   // (foreign clock entries, tombstones) into the local shard before applying
@@ -70,6 +74,8 @@ List<MergedShardEvent> _merge(
   } else {
     effectiveDoc = p.localDoc;
   }
+  perf?.record('S11c.remoteMerge', sw.elapsedMicroseconds);
+  sw.reset();
 
   // CRDT-merge via sync path — picks up existing HLC clock.
   final prepared = documentManager.prepareModifyWithContract(
@@ -80,7 +86,10 @@ List<MergedShardEvent> _merge(
     effectiveDoc,
     loaded.mergeContract,
     acceptMissing: true,
+    perf: perf,
   );
+  perf?.record('S11c.prepareModify', sw.elapsedMicroseconds);
+  sw.reset();
   if (prepared == null) {
     // No changes — shard is already up-to-date locally.
     // No local changes detected — use the effective (merged) graph as-is.
@@ -92,6 +101,7 @@ List<MergedShardEvent> _merge(
 
     final encodedBytes =
         rdfCore.encodeBinary(baseGraph, contentType: jelly.primaryMimeType);
+    perf?.record('S11c.encode', sw.elapsedMicroseconds);
 
     return [
       MergedShard(
@@ -109,6 +119,7 @@ List<MergedShardEvent> _merge(
   final mergedGraph = prepared.crdtDocument;
   final encodedBytes =
       rdfCore.encodeBinary(mergedGraph, contentType: jelly.primaryMimeType);
+  perf?.record('S11c.encode', sw.elapsedMicroseconds);
   return [
     MergedShard(
       shardIri,

@@ -11,6 +11,8 @@ Es gibt **keine Remote-Daten** und **keine Konflikte** — beide Stages sollten 
 | S07c.CrdtMerge | 15.440 | 2,82s | 182µs |
 | S11c.ShardMerge | 140 | 1,25s | 8,9ms |
 
+> **Hinweis:** Alle Zeitschätzungen in diesem Dokument sind **unverifizierten Hochrechnungen**. Sub-Messungen wurden implementiert (siehe Abschnitt am Ende) und werden bei nächster Ausführung echte Zahlen liefern.
+
 ---
 
 ## Stage 7c: CrdtMerge — Detailanalyse
@@ -27,21 +29,21 @@ Es gibt **keine Remote-Daten** und **keine Konflikte** — beide Stages sollten 
      → mergedGraph = d.localGraph!            ✅ Sofort, kein Merge — gut
    
 2. reconciler.reconcileSync(...)               ⚠️ Wird IMMER aufgerufen
-   → shardDeterminer.determineShards(...)      ~10-20µs — OK
-   → hlcService.getCurrentClock(...)           ⛔ TEUER — siehe unten
-     → _extractCrdtClock()                     ~5µs — Graph-Lookup
-     → _hashClock()                            ⛔ 30-80µs — N-Quads + MD5
-   → _shardsChanged(...)                       ~2µs — Set-Vergleich
-   → replaceInDocument (nur bei Änderungen)    ~5-10µs bei Änderungen
+   → shardDeterminer.determineShards(...)      → zu messen (S07c.reconcile.shards)
+   → hlcService.getCurrentClock(...)           → zu messen (S07c.reconcile.clock)
+     → _extractCrdtClock()                     Graph-Lookup
+     → _hashClock()                            N-Quads + MD5
+   → _shardsChanged(...)                       Set-Vergleich — günstig
+   → replaceInDocument (nur bei Änderungen)    → zu messen (S07c.reconcile.replace)
 
-3. buildActiveIndexEntries(...)                ~5µs — OK
-4. collectTombstonedShards(...)                ~5-10µs — unnötig bei initial sync
-5. rdfCore.encodeBinary(reconciled.graph)      ⛔ 60-100µs — Jelly-Encoding
+3. buildActiveIndexEntries(...)                → zu messen (S07c.indexEntries)
+4. collectTombstonedShards(...)                → zu messen (S07c.tombstones)
+5. rdfCore.encodeBinary(reconciled.graph)      → zu messen (S07c.encode)
 ```
 
 ### CPU-Hotspots (15.440×)
 
-#### 1. `_hashClock()` — N-Quads-Serialisierung + MD5 (geschätzt 450–1.200ms gesamt)
+#### 1. `_hashClock()` — N-Quads-Serialisierung + MD5
 
 Quelle: [hlc_service.dart](../packages/locorda_core/lib/src/hlc_service.dart) L263-L280
 
@@ -51,7 +53,6 @@ String _hashClock(CrdtClock clock) {
   for (final (_, graph) in clock) {
     triples.addAll(graph.findTriples(predicate: CrdtClockEntry.logicalTime));
   }
-  // Erzeugt RdfGraph → RdfDataset → NQuadsEncoder → UTF8 → MD5
   final dataset = RdfDataset.fromDefaultGraph(RdfGraph.fromTriples(triples));
   final nquadsEncoder = NQuadsEncoder(options: const NQuadsEncoderOptions(canonical: true));
   final nquads = nquadsEncoder.encode(dataset, generateNewBlankNodeLabels: false);
@@ -66,43 +67,40 @@ String _hashClock(CrdtClock clock) {
 4. UTF8-encoded
 5. MD5-gehashed
 
-**Redundanz:** Der `localClockHash` ist bereits als Feld im `SyncCandidate` verfügbar (kommt aus Stage 4 / der DB). Er wird in `reconcileSync` aber **nicht genutzt** — stattdessen wird er komplett neu berechnet.
+**Teilweise Redundanz:** Im `notInRemoteShard`-Pfad ändert sich der Graph nicht — `localClockHash` aus `SyncCandidate` könnte als `mergedClockHash` wiederverwendet werden. **Aber:** `getCurrentClock()` liefert auch `logicalTime`, `physicalTime`, `fullClock`, die downstream benötigt werden (Index-Entries, Metadata). Der Hash allein reicht nicht.
 
-#### 2. `encodeBinary()` — Jelly-Encoding (geschätzt 900–1.500ms gesamt)
+→ **Messung nötig** um den realen Impact per Sub-Stage `S07c.reconcile.clock` zu quantifizieren.
+
+#### 2. `encodeBinary()` — Jelly-Encoding
 
 Quelle: `rdfCore.encodeBinary()` → `JellyGraphEncoder.convert()`
 
-```dart
-Uint8List convert(RdfGraph graph) {
-  final state = JellyEncoderState(...);
-  final writer = JellyRawFrameWriter(_options.maxRowsPerFrame);
-  for (final triple in graph.triples) {    // ← Iteration über ALLE Triples
-    state.emitTriple(triple, writer);       // ← Name/Prefix/Datatype Lookups
-  }
-  return writer.finish();                   // ← Protobuf-Serialisierung
-}
-```
+**Problem:** Jelly-Encoding iteriert über alle Triples des Graphen, baut Lookup-Tables, serialisiert zu Protobuf. Bei ~15.440 Graphen mit je ~20-50 Triples ist das wahrscheinlich die dominante CPU-Last.
 
-**Problem:** Jelly-Encoding iteriert über alle Triples des Graphen, baut Lookup-Tables, serialisiert zu Protobuf. Bei ~15.440 Graphen mit je ~20-50 Triples ist das die dominante CPU-Last.
+**Initial sync:** `reconcileSync` setzt `idx:belongsToIndexShard` initial → `hasChanges == true` → der Graph wird modifiziert → Neukodierung ist **nötig** (Raw-Bytes aus Stage 5 passen nicht mehr).
 
-**Teilredundanz:** Im `notInRemoteShard`-Pfad ist `mergedGraph = d.localGraph` — der Graph wurde nicht verändert. Wenn die ursprünglichen Jelly-Bytes aus Stage 5 (LocalLoad) noch verfügbar wären, könnte die Neukodierung entfallen. Allerdings verändert `reconcileSync` den Graphen durch Shard-Zuweisung (bei initial sync wird `idx:belongsToIndexShard` initial gesetzt → `hasChanges == true`).
+→ **Messung nötig** um den realen Impact per Sub-Stage `S07c.encode` zu quantifizieren.
 
-#### 3. `collectTombstonedShards()` — unnötig bei initial sync (~75–150ms gesamt)
+#### 3. `collectTombstonedShards()` — Graph-Traversal
 
 Quelle: [index_entry_builder.dart](../packages/locorda_core/lib/src/index/index_entry_builder.dart)
 
-Bei initial sync gibt es keine Tombstones. Die Funktion traversiert trotzdem den Graphen und sucht nach `rdf:subject` / `crdt:deletedAt` Triples.
+Traversiert den Graphen und sucht nach `rdf:subject` / `crdt:deletedAt` Triples. In diesem Szenario sehr wahrscheinlich keine Tombstones vorhanden — allerdings ist "initial sync" nicht immer gleichbedeutend mit "keine Tombstones" (Nutzer können die App offline monatelang nutzen, über andere Remotes synchen, etc.).
 
-### Zusammenfassung Stage 7c: Zeitaufteilung (geschätzt)
+→ **Messung nötig** per `S07c.tombstones`.
 
-| Operation | Geschätzt | % von 2,82s |
-|-----------|-----------|-------------|
-| `encodeBinary` (Jelly) | ~900-1.500ms | 32-53% |
-| `_hashClock` (N-Quads+MD5) | ~450-1.200ms | 16-43% |
-| `reconcileSync` (ohne Hash) | ~200-350ms | 7-12% |
-| `buildActiveIndexEntries` | ~75ms | 3% |
-| `collectTombstonedShards` | ~100ms | 4% |
-| Rest (dispatch, alloc) | ~100-300ms | - |
+### Zusammenfassung Stage 7c: Identifizierte Hotspots
+
+| Sub-Stage | Mess-Label | Hypothese |
+|-----------|------------|-----------|
+| CRDT-Merge (switch) | `S07c.merge` | Trivial bei `notInRemoteShard` |
+| Shard-Bestimmung | `S07c.reconcile.shards` | Wahrscheinlich günstig |
+| Clock (Extract+Hash) | `S07c.reconcile.clock` | `_hashClock()` potenziell dominant |
+| Shard-Replace | `S07c.reconcile.replace` | Nur bei Änderungen |
+| Reconcile gesamt | `S07c.reconcile` | Summe der obigen |
+| Index-Entries | `S07c.indexEntries` | Wahrscheinlich günstig |
+| Tombstones | `S07c.tombstones` | Wahrscheinlich günstig, Graph-Traversal |
+| Jelly-Encoding | `S07c.encode` | Wahrscheinlich dominant |
 
 ---
 
@@ -119,28 +117,29 @@ Bei initial sync gibt es keine Tombstones. Die Funktion traversiert trotzdem den
    → Bei initial sync zu leerem Dir: remoteShardGraph == null (404/410)
    → effectiveDoc = p.localDoc                    ✅ Kein Remote-Merge — gut
 
-2. documentManager.prepareModifyWithContract(...)  ⛔ TEUER — immer aufgerufen
+2. documentManager.prepareModifyWithContract(...)  ⚠️ IMMER aufgerufen
    Innerhalb:
-   a) computeIsGovernedBy()                        ~1µs — OK
-   b) splitDocument(effectiveDoc, ...)             ⛔ O(n) BFS + Set-Diff
-   c) buildShardAppData(oldAppData, ...)           ⛔ Subgraph + neuer Graph
-   d) _computeSaveCore(...)                        ⛔ TEUER — siehe unten
-      → createOrIncrementClock()                   ⛔ _hashClock()
-      → generateMetadata(appData, oldAppData, ...) ⛔ DOMINANT
-        → computeCanonicalBlankNodes(appData)      ⛔ TEUER bei vielen Entries
-        → computeCanonicalBlankNodes(oldAppData)   ⛔ DUPLIKAT!
-        → _generateCrdtMetadataForChanges(...)     ⛔ Voller Subjekt/Prädikat-Diff
+   a) computeIsGovernedBy()                        ~günstig
+   b) splitDocument(effectiveDoc, ...)             O(n) BFS + Set-Diff
+   c) buildShardAppData(oldAppData, ...)           Subgraph + neuer Graph
+   d) _computeSaveCore(...)                        → Sub-Messungen implementiert
+      → createOrIncrementClock()                   → _computeSave.clock
+      → generateMetadata(appData)                  → _computeSave.appMeta
+        → computeCanonicalBlankNodes(appData)      Für neue BlankNode-Identität
+        → computeCanonicalBlankNodes(oldAppData)   Für alte BlankNode-Identität
+        → _generateCrdtMetadataForChanges(...)     Voller Subjekt/Prädikat-Diff
+      → _constructCrdtDocument + fwk metadata      → _computeSave.construct
 
-3. WENN prepared == null (keine Änderungen, ~50 Shards):
-   → rdfCore.encodeBinary(baseGraph)              ⛔ JELLY-ENCODING TROTZDEM!
+3. WENN prepared == null (~50 Shards):
+   → rdfCore.encodeBinary(baseGraph)              → S11c.encode (benötigt für DB)
    
-4. WENN prepared != null (mit Änderungen, ~90 Shards):
-   → rdfCore.encodeBinary(mergedGraph)             ⚠️ Nötig, aber teuer
+4. WENN prepared != null (~90 Shards):
+   → rdfCore.encodeBinary(mergedGraph)             → S11c.encode
 ```
 
 ### CPU-Hotspots (140×)
 
-#### 1. `computeCanonicalBlankNodes` — 2× pro Shard (geschätzt 200–500ms gesamt)
+#### 1. `computeCanonicalBlankNodes` — 2× pro Shard (NICHT redundant!)
 
 Quelle: [identified_blank_node_builder.dart](../packages/locorda_core/lib/src/mapping/identified_blank_node_builder.dart) L206+
 
@@ -148,78 +147,82 @@ Wird **zweimal** aufgerufen in `generateMetadata()`:
 1. Für `appData` (neue App-Daten nach `buildShardAppData`)
 2. Für `oldAppData` (bisherige App-Daten)
 
+**⚠️ Dies ist KEIN Duplikat.** Beide Aufrufe sind semantisch notwendig:
+- `computeCanonicalBlankNodes` erzeugt `IdentifiedBlankNodeSubject`-Objekte, die die kanonische IRI-Identität eines BlankNodes innerhalb eines bestimmten Graphen festlegen.
+- `IdentifiedBlankNodeSubject.operator==` verwendet `any(contains)` auf den `identifiers`-Listen beider Graphen, um BlankNodes **graphübergreifend** zu matchen.
+- `hashCode` ist konstant `0` um dies zu ermöglichen — das Matching ist bewusst asymmetrisch.
+- Ohne den Aufruf für `oldAppData` wären gelöschte oder geänderte BlankNode-Subjects nicht korrekt identifizierbar.
+
 Pro Aufruf:
-- Alle BlankNode-Subjekte sammeln (`blankNodeSubjects`)
+- Alle BlankNode-Subjekte sammeln
 - Identifying Predicates pro BlankNode aus MergeContract laden
-- Parent-Triples aufbauen (kompletter Triple-Scan!)
+- Parent-Triples aufbauen (Triple-Scan)
 - Dependency-Sortierung (`_sortByDependencies`)
 - Pro BlankNode: `_addIdentifiedBlankNodes` mit Pfad-Berechnung
-- Duplikat- und Zirkularreferenz-Erkennung
 
-Bei einem Shard mit z.B. 100 Entries (je als BlankNode) und je 3-5 Triples → 300-500 Triples, davon ~100 BlankNode-Subjekte. **Zweimal**.
+Bei einem Shard mit z.B. 100 Entries (als BlankNodes) → zweimal ~100 BlankNode-Subjekte verarbeiten.
 
-#### 2. `_generateCrdtMetadataForChanges` — Voller Diff (geschätzt 150–350ms gesamt)
+→ **Messung nötig** via `_computeSave.appMeta` (enthält beide Aufrufe).
+
+#### 2. `_generateCrdtMetadataForChanges` — Voller Diff
 
 Quelle: [local_document_merger.dart](../packages/locorda_core/lib/src/local_document_merger.dart) L189+
 
 - Partitioniert alle Subjekte in `added`, `deleted`, `common`
 - Für **jeden** `common` Subjekt: iteriert über **alle** Prädikate beider Graphen
 - Pro Prädikat: `_valuesEqual()` mit Deep-Equality inkl. Blank-Node-Vergleich
-- Pro Änderung: `crdtType.localValueChange()` mit vollständiger Metadaten-Generierung
+- Pro Änderung: `crdtType.localValueChange()` mit Metadaten-Generierung
 
 Wenn die Shards unverändert sind, werden ~100 Subjekte × ~4 Prädikate verglichen, nur um festzustellen: alles gleich → `propertyChanges.isEmpty` → return null.
 
-#### 3. `splitDocument` — BFS + Set-Differenz (geschätzt 70–200ms gesamt)
+→ In `_computeSave.appMeta` enthalten.
+
+#### 3. `splitDocument` — BFS + Set-Differenz
 
 Quelle: [split_document.dart](../packages/locorda_core/lib/src/split_document.dart) L9-L30
-
-```dart
-final frameworkGraph = document.subgraph(documentIri, filter: (triple, depth) {
-  // BFS-Traversal des gesamten Dokuments
-  final type = types.putIfAbsent(triple.subject, () => ...findSingleObject...);
-  final isStopTraversal = mergeContract.isStopTraversalPredicate(type, triple.predicate);
-  return isStopTraversal ? TraversalDecision.includeButDontDescend : TraversalDecision.include;
-});
-return (appGraph: document.without(frameworkGraph), frameworkGraph: frameworkGraph);
-```
 
 - `subgraph()`: BFS/DFS-Traversal mit Filter-Callback + Type-Lookup pro Triple
 - `without()`: Set-Differenz über alle Triples des Dokuments
 - Bei Shard-Dokumenten mit 300-500+ Triples: O(n) mit konstantem Overhead pro Triple
 
-#### 4. `buildShardAppData` — Erneuter Subgraph + Graph-Erzeugung (geschätzt 70–140ms gesamt)
+→ In `S11c.prepareModify` enthalten (vor `_computeSaveCore`).
+
+#### 4. `buildShardAppData` — Erneuter Subgraph + Graph-Erzeugung
 
 Quelle: [shard_document_generator.dart](../packages/locorda_core/lib/src/sync/shard_document_generator.dart) L345-L363
 
 ```dart
 RdfGraph.fromTriples([
-  ...oldAppData.subgraph(shardIri, filter: ...).triples,  // ← Erneuter Traversal
+  ...oldAppData.subgraph(shardIri, filter: ...).triples,
   if (!hasType) Triple(...),
   if (!hasIsShardOf) Triple(...),
-  ...newTriples                                            // ← Alle Entry-Triples
+  ...newTriples
 ]);
 ```
 
 - **Erneuter** `subgraph()`-Traversal (nach dem in `splitDocument`)
 - Neuen `RdfGraph.fromTriples` aus ~200-500 Triples erstellen
-- Im No-Change-Fall: identisch mit `oldAppData` (der Subgraph minus `containsEntry` + erneute `containsEntry` = dasselbe)
 
-#### 5. Jelly-Encoding bei `prepared == null` — pure Verschwendung (geschätzt 50–200ms gesamt)
+→ In `S11c.prepareModify` enthalten (vor `_computeSaveCore`).
 
-In [stage11c_shard_merge.dart](../packages/locorda_core/lib/src/sync/pipeline/stages/stage11c_shard_merge.dart) L92-L94:
+#### 5. Jelly-Encoding — benötigt für DB-Commit
+
+In [stage11c_shard_merge.dart](../packages/locorda_core/lib/src/sync/pipeline/stages/stage11c_shard_merge.dart):
 
 ```dart
 if (prepared == null) {
-    // ...
-    final encodedBytes = rdfCore.encodeBinary(baseGraph, contentType: jelly.primaryMimeType);
-    // ↑ JELLY-ENCODING OBWOHL NICHTS GEÄNDERT!
+    final encodedBytes = rdfCore.encodeBinary(baseGraph, ...);
 ```
 
-~50 Shards durchlaufen die volle CRDT-Analyse nur um festzustellen "keine Änderungen", und werden danach trotzdem Jelly-encoded.
+**⚠️ Korrektur:** Dies ist **keine reine Verschwendung**. Stage 13 (`shardDbCommit`) schreibt **jeden** `MergedShard` in die DB und benötigt `encodedForDb.bytes`. Die Frage ist eher, ob der DB-Schreibvorgang selbst vermeidbar wäre — z.B. ob bei `prepared == null` UND `existsOnRemote` der Shard-Commit komplett übersprungen werden kann.
 
-#### 6. `createOrIncrementClock` mit `_hashClock` (geschätzt 40–100ms gesamt)
+Zusätzlich: `StoredDocument` in `PreparedShard.localDoc` enthält **keine** rohen Bytes (nur den decoded `RdfGraph`). `RawStoredDocument` mit `rawContent`-Feld existiert als Typ, wird aber in diesem Pfad nicht verwendet.
 
-In `_computeSaveCore()` ([crdt_document_manager.dart](../packages/locorda_core/lib/src/crdt_document_manager.dart) L620):
+→ **Messung nötig** per `S11c.encode`.
+
+#### 6. `createOrIncrementClock` mit `_hashClock`
+
+In `_computeSaveCore()` ([crdt_document_manager.dart](../packages/locorda_core/lib/src/crdt_document_manager.dart)):
 
 ```dart
 final clock = _hlcService.createOrIncrementClock(oldFrameworkGraph, documentIri, ...);
@@ -227,27 +230,28 @@ final clock = _hlcService.createOrIncrementClock(oldFrameworkGraph, documentIri,
 
 → `_incrementClock()` → `_hashClock()` → N-Quads + MD5. 140× für Shards.
 
-### Zusammenfassung Stage 11c: Zeitaufteilung (geschätzt)
+→ **Messung nötig** per `_computeSave.clock`.
 
-| Operation | Geschätzt | % von 1,25s |
-|-----------|-----------|-------------|
-| `computeCanonicalBlankNodes` (2×140) | ~200-500ms | 16-40% |
-| `_generateCrdtMetadataForChanges` | ~150-350ms | 12-28% |
-| `encodeBinary` (Jelly, 140×) | ~140-420ms | 11-34% |
-| `splitDocument` | ~70-200ms | 6-16% |
-| `buildShardAppData` | ~70-140ms | 6-11% |
-| `_hashClock` | ~40-100ms | 3-8% |
-| Rest | ~50-100ms | - |
+### Zusammenfassung Stage 11c: Identifizierte Hotspots
+
+| Sub-Stage | Mess-Label | Hypothese |
+|-----------|------------|-----------|
+| Remote-Merge (switch) | `S11c.remoteMerge` | Trivial ohne Remote-Daten |
+| prepareModify gesamt | `S11c.prepareModify` | Dominant — enthält splitDoc, buildAppData |
+| ↳ Clock (Create+Hash) | `_computeSave.clock` | `_hashClock()` 140× |
+| ↳ App-Metadata (Blank-Nodes + Diff) | `_computeSave.appMeta` | Potenziell dominant — 2× canonicalBlankNodes + Diff |
+| ↳ Construct (Framework-Meta + Assembly) | `_computeSave.construct` | Framework generateMetadata + Graph-Assembly |
+| Jelly-Encoding | `S11c.encode` | 140× Graphen kodieren |
 
 ---
 
 ## Übergreifende Erkenntnisse
 
-### 1. Clock-Hash wird redundant neu berechnet (betrifft 7c)
+### 1. Clock-Hash: Teilweise Redundanz (betrifft 7c)
 
-In `reconcileSync` (via `getCurrentClock`) wird der Clock-Hash neu berechnet, obwohl er in `SyncCandidate.localClockHash` aus Stage 4 bereits vorhanden ist. Im `notInRemoteShard`-Pfad ändert sich der Graph nicht → Hash bleibt identisch.
+In `reconcileSync` (via `getCurrentClock`) wird der Clock-Hash neu berechnet, obwohl `SyncCandidate.localClockHash` aus Stage 4 bereits vorhanden ist. Im `notInRemoteShard`-Pfad ändert sich der Graph nicht → Hash bleibt identisch.
 
-**Impact**: ~450-1.200ms in 7c vermeidbar.
+**Aber:** `getCurrentClock()` liefert nicht nur `hash`, sondern auch `logicalTime`, `physicalTime`, `fullClock` — diese werden downstream für Index-Entries und Metadata benötigt. Eine Optimierung müsste den Hash separat behandeln und die anderen Clock-Felder weiterhin berechnen.
 
 ### 2. Voller CRDT-Diff für "keine Änderungen" (betrifft 11c)
 
@@ -255,22 +259,18 @@ In `reconcileSync` (via `getCurrentClock`) wird der Clock-Hash neu berechnet, ob
 1. `splitDocument` (BFS + Set-Diff)
 2. `buildShardAppData` (Subgraph + Graph-Konstruktion)
 3. `createOrIncrementClock` (Extract + Hash)
-4. `computeCanonicalBlankNodes` × 2 (Dependency-Sort, Pfad-Berechnung)
+4. `computeCanonicalBlankNodes` × 2 (beide semantisch notwendig!)
 5. `_generateCrdtMetadataForChanges` (Voller Subjekt/Prädikat-Diff)
 
 ...nur um in ~50 Fällen `return null` zu liefern.
 
 **Kein Early-Exit**: Es gibt keine günstige Vorstufen-Prüfung ("Hat sich überhaupt etwas geändert?").
 
-### 3. Jelly-Encoding bei unveränderten Shards (betrifft 11c)
+### 3. DB-Commit für unveränderte Shards (betrifft 11c)
 
-Wenn `prepared == null`, wird der unveränderte Graph trotzdem neu Jelly-encoded. Die bestehenden Bytes aus der DB stehen nicht zur Verfügung.
+Wenn `prepared == null` und der Shard bereits in der DB existiert, könnte der gesamte DB-Commit (Stage 13) einschließlich der Jelly-Neukodierung übersprungen werden. `StoredDocument` enthält keine Raw-Bytes — eine Durchreichung der Raw-Bytes aus der DB (via `RawStoredDocument`) könnte die Neukodierung eliminieren.
 
-### 4. Doppelte `computeCanonicalBlankNodes` (betrifft 11c)
-
-Für Shard-Dokumente mit vielen Entry-BlankNodes ist die Identifizierung besonders teuer. Sie wird für `appData` UND `oldAppData` separat durchgeführt — jedes Mal mit vollständigem Triple-Scan, Dependency-Sortierung, und Pfad-Berechnung.
-
-### 5. Redundante Graph-Traversals (betrifft 11c)
+### 4. Redundante Graph-Traversals (betrifft 11c)
 
 `splitDocument` macht einen Subgraph-Traversal, dann macht `buildShardAppData` einen **weiteren** Subgraph-Traversal auf dem Ergebnis. Bei großen Shard-Dokumenten verdoppelt sich der Traversal-Aufwand.
 
@@ -278,42 +278,75 @@ Für Shard-Dokumente mit vielen Entry-BlankNodes ist die Identifizierung besonde
 
 ## Optimierungsmöglichkeiten
 
-### Quick Wins (Hoch Impact, Wenig Aufwand)
+### Quick Wins
 
-| # | Maßnahme | Betroffene Stage | Geschätzte Einsparung |
-|---|----------|-------------------|----------------------|
-| **A** | Clock-Hash aus `SyncCandidate.localClockHash` durchreichen statt neu berechnen | 7c | 450-1.200ms |
-| **B** | Jelly-Encoding überspringen bei `prepared == null` — bestehende Bytes aus DB/preload durchreichen | 11c | 50-200ms |
-| **C** | Early-Exit in 11c **vor** `prepareModifyWithContract`: Wenn `entryTriples` identisch mit bestehenden Entries → skip | 11c | 200-500ms (für ~50 Shards) |
+| # | Maßnahme | Stage | Kommentar |
+|---|----------|-------|-----------|
+| **A** | Clock-Hash aus `SyncCandidate.localClockHash` für `needsUpload`/`needsDbWrite` verwenden, statt in `getCurrentClock` neu zu berechnen | 7c | Spart `_hashClock` für non-merge Pfade; Clock-Felder müssen separat extrahiert werden |
+| **B** | Early-Exit in 11c **vor** `prepareModifyWithContract`: Schneller Triple-Vergleich der Entry-Triples → skip wenn identisch | 11c | Spart den gesamten CRDT-Diff für ~50 unveränderte Shards |
+| **C** | DB-Commit in Stage 13 überspringen wenn `prepared == null` UND Shard already exists | 11c | Spart Jelly-Encoding + DB-Write für unveränderte Shards |
 
 ### Mittlerer Aufwand
 
-| # | Maßnahme | Betroffene Stage | Geschätzte Einsparung |
-|---|----------|-------------------|----------------------|
-| **D** | `reconcileSync` bei `notInRemoteShard` vereinfachen: Shard-Zuweisungen und Clock aus dem lokalen Dokument extrahieren, ohne vollen `determineShards` + `getCurrentClock` | 7c | 200-400ms |
-| **E** | Raw Jelly-Bytes aus Stage 5 (LocalLoad) als `BinaryGraphSource` mitführen, um Neukodierung in 7c zu vermeiden wenn Graph unverändert bleibt (nach Shard-Reconciliation) | 7c | 0-500ms (nur wenn `hasChanges == false`) |
-| **F** | `computeCanonicalBlankNodes`: Ergebnis cachen zwischen `appData` und `oldAppData` wenn der Subgraph sich nicht geändert hat, oder für Shard-Entries einen simplifizierten Pfad verwenden | 11c | 100-250ms |
+| # | Maßnahme | Stage | Kommentar |
+|---|----------|-------|-----------|
+| **D** | Raw Jelly-Bytes aus DB durchreichen wenn Graph unverändert | 7c, 11c | `RawStoredDocument` existiert, wird aber nicht genutzt |
+| **E** | `_hashClock` Algorithmus: Direkter Hash über sortierte `(installationIri, logicalTime)` statt N-Quads-Umweg | Übergreifend | Eliminiert RdfGraph/RdfDataset/NQuads/UTF8 Allokationen |
 
 ### Architektur-Level
 
-| # | Maßnahme | Betroffene Stage | Geschätzte Einsparung |
-|---|----------|-------------------|----------------------|
-| **G** | Für Initial-Sync: `notInRemoteShard`-Pfad in 7c komplett spezialisieren — kein `reconcileSync`, kein `encodeBinary` wenn Bytes vorhanden, Clock direkt aus Candidate | 7c | bis 1.500ms |
-| **H** | Für Initial-Sync: Shards mit identischen Entry-Triples in 11c komplett skippen — Shard-Dokument unverändert in DB belassen, nur `needsUpload` prüfen | 11c | bis 800ms (für ~50 Shards) |
-| **I** | `_hashClock` Algorithmus optimieren: Statt N-Quads-Serialisierung einen direkten Hash über die sortierten `(installationIri, logicalTime)`-Paare berechnen | 7c, 11c | 30-50% der Hash-Kosten |
+| # | Maßnahme | Stage | Kommentar |
+|---|----------|-------|-----------|
+| **F** | Für `notInRemoteShard`: Spezialisierten Pfad in 7c der `reconcileSync` minimal hält | 7c | Muss zuerst per Messung validiert werden |
+| **G** | `splitDocument` + `buildShardAppData` Graph-Traversals fusionieren | 11c | Muss zuerst per Messung validiert werden |
 
 ---
 
-## Priorisierte Empfehlung
+## Implementierte Sub-Messungen
 
-**Maximaler Impact mit minimalem Risiko:**
+Folgende Instrumentierung wurde hinzugefügt und wird beim nächsten Sync-Lauf echte Zahlen liefern:
 
-1. **A — Clock-Hash durchreichen** (7c): Einfachster Fix. `localClockHash` aus dem Input-Candidate als `mergedClockHash` verwenden wenn `mergedGraph == d.localGraph` (alle non-merge Pfade).
+### Stage 7c (`stage7c_crdt_merge.dart`)
 
-2. **C — Early-Exit für unveränderte Shards** (11c): Vor dem teuren `prepareModifyWithContract` prüfen ob die neuen Entry-Triples identisch mit den bestehenden sind. Das spart den gesamten `splitDocument` → `computeCanonicalBlankNodes` × 2 → `_generateCrdtMetadataForChanges` Durchlauf.
+| Label | Was wird gemessen |
+|-------|-------------------|
+| `S07c.merge` | CRDT-Merge (SyncDirection switch) |
+| `S07c.reconcile` | `reconcileSync()` gesamt |
+| `S07c.reconcile.shards` | `determineShards()` innerhalb reconcile |
+| `S07c.reconcile.clock` | `getCurrentClock()` innerhalb reconcile (inkl. `_hashClock`) |
+| `S07c.reconcile.replace` | `replaceInDocument()` innerhalb reconcile (nur bei Änderungen) |
+| `S07c.indexEntries` | `buildActiveIndexEntries()` |
+| `S07c.tombstones` | `collectTombstonedShards()` |
+| `S07c.encode` | `encodeBinary()` (Jelly) |
 
-3. **B — Raw Bytes durchreichen bei no-change** (11c): Wenn `prepared == null`, die bestehenden Jelly-Bytes aus `p.localDoc` verwenden statt neu zu encodieren.
+### Stage 11c (`stage11c_shard_merge.dart`)
 
-4. **I — `_hashClock` vereinfachen** (übergreifend): Den N-Quads-Umweg eliminieren und direkt über sortierte `(installationIri, logicalTime)`-Tupel hashen.
+| Label | Was wird gemessen |
+|-------|-------------------|
+| `S11c.remoteMerge` | Remote-CRDT-Merge (wenn `remoteShardGraph != null`) |
+| `S11c.prepareModify` | `prepareModifyWithContract()` gesamt |
+| `S11c.encode` | `encodeBinary()` (Jelly) |
 
-**Konservative Gesamtschätzung: 1,5–3s Einsparung (13–25% der Gesamtlaufzeit von 12s)**
+### `_computeSaveCore` (`crdt_document_manager.dart`)
+
+| Label | Was wird gemessen |
+|-------|-------------------|
+| `_computeSave.clock` | `createOrIncrementClock()` (inkl. `_hashClock`) |
+| `_computeSave.appMeta` | `generateMetadata()` für App-Daten (inkl. 2× `computeCanonicalBlankNodes` + Diff) |
+| `_computeSave.construct` | `_constructCrdtDocument()` + Framework-`generateMetadata()` + Graph-Assembly |
+
+### `reconcileSync` (`document_shard_reconciler.dart`)
+
+| Label | Was wird gemessen |
+|-------|-------------------|
+| `S07c.reconcile.shards` | `determineShards()` |
+| `S07c.reconcile.clock` | `getCurrentClock()` (inkl. `_hashClock`) |
+| `S07c.reconcile.replace` | `_shardsChanged()` + `replaceInDocument()` |
+
+---
+
+## Nächste Schritte
+
+1. **Sync mit Messungen laufen lassen** → echte Zahlen für alle Sub-Stages sammeln
+2. **Report mit echten Zahlen aktualisieren** → Hypothesen validieren oder widerlegen
+3. **Optimierungen priorisieren** basierend auf gemessenen Hotspots

@@ -135,7 +135,7 @@ class StreamingRemoteSyncOrchestrator {
         .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
             _shardDeterminer, _storage, _indexRdfGenerator, perf: perf))
         .expand(perf.timedExpand(
-            'S07c.CrdtMerge', mergeCandidates(_merger, _reconciler, _rdfCore)))
+            'S07c.CrdtMerge', mergeCandidates(_merger, _reconciler, _rdfCore, perf: perf)))
         .transform(_remote.resourceUpload(perf: perf))
         .asyncExpand(dbCommit(_storage, _indexManager, _remoteId, _saveService,
             perf: perf))
@@ -145,7 +145,7 @@ class StreamingRemoteSyncOrchestrator {
         .asyncMap(perf.timedAsyncMap(
             'S11b.ContractLoad', loadShardContracts(_mergeContractLoader)))
         .expand(
-            perf.timedExpand('S11c.ShardMerge', mergeShards(_documentManager, _merger, _rdfCore)))
+            perf.timedExpand('S11c.ShardMerge', mergeShards(_documentManager, _merger, _rdfCore, perf: perf)))
         .transform(_remote.shardUpload(perf: perf))
         .asyncExpand(shardDbCommit(_storage, _remoteId, perf: perf))
         .asyncExpand(feedback(inputController.sink, _storage, _indexResolver, perf: perf));

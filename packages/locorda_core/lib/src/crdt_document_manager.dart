@@ -7,6 +7,7 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/local_document_merger.dart';
 import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/standard_sync_engine.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/hlc_service.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart';
@@ -458,6 +459,7 @@ class CrdtDocumentManager {
     List<ResolvedGroupIndex> resolvedGroupIndices = const [],
     int? physicalTime,
     bool acceptMissing = false,
+    PipeperfCollector? perf,
   }) {
     final documentIri = primaryResourceIri.getDocumentIri();
     final oldDocument = preloadedDoc?.document;
@@ -489,6 +491,7 @@ class CrdtDocumentManager {
       resolvedGroupIndices: resolvedGroupIndices,
       physicalTime: physicalTime,
       oldUpdatedAt: oldUpdatedAt,
+      perf: perf,
     );
   }
 
@@ -601,6 +604,7 @@ class CrdtDocumentManager {
     int? physicalTime,
     int? logicalTime,
     int? oldUpdatedAt,
+    PipeperfCollector? perf,
   }) {
     RdfGraph? crdtDocument;
     RdfGraph? frameworkGraph;
@@ -614,6 +618,8 @@ class CrdtDocumentManager {
       _log.fine(
           'Saving resource ${resourceIri.debug} to document ${documentIri.debug}');
 
+      final sw = (perf != null) ? (Stopwatch()..start()) : null;
+
       final clock = _hlcService.createOrIncrementClock(
         oldFrameworkGraph,
         documentIri,
@@ -623,6 +629,11 @@ class CrdtDocumentManager {
       final physicalTimestamp = clock.physicalTime;
 
       final updatedAtTimestamp = _physicalTimestampFactory();
+
+      if (sw != null) {
+        perf!.record('_computeSave.clock', sw.elapsedMicroseconds);
+        sw.reset();
+      }
 
       final (
         metadata: crdtMetadata,
@@ -637,6 +648,12 @@ class CrdtDocumentManager {
         clock,
         appDataTypeIri: type,
       );
+
+      if (sw != null) {
+        perf!.record('_computeSave.appMeta', sw.elapsedMicroseconds);
+        sw.reset();
+      }
+
       final propertyChanges = crdtMetadata.propertyChanges;
       if (propertyChanges.isEmpty) {
         _log.info(
@@ -686,6 +703,10 @@ class CrdtDocumentManager {
       documentTriples.addAll(appData.triples);
 
       crdtDocument = RdfGraph.fromTriples(documentTriples);
+
+      if (sw != null) {
+        perf!.record('_computeSave.construct', sw.elapsedMicroseconds);
+      }
 
       final documentMetadata = DocumentMetadata(
         ourPhysicalClock: physicalTimestamp,

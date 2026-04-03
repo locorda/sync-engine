@@ -10,6 +10,7 @@ library;
 import 'package:locorda_core/src/index/index_entry_builder.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/sync/pipeline/document_shard_reconciler.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart'
     hide MergeResult;
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart' as pipeline
@@ -30,12 +31,14 @@ Iterable<pipeline.MergedResourceEvent> Function(
     pipeline.PreloadedCandidateEvent) mergeCandidates(
   merger_lib.RemoteDocumentMerger merger,
   DocumentShardReconciler reconciler,
-  RdfCore rdfCore,
-) {
+  RdfCore rdfCore, {
+  PipeperfCollector? perf,
+}) {
   return (pipeline.PreloadedCandidateEvent event) => switch (event) {
         PhaseComplete() => [event],
         ShardComplete() => [event],
-        PreloadedCandidate() => _merge(event, merger, reconciler, rdfCore),
+        PreloadedCandidate() =>
+          _merge(event, merger, reconciler, rdfCore, perf),
       };
 }
 
@@ -44,9 +47,11 @@ List<pipeline.MergeResult> _merge(
   merger_lib.RemoteDocumentMerger merger,
   DocumentShardReconciler reconciler,
   RdfCore rdfCore,
+  PipeperfCollector? perf,
 ) {
   final d = preloaded.decoded;
   final RdfGraph mergedGraph;
+  final sw = Stopwatch()..start();
 
   switch (d.effectiveDirection) {
     case SyncDirection.remoteOnly:
@@ -72,6 +77,8 @@ List<pipeline.MergeResult> _merge(
       }
       mergedGraph = d.localGraph!;
   }
+  perf?.record('S07c.merge', sw.elapsedMicroseconds);
+  sw.reset();
 
   // Reconcile shard assignments using pre-loaded data (sync).
   final reconciled = reconciler.reconcileSync(
@@ -82,7 +89,10 @@ List<pipeline.MergeResult> _merge(
     mergeContract: preloaded.mergeContract,
     indexConfigs: preloaded.indexConfigs,
     getDocument: (iri) => preloaded.documents[iri],
+    perf: perf,
   );
+  perf?.record('S07c.reconcile', sw.elapsedMicroseconds);
+  sw.reset();
 
   // Clock hash of the merged (and reconciled) document — reconciliation
   // only touches shard triples, not clock entries, so this equals the
@@ -104,18 +114,23 @@ List<pipeline.MergeResult> _merge(
     indexedProperties: preloaded.indexedProperties,
     physicalTime: reconciled.clock.physicalTime,
   );
+  perf?.record('S07c.indexEntries', sw.elapsedMicroseconds);
+  sw.reset();
 
   // Extract tombstoned shard IRIs (pure CPU graph traversal).
   // Stage 9 resolves indexIri per shard from the DB and builds tombstone entries.
   final tombstonedShardIris =
       collectTombstonedShards(reconciled.graph, d.documentIri)
         ..removeAll(reconciled.shardToIndex.keys); // active wins over tombstone
+  perf?.record('S07c.tombstones', sw.elapsedMicroseconds);
+  sw.reset();
 
   final decoded = DecodedGraphSource(reconciled.graph);
   // encode for the database.
   final encodedBytes = rdfCore.encodeBinary(reconciled.graph);
   final encoded =
       BinaryGraphSource(encodedBytes, contentType: jelly.primaryMimeType);
+  perf?.record('S07c.encode', sw.elapsedMicroseconds);
 
   return [
     pipeline.MergeResult(

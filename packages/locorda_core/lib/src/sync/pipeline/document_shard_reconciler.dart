@@ -16,6 +16,7 @@ import 'package:locorda_core/src/local_document_merger.dart';
 import 'package:locorda_core/src/mapping/merge_contract.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_rdf_core/core.dart';
 
 /// Result of document shard reconciliation.
@@ -126,7 +127,10 @@ class DocumentShardReconciler {
     required MergeContract mergeContract,
     required Iterable<CrdtIndexData> indexConfigs,
     required DocumentLookup getDocument,
+    PipeperfCollector? perf,
   }) {
+    final sw = (perf != null) ? (Stopwatch()..start()) : null;
+
     final shards = _shardDeterminer.determineShards(
       typeIri,
       resourceIri,
@@ -136,7 +140,17 @@ class DocumentShardReconciler {
       getDocument: getDocument,
     );
 
+    if (sw != null) {
+      perf!.record('S07c.reconcile.shards', sw.elapsedMicroseconds);
+      sw.reset();
+    }
+
     final clock = _hlcService.getCurrentClock(mergedDocument, documentIri);
+
+    if (sw != null) {
+      perf!.record('S07c.reconcile.clock', sw.elapsedMicroseconds);
+      sw.reset();
+    }
 
     final hasChanges =
         _shardsChanged(mergedDocument, documentIri, shards.shards);
@@ -157,6 +171,10 @@ class DocumentShardReconciler {
             ],
           )
         : mergedDocument;
+
+    if (sw != null) {
+      perf!.record('S07c.reconcile.replace', sw.elapsedMicroseconds);
+    }
 
     return (
       graph: reconciledGraph,
