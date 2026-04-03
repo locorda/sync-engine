@@ -22,7 +22,7 @@
 
 :index a idx:FullIndex;
     idx:hasShard ifdmm10v:shard;
-    idx:indexedProperty _:b2;
+    idx:indexedProperty _:b1;
     idx:indexesClass idx:GroupIndex;
     idx:populationState "active";
     idx:readBy </clientinstallation/default-installation#installation>, </clientinstallation/foreign-device-installation#installation>;
@@ -40,8 +40,8 @@
 :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
     cm:physicalTime 1704075000012 .
 
-:lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6 sync:blankNode _:b2 .
+:lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6 sync:blankNode _:b1 .
 
-_:b2 a idx:IndexedProperty;
+_:b1 a idx:IndexedProperty;
     idx:readBy </clientinstallation/default-installation#installation>, </clientinstallation/foreign-device-installation#installation>;
     idx:trackedProperty idx:indexesClass .

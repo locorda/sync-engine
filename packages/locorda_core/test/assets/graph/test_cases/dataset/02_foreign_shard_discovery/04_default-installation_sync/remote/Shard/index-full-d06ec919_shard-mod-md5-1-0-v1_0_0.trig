@@ -33,7 +33,7 @@
     cm:physicalTime 1704074700003 .
 
 :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
-    cm:physicalTime 1704088800004 .
+    cm:physicalTime 1704088800002 .
 
 :shard a idx:Shard;
     idx:containsEntry :entry-9c4afa0052fbf6bf78d6bcab30280fa8, :entry-c34a65e8aaabca687ad30dc757ab9ce1;

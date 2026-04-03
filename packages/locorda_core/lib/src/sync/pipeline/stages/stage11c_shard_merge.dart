@@ -77,6 +77,36 @@ List<MergedShardEvent> _merge(
   perf?.record('S11c.remoteMerge', sw.elapsedMicroseconds);
   sw.reset();
 
+  // Early-exit: skip expensive CRDT diff when entry triples are unchanged.
+  // Only applies to local-only path (no remote merge needed).
+  if (p.remoteShardGraph == null && effectiveDoc != null) {
+    final doc = effectiveDoc.document;
+    final oldEntryTriples = _extractEntryTriples(doc, shardIri);
+    final newEntryTriples = p.entryTriples.toSet();
+    if (oldEntryTriples.length == newEntryTriples.length &&
+        oldEntryTriples.containsAll(newEntryTriples)) {
+      perf?.record('S11c.earlyExit', sw.elapsedMicroseconds);
+      sw.reset();
+      // Content unchanged — encode existing graph for downstream stages
+      // (S12 upload if needed, S13 DB commit, S14 feedback).
+      final encoded = BinaryGraphSource(
+        rdfCore.encodeBinary(doc, contentType: jelly.primaryMimeType),
+        contentType: jelly.primaryMimeType,
+      );
+      perf?.record('S11c.encode', sw.elapsedMicroseconds);
+      return [
+        MergedShard(
+          shardIri,
+          DecodedGraphSource(doc, originalSource: encoded),
+          encoded,
+          newEtag: p.newEtag,
+          needsUpload: !p.existsOnRemote,
+          ourPhysicalClock: effectiveDoc.metadata.ourPhysicalClock,
+        ),
+      ];
+    }
+  }
+
   // CRDT-merge via sync path — picks up existing HLC clock.
   final prepared = documentManager.prepareModifyWithContract(
     IdxShard.classIri,
@@ -92,22 +122,23 @@ List<MergedShardEvent> _merge(
   sw.reset();
   if (prepared == null) {
     // No changes — shard is already up-to-date locally.
-    // No local changes detected — use the effective (merged) graph as-is.
     // effectiveDoc is either the merged remote shard (200 response) or the
     // existing local shard (304 / local-only path). It is never null here
     // because acceptMissing=true guarantees at least RdfGraph() is passed.
     final baseGraph = effectiveDoc?.document;
     if (baseGraph == null) return const [];
 
-    final encodedBytes =
-        rdfCore.encodeBinary(baseGraph, contentType: jelly.primaryMimeType);
+    final encoded = BinaryGraphSource(
+      rdfCore.encodeBinary(baseGraph, contentType: jelly.primaryMimeType),
+      contentType: jelly.primaryMimeType,
+    );
     perf?.record('S11c.encode', sw.elapsedMicroseconds);
 
     return [
       MergedShard(
         shardIri,
-        DecodedGraphSource(baseGraph),
-        BinaryGraphSource(encodedBytes, contentType: jelly.primaryMimeType),
+        DecodedGraphSource(baseGraph, originalSource: encoded),
+        encoded,
         newEtag: p.newEtag,
         needsUpload: !p.existsOnRemote,
         ourPhysicalClock: effectiveDoc?.metadata.ourPhysicalClock ?? 0,
@@ -117,17 +148,37 @@ List<MergedShardEvent> _merge(
 
   // Encode merged shard document.
   final mergedGraph = prepared.crdtDocument;
-  final encodedBytes =
-      rdfCore.encodeBinary(mergedGraph, contentType: jelly.primaryMimeType);
+  final encoded = BinaryGraphSource(
+    rdfCore.encodeBinary(mergedGraph, contentType: jelly.primaryMimeType),
+    contentType: jelly.primaryMimeType,
+  );
   perf?.record('S11c.encode', sw.elapsedMicroseconds);
   return [
     MergedShard(
       shardIri,
-      DecodedGraphSource(mergedGraph),
-      BinaryGraphSource(encodedBytes, contentType: jelly.primaryMimeType),
+      DecodedGraphSource(mergedGraph, originalSource: encoded),
+      encoded,
       newEtag: p.newEtag,
       needsUpload: true,
       ourPhysicalClock: prepared.physicalTime,
     ),
   ];
+}
+
+/// Extracts the entry-related triples from a shard document.
+///
+/// Collects all `idx:containsEntry` triples from [shardIri] and all property
+/// triples of the referenced entry IRIs.
+Set<Triple> _extractEntryTriples(RdfGraph doc, IriTerm shardIri) {
+  final result = <Triple>{};
+  final containsEntries =
+      doc.findTriples(subject: shardIri, predicate: IdxShard.containsEntry);
+  for (final ce in containsEntries) {
+    result.add(ce);
+    final entryIri = ce.object;
+    if (entryIri is IriTerm) {
+      result.addAll(doc.findTriples(subject: entryIri));
+    }
+  }
+  return result;
 }

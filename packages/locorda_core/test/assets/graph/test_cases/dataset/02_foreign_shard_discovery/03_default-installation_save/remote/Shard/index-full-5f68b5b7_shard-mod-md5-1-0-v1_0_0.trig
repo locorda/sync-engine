@@ -49,7 +49,7 @@ GRAPH <https://example.com/groupindextemplate/index-grouped-f615be90%2Findex> {
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:GroupIndexTemplate .
   igf:groupIndexTemplate a idx:GroupIndexTemplate;
-      idx:groupedBy _:b2;
+      idx:groupedBy _:b3;
       idx:indexesClass schema:Recipe;
       idx:readBy </clientinstallation/default-installation#installation>;
       idx:shardingAlgorithm [
@@ -61,11 +61,11 @@ GRAPH <https://example.com/groupindextemplate/index-grouped-f615be90%2Findex> {
       ] .
   igf:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
       cm:physicalTime 1704075000006 .
-  igf:lcrd-ibn-md5-0e2e62f39058d6a36c15403da8b04bf4 sync:blankNode _:b2 .
-  igf:lcrd-ibn-md5-5d84696d93d4f139706797c44247a19d sync:blankNode _:b3 .
-  _:b2 a idx:GroupingRule;
-      idx:property _:b3 .
-  _:b3 a idx:GroupingRuleProperty;
+  igf:lcrd-ibn-md5-0e2e62f39058d6a36c15403da8b04bf4 sync:blankNode _:b3 .
+  igf:lcrd-ibn-md5-5d84696d93d4f139706797c44247a19d sync:blankNode _:b4 .
+  _:b3 a idx:GroupingRule;
+      idx:property _:b4 .
+  _:b4 a idx:GroupingRuleProperty;
       idx:hierarchyLevel 1;
       idx:sourceProperty schema:recipeCategory .
 }
@@ -81,7 +81,7 @@ GRAPH <https://example.com/groupindextemplate/index-grouped-e093655c%2Findex> {
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:GroupIndexTemplate .
   ige:groupIndexTemplate a idx:GroupIndexTemplate;
-      idx:groupedBy _:b6;
+      idx:groupedBy _:b7;
       idx:indexesClass schema:Recipe;
       idx:readBy </clientinstallation/foreign-device-installation#installation>;
       idx:shardingAlgorithm [
@@ -93,11 +93,11 @@ GRAPH <https://example.com/groupindextemplate/index-grouped-e093655c%2Findex> {
       ] .
   ige:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
       cm:physicalTime 1704067200006 .
-  ige:lcrd-ibn-md5-161bc2f9cafbc0e9308e262e23c7a0b9 sync:blankNode _:b7 .
-  ige:lcrd-ibn-md5-6463ec91078059cd80e9c4068b39f9ff sync:blankNode _:b6 .
-  _:b6 a idx:GroupingRule;
-      idx:property _:b7 .
-  _:b7 a idx:GroupingRuleProperty;
+  ige:lcrd-ibn-md5-161bc2f9cafbc0e9308e262e23c7a0b9 sync:blankNode _:b8 .
+  ige:lcrd-ibn-md5-6463ec91078059cd80e9c4068b39f9ff sync:blankNode _:b7 .
+  _:b7 a idx:GroupingRule;
+      idx:property _:b8 .
+  _:b8 a idx:GroupingRuleProperty;
       idx:hierarchyLevel 1;
       idx:sourceProperty schema:dateCreated .
 }

@@ -41,7 +41,7 @@ GRAPH <https://example.com/groupindextemplate/index-grouped-e093655c%2Findex> {
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:GroupIndexTemplate .
   ige:groupIndexTemplate a idx:GroupIndexTemplate;
-      idx:groupedBy _:b2;
+      idx:groupedBy _:b3;
       idx:indexesClass schema:Recipe;
       idx:readBy </clientinstallation/foreign-device-installation#installation>;
       idx:shardingAlgorithm [
@@ -53,11 +53,11 @@ GRAPH <https://example.com/groupindextemplate/index-grouped-e093655c%2Findex> {
       ] .
   ige:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
       cm:physicalTime 1704067200006 .
-  ige:lcrd-ibn-md5-161bc2f9cafbc0e9308e262e23c7a0b9 sync:blankNode _:b3 .
-  ige:lcrd-ibn-md5-6463ec91078059cd80e9c4068b39f9ff sync:blankNode _:b2 .
-  _:b2 a idx:GroupingRule;
-      idx:property _:b3 .
-  _:b3 a idx:GroupingRuleProperty;
+  ige:lcrd-ibn-md5-161bc2f9cafbc0e9308e262e23c7a0b9 sync:blankNode _:b4 .
+  ige:lcrd-ibn-md5-6463ec91078059cd80e9c4068b39f9ff sync:blankNode _:b3 .
+  _:b3 a idx:GroupingRule;
+      idx:property _:b4 .
+  _:b4 a idx:GroupingRuleProperty;
       idx:hierarchyLevel 1;
       idx:sourceProperty schema:dateCreated .
 }

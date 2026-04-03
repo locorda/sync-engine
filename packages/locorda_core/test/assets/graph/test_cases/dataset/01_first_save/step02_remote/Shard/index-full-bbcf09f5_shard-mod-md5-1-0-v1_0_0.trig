@@ -65,7 +65,7 @@ GRAPH <https://example.com/fullindex/index-full-5f68b5b7%2Findex> {
       sync:managedResourceType idx:FullIndex .
   if2:index a idx:FullIndex;
       idx:hasShard if5mm10v:shard;
-      idx:indexedProperty _:b2;
+      idx:indexedProperty _:b3;
       idx:indexesClass idx:GroupIndexTemplate;
       idx:populationState "active";
       idx:readBy </clientinstallation/test-installation#installation>;
@@ -78,8 +78,8 @@ GRAPH <https://example.com/fullindex/index-full-5f68b5b7%2Findex> {
       ] .
   if2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 1;
       cm:physicalTime 1704067200004 .
-  if2:lcrd-ibn-md5-f7d7db17ed3c6b875f87c9c8c5e3894f sync:blankNode _:b2 .
-  _:b2 a idx:IndexedProperty;
+  if2:lcrd-ibn-md5-f7d7db17ed3c6b875f87c9c8c5e3894f sync:blankNode _:b3 .
+  _:b3 a idx:IndexedProperty;
       idx:readBy </clientinstallation/test-installation#installation>;
       idx:trackedProperty idx:indexesClass .
 }
@@ -146,7 +146,7 @@ GRAPH <https://example.com/fullindex/index-full-d06ec919%2Findex> {
       sync:managedResourceType idx:FullIndex .
   ifd:index a idx:FullIndex;
       idx:hasShard ifdmm10v:shard;
-      idx:indexedProperty _:b9;
+      idx:indexedProperty _:b10;
       idx:indexesClass idx:GroupIndex;
       idx:populationState "active";
       idx:readBy </clientinstallation/test-installation#installation>;
@@ -159,8 +159,8 @@ GRAPH <https://example.com/fullindex/index-full-d06ec919%2Findex> {
       ] .
   ifd:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 1;
       cm:physicalTime 1704067200013 .
-  ifd:lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6 sync:blankNode _:b9 .
-  _:b9 a idx:IndexedProperty;
+  ifd:lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6 sync:blankNode _:b10 .
+  _:b10 a idx:IndexedProperty;
       idx:readBy </clientinstallation/test-installation#installation>;
       idx:trackedProperty idx:indexesClass .
 }
@@ -177,7 +177,7 @@ GRAPH <https://example.com/fullindex/index-full-bbcf09f5%2Findex> {
       sync:managedResourceType idx:FullIndex .
   ifb:index a idx:FullIndex;
       idx:hasShard :shard;
-      idx:indexedProperty _:b12;
+      idx:indexedProperty _:b13;
       idx:indexesClass idx:FullIndex;
       idx:populationState "active";
       idx:readBy </clientinstallation/test-installation#installation>;
@@ -190,8 +190,8 @@ GRAPH <https://example.com/fullindex/index-full-bbcf09f5%2Findex> {
       ] .
   ifb:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 1;
       cm:physicalTime 1704067200001 .
-  ifb:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b sync:blankNode _:b12 .
-  _:b12 a idx:IndexedProperty;
+  ifb:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b sync:blankNode _:b13 .
+  _:b13 a idx:IndexedProperty;
       idx:readBy </clientinstallation/test-installation#installation>;
       idx:trackedProperty idx:indexesClass .
 }
