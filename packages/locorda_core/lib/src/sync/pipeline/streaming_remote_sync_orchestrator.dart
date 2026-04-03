@@ -18,12 +18,13 @@ import 'package:locorda_core/src/index/index_rdf_generator.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
+import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/sync/pipeline/clock_hash_reader.dart';
 import 'package:locorda_core/src/sync/pipeline/content_index_resolver.dart';
+import 'package:locorda_core/src/sync/pipeline/decoupling_transformer.dart';
 import 'package:locorda_core/src/sync/pipeline/document_shard_reconciler.dart';
-import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
-import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage10_shard_entry_load.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage11a_prepare.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage11b_contract_load.dart';
@@ -38,7 +39,6 @@ import 'package:locorda_core/src/sync/pipeline/stages/stage7a_decode.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage7b_preload.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage7c_crdt_merge.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage9_db_commit.dart';
-import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/sync/remote_document_merger.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
 import 'package:locorda_rdf_core/core.dart';
@@ -130,6 +130,9 @@ class StreamingRemoteSyncOrchestrator {
         .asyncExpand(changeDetection(_storage, lastSyncTimestamp, perf: perf))
         .transform(localContentLoad(_storage, _remoteId, perf: perf))
         .transform(_remote.resourceFetch(perf: perf))
+        // REMOVED: decoupling here causes ConcurrentUpdateException when the
+        // same resource appears in multiple shards — S06 fetches stale data
+        // for shard B while S09 hasn't committed shard A's merge yet.
         .map(perf.timedMap(
             'S07a.Decode', decodeCandidates(_mergeContractLoader, _rdfCore)))
         .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
@@ -140,14 +143,17 @@ class StreamingRemoteSyncOrchestrator {
         .asyncExpand(dbCommit(_storage, _indexManager, _remoteId, _saveService,
             perf: perf))
         .asyncExpand(shardEntryLoad(_storage, perf: perf))
+        .transform(decouplingTransformer(maxBuffered: 16))
         .expand(perf.timedExpand(
             'S11a.Prepare', prepareShards(_shardDocGen, config, _rdfCore)))
         .asyncMap(perf.timedAsyncMap(
             'S11b.ContractLoad', loadShardContracts(_mergeContractLoader)))
-        .expand(perf.timedExpand('S11c.ShardMerge', mergeShards(_documentManager, _merger, _rdfCore, perf: perf)))
+        .expand(perf.timedExpand('S11c.ShardMerge',
+            mergeShards(_documentManager, _merger, _rdfCore, perf: perf)))
         .transform(_remote.shardUpload(perf: perf))
         .asyncExpand(shardDbCommit(_storage, _remoteId, perf: perf))
-        .asyncExpand(feedback(inputController.sink, _storage, _indexResolver, perf: perf));
+        .asyncExpand(feedback(inputController.sink, _storage, _indexResolver,
+            perf: perf));
 
     // Seed with meta-index phase
     _log.fine('Seeding pipeline with meta indices: '

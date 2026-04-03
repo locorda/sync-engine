@@ -123,8 +123,7 @@ class PipeperfCollector {
         .fold<int>(0, (s, m) => s + m.fold(0, (a, b) => a + b));
 
     _log.info('');
-    _log.info('═══ Pipeline Stats ($totalEvents events, '
-        '${_formatDuration(totalUs)} total) ═══');
+    _log.info('═══ Pipeline Stats ($totalEvents events) ═══');
     _log.info(_header());
 
     final sortedEntries = _measurements.entries.toList()
