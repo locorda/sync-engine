@@ -9,9 +9,6 @@
 library;
 
 import 'dart:async';
-import 'dart:isolate';
-import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/remote_storage.dart';
@@ -21,7 +18,6 @@ import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_rdf_core/core.dart';
-import 'package:locorda_rdf_jelly/jelly.dart';
 import 'package:logging/logging.dart';
 
 /// [PipelineRemoteSyncStorage] for shard-dataset backends.
@@ -115,42 +111,6 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
 
     final encoded = _rdfCore.encodeDataset(dataset, contentType: _contentType);
     return TextContent(encoded, contentType: _contentType);
-  }
-
-  /// Encode multiple datasets in parallel using Isolates (binary only).
-  ///
-  /// For binary encoding, each dataset is sent to a separate Isolate where
-  /// [JellyDatasetEncoder] runs independently. Concurrency is capped at
-  /// [_maxEncodeConcurrency] to avoid excessive Isolate overhead.
-  /// Falls back to sequential encoding for text format or single datasets.
-  static const _maxEncodeConcurrency = 4;
-
-  Future<List<RawContent>> _parallelEncodeDatasets(
-      List<RdfDataset> datasets) async {
-    if (!_isBinary || datasets.length <= 1) {
-      return datasets.map(_encodeDataset).toList();
-    }
-
-    final contentType = _contentType;
-    final results = List<RawContent?>.filled(datasets.length, null);
-
-    for (var start = 0;
-        start < datasets.length;
-        start += _maxEncodeConcurrency) {
-      final end = min(start + _maxEncodeConcurrency, datasets.length);
-      final futures = <Future<Uint8List>>[];
-      for (var i = start; i < end; i++) {
-        final dataset = datasets[i];
-        futures.add(
-            Isolate.run(() => const JellyDatasetEncoder().convert(dataset)));
-      }
-      final chunks = await Future.wait(futures);
-      for (var j = 0; j < chunks.length; j++) {
-        results[start + j] = BinaryContent(chunks[j], contentType: contentType);
-      }
-    }
-
-    return results.cast<RawContent>();
   }
 
   // ---------------------------------------------------------------------------
@@ -373,20 +333,19 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
             datasets.add((shard, dataset));
           }
 
-          // Pass 2 — CPU: encode datasets in parallel via Isolates.
-          final swEncode = perf != null ? (Stopwatch()..start()) : null;
-          final encodedContents =
-              await _parallelEncodeDatasets(datasets.map((e) => e.$2).toList());
-          if (swEncode != null)
-            perf!
-                .record('S12.ShardUpload.encode', swEncode.elapsedMicroseconds);
-
+          // Pass 2 — CPU: encode all datasets to wire format.
           final requests = <RemoteUploadRequest<RawContent>>[];
-          for (var i = 0; i < datasets.length; i++) {
+          for (final (shard, dataset) in datasets) {
+            final swEncode = perf != null ? (Stopwatch()..start()) : null;
+            final encoded = _encodeDataset(dataset);
+            if (swEncode != null)
+              perf!.record(
+                  'S12.ShardUpload.encode', swEncode.elapsedMicroseconds);
+
             requests.add(RemoteUploadRequest<RawContent>(
-              documentIri: datasets[i].$1.shardIri.getDocumentIri(),
-              document: encodedContents[i],
-              ifMatch: datasets[i].$1.newEtag,
+              documentIri: shard.shardIri.getDocumentIri(),
+              document: encoded,
+              ifMatch: shard.newEtag,
             ));
           }
 
