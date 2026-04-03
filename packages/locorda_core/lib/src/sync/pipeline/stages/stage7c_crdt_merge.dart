@@ -77,7 +77,7 @@ List<pipeline.MergeResult> _merge(
       }
       mergedGraph = d.localGraph!;
   }
-  perf?.record('S07c.merge', sw.elapsedMicroseconds);
+  perf?.record('S07c.CrdtMerge.merge', sw.elapsedMicroseconds);
   sw.reset();
 
   // Reconcile shard assignments using pre-loaded data (sync).
@@ -91,7 +91,7 @@ List<pipeline.MergeResult> _merge(
     getDocument: (iri) => preloaded.documents[iri],
     perf: perf,
   );
-  perf?.record('S07c.reconcile', sw.elapsedMicroseconds);
+  perf?.record('S07c.CrdtMerge.reconcile', sw.elapsedMicroseconds);
   sw.reset();
 
   // Clock hash of the merged (and reconciled) document — reconciliation
@@ -114,7 +114,7 @@ List<pipeline.MergeResult> _merge(
     indexedProperties: preloaded.indexedProperties,
     physicalTime: reconciled.clock.physicalTime,
   );
-  perf?.record('S07c.indexEntries', sw.elapsedMicroseconds);
+  perf?.record('S07c.CrdtMerge.indexEntries', sw.elapsedMicroseconds);
   sw.reset();
 
   // Extract tombstoned shard IRIs (pure CPU graph traversal).
@@ -122,7 +122,7 @@ List<pipeline.MergeResult> _merge(
   final tombstonedShardIris =
       collectTombstonedShards(reconciled.graph, d.documentIri)
         ..removeAll(reconciled.shardToIndex.keys); // active wins over tombstone
-  perf?.record('S07c.tombstones', sw.elapsedMicroseconds);
+  perf?.record('S07c.CrdtMerge.tombstones', sw.elapsedMicroseconds);
   sw.reset();
 
   final decoded = DecodedGraphSource(reconciled.graph);
@@ -130,7 +130,7 @@ List<pipeline.MergeResult> _merge(
   final encodedBytes = rdfCore.encodeBinary(reconciled.graph);
   final encoded =
       BinaryGraphSource(encodedBytes, contentType: jelly.primaryMimeType);
-  perf?.record('S07c.encode', sw.elapsedMicroseconds);
+  perf?.record('S07c.CrdtMerge.encode', sw.elapsedMicroseconds);
 
   return [
     pipeline.MergeResult(

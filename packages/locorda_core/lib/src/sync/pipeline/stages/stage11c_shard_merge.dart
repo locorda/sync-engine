@@ -74,7 +74,7 @@ List<MergedShardEvent> _merge(
   } else {
     effectiveDoc = p.localDoc;
   }
-  perf?.record('S11c.remoteMerge', sw.elapsedMicroseconds);
+  perf?.record('S11c.ShardMerge.remoteMerge', sw.elapsedMicroseconds);
   sw.reset();
 
   // Early-exit: skip expensive CRDT diff when entry triples are unchanged.
@@ -85,7 +85,7 @@ List<MergedShardEvent> _merge(
     final newEntryTriples = p.entryTriples.toSet();
     if (oldEntryTriples.length == newEntryTriples.length &&
         oldEntryTriples.containsAll(newEntryTriples)) {
-      perf?.record('S11c.earlyExit', sw.elapsedMicroseconds);
+      perf?.record('S11c.ShardMerge.earlyExit', sw.elapsedMicroseconds);
       sw.reset();
       // Content unchanged — encode existing graph for downstream stages
       // (S12 upload if needed, S13 DB commit, S14 feedback).
@@ -93,7 +93,7 @@ List<MergedShardEvent> _merge(
         rdfCore.encodeBinary(doc, contentType: jelly.primaryMimeType),
         contentType: jelly.primaryMimeType,
       );
-      perf?.record('S11c.encode', sw.elapsedMicroseconds);
+      perf?.record('S11c.ShardMerge.encode', sw.elapsedMicroseconds);
       return [
         MergedShard(
           shardIri,

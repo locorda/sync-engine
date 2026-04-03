@@ -141,14 +141,14 @@ class DocumentShardReconciler {
     );
 
     if (sw != null) {
-      perf!.record('S07c.reconcile.shards', sw.elapsedMicroseconds);
+      perf!.record('S07c.CrdtMerge.reconcile.shards', sw.elapsedMicroseconds);
       sw.reset();
     }
 
     final clock = _hlcService.getCurrentClock(mergedDocument, documentIri);
 
     if (sw != null) {
-      perf!.record('S07c.reconcile.clock', sw.elapsedMicroseconds);
+      perf!.record('S07c.CrdtMerge.reconcile.clock', sw.elapsedMicroseconds);
       sw.reset();
     }
 
@@ -173,7 +173,7 @@ class DocumentShardReconciler {
         : mergedDocument;
 
     if (sw != null) {
-      perf!.record('S07c.reconcile.replace', sw.elapsedMicroseconds);
+      perf!.record('S07c.CrdtMerge.reconcile.replace', sw.elapsedMicroseconds);
     }
 
     return (
