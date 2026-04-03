@@ -33,7 +33,8 @@ void main() {
               LiteralTerm.string('2024-08-15')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         expect(result, equals({'2024-08'}));
       });
 
@@ -50,7 +51,8 @@ void main() {
           Triple(testSubject, categoryPredicate, LiteralTerm.string('work')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         expect(result, equals({'work'}));
       });
 
@@ -68,7 +70,8 @@ void main() {
           // Missing the required dateCreated property
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         expect(result, isEmpty);
       });
 
@@ -90,7 +93,8 @@ void main() {
           // Missing the category property
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         expect(result, equals({'uncategorized'}));
       });
     });
@@ -125,7 +129,8 @@ void main() {
               LiteralTerm.string('2024-08-15')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         expect(result, equals({'2024/2024-08'}));
       });
 
@@ -155,7 +160,8 @@ void main() {
               LiteralTerm.string('2024-08-15')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         // Properties are ordered lexicographically by IRI:
         // http://example.org/category < https://schema.org/dateCreated
         expect(result, equals({'work-2024-08'}));
@@ -195,7 +201,8 @@ void main() {
               LiteralTerm.string('2024-08-15')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         expect(result, equals({'work/08/15'}));
       });
     });
@@ -224,14 +231,16 @@ void main() {
           Triple(testSubject, dateCreatedPredicate,
               LiteralTerm.string('2024-08-15')),
         ];
-        expect(generator.generateGroupKeys(isoTriples), equals({'2024-08'}));
+        expect(generator.generateGroupKeys(RdfGraph.fromTriples(isoTriples)),
+            equals({'2024-08'}));
 
         // Test US format (second transform should match)
         final usTriples = [
           Triple(testSubject, dateCreatedPredicate,
               LiteralTerm.string('2024/08/15')),
         ];
-        expect(generator.generateGroupKeys(usTriples), equals({'2024-08'}));
+        expect(generator.generateGroupKeys(RdfGraph.fromTriples(usTriples)),
+            equals({'2024-08'}));
       });
 
       test('handles complex transform patterns from specification', () {
@@ -263,7 +272,8 @@ void main() {
           final triples = [
             Triple(testSubject, categoryPredicate, LiteralTerm.string(input)),
           ];
-          final result = generator.generateGroupKeys(triples);
+          final result =
+              generator.generateGroupKeys(RdfGraph.fromTriples(triples));
           expect(result, equals({expected}), reason: 'Input: $input');
         }
       });
@@ -287,7 +297,8 @@ void main() {
               testSubject, categoryPredicate, LiteralTerm.string('text-value')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         expect(result, equals({'text-value'}));
       });
     });
@@ -313,7 +324,8 @@ void main() {
               const IriTerm('http://example.org/category/work')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         expect(result, equals({'work'}));
       });
 
@@ -337,7 +349,8 @@ void main() {
               LiteralTerm.string('2024-08-15')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         expect(result, equals({'2024-08'}));
       });
 
@@ -354,7 +367,8 @@ void main() {
           Triple(testSubject, categoryPredicate, BlankNodeTerm()),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         expect(result, isEmpty);
       });
     });
@@ -389,7 +403,8 @@ void main() {
               LiteralTerm.string('2024-09-20')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         // Should generate 2x2 = 4 combinations
         // Lexicographic IRI ordering: category < dateCreated
         expect(
@@ -437,7 +452,8 @@ void main() {
               LiteralTerm.string('2024-08-15')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         // Should generate 2x2x2 = 8 combinations
         // Level 1: category-priority (lexicographic: category < priority)
         // Level 2: year
@@ -477,7 +493,8 @@ void main() {
               LiteralTerm.string('2024-09-20')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         // Should generate 1x2 = 2 combinations using missing value
         expect(
             result,
@@ -513,7 +530,8 @@ void main() {
               LiteralTerm.string('alpha-project')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         // Should deduplicate to single 'alpha' result
         expect(result, equals({'alpha'}));
       });
@@ -538,7 +556,8 @@ void main() {
                       'http://www.w3.org/2001/XMLSchema#integer'))),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         // Should deduplicate based on string representation
         expect(result, equals({'42'}));
       });
@@ -559,7 +578,8 @@ void main() {
               LiteralTerm('work', language: 'en')), // English
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         // Should use string content, ignoring language tags
         expect(result, equals({'travail', 'work'}));
       });
@@ -588,7 +608,8 @@ void main() {
               LiteralTerm.string('2024-08-15')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         expect(result, equals({'work', 'personal'}));
       });
 
@@ -616,7 +637,8 @@ void main() {
               LiteralTerm.string('Content here')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         expect(result, equals({'2024-08'}));
       });
     });
@@ -631,7 +653,7 @@ void main() {
         );
 
         final generator = GroupKeyGenerator(config);
-        final result = generator.generateGroupKeys([]);
+        final result = generator.generateGroupKeys(RdfGraph.fromTriples([]));
 
         expect(result, isEmpty);
       });
@@ -648,7 +670,7 @@ void main() {
         );
 
         final generator = GroupKeyGenerator(config);
-        final result = generator.generateGroupKeys([]);
+        final result = generator.generateGroupKeys(RdfGraph.fromTriples([]));
 
         expect(result, equals({'default'}));
       });
@@ -691,7 +713,8 @@ void main() {
           // Missing category property
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         expect(result, equals({'uncategorized/2024-08'}));
       });
     });
@@ -717,7 +740,8 @@ void main() {
               LiteralTerm.string('high')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         // Level 1: dateCreated, Level 2: category-priority (lexicographic IRI order)
         // http://example.org/category < http://example.org/priority
         expect(result, equals({'2024-08-15/work-high'}));
@@ -743,7 +767,8 @@ void main() {
           Triple(testSubject, zProperty, LiteralTerm.string('last')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         // Despite declaration order (z, a), lexicographic IRI ordering gives us (a, z)
         expect(result, equals({'first-last'}));
       });
@@ -774,8 +799,10 @@ void main() {
               LiteralTerm.string('2024-09-20')),
         ];
 
-        expect(generator.generateGroupKeys(triples1), equals({'2024-08'}));
-        expect(generator.generateGroupKeys(triples2), equals({'2024-09'}));
+        expect(generator.generateGroupKeys(RdfGraph.fromTriples(triples1)),
+            equals({'2024-08'}));
+        expect(generator.generateGroupKeys(RdfGraph.fromTriples(triples2)),
+            equals({'2024-09'}));
       });
     });
 
@@ -793,7 +820,8 @@ void main() {
           Triple(testSubject, categoryPredicate, LiteralTerm.string('work')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         // Safe keys should be preserved exactly
         expect(result, equals({'work'}));
       });
@@ -812,7 +840,8 @@ void main() {
               LiteralTerm.string('contains/slash')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         final groupKey = result.first;
 
         // Should be hashed due to unsafe characters
@@ -846,7 +875,8 @@ void main() {
               LiteralTerm.string('2024-08-15')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         final groupKey = result.first;
 
         // Should have safe date component and hashed category component
@@ -881,7 +911,8 @@ void main() {
               LiteralTerm.string('2024-08-15')), // Safe after transform
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         // Both components are safe, should be preserved
         expect(result, equals({'work/2024'}));
       });
@@ -900,7 +931,8 @@ void main() {
               const IriTerm('http://example.org/category/work')),
         ];
 
-        final result = generator.generateGroupKeys(triples);
+        final result =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
         final groupKey = result.first;
 
         // IRI contains unsafe characters, should be hashed
@@ -921,8 +953,10 @@ void main() {
               LiteralTerm.string('unicode-café')),
         ];
 
-        final result1 = generator.generateGroupKeys(triples);
-        final result2 = generator.generateGroupKeys(triples);
+        final result1 =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
+        final result2 =
+            generator.generateGroupKeys(RdfGraph.fromTriples(triples));
 
         // Should produce identical results
         expect(result1, equals(result2));

@@ -603,10 +603,13 @@ class ShardDeterminer {
     final templateIri =
         _rdfGenerator.generateGroupIndexTemplateIri(config, typeIri);
 
-    // Generate group keys from resource properties
+    // Generate group keys from resource properties.
+    // Pass resourceIri for O(1) subject-indexed lookup instead of O(n) scan.
     final groupKeyGenerator = GroupKeyGenerator(config);
-    final triples = internalAppData.triples.toList();
-    final groupKeys = groupKeyGenerator.generateGroupKeys(triples);
+    final groupKeys = groupKeyGenerator.generateGroupKeys(
+      internalAppData,
+      subjectIri: resourceIri,
+    );
 
     // If no group keys, resource doesn't belong to any group (missing required properties)
     if (groupKeys.isEmpty) {

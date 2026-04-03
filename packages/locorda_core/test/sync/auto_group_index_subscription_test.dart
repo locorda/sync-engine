@@ -56,8 +56,8 @@ void main() {
         Triple(appResourceIri, recipeCategory, LiteralTerm('Dessert')),
       ]);
 
-      final groupKeys = GroupKeyGenerator(indexConfig)
-          .generateGroupKeys(appData.triples.toList(growable: false));
+      final groupKeys =
+          GroupKeyGenerator(indexConfig).generateGroupKeys(appData);
       expect(groupKeys, hasLength(1));
 
       final groupIndexIri =

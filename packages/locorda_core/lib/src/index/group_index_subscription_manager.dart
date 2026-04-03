@@ -50,7 +50,7 @@ class GroupIndexGraphSubscriptionManager {
     // Step 2: Generate group identifiers using GroupKeyGenerator
     final groupKeyGenerator = GroupKeyGenerator(groupIndex);
     final groupIdentifiers =
-        groupKeyGenerator.generateGroupKeys(groupKeyGraph.triples.toList());
+        groupKeyGenerator.generateGroupKeys(groupKeyGraph);
 
     if (groupIdentifiers.isEmpty) {
       throw GroupIndexGraphSubscriptionException(

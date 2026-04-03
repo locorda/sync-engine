@@ -37,7 +37,12 @@ class GroupKeyGenerator {
   /// 7. Group Creation: Return all unique group identifiers
   ///
   /// Returns empty set if any required property is missing and has no missingValue.
-  Set<String> generateGroupKeys(List<Triple> triples) {
+  /// Generates group keys from an RDF graph.
+  ///
+  /// When [subjectIri] is provided, triple lookups use the subject-indexed
+  /// O(1) path in [RdfGraph.findTriples] instead of an O(n) full scan.
+  /// Callers that know the resource IRI should always supply it.
+  Set<String> generateGroupKeys(RdfGraph triples, {IriTerm? subjectIri}) {
     // Step 1 & 2: Property Extraction and Missing Value Handling
     final valuesByLevel = <int, List<List<String>>>{};
 
@@ -48,7 +53,8 @@ class GroupKeyGenerator {
       final levelValueSets = <List<String>>[];
 
       for (final extractor in extractors) {
-        final values = _extractAllValuesForProperty(triples, extractor);
+        final values =
+            _extractAllValuesForProperty(triples, extractor, subjectIri);
         if (values.isEmpty) {
           // Required property missing and no fallback - return empty set
           return <String>{};
@@ -74,11 +80,15 @@ class GroupKeyGenerator {
   /// Step 1: Property Extraction - Extract all values for idx:sourceProperty
   /// Step 2: Missing Value Handling - Use missingValue or return empty list
   /// Step 4: Transform Application - Apply idx:transform to each value
+  ///
+  /// When [subjectIri] is provided, uses O(1) subject-indexed lookup instead
+  /// of O(n) predicate scan.
   List<String> _extractAllValuesForProperty(
-      List<Triple> triples, _PropertyExtractor extractor) {
-    // Find all triples with the matching predicate
+      RdfGraph triples, _PropertyExtractor extractor, IriTerm? subjectIri) {
+    // Find all triples with the matching predicate.
+    // Supplying subject enables O(1) index lookup; omitting it falls back to O(n).
     final matchingTriples = triples
-        .where((triple) => triple.predicate == extractor.predicate)
+        .findTriples(subject: subjectIri, predicate: extractor.predicate)
         .toList();
 
     if (matchingTriples.isEmpty) {
