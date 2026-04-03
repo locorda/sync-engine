@@ -18,6 +18,7 @@ import 'dart:typed_data';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/remote_id.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_rdf_core/core.dart';
@@ -32,6 +33,7 @@ Stream<CommittedShardEvent> Function(UploadedShardEvent) shardDbCommit(
   Storage storage,
   RemoteId remoteId, {
   int batchSize = defaultPipelineBatchSize,
+  PipeperfCollector? perf,
 }) {
   final pendingSaves = <SaveDocumentRequest>[];
   final pendingBytes = <Uint8List>[];
@@ -43,6 +45,8 @@ Stream<CommittedShardEvent> Function(UploadedShardEvent) shardDbCommit(
   Stream<ShardCommitResult> _flush() async* {
     if (pendingSaves.isEmpty && pendingEtags.isEmpty) return;
 
+    final sw = perf != null ? (Stopwatch()..start()) : null;
+
     await storage.inTransaction(() async {
       if (pendingSaves.isNotEmpty) {
         await storage.saveDocuments(pendingSaves,
@@ -52,6 +56,9 @@ Stream<CommittedShardEvent> Function(UploadedShardEvent) shardDbCommit(
         await storage.setRemoteETags(remoteId, pendingEtags);
       }
     });
+
+    sw?.stop();
+    if (sw != null) perf!.record('S13.ShardDbCommit', sw.elapsedMicroseconds);
 
     for (final shardIri in pendingShardIris) {
       yield ShardCommitResult(shardIri);

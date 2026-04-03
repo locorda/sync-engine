@@ -13,6 +13,7 @@ library;
 import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
@@ -24,18 +25,19 @@ final _log = Logger('Stage4.ChangeDetection');
 /// Usage: `stream.asyncExpand(changeDetection(storage, lastSyncTimestamp))`
 Stream<SyncCandidateEvent> Function(ParsedShardEvent) changeDetection(
   Storage storage,
-  int lastSyncTimestamp,
-) {
+  int lastSyncTimestamp, {
+  PipeperfCollector? perf,
+}) {
   return (ParsedShardEvent event) async* {
     switch (event) {
       case PhaseComplete():
         yield event;
       case ParsedShard():
-        yield* _handleParsedShard(event, storage, lastSyncTimestamp);
+        yield* _handleParsedShard(event, storage, lastSyncTimestamp, perf);
       case ShardResultNotModified():
-        yield* _handleNotModified(event, storage, lastSyncTimestamp);
+        yield* _handleNotModified(event, storage, lastSyncTimestamp, perf);
       case ShardResultGone():
-        yield* _handleGone(event, storage);
+        yield* _handleGone(event, storage, perf);
     }
   };
 }
@@ -45,7 +47,9 @@ Stream<SyncCandidateEvent> _handleParsedShard(
   ParsedShard parsed,
   Storage storage,
   int lastSyncTimestamp,
+  PipeperfCollector? perf,
 ) async* {
+  final sw = perf != null ? (Stopwatch()..start()) : null;
   final shardIri = parsed.shardIri;
   final shardStorageId = parsed.shardStorageId;
 
@@ -83,11 +87,12 @@ Stream<SyncCandidateEvent> _handleParsedShard(
     ...remoteEntries.keys,
     ...localByResource.keys,
   };
+  final candidates = <SyncCandidate?>[];
   for (final resourceIri in allResources) {
     final remote = remoteEntries[resourceIri];
     final local = localByResource[resourceIri];
 
-    final candidate = _classify(
+    candidates.add(_classify(
       resourceIri: resourceIri,
       shardStorageId: shardStorageId,
       typeIri: typeIri,
@@ -96,11 +101,7 @@ Stream<SyncCandidateEvent> _handleParsedShard(
       localFilterValues: local?.filterValues,
       remoteFilterValues: remote?.filterValues,
       fetchPolicy: effectiveFetchPolicy,
-    );
-
-    if (candidate != null) {
-      yield candidate;
-    }
+    ));
   }
 
   // Persist remote-only placeholders for entries skipped by onRequest policy.
@@ -113,10 +114,8 @@ Stream<SyncCandidateEvent> _handleParsedShard(
       final entriesToUpsert = [
         for (final entry in parsed.entries)
           if (!localByResource.containsKey(entry.resourceIri) &&
-              !_shouldFetchRemoteOnly(
-                  effectiveFetchPolicy,
-                  remoteEntries[entry.resourceIri]?.filterValues,
-                  null))
+              !_shouldFetchRemoteOnly(effectiveFetchPolicy,
+                  remoteEntries[entry.resourceIri]?.filterValues, null))
             (resourceIri: entry.resourceIri, clockHash: entry.clockHash),
       ];
       await storage.syncRemoteOnlyShardEntries(
@@ -126,6 +125,15 @@ Stream<SyncCandidateEvent> _handleParsedShard(
         entriesToUpsert: entriesToUpsert,
         allCurrentRemoteIris: remoteEntries.keys.toSet(),
       );
+    }
+  }
+
+  sw?.stop();
+  if (sw != null) perf!.record('S04.ChangeDetect', sw.elapsedMicroseconds);
+
+  for (final candidate in candidates) {
+    if (candidate != null) {
+      yield candidate;
     }
   }
 
@@ -143,9 +151,13 @@ Stream<SyncCandidateEvent> _handleNotModified(
   ShardResultNotModified result,
   Storage storage,
   int lastSyncTimestamp,
+  PipeperfCollector? perf,
 ) async* {
+  final sw = perf != null ? (Stopwatch()..start()) : null;
   final localEntries =
       await storage.getActiveIndexEntriesForShard(result.shardIri);
+  sw?.stop();
+  if (sw != null) perf!.record('S04.ChangeDetect', sw.elapsedMicroseconds);
   for (final entry in localEntries) {
     if (entry.updatedAt > lastSyncTimestamp) {
       yield SyncCandidate(
@@ -166,9 +178,13 @@ Stream<SyncCandidateEvent> _handleNotModified(
 Stream<SyncCandidateEvent> _handleGone(
   ShardResultGone result,
   Storage storage,
+  PipeperfCollector? perf,
 ) async* {
+  final sw = perf != null ? (Stopwatch()..start()) : null;
   final localEntries =
       await storage.getActiveIndexEntriesForShard(result.shardIri);
+  sw?.stop();
+  if (sw != null) perf!.record('S04.ChangeDetect', sw.elapsedMicroseconds);
 
   for (final entry in localEntries) {
     yield SyncCandidate(

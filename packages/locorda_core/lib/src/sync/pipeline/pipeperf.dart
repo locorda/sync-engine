@@ -66,19 +66,6 @@ class PipeperfCollector {
     };
   }
 
-  /// Wraps an `asyncExpand` callback with timing.
-  ///
-  /// Measures from invocation until the returned stream completes.
-  Stream<T> Function(S) timedAsyncExpand<S, T>(
-      String stage, Stream<T> Function(S) fn) {
-    return (event) {
-      final sw = Stopwatch()..start();
-      final inner = fn(event);
-      // Wrap so we stop the clock when the inner stream is done.
-      return _timedStream(inner, () => record(stage, sw.elapsedMicroseconds));
-    };
-  }
-
   // ---------------------------------------------------------------------------
   // Transform wrapper
   // ---------------------------------------------------------------------------
@@ -193,27 +180,4 @@ class PipeperfCollector {
     final s = microseconds / 1000000;
     return '${s.toStringAsFixed(2)}s';
   }
-}
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-/// Wraps a stream to call [onDone] when the stream completes (data/error/done).
-Stream<T> _timedStream<T>(Stream<T> inner, void Function() onDone) {
-  late StreamSubscription<T> sub;
-  final controller = StreamController<T>(
-    onCancel: () => sub.cancel(),
-  );
-
-  sub = inner.listen(
-    controller.add,
-    onError: controller.addError,
-    onDone: () {
-      onDone();
-      controller.close();
-    },
-  );
-
-  return controller.stream;
 }

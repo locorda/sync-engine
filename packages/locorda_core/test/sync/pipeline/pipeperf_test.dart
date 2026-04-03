@@ -63,19 +63,6 @@ void main() {
       });
     });
 
-    group('timedAsyncExpand', () {
-      test('wraps stream-returning function and records timing on done',
-          () async {
-        final fn = perf.timedAsyncExpand<int, int>('S1', (x) {
-          return Stream.fromIterable([x, x + 1, x + 2]);
-        });
-
-        final result = await fn(10).toList();
-        expect(result, equals([10, 11, 12]));
-        perf.report();
-      });
-    });
-
     group('timedTransform', () {
       test('wraps a StreamTransformer and records per-event timing', () async {
         final inner = StreamTransformer<int, String>.fromHandlers(

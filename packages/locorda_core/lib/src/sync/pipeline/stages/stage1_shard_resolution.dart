@@ -12,6 +12,7 @@ library;
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/remote_id.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
@@ -23,9 +24,11 @@ final _log = Logger('Stage1.ShardResolution');
 /// Usage: `inputController.stream.asyncExpand(shardResolution(storage, remoteId))`
 Stream<ShardRefEvent> Function(SyncInput) shardResolution(
   Storage storage,
-  RemoteId remoteId,
-) {
+  RemoteId remoteId, {
+  PipeperfCollector? perf,
+}) {
   return (SyncInput input) async* {
+    final sw = perf != null ? (Stopwatch()..start()) : null;
     final zeroShardIndices = <IriTerm>[];
     var processedShardCount = 0;
 
@@ -59,6 +62,9 @@ Stream<ShardRefEvent> Function(SyncInput) shardResolution(
     final etagsByDocIri = shardDocIris.isNotEmpty
         ? await storage.getRemoteETags(remoteId, shardDocIris)
         : <IriTerm, String?>{};
+
+    sw?.stop();
+    if (sw != null) perf!.record('S01.ShardResolution', sw.elapsedMicroseconds);
 
     for (final entry in indexShards.entries) {
       final indexIri = entry.key;

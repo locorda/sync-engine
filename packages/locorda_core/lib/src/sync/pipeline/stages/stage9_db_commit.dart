@@ -24,6 +24,7 @@ import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/storage/remote_id.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
@@ -43,6 +44,7 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
   RemoteId remoteId,
   DocumentSaveService documentSaveService, {
   int batchSize = defaultPipelineBatchSize,
+  PipeperfCollector? perf,
 }) {
   final pendingSaves = <SaveDocumentRequest>[];
   final pendingBytes = <Uint8List>[];
@@ -68,6 +70,8 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
         pendingEtags.isEmpty &&
         pendingGroupIndices.isEmpty &&
         pendingTombstones.isEmpty) return;
+
+    final sw = perf != null ? (Stopwatch()..start()) : null;
 
     // Ensure GroupIndex documents exist before writing index entries.
     if (pendingGroupIndices.isNotEmpty) {
@@ -123,6 +127,9 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
         await storage.setRemoteETags(remoteId, pendingEtags);
       }
     });
+
+    sw?.stop();
+    if (sw != null) perf!.record('S09.DbCommit', sw.elapsedMicroseconds);
 
     for (final iri in pendingResourceIris) {
       yield CommitResult(iri);

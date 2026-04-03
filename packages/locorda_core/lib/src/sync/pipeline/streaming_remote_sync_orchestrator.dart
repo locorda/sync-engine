@@ -124,12 +124,10 @@ class StreamingRemoteSyncOrchestrator {
     final perf = PipeperfCollector();
 
     final pipeline = inputController.stream
-        .asyncExpand(perf.timedAsyncExpand(
-            'S01.ShardResolution', shardResolution(_storage, _remoteId)))
+        .asyncExpand(shardResolution(_storage, _remoteId, perf: perf))
         .transform(_remote.shardFetch(perf: perf))
         .map(perf.timedMap('S03.ShardParse', shardParse(_rdfCore)))
-        .asyncExpand(perf.timedAsyncExpand(
-            'S04.ChangeDetect', changeDetection(_storage, lastSyncTimestamp)))
+        .asyncExpand(changeDetection(_storage, lastSyncTimestamp, perf: perf))
         .transform(localContentLoad(_storage, _remoteId, perf: perf))
         .transform(_remote.resourceFetch(perf: perf))
         .map(perf.timedMap(
@@ -139,17 +137,18 @@ class StreamingRemoteSyncOrchestrator {
         .expand(perf.timedExpand(
             'S07c.CrdtMerge', mergeCandidates(_merger, _reconciler, _rdfCore)))
         .transform(_remote.resourceUpload(perf: perf))
-        .asyncExpand(perf.timedAsyncExpand('S09.DbCommit',
-            dbCommit(_storage, _indexManager, _remoteId, _saveService)))
-        .asyncExpand(perf.timedAsyncExpand(
-            'S10.ShardEntryLoad', shardEntryLoad(_storage)))
+        .asyncExpand(dbCommit(_storage, _indexManager, _remoteId, _saveService,
+            perf: perf))
+        .asyncExpand(shardEntryLoad(_storage, perf: perf))
         .expand(perf.timedExpand(
             'S11a.Prepare', prepareShards(_shardDocGen, config, _rdfCore)))
-        .asyncMap(perf.timedAsyncMap('S11b.ContractLoad', loadShardContracts(_mergeContractLoader)))
-        .expand(perf.timedExpand('S11c.ShardMerge', mergeShards(_documentManager, _merger, _rdfCore)))
+        .asyncMap(perf.timedAsyncMap(
+            'S11b.ContractLoad', loadShardContracts(_mergeContractLoader)))
+        .expand(
+            perf.timedExpand('S11c.ShardMerge', mergeShards(_documentManager, _merger, _rdfCore)))
         .transform(_remote.shardUpload(perf: perf))
-        .asyncExpand(perf.timedAsyncExpand('S13.ShardDbCommit', shardDbCommit(_storage, _remoteId)))
-        .asyncExpand(perf.timedAsyncExpand('S14.Feedback', feedback(inputController.sink, _storage, _indexResolver)));
+        .asyncExpand(shardDbCommit(_storage, _remoteId, perf: perf))
+        .asyncExpand(feedback(inputController.sink, _storage, _indexResolver, perf: perf));
 
     // Seed with meta-index phase
     _log.fine('Seeding pipeline with meta indices: '

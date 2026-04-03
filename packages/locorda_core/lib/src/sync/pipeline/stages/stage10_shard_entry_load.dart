@@ -21,6 +21,7 @@ library;
 
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart' show Storage;
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 
 /// Default shard batch size for Stage 10.
@@ -39,11 +40,14 @@ const defaultShardBatchSize = 20;
 Stream<LoadedShardEntriesEvent> Function(CommittedResourceEvent) shardEntryLoad(
   Storage storage, {
   int batchSize = defaultShardBatchSize,
+  PipeperfCollector? perf,
 }) {
   final pendingShards = <ShardComplete>[];
 
   Stream<LoadedShardEntriesEvent> _flush() async* {
     if (pendingShards.isEmpty) return;
+
+    final sw = perf != null ? (Stopwatch()..start()) : null;
 
     final shardIris = pendingShards.map((e) => e.shardIri).toList();
     final shardDocumentIris =
@@ -53,6 +57,9 @@ Stream<LoadedShardEntriesEvent> Function(CommittedResourceEvent) shardEntryLoad(
     final entriesByShardIri =
         await storage.getActiveIndexEntriesForShards(shardIris);
     final docsByIri = await storage.getRawDocumentsByIri(shardDocumentIris);
+
+    sw?.stop();
+    if (sw != null) perf!.record('S10.ShardEntryLoad', sw.elapsedMicroseconds);
 
     for (final event in pendingShards) {
       final shardIri = event.shardIri;

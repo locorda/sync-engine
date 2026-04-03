@@ -48,6 +48,8 @@ abstract interface class Storage {
   /// When [preEncodedContents] is provided, implementations that perform
   /// binary encoding (e.g., protobuf) can skip the encode step and use
   /// the pre-encoded bytes directly. See [preEncodeDocuments].
+  ///
+  /// FIXME: This API is a bit awkward — the parallel lists of requests and pre-encoded contents are error-prone. Consider a more robust design.
   Future<List<SaveDocumentResult>> saveDocuments(
       Iterable<SaveDocumentRequest> requests,
       {List<Uint8List>? preEncodedContents}) async {

@@ -16,6 +16,7 @@ import 'dart:async' show StreamSink;
 import 'package:locorda_core/src/storage/storage_interface.dart' show Storage;
 import 'package:locorda_core/src/sync/pipeline/clock_hash_reader.dart';
 import 'package:locorda_core/src/sync/pipeline/content_index_resolver.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:logging/logging.dart';
 
@@ -35,8 +36,9 @@ Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
   // ignore: close_sinks — closed by feedback logic, not by the caller
   StreamSink<SyncInput> inputSink,
   Storage storage,
-  ContentIndexResolver indexResolver,
-) {
+  ContentIndexResolver indexResolver, {
+  PipeperfCollector? perf,
+}) {
   return (CommittedShardEvent event) async* {
     switch (event) {
       case ShardCommitResult():
@@ -74,6 +76,7 @@ Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
 
         if (isMetaPhase) {
           // Check stability of ALL meta-index documents.
+          final sw = perf != null ? (Stopwatch()..start()) : null;
           final snapshots = source.metaIndexClockHashes!;
           final newHashes = await readClockHashes(storage, snapshots.keys);
           // Every key in snapshots had a clock hash when we snapshotted — if
@@ -82,6 +85,7 @@ Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
           final missingKeys =
               snapshots.keys.where((k) => !newHashes.containsKey(k)).toList();
           if (missingKeys.isNotEmpty) {
+            sw?.stop();
             throw StateError(
                 'Meta-index document(s) lost their clock hash during sync: '
                 '$missingKeys');
@@ -92,11 +96,19 @@ Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
           if (anyChanged) {
             if (source.retryCount >= _maxRetries) {
               _log.severe('Meta-indices unstable after $_maxRetries retries');
+              sw?.stop();
+              if (sw != null) {
+                perf!.record('S14.Feedback', sw.elapsedMicroseconds);
+              }
               inputSink.close();
               return;
             }
             _log.fine(
                 'Meta-indices changed — re-injecting (retry ${source.retryCount + 1})');
+            sw?.stop();
+            if (sw != null) {
+              perf!.record('S14.Feedback', sw.elapsedMicroseconds);
+            }
             inputSink.add(SyncInput(
               source.indexIris,
               retryCount: source.retryCount + 1,
@@ -108,6 +120,10 @@ Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
             _log.fine('Meta-indices stable — transitioning to content phase');
 
             final contentIndices = await indexResolver.resolveContentIndices();
+            sw?.stop();
+            if (sw != null) {
+              perf!.record('S14.Feedback', sw.elapsedMicroseconds);
+            }
             if (contentIndices.isEmpty) {
               _log.info('No content indices found — closing pipeline');
               inputSink.close();
