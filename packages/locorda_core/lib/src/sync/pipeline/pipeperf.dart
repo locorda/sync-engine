@@ -37,7 +37,6 @@ class PipeperfClock {
 class PipeperfCollector {
   final Map<String, List<int>> _measurements = {};
   final _wallClock = Stopwatch();
-  final List<PipeperfClock> _activeStages = [];
 
   PipeperfClock start(String stage) {
     return PipeperfClock(this, stage);
