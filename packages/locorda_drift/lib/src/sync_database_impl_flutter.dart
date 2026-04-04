@@ -28,7 +28,7 @@ extension LocordaDriftWebOptionsX on LocordaDriftWebOptions {
       );
 }
 
-extension LocordaDriftNativeOptionsX on LocordaDriftNativeOptions {
+extension LocordaDriftNativeOptionsX on LocordaDriftNativeWorkerOptions {
   /// Convert to drift_flutter's DriftNativeOptions.
   ///
   /// Resolves all closures to their actual values before conversion,
@@ -66,7 +66,7 @@ extension LocordaDriftNativeOptionsX on LocordaDriftNativeOptions {
 /// Flutter-specific implementation of SyncDatabase factory.
 ///
 /// Uses drift_flutter's driftDatabase() for automatic platform selection.
-/// When [LocordaDriftNativeOptions.readPool] > 0, bypasses driftDatabase()
+/// When [LocordaDriftNativeWorkerOptions.readPool] > 0, bypasses driftDatabase()
 /// to use [NativeDatabase.createBackgroundConnection] directly, which
 /// supports read pool isolates for parallel SELECT execution.
 class SyncDatabaseImpl {
@@ -77,7 +77,7 @@ class SyncDatabaseImpl {
   /// Returns Future for API consistency with web implementation.
   static Future<SyncDatabase> create({
     LocordaDriftWebOptions? web,
-    LocordaDriftNativeOptions? native,
+    LocordaDriftNativeWorkerOptions? native,
   }) async {
     if (native != null && native.readPool > 0) {
       return _createWithReadPool(native);
@@ -101,7 +101,7 @@ class SyncDatabaseImpl {
   /// the [readPool] parameter of [NativeDatabase.createBackgroundConnection].
   /// Replicates essential platform setup (Android workarounds, temp directory).
   static Future<SyncDatabase> _createWithReadPool(
-    LocordaDriftNativeOptions native,
+    LocordaDriftNativeWorkerOptions native,
   ) async {
     final file = await _resolveDatabaseFile(native);
 
@@ -131,7 +131,7 @@ class SyncDatabaseImpl {
 
   /// Resolves the database file path, replicating drift_flutter's logic.
   static Future<File> _resolveDatabaseFile(
-    LocordaDriftNativeOptions native,
+    LocordaDriftNativeWorkerOptions native,
   ) async {
     if (native.databasePath != null) {
       return File(await native.databasePath!());

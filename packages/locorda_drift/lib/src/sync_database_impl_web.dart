@@ -19,7 +19,7 @@ class SyncDatabaseImpl {
   /// Native options are ignored on web.
   static Future<SyncDatabase> create({
     LocordaDriftWebOptions? web,
-    LocordaDriftNativeOptions? native,
+    LocordaDriftNativeWorkerOptions? native,
   }) async {
     if (web == null) {
       throw ArgumentError(

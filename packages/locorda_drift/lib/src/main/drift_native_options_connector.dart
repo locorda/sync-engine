@@ -81,11 +81,15 @@ class DriftNativeOptionsConnector {
     final Future<String> Function()? databasePath,
     final Future<Object> Function()? databaseDirectory,
     final Future<String?> Function()? tempDirectoryPath,
+    bool enableWal = false,
+    int readPool = 0,
   }) =>
       DriftNativeOptionsSender.sender(
         id: id,
         databasePath: databasePath,
         databaseDirectory: databaseDirectory,
         tempDirectoryPath: tempDirectoryPath,
+        enableWal: enableWal,
+        readPool: readPool,
       );
 }

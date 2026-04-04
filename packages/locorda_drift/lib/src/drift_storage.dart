@@ -72,7 +72,7 @@ class DriftStorage implements core.Storage {
   /// ```
   static Future<DriftStorage> create({
     LocordaDriftWebOptions? web,
-    LocordaDriftNativeOptions? native,
+    LocordaDriftNativeWorkerOptions? native,
     required core.Perflog perflog,
     IriTermFactory iriTermFactory = IriTerm.validated,
   }) async {

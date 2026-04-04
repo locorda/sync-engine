@@ -34,7 +34,7 @@ class DriftWorkerHandler extends StorageWorkerHandler {
       _log.info('DriftWorkerHandler[$id]: Web config received: $webOpts');
     }
 
-    LocordaDriftNativeOptions? nativeOpts;
+    LocordaDriftNativeWorkerOptions? nativeOpts;
     if (_native) {
       _log.info(
           'DriftWorkerHandler[$id]: Requesting native options from main...');

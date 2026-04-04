@@ -14,10 +14,10 @@ import '../drift_options.dart';
 
 // No-Op implementation for web:
 class DriftNativeOptionsReceiver {
-  static Future<LocordaDriftNativeOptions> receiver(
+  static Future<LocordaDriftNativeWorkerOptions> receiver(
     WorkerHandlerContext context,
     String id, {
     Duration timeout = const Duration(seconds: 5),
   }) =>
-      Future.value(LocordaDriftNativeOptions());
+      Future.value(LocordaDriftNativeWorkerOptions());
 }

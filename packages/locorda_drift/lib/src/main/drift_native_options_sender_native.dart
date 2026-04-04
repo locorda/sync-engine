@@ -27,15 +27,21 @@ class DriftNativeOptionsSender implements MainHandler {
   final Future<Object> Function()? _databaseDirectoryProvider;
   final Future<String?> Function()? _tempDirectoryPathProvider;
   final Future<String> Function()? _databasePathProvider;
+  final bool _enableWal;
+  final int _readPool;
 
   DriftNativeOptionsSender._(
     this._workerHandle, {
     final Future<String> Function()? databasePath,
     Future<Object> Function()? databaseDirectory,
     Future<String?> Function()? tempDirectoryPath,
+    bool enableWal = false,
+    int readPool = 0,
   })  : _databaseDirectoryProvider = databaseDirectory,
         _tempDirectoryPathProvider = tempDirectoryPath,
-        _databasePathProvider = databasePath;
+        _databasePathProvider = databasePath,
+        _enableWal = enableWal,
+        _readPool = readPool;
 
   /// Creates a plugin factory for this connector.
   ///
@@ -48,6 +54,8 @@ class DriftNativeOptionsSender implements MainHandler {
     final Future<String> Function()? databasePath,
     final Future<Object> Function()? databaseDirectory,
     final Future<String?> Function()? tempDirectoryPath,
+    bool enableWal = false,
+    int readPool = 0,
   }) {
     return (MainHandlerContext context) {
       return DriftNativeOptionsSender._(
@@ -55,6 +63,8 @@ class DriftNativeOptionsSender implements MainHandler {
         databasePath: databasePath,
         databaseDirectory: databaseDirectory,
         tempDirectoryPath: tempDirectoryPath,
+        enableWal: enableWal,
+        readPool: readPool,
       );
     };
   }
@@ -103,6 +113,8 @@ class DriftNativeOptionsSender implements MainHandler {
           },
           tempDirectoryPath: tempDir,
           databasePath: databasePath,
+          enableWal: _enableWal,
+          readPool: _readPool,
         );
 
         _log.info('Sending response via __channel: ${response.toJson()}');

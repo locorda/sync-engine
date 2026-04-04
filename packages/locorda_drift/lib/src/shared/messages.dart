@@ -7,11 +7,15 @@ class ResponseDriftOptionsMessage {
   final String? databaseDirectory;
   final String? tempDirectoryPath;
   final String? databasePath;
+  final bool enableWal;
+  final int readPool;
 
   ResponseDriftOptionsMessage({
     this.databaseDirectory,
     this.tempDirectoryPath,
     this.databasePath,
+    this.enableWal = false,
+    this.readPool = 0,
   });
 
   Map<String, dynamic> toJson() => {
@@ -19,6 +23,8 @@ class ResponseDriftOptionsMessage {
         if (databaseDirectory != null) 'databaseDirectory': databaseDirectory,
         if (tempDirectoryPath != null) 'tempDirectoryPath': tempDirectoryPath,
         if (databasePath != null) 'databasePath': databasePath,
+        'enableWal': enableWal,
+        'readPool': readPool,
       };
 
   factory ResponseDriftOptionsMessage.fromJson(Map<String, dynamic> json) {
@@ -26,6 +32,8 @@ class ResponseDriftOptionsMessage {
       databaseDirectory: json['databaseDirectory'] as String?,
       tempDirectoryPath: json['tempDirectoryPath'] as String?,
       databasePath: json['databasePath'] as String?,
+      enableWal: json['enableWal'] as bool? ?? false,
+      readPool: json['readPool'] as int? ?? 0,
     );
   }
 }

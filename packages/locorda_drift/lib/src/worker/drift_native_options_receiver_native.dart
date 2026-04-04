@@ -45,7 +45,7 @@ class DriftNativeOptionsReceiver {
   ///
   /// Throws [TimeoutException] after 5 seconds if no response is received,
   /// with helpful error message about missing plugin registration.
-  static Future<LocordaDriftNativeOptions> receiver(
+  static Future<LocordaDriftNativeWorkerOptions> receiver(
     WorkerHandlerContext context,
     String id, {
     Duration timeout = const Duration(seconds: 5),
@@ -54,7 +54,7 @@ class DriftNativeOptionsReceiver {
         context.createChannel('locorda_drift/$id/drift_native_options');
     _log.info('Worker: Starting provider...');
 
-    final completer = Completer<LocordaDriftNativeOptions>();
+    final completer = Completer<LocordaDriftNativeWorkerOptions>();
     late final StreamSubscription subscription;
 
     // Listen for response from main thread via __channel
@@ -70,7 +70,7 @@ class DriftNativeOptionsReceiver {
         _log.fine(
             'Worker: Parsed response: databaseDirectory=${response.databaseDirectory}, tempDirectory=${response.tempDirectoryPath}, databasePath=${response.databasePath}');
 
-        final options = LocordaDriftNativeOptions(
+        final options = LocordaDriftNativeWorkerOptions(
           databaseDirectory: response.databaseDirectory != null
               ? () => Future.value(response.databaseDirectory!)
               : null,
@@ -80,6 +80,8 @@ class DriftNativeOptionsReceiver {
           tempDirectoryPath: response.tempDirectoryPath != null
               ? () => Future.value(response.tempDirectoryPath!)
               : null,
+          enableWal: response.enableWal,
+          readPool: response.readPool,
         );
 
         _log.info('Worker: Completing with LocordaDriftNativeOptions');

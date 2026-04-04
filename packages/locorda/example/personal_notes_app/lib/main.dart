@@ -75,7 +75,7 @@ Future<Locorda> initializeLocorda() async {
 
     // Provide storage - web options are sent to worker via connector
     storage: DriftMainHandler(
-      webOptions: LocordaDriftWebOptions(
+      web: LocordaDriftWebOptions(
         sqlite3Wasm: Uri.parse('sqlite3.wasm'),
         driftWorker: Uri.parse('drift_worker.js'),
       ),
