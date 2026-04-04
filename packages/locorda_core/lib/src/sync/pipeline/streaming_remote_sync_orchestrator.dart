@@ -131,7 +131,7 @@ class StreamingRemoteSyncOrchestrator {
         .map(perf.timedMap('S03.ShardParse', shardParse(_rdfCore)))
         .transform(decouplingTransformer(maxBuffered: 1280))
         .asyncExpand(changeDetection(_storage, lastSyncTimestamp, perf: perf))
-        .transform(decouplingTransformer(maxBuffered: 3000))
+        .transform(decouplingTransformer(maxBuffered: 10_000))
         .transform(localContentLoad(_storage, _remoteId, perf: perf))
         .transform(decouplingTransformer(maxBuffered: 1280))
         .transform(_remote.resourceFetch(perf: perf))
