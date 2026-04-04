@@ -14,8 +14,12 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
+import 'package:logging/logging.dart';
+
 import 'drift_options.dart';
 import 'sync_database.dart';
+
+final _log = Logger('SyncDatabaseImpl');
 
 /// Extension methods to convert Locorda options to drift_flutter options.
 extension LocordaDriftWebOptionsX on LocordaDriftWebOptions {
@@ -80,8 +84,12 @@ class SyncDatabaseImpl {
     LocordaDriftNativeWorkerOptions? native,
   }) async {
     if (native != null && native.readPool > 0) {
+      _log.info(
+          'Creating database with background connection pool: readPool=${native.readPool}, wal=true');
       return _createWithReadPool(native);
     }
+    _log.fine(
+        'Creating standard database connection: wal=${native?.effectiveEnableWal ?? false}');
 
     // Resolve native options closures before passing to drift_flutter
     final resolvedNativeOptions =
@@ -104,6 +112,8 @@ class SyncDatabaseImpl {
     LocordaDriftNativeWorkerOptions native,
   ) async {
     final file = await _resolveDatabaseFile(native);
+    _log.info(
+        'NativeDatabase.createBackgroundConnection: file=${file.path}, readPool=${native.readPool}');
 
     // Resolve temp directory before crossing isolate boundary
     final resolvedTempDir = native.tempDirectoryPath != null

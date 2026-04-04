@@ -17,6 +17,10 @@ library;
 
 import 'dart:async';
 
+import 'package:logging/logging.dart';
+
+final _log = Logger('pipeline');
+
 /// Creates a [StreamTransformer] that decouples upstream from downstream.
 ///
 /// Events are buffered in an internal [StreamController]. When the buffer
@@ -31,6 +35,8 @@ StreamTransformer<T, T> decouplingTransformer<T>({int maxBuffered = 64}) {
     final controller = StreamController<T>();
     StreamSubscription<T>? subscription;
     var buffered = 0;
+    var maxObserved = 0;
+    var upstreamPauses = 0;
     var upstreamDone = false;
 
     void resumeIfNeeded() {
@@ -44,13 +50,17 @@ StreamTransformer<T, T> decouplingTransformer<T>({int maxBuffered = 64}) {
         (event) {
           controller.add(event);
           buffered++;
+          if (buffered > maxObserved) maxObserved = buffered;
           if (buffered >= maxBuffered) {
             subscription!.pause();
+            upstreamPauses++;
           }
         },
         onError: controller.addError,
         onDone: () {
           upstreamDone = true;
+          _log.fine(
+              'DecouplingTransformer done: peak=$maxObserved/$maxBuffered, upstreamPauses=$upstreamPauses');
           controller.close();
         },
       );
