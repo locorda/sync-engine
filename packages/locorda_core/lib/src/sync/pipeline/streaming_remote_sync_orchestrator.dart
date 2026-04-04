@@ -130,9 +130,7 @@ class StreamingRemoteSyncOrchestrator {
         .asyncExpand(changeDetection(_storage, lastSyncTimestamp, perf: perf))
         .transform(localContentLoad(_storage, _remoteId, perf: perf))
         .transform(_remote.resourceFetch(perf: perf))
-        // REMOVED: decoupling here causes ConcurrentUpdateException when the
-        // same resource appears in multiple shards — S06 fetches stale data
-        // for shard B while S09 hasn't committed shard A's merge yet.
+        .transform(decouplingTransformer(maxBuffered: 16))
         .map(perf.timedMap(
             'S07a.Decode', decodeCandidates(_mergeContractLoader, _rdfCore)))
         .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
@@ -148,12 +146,10 @@ class StreamingRemoteSyncOrchestrator {
             'S11a.Prepare', prepareShards(_shardDocGen, config, _rdfCore)))
         .asyncMap(perf.timedAsyncMap(
             'S11b.ContractLoad', loadShardContracts(_mergeContractLoader)))
-        .expand(perf.timedExpand('S11c.ShardMerge',
-            mergeShards(_documentManager, _merger, _rdfCore, perf: perf)))
+        .expand(perf.timedExpand('S11c.ShardMerge', mergeShards(_documentManager, _merger, _rdfCore, perf: perf)))
         .transform(_remote.shardUpload(perf: perf))
         .asyncExpand(shardDbCommit(_storage, _remoteId, perf: perf))
-        .asyncExpand(feedback(inputController.sink, _storage, _indexResolver,
-            perf: perf));
+        .asyncExpand(feedback(inputController.sink, _storage, _indexResolver, perf: perf));
 
     // Seed with meta-index phase
     _log.fine('Seeding pipeline with meta indices: '

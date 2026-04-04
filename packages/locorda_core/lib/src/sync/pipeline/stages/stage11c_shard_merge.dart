@@ -36,6 +36,7 @@ Iterable<MergedShardEvent> Function(ContractLoadedShardEvent) mergeShards(
 }) {
   return (ContractLoadedShardEvent event) => switch (event) {
         PhaseComplete() => [event],
+        ConflictedShard() => [event],
         ContractLoadedShard() =>
           _merge(event, documentManager, merger, rdfCore, perf),
       };

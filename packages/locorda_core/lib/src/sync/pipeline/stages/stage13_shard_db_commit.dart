@@ -101,6 +101,8 @@ Stream<CommittedShardEvent> Function(UploadedShardEvent) shardDbCommit(
             pendingEtags.length >= batchSize) {
           yield* _flush();
         }
+      case ConflictedShard():
+        yield event;
     }
   };
 }

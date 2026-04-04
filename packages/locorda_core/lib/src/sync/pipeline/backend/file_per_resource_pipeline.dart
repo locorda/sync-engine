@@ -217,6 +217,7 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
           extract: (e) => switch (e) {
             MergedShard() => e.needsUpload ? e : null,
             PhaseComplete() => null,
+            ConflictedShard() => null,
           },
           toRequest: (e) => RemoteUploadRequest<RawContent>(
             documentIri: e.shardIri.getDocumentIri(),
@@ -231,11 +232,12 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
             final docIri = event.shardIri.getDocumentIri();
             _logger.warning(
                 'Shard upload conflict for ${docIri.debug} — skipping');
-            return UploadedShard(event.shardIri, event);
+            return ConflictedShard(event.shardIri);
           },
           passBoundary: (e) => switch (e) {
             MergedShard() => UploadedShard(e.shardIri, e),
             PhaseComplete() => e,
+            ConflictedShard() => e,
           },
         );
       });

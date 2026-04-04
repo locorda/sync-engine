@@ -21,6 +21,7 @@ import 'package:locorda_core/src/index/index_manager.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart'
     show ResolvedGroupIndex;
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
+import 'package:locorda_core/src/storage/concurrent_update_exception.dart';
 import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/storage/remote_id.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
@@ -63,8 +64,24 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
     int physicalTime
   })>[];
 
+  // Track whether the current shard's flush failed due to a concurrent
+  // update — set by _flush(), read by the ShardComplete handler.
+  var _currentShardConflicted = false;
+
+  void _clearPending() {
+    pendingSaves.clear();
+    pendingBytes.clear();
+    pendingIndexEntries.clear();
+    pendingEtags.clear();
+    pendingResourceIris.clear();
+  }
+
   // Writes the entire pending batch atomically and yields CommitResults.
   // No internal chunking — the caller controls batch size via [batchSize].
+  //
+  // On [ConcurrentUpdateException] the transaction is rolled back by the
+  // storage layer, all pending state is cleared, and [_currentShardConflicted]
+  // is set so the [ShardComplete] handler can emit [ConflictedShard].
   Stream<CommitResult> _flush() async* {
     if (pendingSaves.isEmpty &&
         pendingEtags.isEmpty &&
@@ -115,18 +132,26 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
       pendingTombstones.clear();
     }
 
-    await storage.inTransaction(() async {
-      if (pendingSaves.isNotEmpty) {
-        await documentSaveService.saveDocuments(pendingSaves,
-            preEncodedContents: pendingBytes);
-      }
-      if (pendingIndexEntries.isNotEmpty) {
-        await storage.saveIndexEntries(pendingIndexEntries);
-      }
-      if (pendingEtags.isNotEmpty) {
-        await storage.setRemoteETags(remoteId, pendingEtags);
-      }
-    });
+    try {
+      await storage.inTransaction(() async {
+        if (pendingSaves.isNotEmpty) {
+          await documentSaveService.saveDocuments(pendingSaves,
+              preEncodedContents: pendingBytes);
+        }
+        if (pendingIndexEntries.isNotEmpty) {
+          await storage.saveIndexEntries(pendingIndexEntries);
+        }
+        if (pendingEtags.isNotEmpty) {
+          await storage.setRemoteETags(remoteId, pendingEtags);
+        }
+      });
+    } on ConcurrentUpdateException catch (e) {
+      _log.warning('Concurrent update during DB commit — '
+          'shard will be re-injected: $e');
+      _currentShardConflicted = true;
+      _clearPending();
+      return;
+    }
 
     sw?.stop();
     if (sw != null) perf!.record('S09.DbCommit', sw.elapsedMicroseconds);
@@ -135,11 +160,7 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
       yield CommitResult(iri);
     }
 
-    pendingSaves.clear();
-    pendingBytes.clear();
-    pendingIndexEntries.clear();
-    pendingEtags.clear();
-    pendingResourceIris.clear();
+    _clearPending();
   }
 
   return (UploadedResourceEvent event) async* {
@@ -149,7 +170,12 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
         yield event;
       case ShardComplete():
         yield* _flush();
-        yield event;
+        if (_currentShardConflicted) {
+          _currentShardConflicted = false;
+          yield ConflictedShard(event.shardIri);
+        } else {
+          yield event;
+        }
       case UploadResult():
         final mergeResult = event.mergeResult;
         final etag = event.remoteEtag;

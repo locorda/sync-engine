@@ -367,7 +367,7 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
               final docIri = event.shardIri.getDocumentIri();
               _log.warning(
                   'Dataset upload conflict for ${docIri.debug} — skipping');
-              yield UploadedShard(event.shardIri, event);
+              yield ConflictedShard(event.shardIri);
             }
           }
           buffer.clear();
@@ -385,6 +385,8 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
               yield* flush();
               // Clean up accumulator on phase boundary.
               _uploadAccumulator.clear();
+              yield event;
+            case ConflictedShard():
               yield event;
           }
         }

@@ -13,17 +13,19 @@ library;
 
 import 'dart:async' show StreamSink;
 
+import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart' show Storage;
 import 'package:locorda_core/src/sync/pipeline/clock_hash_reader.dart';
 import 'package:locorda_core/src/sync/pipeline/content_index_resolver.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
+import 'package:locorda_rdf_core/core.dart' show IriTerm;
 import 'package:logging/logging.dart';
 
 final _log = Logger('Stage14.Feedback');
 
 /// Maximum number of meta-index re-injections before aborting.
-const _maxRetries = 4;
+const _maxRetries = 6;
 
 /// Returns an asyncExpand function for Stage 14.
 ///
@@ -39,20 +41,51 @@ Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
   ContentIndexResolver indexResolver, {
   PipeperfCollector? perf,
 }) {
+  // Accumulated across the phase — cleared after re-injection.
+  final conflictedShardIris = <IriTerm>{};
+
   return (CommittedShardEvent event) async* {
     switch (event) {
       case ShardCommitResult():
         yield event;
+      case ConflictedShard():
+        conflictedShardIris.add(event.shardIri);
+        yield event;
       case PhaseComplete():
         yield event; // pass through so caller can monitor
         final source = event.source;
+
+        // Conflict re-injection takes priority — re-process the entire
+        // input so that all indices (including those with conflicted shards)
+        // are re-fetched and re-merged with fresh data.
+        if (conflictedShardIris.isNotEmpty) {
+          final count = conflictedShardIris.length;
+          final shardIrisCopy = Set<IriTerm>.of(conflictedShardIris);
+          conflictedShardIris.clear();
+          if (source.retryCount >= _maxRetries) {
+            _log.severe('Shard conflicts persist after $_maxRetries retries '
+                '($count conflicted shards)');
+            inputSink.close();
+            return;
+          }
+          _log.info('$count shard(s) had conflicts — '
+              'reinjecting (retry ${source.retryCount + 1})');
+          inputSink.add(SyncInput(
+            source.indexIris,
+            retryCount: source.retryCount + 1,
+            indexInfos: source.indexInfos,
+            metaIndexClockHashes: source.metaIndexClockHashes,
+            conflictedShardIris: shardIrisCopy,
+          ));
+          return;
+        }
 
         // Safety net: re-inject indices that had 0 shards.
         // TODO: is this really useful? When would it help? Should we simply remove it?
         if (event.zeroShardIndices.isNotEmpty) {
           if (source.retryCount >= _maxRetries) {
             _log.severe('Indices have no shards after $_maxRetries retries: '
-                '${event.zeroShardIndices}');
+                '${event.zeroShardIndices.map((iri) => iri.debug).join(', ')}');
             inputSink.close();
             return;
           }

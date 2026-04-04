@@ -52,8 +52,15 @@ Stream<ShardRefEvent> Function(SyncInput) shardResolution(
         continue;
       }
 
-      allShardIris.addAll(shardIris);
-      indexShards[indexIri] = (shardIris, info);
+      final filtered = input.conflictedShardIris != null
+          ? shardIris
+              .where((s) => input.conflictedShardIris!.contains(s))
+              .toList()
+          : shardIris;
+      if (filtered.isEmpty) continue;
+
+      allShardIris.addAll(filtered);
+      indexShards[indexIri] = (filtered, info);
     }
 
     // Bulk ETag query — ETags are keyed by document IRI (without fragment),

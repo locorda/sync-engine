@@ -88,6 +88,8 @@ Stream<LoadedShardEntriesEvent> Function(CommittedResourceEvent) shardEntryLoad(
       case ShardComplete():
         pendingShards.add(event);
         if (pendingShards.length >= batchSize) yield* _flush();
+      case ConflictedShard():
+        yield event;
     }
   };
 }

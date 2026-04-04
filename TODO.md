@@ -125,6 +125,11 @@
 - [ ] Improve Documentation - Group/Full Index, IndexItem, RootResourceFetchPolicy etc.
 - [ ]
 
+# Priority 5.x: Performance and Pipeline
+- [x] Implement a sync pipeline
+- [ ] Get local directory performance for chat essence sync with 15k docs to below 5 s
+- [ ] !!!IMPORTANT BUGFIX!!! upload conflicts seem to stop the pipeline from terminating ?!?!
+
 # Priority 6: Reality Check: make chat essence use sync engine
 - [ ] Port chat essence to sync engine
 - [ ] Activate gdrive backend for chat essence and measure performance - is this acceptable?

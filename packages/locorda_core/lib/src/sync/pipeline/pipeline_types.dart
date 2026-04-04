@@ -76,11 +76,17 @@ class SyncInput {
   /// Null for content-phase inputs (no stability check needed).
   final Map<IriTerm, String>? metaIndexClockHashes;
 
+  /// When non-null, Stage 1 only emits [ShardRef]s for these shard IRIs —
+  /// skipping shards that were already committed successfully in the previous
+  /// pass. Set exclusively by the Feedback Stage on conflict re-injection.
+  final Set<IriTerm>? conflictedShardIris;
+
   const SyncInput(
     this.indexIris, {
     this.retryCount = 0,
     this.indexInfos = const {},
     this.metaIndexClockHashes,
+    this.conflictedShardIris,
   });
 
   /// Whether this input represents a meta-index phase.
@@ -136,6 +142,31 @@ class ShardComplete extends Boundary
     this.newEtag,
     this.existsOnRemote = false,
   });
+}
+
+/// A shard whose processing was aborted due to a conflict.
+///
+/// Emitted in two situations:
+/// - **S09**: [ConcurrentUpdateException] during resource DB commit — the
+///   same resource was modified by a concurrently-processed shard.
+/// - **S12**: Upload ETag mismatch — another installation uploaded the shard
+///   concurrently.
+///
+/// Flows as a pass-through from the emitting stage through all downstream
+/// stages until Stage 14, which collects conflicted shard IRIs and re-injects
+/// the affected indices for a retry pass.
+class ConflictedShard extends Boundary
+    implements
+        CommittedResourceEvent,
+        LoadedShardEntriesEvent,
+        PreparedShardEvent,
+        ContractLoadedShardEvent,
+        MergedShardEvent,
+        UploadedShardEvent,
+        CommittedShardEvent {
+  final IriTerm shardIri;
+
+  const ConflictedShard(this.shardIri);
 }
 
 /// All shards of this [SyncInput] batch have been emitted / processed.
