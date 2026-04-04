@@ -812,6 +812,7 @@ class PipelineIriTranslatingRemoteSyncStorage
               mergedGraph: _graphToExternal(e.mergedGraph),
             ),
           PhaseComplete() => e,
+          ConflictedShard() => ConflictedShard(_toExternal(e.shardIri)),
         },
         (e) => switch (e) {
           UploadedShard() => e.copyWith(
@@ -822,6 +823,7 @@ class PipelineIriTranslatingRemoteSyncStorage
               ),
             ),
           PhaseComplete() => e,
+          ConflictedShard() => ConflictedShard(_toInternal(e.shardIri)),
         },
         perf: perf,
         perfStage: 'S12.IriXlat',
