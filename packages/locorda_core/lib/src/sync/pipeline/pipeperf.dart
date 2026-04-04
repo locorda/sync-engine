@@ -18,9 +18,11 @@ final _log = Logger('perf.pipeline');
 /// - Transform stages: call `perf.record('S02', microseconds)` internally
 class PipeperfCollector {
   final Map<String, List<int>> _measurements = {};
+  final _wallClock = Stopwatch();
 
   /// Records a single timing measurement in microseconds.
   void record(String stage, int microseconds) {
+    if (!_wallClock.isRunning) _wallClock.start();
     (_measurements[stage] ??= []).add(microseconds);
   }
 
@@ -116,21 +118,40 @@ class PipeperfCollector {
   /// Logs aggregated per-stage statistics.
   void report() {
     if (_measurements.isEmpty) return;
+    _wallClock.stop();
 
     final totalEvents =
         _measurements.values.fold<int>(0, (sum, m) => sum + m.length);
-    final totalUs = _measurements.values
-        .fold<int>(0, (s, m) => s + m.fold(0, (a, b) => a + b));
 
     _log.info('');
     _log.info('═══ Pipeline Stats ($totalEvents events) ═══');
     _log.info(_header());
 
+    final keys = _measurements.keys.toSet();
+
+    // Top-level: no other key is a strict dot-separated prefix of this key.
+    final topLevelKeys = keys
+        .where((k) => !keys.any((other) => other != k && k.startsWith('$other.')))
+        .toSet();
+
     final sortedEntries = _measurements.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
     for (final entry in sortedEntries) {
-      _log.info(_formatRow(entry.key, entry.value));
+      _log.info(_formatRow(_displayKey(entry.key, topLevelKeys), entry.value));
     }
+
+    // Overlap summary: top-level stage totals vs wall-clock.
+    final topLevelKeysList = topLevelKeys.toList();
+    final sequentialUs = topLevelKeysList.fold<int>(
+        0, (sum, k) => sum + _measurements[k]!.fold(0, (a, b) => a + b));
+    final wallUs = _wallClock.elapsedMicroseconds;
+    final overlapUs = sequentialUs - wallUs;
+    final overlapPct =
+        sequentialUs > 0 ? overlapUs * 100 / sequentialUs : 0.0;
+    _log.info(
+        'Sequential: ${_formatDuration(sequentialUs)}  '
+        'Wall-clock: ${_formatDuration(wallUs)}  '
+        'Overlap: ${_formatDuration(overlapUs)} (${overlapPct.toStringAsFixed(0)}%)');
 
     _log.info('');
   }
@@ -138,6 +159,22 @@ class PipeperfCollector {
   // ---------------------------------------------------------------------------
   // Formatting helpers
   // ---------------------------------------------------------------------------
+
+  /// For top-level keys returns the key unchanged.
+  /// For sub-stage keys, replaces the longest matching top-level prefix with
+  /// `  ...` so the remaining path shows what the sub-stage adds.
+  static String _displayKey(String key, Set<String> topLevelKeys) {
+    String? longestPrefix;
+    for (final topLevel in topLevelKeys) {
+      if (key.startsWith('$topLevel.')) {
+        if (longestPrefix == null || topLevel.length > longestPrefix.length) {
+          longestPrefix = topLevel;
+        }
+      }
+    }
+    if (longestPrefix == null) return key;
+    return '  ...${key.substring(longestPrefix.length + 1)}';
+  }
 
   static String _header() {
     final stage = 'Stage'.padRight(28);
