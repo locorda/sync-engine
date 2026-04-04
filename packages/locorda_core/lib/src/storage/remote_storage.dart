@@ -691,21 +691,21 @@ class PipelineIriTranslatingRemoteSyncStorage
   }) {
     T timedInput(T e) {
       if (perf == null) return translateInput(e);
-      final sw = Stopwatch()..start();
+      final sw = perf.start(perfStage!);
       try {
         return translateInput(e);
       } finally {
-        perf.record(perfStage!, sw.elapsedMicroseconds);
+        sw.stop();
       }
     }
 
     R timedOutput(R e) {
       if (perf == null) return translateOutput(e);
-      final sw = Stopwatch()..start();
+      final sw = perf.start(perfStage!);
       try {
         return translateOutput(e);
       } finally {
-        perf.record(perfStage!, sw.elapsedMicroseconds);
+        sw.stop();
       }
     }
 

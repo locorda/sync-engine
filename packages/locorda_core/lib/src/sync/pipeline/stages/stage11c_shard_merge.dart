@@ -33,12 +33,13 @@ Iterable<MergedShardEvent> Function(ContractLoadedShardEvent) mergeShards(
   RemoteDocumentMerger merger,
   RdfCore rdfCore, {
   PipeperfCollector? perf,
+  String perfStage = 'S11c.ShardMerge',
 }) {
   return (ContractLoadedShardEvent event) => switch (event) {
         PhaseComplete() => [event],
         ConflictedShard() => [event],
         ContractLoadedShard() =>
-          _merge(event, documentManager, merger, rdfCore, perf),
+          _merge(event, documentManager, merger, rdfCore, perf, perfStage),
       };
 }
 
@@ -48,11 +49,12 @@ List<MergedShardEvent> _merge(
   RemoteDocumentMerger merger,
   RdfCore rdfCore,
   PipeperfCollector? perf,
+  String perfStage,
 ) {
   final p = loaded.prepared;
   final shardIri = p.shardIri;
   final shardDocumentIri = shardIri.getDocumentIri();
-  final sw = Stopwatch()..start();
+  final sw = perf?.start(perfStage);
 
   // When a 200 response was received, merge remote CRDT framework metadata
   // (foreign clock entries, tombstones) into the local shard before applying
@@ -75,8 +77,7 @@ List<MergedShardEvent> _merge(
   } else {
     effectiveDoc = p.localDoc;
   }
-  perf?.record('S11c.ShardMerge.remoteMerge', sw.elapsedMicroseconds);
-  sw.reset();
+  sw?.stopSection('remoteMerge');
 
   // Early-exit: skip expensive CRDT diff when entry triples are unchanged.
   // Only applies to local-only path (no remote merge needed).
@@ -86,15 +87,14 @@ List<MergedShardEvent> _merge(
     final newEntryTriples = p.entryTriples.toSet();
     if (oldEntryTriples.length == newEntryTriples.length &&
         oldEntryTriples.containsAll(newEntryTriples)) {
-      perf?.record('S11c.ShardMerge.earlyExit', sw.elapsedMicroseconds);
-      sw.reset();
+      sw?.stopSection('earlyExit');
       // Content unchanged — encode existing graph for downstream stages
       // (S12 upload if needed, S13 DB commit, S14 feedback).
       final encoded = BinaryGraphSource(
         rdfCore.encodeBinary(doc, contentType: jelly.primaryMimeType),
         contentType: jelly.primaryMimeType,
       );
-      perf?.record('S11c.ShardMerge.encode', sw.elapsedMicroseconds);
+      sw?.stopSection('encode');
       return [
         MergedShard(
           shardIri,
@@ -119,8 +119,7 @@ List<MergedShardEvent> _merge(
     acceptMissing: true,
     perf: perf,
   );
-  perf?.record('S11c.prepareModify', sw.elapsedMicroseconds);
-  sw.reset();
+  sw?.stopSection('prepareModify');
   if (prepared == null) {
     // No changes — shard is already up-to-date locally.
     // effectiveDoc is either the merged remote shard (200 response) or the
@@ -133,7 +132,7 @@ List<MergedShardEvent> _merge(
       rdfCore.encodeBinary(baseGraph, contentType: jelly.primaryMimeType),
       contentType: jelly.primaryMimeType,
     );
-    perf?.record('S11c.encode', sw.elapsedMicroseconds);
+    sw?.stopSection('encode');
 
     return [
       MergedShard(
@@ -153,7 +152,8 @@ List<MergedShardEvent> _merge(
     rdfCore.encodeBinary(mergedGraph, contentType: jelly.primaryMimeType),
     contentType: jelly.primaryMimeType,
   );
-  perf?.record('S11c.encode', sw.elapsedMicroseconds);
+  sw?.stopSection('encode');
+
   return [
     MergedShard(
       shardIri,

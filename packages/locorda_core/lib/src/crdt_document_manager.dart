@@ -618,7 +618,7 @@ class CrdtDocumentManager {
       _log.fine(
           'Saving resource ${resourceIri.debug} to document ${documentIri.debug}');
 
-      final sw = (perf != null) ? (Stopwatch()..start()) : null;
+      final sw = perf?.start('_computeSave');
 
       final clock = _hlcService.createOrIncrementClock(
         oldFrameworkGraph,
@@ -630,10 +630,7 @@ class CrdtDocumentManager {
 
       final updatedAtTimestamp = _physicalTimestampFactory();
 
-      if (sw != null) {
-        perf!.record('_computeSave.clock', sw.elapsedMicroseconds);
-        sw.reset();
-      }
+      sw?.stopSection('clock');
 
       final (
         metadata: crdtMetadata,
@@ -649,10 +646,7 @@ class CrdtDocumentManager {
         appDataTypeIri: type,
       );
 
-      if (sw != null) {
-        perf!.record('_computeSave.appMeta', sw.elapsedMicroseconds);
-        sw.reset();
-      }
+      sw?.stopSection('appMeta');
 
       final propertyChanges = crdtMetadata.propertyChanges;
       if (propertyChanges.isEmpty) {
@@ -704,9 +698,7 @@ class CrdtDocumentManager {
 
       crdtDocument = RdfGraph.fromTriples(documentTriples);
 
-      if (sw != null) {
-        perf!.record('_computeSave.construct', sw.elapsedMicroseconds);
-      }
+      sw?.stopSection('construct');
 
       final documentMetadata = DocumentMetadata(
         ourPhysicalClock: physicalTimestamp,

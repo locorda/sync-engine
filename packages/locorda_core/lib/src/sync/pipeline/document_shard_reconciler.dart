@@ -129,7 +129,7 @@ class DocumentShardReconciler {
     required DocumentLookup getDocument,
     PipeperfCollector? perf,
   }) {
-    final sw = (perf != null) ? (Stopwatch()..start()) : null;
+    final sw = perf?.start('S07c.CrdtMerge.reconcile');
 
     final shards = _shardDeterminer.determineShards(
       typeIri,
@@ -139,18 +139,11 @@ class DocumentShardReconciler {
       indexConfigs: indexConfigs,
       getDocument: getDocument,
     );
-
-    if (sw != null) {
-      perf!.record('S07c.CrdtMerge.reconcile.shards', sw.elapsedMicroseconds);
-      sw.reset();
-    }
+    sw?.stopSection('shards');
 
     final clock = _hlcService.getCurrentClock(mergedDocument, documentIri);
 
-    if (sw != null) {
-      perf!.record('S07c.CrdtMerge.reconcile.clock', sw.elapsedMicroseconds);
-      sw.reset();
-    }
+    sw?.stopSection('clock');
 
     final hasChanges =
         _shardsChanged(mergedDocument, documentIri, shards.shards);
@@ -172,9 +165,7 @@ class DocumentShardReconciler {
           )
         : mergedDocument;
 
-    if (sw != null) {
-      perf!.record('S07c.CrdtMerge.reconcile.replace', sw.elapsedMicroseconds);
-    }
+    sw?.stopSection('replace');
 
     return (
       graph: reconciledGraph,

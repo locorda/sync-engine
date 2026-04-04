@@ -40,6 +40,7 @@ Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
   Storage storage,
   ContentIndexResolver indexResolver, {
   PipeperfCollector? perf,
+  String perfStage = 'S14.Feedback',
 }) {
   // Accumulated across the phase — cleared after re-injection.
   final conflictedShardIris = <IriTerm>{};
@@ -109,7 +110,7 @@ Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
 
         if (isMetaPhase) {
           // Check stability of ALL meta-index documents.
-          final sw = perf != null ? (Stopwatch()..start()) : null;
+          final sw = perf?.start(perfStage);
           final snapshots = source.metaIndexClockHashes!;
           final newHashes = await readClockHashes(storage, snapshots.keys);
           // Every key in snapshots had a clock hash when we snapshotted — if
@@ -130,18 +131,12 @@ Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
             if (source.retryCount >= _maxRetries) {
               _log.severe('Meta-indices unstable after $_maxRetries retries');
               sw?.stop();
-              if (sw != null) {
-                perf!.record('S14.Feedback', sw.elapsedMicroseconds);
-              }
               inputSink.close();
               return;
             }
             _log.fine(
                 'Meta-indices changed — re-injecting (retry ${source.retryCount + 1})');
             sw?.stop();
-            if (sw != null) {
-              perf!.record('S14.Feedback', sw.elapsedMicroseconds);
-            }
             inputSink.add(SyncInput(
               source.indexIris,
               retryCount: source.retryCount + 1,
@@ -154,9 +149,6 @@ Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
 
             final contentIndices = await indexResolver.resolveContentIndices();
             sw?.stop();
-            if (sw != null) {
-              perf!.record('S14.Feedback', sw.elapsedMicroseconds);
-            }
             if (contentIndices.isEmpty) {
               _log.info('No content indices found — closing pipeline');
               inputSink.close();

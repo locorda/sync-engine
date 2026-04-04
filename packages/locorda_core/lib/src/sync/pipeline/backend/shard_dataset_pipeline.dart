@@ -126,7 +126,7 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
         Stream<FetchedShardEvent> flush() async* {
           if (buffer.isEmpty) return;
 
-          final swIo = perf != null ? (Stopwatch()..start()) : null;
+          final swIo = perf?.start('S02.ShardFetch.io');
           final requests = buffer.map((e) => RemoteDownloadRequest(
                 documentIri: e.shardIri.getDocumentIri(),
                 ifNoneMatch: e.storedEtag,
@@ -135,8 +135,7 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
           final results =
               await backend.download(Stream.fromIterable(requests)).toList();
 
-          if (swIo != null)
-            perf!.record('S02.ShardFetch.io', swIo.elapsedMicroseconds);
+          swIo?.stop();
 
           for (var i = 0; i < buffer.length; i++) {
             yield* _processShardResult(buffer[i], results[i], perf: perf);
@@ -175,7 +174,7 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
       // CPU: decode raw → dataset, then populate resource cache.
       // Both steps happen before yield, so stopwatch is unaffected by
       // downstream backpressure.
-      final sw = perf != null ? (Stopwatch()..start()) : null;
+      final sw = perf?.start('S02.ShardFetch.decode');
       final dataset = _decodeDataset(result.graph!);
       final shardDocIri = event.shardIri.getDocumentIri();
 
@@ -190,8 +189,7 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
         }
       }
       _downloadCache[shardDocIri.value] = resourceCache;
-      if (sw != null)
-        perf!.record('S02.ShardFetch.decode', sw.elapsedMicroseconds);
+      sw?.stop();
 
       // Emit the default graph (shard metadata) as ShardContent.
       yield ShardContent(
@@ -325,22 +323,18 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
           // Pass 1 — I/O: load resource graphs from DB and assemble datasets.
           final datasets = <(MergedShard, RdfDataset)>[];
           for (final shard in buffer) {
-            final swDbLoad = perf != null ? (Stopwatch()..start()) : null;
+            final swDbLoad = perf?.start('S12.ShardUpload.dbLoad');
             final dataset = await _assembleDataset(shard);
-            if (swDbLoad != null)
-              perf!.record(
-                  'S12.ShardUpload.dbLoad', swDbLoad.elapsedMicroseconds);
+            swDbLoad?.stop();
             datasets.add((shard, dataset));
           }
 
           // Pass 2 — CPU: encode all datasets to wire format.
           final requests = <RemoteUploadRequest<RawContent>>[];
           for (final (shard, dataset) in datasets) {
-            final swEncode = perf != null ? (Stopwatch()..start()) : null;
+            final swEncode = perf?.start('S12.ShardUpload.encode');
             final encoded = _encodeDataset(dataset);
-            if (swEncode != null)
-              perf!.record(
-                  'S12.ShardUpload.encode', swEncode.elapsedMicroseconds);
+            swEncode?.stop();
 
             requests.add(RemoteUploadRequest<RawContent>(
               documentIri: shard.shardIri.getDocumentIri(),
@@ -350,11 +344,10 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
           }
 
           // Pass 3 — I/O: upload via backend stream.
-          final swIo = perf != null ? (Stopwatch()..start()) : null;
+          final swIo = perf?.start('S12.ShardUpload.io');
           final results =
               await backend.upload(Stream.fromIterable(requests)).toList();
-          if (swIo != null)
-            perf!.record('S12.ShardUpload.io', swIo.elapsedMicroseconds);
+          swIo?.stop();
 
           for (var i = 0; i < buffer.length; i++) {
             final event = buffer[i];

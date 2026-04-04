@@ -28,7 +28,7 @@ Stream<ShardRefEvent> Function(SyncInput) shardResolution(
   PipeperfCollector? perf,
 }) {
   return (SyncInput input) async* {
-    final sw = perf != null ? (Stopwatch()..start()) : null;
+    final sw = perf?.start('S01.ShardResolution');
     final zeroShardIndices = <IriTerm>[];
     var processedShardCount = 0;
 
@@ -71,7 +71,6 @@ Stream<ShardRefEvent> Function(SyncInput) shardResolution(
         : <IriTerm, String?>{};
 
     sw?.stop();
-    if (sw != null) perf!.record('S01.ShardResolution', sw.elapsedMicroseconds);
 
     for (final entry in indexShards.entries) {
       final indexIri = entry.key;

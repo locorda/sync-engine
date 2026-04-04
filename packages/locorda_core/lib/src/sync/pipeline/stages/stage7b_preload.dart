@@ -51,7 +51,7 @@ StreamTransformer<DecodedCandidateEvent, PreloadedCandidateEvent>
 
     Stream<PreloadedCandidate> preloadChunk(
         List<DecodedCandidate> chunk) async* {
-      final swIo = perf != null ? (Stopwatch()..start()) : null;
+      final swIo = perf?.start('$perfStage.io');
       // 1. Load merge contracts, discover index configs, and collect
       //    all index/template document IRIs (all LRU cached across batches).
       final allDocIris = <IriTerm>{};
@@ -76,10 +76,10 @@ StreamTransformer<DecodedCandidateEvent, PreloadedCandidateEvent>
       final loadedDocs = allDocIris.isNotEmpty
           ? await storage.getDocumentsByIri(allDocIris.toList())
           : const <IriTerm, StoredDocument?>{};
-      if (swIo != null) perf!.record('$perfStage.io', swIo.elapsedMicroseconds);
+      swIo?.stop();
 
       // 3. Extract indexed properties and collect PreloadedCandidates (CPU).
-      final swCpu = perf != null ? (Stopwatch()..start()) : null;
+      final swCpu = perf?.start('$perfStage.cpu');
       final results = <PreloadedCandidate>[];
       for (final candidate in chunk) {
         final configs = indexConfigCache[candidate.typeIri]!;
@@ -113,8 +113,7 @@ StreamTransformer<DecodedCandidateEvent, PreloadedCandidateEvent>
           indexedProperties: indexedProperties,
         ));
       }
-      if (swCpu != null)
-        perf!.record('$perfStage.cpu', swCpu.elapsedMicroseconds);
+      swCpu?.stop();
       for (final result in results) {
         yield result;
       }

@@ -59,7 +59,7 @@ Stream<SyncCandidateEvent> _handleParsedShard(
     yield ShardComplete(shardIri, shardStorageId);
     return;
   }
-  final sw = perf != null ? (Stopwatch()..start()) : null;
+  final sw = perf?.start('S04.ChangeDetect');
 
   // Determine effective fetch policy
   final effectiveFetchPolicy = parsed.allResourcesAvailable
@@ -129,7 +129,6 @@ Stream<SyncCandidateEvent> _handleParsedShard(
   }
 
   sw?.stop();
-  if (sw != null) perf!.record('S04.ChangeDetect', sw.elapsedMicroseconds);
 
   for (final candidate in candidates) {
     if (candidate != null) {
@@ -153,11 +152,10 @@ Stream<SyncCandidateEvent> _handleNotModified(
   int lastSyncTimestamp,
   PipeperfCollector? perf,
 ) async* {
-  final sw = perf != null ? (Stopwatch()..start()) : null;
+  final sw = perf?.start('S04.ChangeDetect');
   final localEntries =
       await storage.getActiveIndexEntriesForShard(result.shardIri);
   sw?.stop();
-  if (sw != null) perf!.record('S04.ChangeDetect', sw.elapsedMicroseconds);
   for (final entry in localEntries) {
     if (entry.updatedAt > lastSyncTimestamp) {
       yield SyncCandidate(
@@ -180,11 +178,10 @@ Stream<SyncCandidateEvent> _handleGone(
   Storage storage,
   PipeperfCollector? perf,
 ) async* {
-  final sw = perf != null ? (Stopwatch()..start()) : null;
+  final sw = perf?.start('S04.ChangeDetect');
   final localEntries =
       await storage.getActiveIndexEntriesForShard(result.shardIri);
   sw?.stop();
-  if (sw != null) perf!.record('S04.ChangeDetect', sw.elapsedMicroseconds);
 
   for (final entry in localEntries) {
     yield SyncCandidate(

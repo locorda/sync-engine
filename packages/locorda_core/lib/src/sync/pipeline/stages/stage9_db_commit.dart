@@ -46,6 +46,7 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
   DocumentSaveService documentSaveService, {
   int batchSize = defaultPipelineBatchSize,
   PipeperfCollector? perf,
+  String perfStage = 'S09.DbCommit',
 }) {
   final pendingSaves = <SaveDocumentRequest>[];
   final pendingBytes = <Uint8List>[];
@@ -88,7 +89,7 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
         pendingGroupIndices.isEmpty &&
         pendingTombstones.isEmpty) return;
 
-    final sw = perf != null ? (Stopwatch()..start()) : null;
+    final sw = perf?.start(perfStage);
 
     // Ensure GroupIndex documents exist before writing index entries.
     if (pendingGroupIndices.isNotEmpty) {
@@ -154,7 +155,6 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
     }
 
     sw?.stop();
-    if (sw != null) perf!.record('S09.DbCommit', sw.elapsedMicroseconds);
 
     for (final iri in pendingResourceIris) {
       yield CommitResult(iri);

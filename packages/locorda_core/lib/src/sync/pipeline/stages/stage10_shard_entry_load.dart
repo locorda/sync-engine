@@ -47,7 +47,7 @@ Stream<LoadedShardEntriesEvent> Function(CommittedResourceEvent) shardEntryLoad(
   Stream<LoadedShardEntriesEvent> _flush() async* {
     if (pendingShards.isEmpty) return;
 
-    final sw = perf != null ? (Stopwatch()..start()) : null;
+    final sw = perf?.start('S10.ShardEntryLoad');
 
     final shardIris = pendingShards.map((e) => e.shardIri).toList();
     final shardDocumentIris =
@@ -59,7 +59,6 @@ Stream<LoadedShardEntriesEvent> Function(CommittedResourceEvent) shardEntryLoad(
     final docsByIri = await storage.getRawDocumentsByIri(shardDocumentIris);
 
     sw?.stop();
-    if (sw != null) perf!.record('S10.ShardEntryLoad', sw.elapsedMicroseconds);
 
     for (final event in pendingShards) {
       final shardIri = event.shardIri;

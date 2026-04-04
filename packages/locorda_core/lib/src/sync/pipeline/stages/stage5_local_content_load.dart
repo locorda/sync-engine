@@ -68,13 +68,13 @@ Stream<LoadedCandidateEvent> _loadChunk(
   PipeperfCollector? perf,
   String perfStage,
 ) async* {
-  final sw = perf != null ? (Stopwatch()..start()) : null;
+  final sw = perf?.start(perfStage);
   final documentIris =
       chunk.map((e) => e.resourceIri.getDocumentIri()).toList();
 
   final docs = await storage.getRawDocumentsByIri(documentIris);
   final etags = await storage.getRemoteETags(remoteId, documentIris);
-  if (sw != null) perf!.record(perfStage, sw.elapsedMicroseconds);
+  sw?.stop();
 
   for (final candidate in chunk) {
     final documentIri = candidate.resourceIri.getDocumentIri();

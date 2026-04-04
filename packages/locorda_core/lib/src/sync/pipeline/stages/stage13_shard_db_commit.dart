@@ -34,6 +34,7 @@ Stream<CommittedShardEvent> Function(UploadedShardEvent) shardDbCommit(
   RemoteId remoteId, {
   int batchSize = defaultPipelineBatchSize,
   PipeperfCollector? perf,
+  String perfStage = 'S13.ShardDbCommit',
 }) {
   final pendingSaves = <SaveDocumentRequest>[];
   final pendingBytes = <Uint8List>[];
@@ -45,7 +46,7 @@ Stream<CommittedShardEvent> Function(UploadedShardEvent) shardDbCommit(
   Stream<ShardCommitResult> _flush() async* {
     if (pendingSaves.isEmpty && pendingEtags.isEmpty) return;
 
-    final sw = perf != null ? (Stopwatch()..start()) : null;
+    final sw = perf?.start(perfStage);
 
     await storage.inTransaction(() async {
       if (pendingSaves.isNotEmpty) {
@@ -58,7 +59,6 @@ Stream<CommittedShardEvent> Function(UploadedShardEvent) shardDbCommit(
     });
 
     sw?.stop();
-    if (sw != null) perf!.record('S13.ShardDbCommit', sw.elapsedMicroseconds);
 
     for (final shardIri in pendingShardIris) {
       yield ShardCommitResult(shardIri);

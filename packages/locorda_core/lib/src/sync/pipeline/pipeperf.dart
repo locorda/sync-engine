@@ -11,6 +11,24 @@ import 'package:logging/logging.dart';
 
 final _log = Logger('perf.pipeline');
 
+class PipeperfClock {
+  final PipeperfCollector _collector;
+  final Stopwatch _stopwatch = Stopwatch()..start();
+  final String _stage;
+
+  PipeperfClock(this._collector, this._stage);
+
+  void stopSection(String substage) {
+    _collector.record('$_stage.$substage', _stopwatch.elapsedMicroseconds);
+    _stopwatch.reset();
+  }
+
+  void stop() {
+    _collector.record(_stage, _stopwatch.elapsedMicroseconds);
+    _stopwatch.stop();
+  }
+}
+
 /// Collects per-stage timing measurements and reports aggregated statistics.
 ///
 /// Usage:
@@ -20,7 +38,10 @@ class PipeperfCollector {
   final Map<String, List<int>> _measurements = {};
   final _wallClock = Stopwatch();
 
+  PipeperfClock start(String stage) => PipeperfClock(this, stage);
+
   /// Records a single timing measurement in microseconds.
+  /// Visible for testing - you should not use this directly. Use PipeperfClock instead.
   void record(String stage, int microseconds) {
     if (!_wallClock.isRunning) _wallClock.start();
     (_measurements[stage] ??= []).add(microseconds);
@@ -33,11 +54,11 @@ class PipeperfCollector {
   /// Wraps a synchronous `map` callback with timing.
   T Function(S) timedMap<S, T>(String stage, T Function(S) fn) {
     return (event) {
-      final sw = Stopwatch()..start();
+      final sw = start(stage);
       try {
         return fn(event);
       } finally {
-        record(stage, sw.elapsedMicroseconds);
+        sw.stop();
       }
     };
   }
@@ -46,11 +67,11 @@ class PipeperfCollector {
   Iterable<T> Function(S) timedExpand<S, T>(
       String stage, Iterable<T> Function(S) fn) {
     return (event) {
-      final sw = Stopwatch()..start();
+      final sw = start(stage);
       try {
         return fn(event);
       } finally {
-        record(stage, sw.elapsedMicroseconds);
+        sw.stop();
       }
     };
   }
@@ -59,11 +80,11 @@ class PipeperfCollector {
   Future<T> Function(S) timedAsyncMap<S, T>(
       String stage, FutureOr<T> Function(S) fn) {
     return (event) async {
-      final sw = Stopwatch()..start();
+      final sw = start(stage);
       try {
         return await fn(event);
       } finally {
-        record(stage, sw.elapsedMicroseconds);
+        sw.stop();
       }
     };
   }

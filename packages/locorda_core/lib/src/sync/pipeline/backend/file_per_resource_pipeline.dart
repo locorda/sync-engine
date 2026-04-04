@@ -274,11 +274,10 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
       if (buffer.isNotEmpty) {
         final requests = buffer.map(toRequest);
 
-        final swIo = perf != null ? (Stopwatch()..start()) : null;
+        final swIo = perf?.start('$perfStage.io');
         final resultStream = backend.download(Stream.fromIterable(requests));
         final results = await resultStream.toList();
-        if (swIo != null)
-          perf!.record('$perfStage.io', swIo.elapsedMicroseconds);
+        swIo?.stop();
 
         for (var i = 0; i < buffer.length; i++) {
           yield toOutput(buffer[i], results[i]);
@@ -328,17 +327,15 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
     Stream<TOut> flush() async* {
       if (buffer.isNotEmpty) {
         // CPU: encode graphs before I/O.
-        final swEncode = perf != null ? (Stopwatch()..start()) : null;
+        final swEncode = perf?.start('$perfStage.encode');
         final requests = buffer.map(toRequest).toList();
-        if (swEncode != null)
-          perf!.record('$perfStage.encode', swEncode.elapsedMicroseconds);
+        swEncode?.stop();
 
         // I/O: upload via backend stream.
-        final swIo = perf != null ? (Stopwatch()..start()) : null;
+        final swIo = perf?.start('$perfStage.io');
         final resultStream = backend.upload(Stream.fromIterable(requests));
         final results = await resultStream.toList();
-        if (swIo != null)
-          perf!.record('$perfStage.io', swIo.elapsedMicroseconds);
+        swIo?.stop();
 
         for (var i = 0; i < buffer.length; i++) {
           yield toOutput(buffer[i], results[i]);

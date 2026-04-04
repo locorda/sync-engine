@@ -33,12 +33,13 @@ Iterable<pipeline.MergedResourceEvent> Function(
   DocumentShardReconciler reconciler,
   RdfCore rdfCore, {
   PipeperfCollector? perf,
+  String perfStage = 'S07c.CrdtMerge',
 }) {
   return (pipeline.PreloadedCandidateEvent event) => switch (event) {
         PhaseComplete() => [event],
         ShardComplete() => [event],
         PreloadedCandidate() =>
-          _merge(event, merger, reconciler, rdfCore, perf),
+          _merge(event, merger, reconciler, rdfCore, perf, perfStage),
       };
 }
 
@@ -48,10 +49,11 @@ List<pipeline.MergeResult> _merge(
   DocumentShardReconciler reconciler,
   RdfCore rdfCore,
   PipeperfCollector? perf,
+  String perfStage,
 ) {
   final d = preloaded.decoded;
   final RdfGraph mergedGraph;
-  final sw = Stopwatch()..start();
+  final sw = perf?.start('$perfStage');
 
   switch (d.effectiveDirection) {
     case SyncDirection.remoteOnly:
@@ -77,8 +79,7 @@ List<pipeline.MergeResult> _merge(
       }
       mergedGraph = d.localGraph!;
   }
-  perf?.record('S07c.CrdtMerge.merge', sw.elapsedMicroseconds);
-  sw.reset();
+  sw?.stopSection('merge');
 
   // Reconcile shard assignments using pre-loaded data (sync).
   final reconciled = reconciler.reconcileSync(
@@ -91,8 +92,7 @@ List<pipeline.MergeResult> _merge(
     getDocument: (iri) => preloaded.documents[iri],
     perf: perf,
   );
-  perf?.record('S07c.CrdtMerge.reconcile', sw.elapsedMicroseconds);
-  sw.reset();
+  sw?.stopSection('reconcile');
 
   // Clock hash of the merged (and reconciled) document — reconciliation
   // only touches shard triples, not clock entries, so this equals the
@@ -114,23 +114,21 @@ List<pipeline.MergeResult> _merge(
     indexedProperties: preloaded.indexedProperties,
     physicalTime: reconciled.clock.physicalTime,
   );
-  perf?.record('S07c.CrdtMerge.indexEntries', sw.elapsedMicroseconds);
-  sw.reset();
+  sw?.stopSection('indexEntries');
 
   // Extract tombstoned shard IRIs (pure CPU graph traversal).
   // Stage 9 resolves indexIri per shard from the DB and builds tombstone entries.
   final tombstonedShardIris =
       collectTombstonedShards(reconciled.graph, d.documentIri)
         ..removeAll(reconciled.shardToIndex.keys); // active wins over tombstone
-  perf?.record('S07c.CrdtMerge.tombstones', sw.elapsedMicroseconds);
-  sw.reset();
+  sw?.stopSection('tombstones');
 
   final decoded = DecodedGraphSource(reconciled.graph);
   // encode for the database.
   final encodedBytes = rdfCore.encodeBinary(reconciled.graph);
   final encoded =
       BinaryGraphSource(encodedBytes, contentType: jelly.primaryMimeType);
-  perf?.record('S07c.CrdtMerge.encode', sw.elapsedMicroseconds);
+  sw?.stopSection('encode');
 
   return [
     pipeline.MergeResult(
