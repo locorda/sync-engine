@@ -1,10 +1,18 @@
 /// Flutter implementation of SyncDatabase factory using drift_flutter.
 ///
 /// This implementation is selected via conditional import on native platforms.
-/// It uses drift_flutter for automatic Flutter platform detection.
+/// It uses drift_flutter for automatic Flutter platform detection, and falls
+/// back to direct NativeDatabase usage when read pool support is needed.
 library;
 
+import 'dart:io';
+
+import 'package:drift/native.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:sqlite3/sqlite3.dart';
+import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
 import 'drift_options.dart';
 import 'sync_database.dart';
@@ -48,6 +56,9 @@ extension LocordaDriftNativeOptionsX on LocordaDriftNativeOptions {
       tempDirectoryPath: resolvedTempDirectoryPath != null
           ? () => Future.value(resolvedTempDirectoryPath)
           : null,
+      setup: effectiveEnableWal
+          ? (db) => db.execute('PRAGMA journal_mode = WAL')
+          : null,
     );
   }
 }
@@ -55,6 +66,9 @@ extension LocordaDriftNativeOptionsX on LocordaDriftNativeOptions {
 /// Flutter-specific implementation of SyncDatabase factory.
 ///
 /// Uses drift_flutter's driftDatabase() for automatic platform selection.
+/// When [LocordaDriftNativeOptions.readPool] > 0, bypasses driftDatabase()
+/// to use [NativeDatabase.createBackgroundConnection] directly, which
+/// supports read pool isolates for parallel SELECT execution.
 class SyncDatabaseImpl {
   /// Create SyncDatabase with Flutter platform detection.
   ///
@@ -65,6 +79,10 @@ class SyncDatabaseImpl {
     LocordaDriftWebOptions? web,
     LocordaDriftNativeOptions? native,
   }) async {
+    if (native != null && native.readPool > 0) {
+      return _createWithReadPool(native);
+    }
+
     // Resolve native options closures before passing to drift_flutter
     final resolvedNativeOptions =
         native != null ? await native.toDriftNativeOptions() : null;
@@ -75,5 +93,61 @@ class SyncDatabaseImpl {
       native: resolvedNativeOptions,
     );
     return SyncDatabase.forExecutor(executor);
+  }
+
+  /// Creates a database connection with WAL mode and a read pool.
+  ///
+  /// Bypasses drift_flutter's [driftDatabase] because it doesn't expose
+  /// the [readPool] parameter of [NativeDatabase.createBackgroundConnection].
+  /// Replicates essential platform setup (Android workarounds, temp directory).
+  static Future<SyncDatabase> _createWithReadPool(
+    LocordaDriftNativeOptions native,
+  ) async {
+    final file = await _resolveDatabaseFile(native);
+
+    // Resolve temp directory before crossing isolate boundary
+    final resolvedTempDir = native.tempDirectoryPath != null
+        ? await native.tempDirectoryPath!()
+        : await getTemporaryDirectory().then((d) => d.path);
+
+    final connection = NativeDatabase.createBackgroundConnection(
+      file,
+      readPool: native.readPool,
+      isolateDebugLog: native.isolateDebugLog,
+      isolateSetup: () async {
+        if (Platform.isAndroid) {
+          await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
+        }
+        if (resolvedTempDir != null) {
+          sqlite3.tempDirectory = resolvedTempDir;
+        }
+      },
+      setup: (db) {
+        db.execute('PRAGMA journal_mode = WAL');
+      },
+    );
+    return SyncDatabase.forExecutor(connection);
+  }
+
+  /// Resolves the database file path, replicating drift_flutter's logic.
+  static Future<File> _resolveDatabaseFile(
+    LocordaDriftNativeOptions native,
+  ) async {
+    if (native.databasePath != null) {
+      return File(await native.databasePath!());
+    }
+    final dir = native.databaseDirectory != null
+        ? await native.databaseDirectory!()
+        : await getApplicationDocumentsDirectory();
+    final dirPath = switch (dir) {
+      Directory(:final path) => path,
+      final String path => path,
+      _ => throw ArgumentError.value(
+          dir,
+          'databaseDirectory',
+          'must resolve to a Directory or a path string',
+        ),
+    };
+    return File(p.join(dirPath, 'locorda_sync.sqlite'));
   }
 }
