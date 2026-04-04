@@ -49,7 +49,6 @@ Stream<SyncCandidateEvent> _handleParsedShard(
   int lastSyncTimestamp,
   PipeperfCollector? perf,
 ) async* {
-  final sw = perf != null ? (Stopwatch()..start()) : null;
   final shardIri = parsed.shardIri;
   final shardStorageId = parsed.shardStorageId;
 
@@ -60,6 +59,7 @@ Stream<SyncCandidateEvent> _handleParsedShard(
     yield ShardComplete(shardIri, shardStorageId);
     return;
   }
+  final sw = perf != null ? (Stopwatch()..start()) : null;
 
   // Determine effective fetch policy
   final effectiveFetchPolicy = parsed.allResourcesAvailable
