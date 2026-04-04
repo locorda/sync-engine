@@ -17,10 +17,11 @@ class PipeperfClock {
   final String _stage;
 
   PipeperfClock(this._collector, this._stage) {
-    final active = [..._collector._activeStages];
+    final active =
+        _collector._activeStages.where((s) => !_stage.startsWith(s._stage));
     if (active.isNotEmpty) {
       _eLog.info(
-          'Starting $_stage while active stages are still running: ${active.map((s) => s._stage).join(', ')}');
+          'Starting $_stage while ${active.length} stages are still running: ${active.map((s) => s._stage).join(', ')}');
     }
     _collector._activeStages.add(this);
   }
