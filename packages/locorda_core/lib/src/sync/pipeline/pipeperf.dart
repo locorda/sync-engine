@@ -15,6 +15,7 @@ class PipeperfClock {
   final PipeperfCollector _collector;
   final Stopwatch _stopwatch = Stopwatch()..start();
   final String _stage;
+  int _elapsedBeforeStop = 0;
 
   PipeperfClock(this._collector, this._stage) {
     final active =
@@ -27,16 +28,20 @@ class PipeperfClock {
   }
 
   void reset() {
+    _elapsedBeforeStop += _stopwatch.elapsedMicroseconds;
     _stopwatch.reset();
   }
 
   void stopSection(String substage) {
-    _collector.record('$_stage.$substage', _stopwatch.elapsedMicroseconds);
+    final elapsed = _stopwatch.elapsedMicroseconds;
     _stopwatch.reset();
+    _elapsedBeforeStop += elapsed;
+    _collector.record('$_stage.$substage', elapsed);
   }
 
   void stop() {
-    _collector.record(_stage, _stopwatch.elapsedMicroseconds);
+    _collector.record(
+        _stage, _stopwatch.elapsedMicroseconds + _elapsedBeforeStop);
     _stopwatch.stop();
     _collector._activeStages.remove(this);
   }
