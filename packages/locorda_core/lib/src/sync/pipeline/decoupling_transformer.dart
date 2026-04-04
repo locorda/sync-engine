@@ -59,7 +59,7 @@ StreamTransformer<T, T> decouplingTransformer<T>({int maxBuffered = 64}) {
         onError: controller.addError,
         onDone: () {
           upstreamDone = true;
-          _log.fine(
+          _log.info(
               'DecouplingTransformer done: peak=$maxObserved/$maxBuffered, upstreamPauses=$upstreamPauses');
           controller.close();
         },
