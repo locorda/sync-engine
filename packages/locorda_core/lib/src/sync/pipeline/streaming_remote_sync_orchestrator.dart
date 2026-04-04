@@ -130,7 +130,7 @@ class StreamingRemoteSyncOrchestrator {
         .asyncExpand(changeDetection(_storage, lastSyncTimestamp, perf: perf))
         .transform(localContentLoad(_storage, _remoteId, perf: perf))
         .transform(_remote.resourceFetch(perf: perf))
-        .transform(decouplingTransformer(maxBuffered: 128))
+        //.transform(decouplingTransformer(maxBuffered: 128))
         .map(perf.timedMap(
             'S07a.Decode', decodeCandidates(_mergeContractLoader, _rdfCore)))
         .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
