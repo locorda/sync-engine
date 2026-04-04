@@ -128,52 +128,56 @@ class DocumentShardReconciler {
     required Iterable<CrdtIndexData> indexConfigs,
     required DocumentLookup getDocument,
     PipeperfCollector? perf,
+    String perfStage = 'S07c.CrdtMerge.reconcile',
   }) {
-    final sw = perf?.start('S07c.CrdtMerge.reconcile');
+    final sw = perf?.start(perfStage);
+    try {
+      final shards = _shardDeterminer.determineShards(
+        typeIri,
+        resourceIri,
+        mergedDocument,
+        mode: ShardDeterminationMode.strict,
+        indexConfigs: indexConfigs,
+        getDocument: getDocument,
+      );
+      sw?.stopSection('shards');
 
-    final shards = _shardDeterminer.determineShards(
-      typeIri,
-      resourceIri,
-      mergedDocument,
-      mode: ShardDeterminationMode.strict,
-      indexConfigs: indexConfigs,
-      getDocument: getDocument,
-    );
-    sw?.stopSection('shards');
+      final clock = _hlcService.getCurrentClock(mergedDocument, documentIri);
 
-    final clock = _hlcService.getCurrentClock(mergedDocument, documentIri);
+      sw?.stopSection('clock');
 
-    sw?.stopSection('clock');
+      final hasChanges =
+          _shardsChanged(mergedDocument, documentIri, shards.shards);
 
-    final hasChanges =
-        _shardsChanged(mergedDocument, documentIri, shards.shards);
+      final reconciledGraph = hasChanges
+          ? _localDocumentMerger.replaceInDocument(
+              documentIri: documentIri,
+              document: mergedDocument,
+              mergeContract: mergeContract,
+              physicalClock: clock.physicalTime,
+              changes: [
+                (
+                  subject: documentIri,
+                  subjectTypeIri: SyncManagedDocument.classIri,
+                  predicate: SyncManagedDocument.idxBelongsToIndexShard,
+                  newObjects: shards.shards,
+                )
+              ],
+            )
+          : mergedDocument;
 
-    final reconciledGraph = hasChanges
-        ? _localDocumentMerger.replaceInDocument(
-            documentIri: documentIri,
-            document: mergedDocument,
-            mergeContract: mergeContract,
-            physicalClock: clock.physicalTime,
-            changes: [
-              (
-                subject: documentIri,
-                subjectTypeIri: SyncManagedDocument.classIri,
-                predicate: SyncManagedDocument.idxBelongsToIndexShard,
-                newObjects: shards.shards,
-              )
-            ],
-          )
-        : mergedDocument;
+      sw?.stopSection('replace');
 
-    sw?.stopSection('replace');
-
-    return (
-      graph: reconciledGraph,
-      clock: clock,
-      resolvedGroupIndices: shards.resolvedGroupIndices.toList(),
-      shardToIndex: shards.shardToIndex,
-      hasChanges: hasChanges,
-    );
+      return (
+        graph: reconciledGraph,
+        clock: clock,
+        resolvedGroupIndices: shards.resolvedGroupIndices.toList(),
+        shardToIndex: shards.shardToIndex,
+        hasChanges: hasChanges,
+      );
+    } finally {
+      sw?.stop();
+    }
   }
 
   /// Compares current shard assignments in [document] with [newShards].

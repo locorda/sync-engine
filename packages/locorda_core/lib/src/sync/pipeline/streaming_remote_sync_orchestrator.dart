@@ -136,8 +136,8 @@ class StreamingRemoteSyncOrchestrator {
         .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
             _shardDeterminer, _storage, _indexRdfGenerator, perf: perf))
         .transform(decouplingTransformer(maxBuffered: 1280))
-        .expand(perf.timedExpand('S07c.CrdtMerge',
-            mergeCandidates(_merger, _reconciler, _rdfCore, perf: perf)))
+        .expand(mergeCandidates(_merger, _reconciler, _rdfCore,
+            perf: perf, perfStage: 'S07c.CrdtMerge'))
         .transform(decouplingTransformer(maxBuffered: 1280))
         .transform(_remote.resourceUpload(perf: perf))
         .asyncExpand(dbCommit(_storage, _indexManager, _remoteId, _saveService,
@@ -149,7 +149,8 @@ class StreamingRemoteSyncOrchestrator {
         .asyncMap(perf.timedAsyncMap(
             'S11b.ContractLoad', loadShardContracts(_mergeContractLoader)))
         .transform(decouplingTransformer(maxBuffered: 128))
-        .expand(perf.timedExpand('S11c.ShardMerge', mergeShards(_documentManager, _merger, _rdfCore, perf: perf)))
+        .expand(
+            mergeShards(_documentManager, _merger, _rdfCore, perf: perf, perfStage: 'S11c.Merge'))
         .transform(_remote.shardUpload(perf: perf))
         .asyncExpand(shardDbCommit(_storage, _remoteId, perf: perf))
         .asyncExpand(feedback(inputController.sink, _storage, _indexResolver, perf: perf));

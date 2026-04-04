@@ -16,7 +16,16 @@ class PipeperfClock {
   final Stopwatch _stopwatch = Stopwatch()..start();
   final String _stage;
 
-  PipeperfClock(this._collector, this._stage) {}
+  PipeperfClock(this._collector, this._stage) {
+    final active = [..._collector._activeStages];
+    _eLog.info(
+        'Starting $_stage${active.isNotEmpty ? ' (${active.length} active)' : ''}');
+    _collector._activeStages.add(this);
+  }
+
+  void reset() {
+    _stopwatch.reset();
+  }
 
   void stopSection(String substage) {
     _collector.record('$_stage.$substage', _stopwatch.elapsedMicroseconds);
@@ -26,8 +35,12 @@ class PipeperfClock {
   void stop() {
     _collector.record(_stage, _stopwatch.elapsedMicroseconds);
     _stopwatch.stop();
+    _eLog.info('Stopping $_stage');
+    _collector._activeStages.remove(this);
   }
 }
+
+final _eLog = Logger('pipeline.exec');
 
 /// Collects per-stage timing measurements and reports aggregated statistics.
 ///
@@ -37,6 +50,7 @@ class PipeperfClock {
 class PipeperfCollector {
   final Map<String, List<int>> _measurements = {};
   final _wallClock = Stopwatch();
+  final List<PipeperfClock> _activeStages = [];
 
   PipeperfClock start(String stage) {
     return PipeperfClock(this, stage);

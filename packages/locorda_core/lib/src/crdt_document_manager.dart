@@ -608,6 +608,7 @@ class CrdtDocumentManager {
   }) {
     RdfGraph? crdtDocument;
     RdfGraph? frameworkGraph;
+    final sw = perf?.start('_computeSave');
     try {
       if (appData.isEmpty) {
         throw ArgumentError('Cannot save empty graph');
@@ -617,8 +618,6 @@ class CrdtDocumentManager {
 
       _log.fine(
           'Saving resource ${resourceIri.debug} to document ${documentIri.debug}');
-
-      final sw = perf?.start('_computeSave');
 
       final clock = _hlcService.createOrIncrementClock(
         oldFrameworkGraph,
@@ -735,6 +734,8 @@ class CrdtDocumentManager {
       _log.severe(
           'Save operation failed for type ${type.debug}', e, stackTrace);
       rethrow;
+    } finally {
+      sw?.stop();
     }
   }
 

@@ -55,81 +55,101 @@ List<MergedShardEvent> _merge(
   final shardIri = p.shardIri;
   final shardDocumentIri = shardIri.getDocumentIri();
   final sw = perf?.start(perfStage);
+  try {
+    // When a 200 response was received, merge remote CRDT framework metadata
+    // (foreign clock entries, tombstones) into the local shard before applying
+    // local entry changes. Without this, multi-installation scenarios lose
+    // the foreign installation's CRDT history entirely.
+    final StoredDocument? effectiveDoc;
+    if (p.remoteShardGraph != null) {
+      final mergeResult = merger.merge(
+        mergeContract: loaded.mergeContract,
+        documentIri: shardDocumentIri,
+        localGraph: p.localDoc?.document,
+        remoteGraph: p.remoteShardGraph!.graph,
+      );
+      effectiveDoc = StoredDocument(
+        documentIri: shardDocumentIri,
+        document: mergeResult.mergedGraph,
+        metadata: p.localDoc?.metadata ??
+            DocumentMetadata(ourPhysicalClock: 0, updatedAt: 0),
+      );
+    } else {
+      effectiveDoc = p.localDoc;
+    }
+    sw?.stopSection('remoteMerge');
 
-  // When a 200 response was received, merge remote CRDT framework metadata
-  // (foreign clock entries, tombstones) into the local shard before applying
-  // local entry changes. Without this, multi-installation scenarios lose
-  // the foreign installation's CRDT history entirely.
-  final StoredDocument? effectiveDoc;
-  if (p.remoteShardGraph != null) {
-    final mergeResult = merger.merge(
-      mergeContract: loaded.mergeContract,
-      documentIri: shardDocumentIri,
-      localGraph: p.localDoc?.document,
-      remoteGraph: p.remoteShardGraph!.graph,
-    );
-    effectiveDoc = StoredDocument(
-      documentIri: shardDocumentIri,
-      document: mergeResult.mergedGraph,
-      metadata: p.localDoc?.metadata ??
-          DocumentMetadata(ourPhysicalClock: 0, updatedAt: 0),
-    );
-  } else {
-    effectiveDoc = p.localDoc;
-  }
-  sw?.stopSection('remoteMerge');
+    // Early-exit: skip expensive CRDT diff when entry triples are unchanged.
+    // Only applies to local-only path (no remote merge needed).
+    if (p.remoteShardGraph == null && effectiveDoc != null) {
+      final doc = effectiveDoc.document;
+      final oldEntryTriples = _extractEntryTriples(doc, shardIri);
+      final newEntryTriples = p.entryTriples.toSet();
+      if (oldEntryTriples.length == newEntryTriples.length &&
+          oldEntryTriples.containsAll(newEntryTriples)) {
+        sw?.stopSection('earlyExit');
+        // Content unchanged — encode existing graph for downstream stages
+        // (S12 upload if needed, S13 DB commit, S14 feedback).
+        final encoded = BinaryGraphSource(
+          rdfCore.encodeBinary(doc, contentType: jelly.primaryMimeType),
+          contentType: jelly.primaryMimeType,
+        );
+        sw?.stopSection('encode');
+        return [
+          MergedShard(
+            shardIri,
+            DecodedGraphSource(doc, originalSource: encoded),
+            encoded,
+            newEtag: p.newEtag,
+            needsUpload: !p.existsOnRemote,
+            ourPhysicalClock: effectiveDoc.metadata.ourPhysicalClock,
+          ),
+        ];
+      }
+    }
 
-  // Early-exit: skip expensive CRDT diff when entry triples are unchanged.
-  // Only applies to local-only path (no remote merge needed).
-  if (p.remoteShardGraph == null && effectiveDoc != null) {
-    final doc = effectiveDoc.document;
-    final oldEntryTriples = _extractEntryTriples(doc, shardIri);
-    final newEntryTriples = p.entryTriples.toSet();
-    if (oldEntryTriples.length == newEntryTriples.length &&
-        oldEntryTriples.containsAll(newEntryTriples)) {
-      sw?.stopSection('earlyExit');
-      // Content unchanged — encode existing graph for downstream stages
-      // (S12 upload if needed, S13 DB commit, S14 feedback).
+    // CRDT-merge via sync path — picks up existing HLC clock.
+    final prepared = documentManager.prepareModifyWithContract(
+      IdxShard.classIri,
+      shardIri,
+      (oldAppData) =>
+          buildShardAppData(oldAppData, shardIri, p.indexIri, p.entryTriples),
+      effectiveDoc,
+      loaded.mergeContract,
+      acceptMissing: true,
+      perf: perf,
+    );
+    sw?.stopSection('prepareModify');
+    if (prepared == null) {
+      // No changes — shard is already up-to-date locally.
+      // effectiveDoc is either the merged remote shard (200 response) or the
+      // existing local shard (304 / local-only path). It is never null here
+      // because acceptMissing=true guarantees at least RdfGraph() is passed.
+      final baseGraph = effectiveDoc?.document;
+      if (baseGraph == null) return const [];
+
       final encoded = BinaryGraphSource(
-        rdfCore.encodeBinary(doc, contentType: jelly.primaryMimeType),
+        rdfCore.encodeBinary(baseGraph, contentType: jelly.primaryMimeType),
         contentType: jelly.primaryMimeType,
       );
       sw?.stopSection('encode');
+
       return [
         MergedShard(
           shardIri,
-          DecodedGraphSource(doc, originalSource: encoded),
+          DecodedGraphSource(baseGraph, originalSource: encoded),
           encoded,
           newEtag: p.newEtag,
           needsUpload: !p.existsOnRemote,
-          ourPhysicalClock: effectiveDoc.metadata.ourPhysicalClock,
+          ourPhysicalClock: effectiveDoc?.metadata.ourPhysicalClock ?? 0,
         ),
       ];
     }
-  }
 
-  // CRDT-merge via sync path — picks up existing HLC clock.
-  final prepared = documentManager.prepareModifyWithContract(
-    IdxShard.classIri,
-    shardIri,
-    (oldAppData) =>
-        buildShardAppData(oldAppData, shardIri, p.indexIri, p.entryTriples),
-    effectiveDoc,
-    loaded.mergeContract,
-    acceptMissing: true,
-    perf: perf,
-  );
-  sw?.stopSection('prepareModify');
-  if (prepared == null) {
-    // No changes — shard is already up-to-date locally.
-    // effectiveDoc is either the merged remote shard (200 response) or the
-    // existing local shard (304 / local-only path). It is never null here
-    // because acceptMissing=true guarantees at least RdfGraph() is passed.
-    final baseGraph = effectiveDoc?.document;
-    if (baseGraph == null) return const [];
-
+    // Encode merged shard document.
+    final mergedGraph = prepared.crdtDocument;
     final encoded = BinaryGraphSource(
-      rdfCore.encodeBinary(baseGraph, contentType: jelly.primaryMimeType),
+      rdfCore.encodeBinary(mergedGraph, contentType: jelly.primaryMimeType),
       contentType: jelly.primaryMimeType,
     );
     sw?.stopSection('encode');
@@ -137,33 +157,16 @@ List<MergedShardEvent> _merge(
     return [
       MergedShard(
         shardIri,
-        DecodedGraphSource(baseGraph, originalSource: encoded),
+        DecodedGraphSource(mergedGraph, originalSource: encoded),
         encoded,
         newEtag: p.newEtag,
-        needsUpload: !p.existsOnRemote,
-        ourPhysicalClock: effectiveDoc?.metadata.ourPhysicalClock ?? 0,
+        needsUpload: true,
+        ourPhysicalClock: prepared.physicalTime,
       ),
     ];
+  } finally {
+    sw?.stop();
   }
-
-  // Encode merged shard document.
-  final mergedGraph = prepared.crdtDocument;
-  final encoded = BinaryGraphSource(
-    rdfCore.encodeBinary(mergedGraph, contentType: jelly.primaryMimeType),
-    contentType: jelly.primaryMimeType,
-  );
-  sw?.stopSection('encode');
-
-  return [
-    MergedShard(
-      shardIri,
-      DecodedGraphSource(mergedGraph, originalSource: encoded),
-      encoded,
-      newEtag: p.newEtag,
-      needsUpload: true,
-      ourPhysicalClock: prepared.physicalTime,
-    ),
-  ];
 }
 
 /// Extracts the entry-related triples from a shard document.

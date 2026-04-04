@@ -54,96 +54,102 @@ List<pipeline.MergeResult> _merge(
   final d = preloaded.decoded;
   final RdfGraph mergedGraph;
   final sw = perf?.start('$perfStage');
+  try {
+    switch (d.effectiveDirection) {
+      case SyncDirection.remoteOnly:
+        mergedGraph = d.remoteGraph!;
 
-  switch (d.effectiveDirection) {
-    case SyncDirection.remoteOnly:
-      mergedGraph = d.remoteGraph!;
+      case SyncDirection.remoteShardUnchanged:
+      case SyncDirection.notInRemoteShard:
+        mergedGraph = d.localGraph!;
 
-    case SyncDirection.remoteShardUnchanged:
-    case SyncDirection.notInRemoteShard:
-      mergedGraph = d.localGraph!;
+      case SyncDirection.conflictCandidate:
+        final mergeResult = merger.merge(
+          mergeContract: preloaded.mergeContract,
+          documentIri: d.documentIri,
+          localGraph: d.localGraph,
+          remoteGraph: d.remoteGraph,
+        );
+        mergedGraph = mergeResult.mergedGraph;
 
-    case SyncDirection.conflictCandidate:
-      final mergeResult = merger.merge(
-        mergeContract: preloaded.mergeContract,
-        documentIri: d.documentIri,
-        localGraph: d.localGraph,
-        remoteGraph: d.remoteGraph,
-      );
-      mergedGraph = mergeResult.mergedGraph;
+      case SyncDirection.shardGone:
+        if (d.localGraph == null) {
+          _log.warning(
+              'shardGone but no local graph for ${d.resourceIri.debug}');
+          return const [];
+        }
+        mergedGraph = d.localGraph!;
+    }
+    sw?.stopSection('merge');
 
-    case SyncDirection.shardGone:
-      if (d.localGraph == null) {
-        _log.warning('shardGone but no local graph for ${d.resourceIri.debug}');
-        return const [];
-      }
-      mergedGraph = d.localGraph!;
-  }
-  sw?.stopSection('merge');
+    // Reconcile shard assignments using pre-loaded data (sync).
+    final reconciled = reconciler.reconcileSync(
+      documentIri: d.documentIri,
+      mergedDocument: mergedGraph,
+      typeIri: d.typeIri,
+      resourceIri: d.resourceIri,
+      mergeContract: preloaded.mergeContract,
+      indexConfigs: preloaded.indexConfigs,
+      getDocument: (iri) => preloaded.documents[iri],
+      perf: perf,
+      perfStage: '$perfStage.reconcile',
+    );
+    // reconciler.reconcileSync() stops its own stopwatch, so we don't stop it here.
+    sw?.reset();
 
-  // Reconcile shard assignments using pre-loaded data (sync).
-  final reconciled = reconciler.reconcileSync(
-    documentIri: d.documentIri,
-    mergedDocument: mergedGraph,
-    typeIri: d.typeIri,
-    resourceIri: d.resourceIri,
-    mergeContract: preloaded.mergeContract,
-    indexConfigs: preloaded.indexConfigs,
-    getDocument: (iri) => preloaded.documents[iri],
-    perf: perf,
-  );
-  sw?.stopSection('reconcile');
+    // Clock hash of the merged (and reconciled) document — reconciliation
+    // only touches shard triples, not clock entries, so this equals the
+    // merged document's clock hash.
+    final mergedClockHash = reconciled.clock.hash;
+    final needsUpload =
+        mergedClockHash != d.remoteClockHash || reconciled.hasChanges;
+    final needsDbWrite =
+        mergedClockHash != d.localClockHash || reconciled.hasChanges;
 
-  // Clock hash of the merged (and reconciled) document — reconciliation
-  // only touches shard triples, not clock entries, so this equals the
-  // merged document's clock hash.
-  final mergedClockHash = reconciled.clock.hash;
-  final needsUpload =
-      mergedClockHash != d.remoteClockHash || reconciled.hasChanges;
-  final needsDbWrite =
-      mergedClockHash != d.localClockHash || reconciled.hasChanges;
-
-  // Build active index entries from pre-loaded data (pure CPU, no I/O).
-  final indexEntries = buildActiveIndexEntries(
-    resourceIri: d.resourceIri,
-    typeIri: d.typeIri,
-    clockHash: mergedClockHash,
-    graph: reconciled.graph,
-    shardToIndex: reconciled.shardToIndex,
-    resolvedGroupIndices: reconciled.resolvedGroupIndices,
-    indexedProperties: preloaded.indexedProperties,
-    physicalTime: reconciled.clock.physicalTime,
-  );
-  sw?.stopSection('indexEntries');
-
-  // Extract tombstoned shard IRIs (pure CPU graph traversal).
-  // Stage 9 resolves indexIri per shard from the DB and builds tombstone entries.
-  final tombstonedShardIris =
-      collectTombstonedShards(reconciled.graph, d.documentIri)
-        ..removeAll(reconciled.shardToIndex.keys); // active wins over tombstone
-  sw?.stopSection('tombstones');
-
-  final decoded = DecodedGraphSource(reconciled.graph);
-  // encode for the database.
-  final encodedBytes = rdfCore.encodeBinary(reconciled.graph);
-  final encoded =
-      BinaryGraphSource(encodedBytes, contentType: jelly.primaryMimeType);
-  sw?.stopSection('encode');
-
-  return [
-    pipeline.MergeResult(
-      d.resourceIri,
-      d.typeIri,
-      decoded,
-      encoded,
-      needsUpload: needsUpload,
-      needsDbWrite: needsDbWrite,
-      clock: reconciled.clock,
+    // Build active index entries from pre-loaded data (pure CPU, no I/O).
+    final indexEntries = buildActiveIndexEntries(
+      resourceIri: d.resourceIri,
+      typeIri: d.typeIri,
+      clockHash: mergedClockHash,
+      graph: reconciled.graph,
+      shardToIndex: reconciled.shardToIndex,
       resolvedGroupIndices: reconciled.resolvedGroupIndices,
-      indexEntries: indexEntries,
-      tombstonedShardIris: tombstonedShardIris,
-      localUpdatedAt: d.localUpdatedAt,
-      resourceEtag: d.remoteEtag,
-    ),
-  ];
+      indexedProperties: preloaded.indexedProperties,
+      physicalTime: reconciled.clock.physicalTime,
+    );
+    sw?.stopSection('indexEntries');
+
+    // Extract tombstoned shard IRIs (pure CPU graph traversal).
+    // Stage 9 resolves indexIri per shard from the DB and builds tombstone entries.
+    final tombstonedShardIris = collectTombstonedShards(
+        reconciled.graph, d.documentIri)
+      ..removeAll(reconciled.shardToIndex.keys); // active wins over tombstone
+    sw?.stopSection('tombstones');
+
+    final decoded = DecodedGraphSource(reconciled.graph);
+    // encode for the database.
+    final encodedBytes = rdfCore.encodeBinary(reconciled.graph);
+    final encoded =
+        BinaryGraphSource(encodedBytes, contentType: jelly.primaryMimeType);
+    sw?.stopSection('encode');
+
+    return [
+      pipeline.MergeResult(
+        d.resourceIri,
+        d.typeIri,
+        decoded,
+        encoded,
+        needsUpload: needsUpload,
+        needsDbWrite: needsDbWrite,
+        clock: reconciled.clock,
+        resolvedGroupIndices: reconciled.resolvedGroupIndices,
+        indexEntries: indexEntries,
+        tombstonedShardIris: tombstonedShardIris,
+        localUpdatedAt: d.localUpdatedAt,
+        resourceEtag: d.remoteEtag,
+      ),
+    ];
+  } finally {
+    sw?.stop();
+  }
 }
