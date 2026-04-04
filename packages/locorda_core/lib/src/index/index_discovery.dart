@@ -333,11 +333,12 @@ class IndexDiscovery {
   }) async {
     final configs = <CrdtIndexData>[];
 
-    // Fast synchronous lookups from watch-based caches
+    // Snapshot watch-based caches to avoid concurrent modification
+    // (_updateIndexMetadataCache may mutate the sets via storage watches)
     final fullIndexMetadata =
-        _indexedClassToFullIndexMetadata[indexedClass] ?? {};
+        _indexedClassToFullIndexMetadata[indexedClass]?.toList() ?? const [];
     final templateMetadata =
-        _indexedClassToTemplateMetadata[indexedClass] ?? {};
+        _indexedClassToTemplateMetadata[indexedClass]?.toList() ?? const [];
 
     _log.fine('Discovered ${fullIndexMetadata.length} FullIndex + '
         '${templateMetadata.length} GroupIndexTemplate for $indexedClass');
