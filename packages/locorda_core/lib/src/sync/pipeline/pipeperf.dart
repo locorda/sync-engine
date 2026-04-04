@@ -131,7 +131,8 @@ class PipeperfCollector {
 
     // Top-level: no other key is a strict dot-separated prefix of this key.
     final topLevelKeys = keys
-        .where((k) => !keys.any((other) => other != k && k.startsWith('$other.')))
+        .where(
+            (k) => !keys.any((other) => other != k && k.startsWith('$other.')))
         .toSet();
 
     final sortedEntries = _measurements.entries.toList()
@@ -146,10 +147,8 @@ class PipeperfCollector {
         0, (sum, k) => sum + _measurements[k]!.fold(0, (a, b) => a + b));
     final wallUs = _wallClock.elapsedMicroseconds;
     final overlapUs = sequentialUs - wallUs;
-    final overlapPct =
-        sequentialUs > 0 ? overlapUs * 100 / sequentialUs : 0.0;
-    _log.info(
-        'Sequential: ${_formatDuration(sequentialUs)}  '
+    final overlapPct = sequentialUs > 0 ? overlapUs * 100 / sequentialUs : 0.0;
+    _log.info('Sequential: ${_formatDuration(sequentialUs)}  '
         'Wall-clock: ${_formatDuration(wallUs)}  '
         'Overlap: ${_formatDuration(overlapUs)} (${overlapPct.toStringAsFixed(0)}%)');
 
