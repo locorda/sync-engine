@@ -18,8 +18,10 @@ class PipeperfClock {
 
   PipeperfClock(this._collector, this._stage) {
     final active = [..._collector._activeStages];
-    _eLog.info(
-        'Starting $_stage${active.isNotEmpty ? ' (${active.length} active)' : ''}');
+    if (active.isNotEmpty) {
+      _eLog.info(
+          'Starting $_stage while active stages are still running: ${active.map((s) => s._stage).join(', ')}');
+    }
     _collector._activeStages.add(this);
   }
 
@@ -35,7 +37,6 @@ class PipeperfClock {
   void stop() {
     _collector.record(_stage, _stopwatch.elapsedMicroseconds);
     _stopwatch.stop();
-    _eLog.info('Stopping $_stage');
     _collector._activeStages.remove(this);
   }
 }
