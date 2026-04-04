@@ -7,7 +7,11 @@ void main() {
   group('decouplingTransformer', () {
     test('forwards all events in order', () async {
       final source = Stream.fromIterable([1, 2, 3, 4, 5]);
-      final result = await source.transform(decouplingTransformer()).toList();
+      final result = await source
+          .transform(decouplingTransformer(
+            "TestDecoupling",
+          ))
+          .toList();
       expect(result, [1, 2, 3, 4, 5]);
     });
 
@@ -17,7 +21,9 @@ void main() {
       final errors = <Object>[];
 
       final sub = controller.stream
-          .transform(decouplingTransformer())
+          .transform(decouplingTransformer(
+            "TestDecoupling",
+          ))
           .listen(results.add, onError: errors.add);
 
       controller.add(1);
@@ -34,8 +40,9 @@ void main() {
     test('closes when upstream closes', () async {
       final controller = StreamController<int>();
 
-      final sub =
-          controller.stream.transform(decouplingTransformer()).listen((_) {});
+      final sub = controller.stream
+          .transform(decouplingTransformer("TestDecoupling"))
+          .listen((_) {});
 
       controller.add(1);
       await controller.close();
@@ -50,8 +57,9 @@ void main() {
         onCancel: () => upstreamCancelled = true,
       );
 
-      final sub =
-          controller.stream.transform(decouplingTransformer()).listen((_) {});
+      final sub = controller.stream
+          .transform(decouplingTransformer("TestDecoupling"))
+          .listen((_) {});
 
       controller.add(1);
       await Future<void>.delayed(Duration.zero);
@@ -74,7 +82,8 @@ void main() {
       // Create pipeline with slow consumer
       final completer = Completer<void>();
       final sub = controller.stream
-          .transform(decouplingTransformer(maxBuffered: bufferSize))
+          .transform(
+              decouplingTransformer("TestDecoupling", maxBuffered: bufferSize))
           .listen((event) {
         received.add(event);
       }, onDone: completer.complete);
@@ -105,8 +114,9 @@ void main() {
     });
 
     test('works with empty stream', () async {
-      final result =
-          await Stream<int>.empty().transform(decouplingTransformer()).toList();
+      final result = await Stream<int>.empty()
+          .transform(decouplingTransformer("TestDecoupling"))
+          .toList();
       expect(result, isEmpty);
     });
 
@@ -128,7 +138,7 @@ void main() {
             upstreamProduced.add(e);
             return e;
           })
-          .transform(decouplingTransformer(maxBuffered: 10))
+          .transform(decouplingTransformer("TestDecoupling", maxBuffered: 10))
           .asyncMap((e) async {
             // Simulate slow async consumer
             await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -156,7 +166,7 @@ void main() {
 
     test('handles single event', () async {
       final result = await Stream.fromIterable([42])
-          .transform(decouplingTransformer())
+          .transform(decouplingTransformer("TestDecoupling"))
           .toList();
       expect(result, [42]);
     });
@@ -164,7 +174,7 @@ void main() {
     test('large number of events', () async {
       final events = List.generate(10000, (i) => i);
       final result = await Stream.fromIterable(events)
-          .transform(decouplingTransformer(maxBuffered: 64))
+          .transform(decouplingTransformer("TestDecoupling", maxBuffered: 64))
           .toList();
       expect(result, events);
     });

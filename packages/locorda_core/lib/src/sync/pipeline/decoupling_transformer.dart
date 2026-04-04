@@ -30,7 +30,7 @@ final _log = Logger('pipeline');
 /// The transformer preserves event ordering and propagates errors and
 /// completion in both directions. Cancelling the downstream subscription
 /// cancels the upstream subscription.
-StreamTransformer<T, T> decouplingTransformer<T>({int maxBuffered = 64}) {
+StreamTransformer<T, T> decouplingTransformer<T>(String afterStage, {int maxBuffered = 64}) {
   return StreamTransformer<T, T>.fromBind((Stream<T> input) {
     final controller = StreamController<T>();
     StreamSubscription<T>? subscription;
@@ -60,7 +60,7 @@ StreamTransformer<T, T> decouplingTransformer<T>({int maxBuffered = 64}) {
         onDone: () {
           upstreamDone = true;
           _log.info(
-              'DecouplingTransformer done: peak=$maxObserved/$maxBuffered, upstreamPauses=$upstreamPauses');
+              'DecouplingTransformer ($afterStage) done: peak=$maxObserved/$maxBuffered, upstreamPauses=$upstreamPauses');
           controller.close();
         },
       );
