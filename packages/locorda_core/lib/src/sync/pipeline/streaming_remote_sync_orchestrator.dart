@@ -130,15 +130,15 @@ class StreamingRemoteSyncOrchestrator {
         .asyncExpand(changeDetection(_storage, lastSyncTimestamp, perf: perf))
         .transform(localContentLoad(_storage, _remoteId, perf: perf))
         .transform(_remote.resourceFetch(perf: perf))
-        .transform(decouplingTransformer(maxBuffered: 128))
+        //.transform(decouplingTransformer(maxBuffered: 128))
         .map(perf.timedMap(
             'S07a.Decode', decodeCandidates(_mergeContractLoader, _rdfCore)))
         .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
             _shardDeterminer, _storage, _indexRdfGenerator, perf: perf))
-        .transform(decouplingTransformer(maxBuffered: 128))
+        //.transform(decouplingTransformer(maxBuffered: 128))
         .expand(perf.timedExpand('S07c.CrdtMerge',
             mergeCandidates(_merger, _reconciler, _rdfCore, perf: perf)))
-        .transform(decouplingTransformer(maxBuffered: 128))
+        //.transform(decouplingTransformer(maxBuffered: 128))
         .transform(_remote.resourceUpload(perf: perf))
         .asyncExpand(dbCommit(_storage, _indexManager, _remoteId, _saveService,
             perf: perf))
