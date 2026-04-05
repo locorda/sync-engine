@@ -145,7 +145,8 @@ class StreamingRemoteSyncOrchestrator {
         .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
             _shardDeterminer, _storage, _indexRdfGenerator, perf: perf))
         .transform(decouplingTransformer("S7b", maxBuffered: 10_000))
-        .asyncExpand(deferredExpand(mergeCandidates(_merger, _reconciler, _rdfCore,
+        .asyncExpand(deferredExpand(mergeCandidates(
+            _merger, _reconciler, _rdfCore,
             perf: perf, perfStage: 'S07c.CrdtMerge')))
         /*
         .expand(mergeCandidates(_merger, _reconciler, _rdfCore,
@@ -169,15 +170,16 @@ class StreamingRemoteSyncOrchestrator {
         //.transform(decouplingTransformer("S11a", maxBuffered: 1280))
         .asyncMap(perf.timedAsyncMap(
             'S11b.ContractLoad', loadShardContracts(_mergeContractLoader)))
-        .transform(decouplingTransformer("S11b", maxBuffered: 128))
-        .asyncExpand(deferredExpand(mergeShards(_documentManager, _merger, _rdfCore,
-            perf: perf, perfStage: 'S11c.Merge')))
+        //.transform(decouplingTransformer("S11b", maxBuffered: 128))
+        .expand(mergeShards(_documentManager, _merger, _rdfCore,
+            perf: perf, perfStage: 'S11c.Merge'))
         //.transform(decouplingTransformer("S11c", maxBuffered: 1280))
         .transform(_remote.shardUpload(perf: perf))
         //.transform(decouplingTransformer("S12", maxBuffered: 1280))
         .asyncExpand(shardDbCommit(_storage, _remoteId, perf: perf))
         //.transform(decouplingTransformer("S13", maxBuffered: 1280))
-        .asyncExpand(feedback(inputController.sink, _storage, _indexResolver, perf: perf));
+        .asyncExpand(
+            feedback(inputController.sink, _storage, _indexResolver, perf: perf));
 
     // Seed with meta-index phase
     _log.fine('Seeding pipeline with meta indices: '
