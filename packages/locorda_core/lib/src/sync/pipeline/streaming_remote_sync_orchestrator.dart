@@ -132,6 +132,9 @@ class StreamingRemoteSyncOrchestrator {
         //.transform(decouplingTransformer("S03", maxBuffered: 1280))
         .asyncExpand(changeDetection(_storage, lastSyncTimestamp, perf: perf))
         //.transform(decouplingTransformer("S04", maxBuffered: 10_000))
+        // Microtask hypothesis test: uncomment to force event-loop yields
+        // between S04 and S05, allowing I/O callbacks to interleave.
+        //.transform(eventLoopYieldTransformer("S04→S05", yieldEvery: 50))
         .transform(localContentLoad(_storage, _remoteId, perf: perf))
         //.transform(decouplingTransformer("S05", maxBuffered: 1280))
         .transform(_remote.resourceFetch(perf: perf))
@@ -144,6 +147,7 @@ class StreamingRemoteSyncOrchestrator {
         //.transform(decouplingTransformer("S7b", maxBuffered: 1280))
         .expand(mergeCandidates(_merger, _reconciler, _rdfCore,
             perf: perf, perfStage: 'S07c.CrdtMerge'))
+        .transform(eventLoopYieldTransformer("S07c→S08", yieldEvery: 50))
         //.transform(decouplingTransformer("S07c", maxBuffered: 1280))
         .transform(_remote.resourceUpload(perf: perf))
         //.transform(decouplingTransformer("S08", maxBuffered: 1280))
