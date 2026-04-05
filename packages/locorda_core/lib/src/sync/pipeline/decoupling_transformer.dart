@@ -209,3 +209,35 @@ Future<void> _yieldToEventLoop() {
   Timer.run(completer.complete);
   return completer.future;
 }
+
+/// Wraps a synchronous `expand` callback so it runs on the **event queue**
+/// instead of inline on the microtask queue.
+///
+/// Dart's `Stream.expand` executes the callback synchronously and emits all
+/// results as microtasks — no I/O callback can fire in between. This function
+/// returns an `asyncExpand` callback that:
+///
+/// 1. Yields to the event loop via `Timer.run` **before** running [fn].
+/// 2. Executes [fn] synchronously (pure CPU, same as `.expand`).
+/// 3. Emits the results as a `Stream.fromIterable`.
+///
+/// The initial yield gives pending I/O callbacks (Drift ReceivePort messages,
+/// file completions) a chance to run before the CPU-heavy expand blocks the
+/// event loop again.
+///
+/// Usage:
+/// ```dart
+/// // Instead of:
+/// .expand(mergeCandidates(...))
+/// // Use:
+/// .asyncExpand(deferredExpand(mergeCandidates(...)))
+/// ```
+Stream<T> Function(S) deferredExpand<S, T>(Iterable<T> Function(S) fn) {
+  return (S event) async* {
+    await _yieldToEventLoop();
+    final results = fn(event);
+    for (final item in results) {
+      yield item;
+    }
+  };
+}
