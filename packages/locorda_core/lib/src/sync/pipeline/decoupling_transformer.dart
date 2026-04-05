@@ -241,3 +241,11 @@ Stream<T> Function(S) deferredExpand<S, T>(Iterable<T> Function(S) fn) {
     }
   };
 }
+
+Future<T> Function(S) deferredMap<S, T>(T Function(S) fn) {
+  return (S event) async {
+    await _yieldToEventLoop();
+    final result = fn(event);
+    return result;
+  };
+}
