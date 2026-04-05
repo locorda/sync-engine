@@ -92,8 +92,7 @@ StreamTransformer<T, T> decouplingTransformer<T>(String afterStage,
           final avgPerTurn = totalTurns > 0
               ? (totalEventsDelivered / totalTurns).toStringAsFixed(1)
               : 'N/A';
-          _log.info(
-              'DecouplingTransformer ($afterStage) done: '
+          _log.info('DecouplingTransformer ($afterStage) done: '
               'peak=$maxObserved/$maxBuffered, upstreamPauses=$upstreamPauses, '
               'eventLoopTurns=$totalTurns, maxEventsPerTurn=$maxEventsPerTurn, '
               'avgEventsPerTurn=$avgPerTurn');
@@ -139,8 +138,7 @@ StreamTransformer<T, T> decouplingTransformer<T>(String afterStage,
               if (eventsThisTurn > maxEventsPerTurn) {
                 maxEventsPerTurn = eventsThisTurn;
               }
-              _log.fine(
-                  'DecouplingTransformer ($afterStage) turn $totalTurns: '
+              _log.fine('DecouplingTransformer ($afterStage) turn $totalTurns: '
                   '$eventsThisTurn events delivered as microtasks');
               eventsThisTurn = 0;
             });
