@@ -144,13 +144,14 @@ class StreamingRemoteSyncOrchestrator {
         //.transform(decouplingTransformer("S07a", maxBuffered: 1280))
         .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
             _shardDeterminer, _storage, _indexRdfGenerator, perf: perf))
-       // .transform(decouplingTransformer("S7b", maxBuffered: 1280))
-        /*
+        .transform(decouplingTransformer("S7b", maxBuffered: 1280))
         .asyncExpand(deferredExpand(mergeCandidates(
             _merger, _reconciler, _rdfCore,
-            perf: perf, perfStage: 'S07c.CrdtMerge')))*/
+            perf: perf, perfStage: 'S07c.CrdtMerge')))
+        /*
         .expand(mergeCandidates(_merger, _reconciler, _rdfCore,
             perf: perf, perfStage: 'S07c.CrdtMerge'))
+            */
         // Deferred expand: yields to event loop before each CPU-heavy merge,
         // allowing pending I/O callbacks to interleave. Uncomment to test:
         //.asyncExpand(deferredExpand(mergeCandidates(_merger, _reconciler,
@@ -177,8 +178,8 @@ class StreamingRemoteSyncOrchestrator {
         //.transform(decouplingTransformer("S12", maxBuffered: 1280))
         .asyncExpand(shardDbCommit(_storage, _remoteId, perf: perf))
         //.transform(decouplingTransformer("S13", maxBuffered: 1280))
-        .asyncExpand(feedback(inputController.sink, _storage, _indexResolver,
-            perf: perf));
+        .asyncExpand(
+            feedback(inputController.sink, _storage, _indexResolver, perf: perf));
 
     // Seed with meta-index phase
     _log.fine('Seeding pipeline with meta indices: '
