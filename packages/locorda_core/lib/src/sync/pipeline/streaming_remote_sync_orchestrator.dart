@@ -144,7 +144,7 @@ class StreamingRemoteSyncOrchestrator {
         //.transform(decouplingTransformer("S07a", maxBuffered: 1280))
         .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
             _shardDeterminer, _storage, _indexRdfGenerator, perf: perf))
-        .transform(decouplingTransformer("S7b", maxBuffered: 1280))
+       // .transform(decouplingTransformer("S7b", maxBuffered: 1280))
         /*
         .asyncExpand(deferredExpand(mergeCandidates(
             _merger, _reconciler, _rdfCore,
