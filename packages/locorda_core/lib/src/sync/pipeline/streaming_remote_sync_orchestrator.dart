@@ -138,15 +138,14 @@ class StreamingRemoteSyncOrchestrator {
         .transform(localContentLoad(_storage, _remoteId, perf: perf))
         //.transform(decouplingTransformer("S05", maxBuffered: 1280))
         .transform(_remote.resourceFetch(perf: perf))
-        .transform(decouplingTransformer("S06", maxBuffered: 1280))
-        .asyncMap(deferredMap(perf.timedMap(
-            'S07a.Decode', decodeCandidates(_mergeContractLoader, _rdfCore))))
+        //.transform(decouplingTransformer("S06", maxBuffered: 1280))
+        .map(perf.timedMap(
+            'S07a.Decode', decodeCandidates(_mergeContractLoader, _rdfCore)))
         //.transform(decouplingTransformer("S07a", maxBuffered: 1280))
         .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
             _shardDeterminer, _storage, _indexRdfGenerator, perf: perf))
         .transform(decouplingTransformer("S7b", maxBuffered: 1280))
-        .asyncExpand(deferredExpand(mergeCandidates(
-            _merger, _reconciler, _rdfCore,
+        .asyncExpand(deferredExpand(mergeCandidates(_merger, _reconciler, _rdfCore,
             perf: perf, perfStage: 'S07c.CrdtMerge')))
         /*
         .expand(mergeCandidates(_merger, _reconciler, _rdfCore,
@@ -164,15 +163,15 @@ class StreamingRemoteSyncOrchestrator {
             perf: perf))
         //.transform(decouplingTransformer("S09", maxBuffered: 1280))
         .asyncExpand(shardEntryLoad(_storage, perf: perf))
-        .transform(decouplingTransformer("S10", maxBuffered: 1280))
-        .asyncExpand(deferredExpand(perf.timedExpand(
-            'S11a.Prepare', prepareShards(_shardDocGen, config, _rdfCore))))
+        //.transform(decouplingTransformer("S10", maxBuffered: 1280))
+        .expand(perf.timedExpand(
+            'S11a.Prepare', prepareShards(_shardDocGen, config, _rdfCore)))
         //.transform(decouplingTransformer("S11a", maxBuffered: 1280))
         .asyncMap(perf.timedAsyncMap(
             'S11b.ContractLoad', loadShardContracts(_mergeContractLoader)))
         .transform(decouplingTransformer("S11b", maxBuffered: 128))
-        .asyncExpand(
-            deferredExpand(mergeShards(_documentManager, _merger, _rdfCore, perf: perf, perfStage: 'S11c.Merge')))
+        .asyncExpand(deferredExpand(mergeShards(_documentManager, _merger, _rdfCore,
+            perf: perf, perfStage: 'S11c.Merge')))
         //.transform(decouplingTransformer("S11c", maxBuffered: 1280))
         .transform(_remote.shardUpload(perf: perf))
         //.transform(decouplingTransformer("S12", maxBuffered: 1280))
