@@ -440,6 +440,16 @@ abstract interface class Storage {
   Future<List<IndexEntryWithIri>> getActiveIndexEntriesForShard(
       IriTerm shardIri);
 
+  /// Returns non-deleted entries for [shardIri] that have been locally modified
+  /// after [sinceTimestamp] (i.e. `updatedAt > sinceTimestamp`).
+  ///
+  /// This is the fast path for the "shard not modified" case in change
+  /// detection: when the remote shard is unchanged, only locally-changed
+  /// entries need to be pushed upstream. Filtering in SQL avoids loading and
+  /// discarding thousands of unchanged entries.
+  Future<List<IndexEntryWithIri>> getLocallyChangedEntriesForShard(
+      IriTerm shardIri, int sinceTimestamp);
+
   /// Batch version of [getActiveIndexEntriesForShard] for multiple shards.
   ///
   /// Returns a map from each requested shard IRI to its active (non-deleted) entries.

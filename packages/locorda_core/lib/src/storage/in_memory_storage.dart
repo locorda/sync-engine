@@ -652,6 +652,26 @@ class InMemoryStorage implements Storage {
   }
 
   @override
+  Future<List<IndexEntryWithIri>> getLocallyChangedEntriesForShard(
+      IriTerm shardIri, int sinceTimestamp) async {
+    return _indexEntries.values
+        .where((entry) =>
+            entry.shardIri == shardIri &&
+            !entry.isDeleted &&
+            entry.updatedAt > sinceTimestamp)
+        .map((entry) => IndexEntryWithIri(
+              resourceIri: entry.resourceIri,
+              clockHash: entry.clockHash,
+              headerProperties: entry.headerProperties,
+              updatedAt: entry.updatedAt,
+              ourPhysicalClock: entry.ourPhysicalClock,
+              isDeleted: entry.isDeleted,
+              isRemoteOnly: entry.isRemoteOnly,
+            ))
+        .toList();
+  }
+
+  @override
   Future<Map<IriTerm, List<IndexEntryWithIri>>> getActiveIndexEntriesForShards(
       Iterable<IriTerm> shardIris) async {
     final shardSet = shardIris.toSet();

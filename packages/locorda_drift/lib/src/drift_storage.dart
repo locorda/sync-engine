@@ -1110,6 +1110,44 @@ class DriftStorage implements core.Storage {
   }
 
   @override
+  Future<List<core.IndexEntryWithIri>> getLocallyChangedEntriesForShard(
+      IriTerm shardIri, int sinceTimestamp) async {
+    final shardResolution = await _perflog.measure(
+      'storage.getLocallyChangedEntriesForShard.resolveShardIriId',
+      () => _resolveShardIriId(shardIri),
+      args: ['shard=${shardIri.debug}'],
+      resultArgsBuilder: (resolution) => [
+        'shardIriId=${resolution.shardIriId}',
+        'cacheSource=${resolution.fromShardCache ? 'shardCache' : 'db'}',
+      ],
+      minDurationMs: 5,
+    );
+    final shardIriId = shardResolution.shardIriId;
+
+    final driftEntries = await _perflog.measure(
+      'storage.getLocallyChangedEntriesForShard.query',
+      () =>
+          indexDao.getLocallyChangedEntriesForShard(shardIriId, sinceTimestamp),
+      args: ['shardIriId=$shardIriId', 'sinceTimestamp=$sinceTimestamp'],
+      resultArgsBuilder: (entries) => ['resultCount=${entries.length}'],
+      minDurationMs: 5,
+    );
+
+    return driftEntries
+        .map((driftEntry) => core.IndexEntryWithIri(
+              resourceIri: _iriTermFactory(driftEntry.resourceIri),
+              clockHash: driftEntry.entry.clockHash,
+              headerProperties:
+                  _decodeHeaderProperties(driftEntry.entry.headerProperties),
+              updatedAt: driftEntry.entry.updatedAt,
+              ourPhysicalClock: driftEntry.entry.ourPhysicalClock,
+              isDeleted: driftEntry.entry.isDeleted,
+              isRemoteOnly: driftEntry.entry.isRemoteOnly,
+            ))
+        .toList(growable: false);
+  }
+
+  @override
   Future<Map<IriTerm, List<core.IndexEntryWithIri>>>
       getActiveIndexEntriesForShards(Iterable<IriTerm> shardIris) async {
     final shardIriList = shardIris.toList(growable: false);

@@ -159,19 +159,17 @@ Stream<SyncCandidateEvent> _handleNotModified(
   PipeperfCollector? perf,
 ) async* {
   final sw = perf?.start('S04.ChangeDetect');
-  final localEntries =
-      await storage.getActiveIndexEntriesForShard(result.shardIri);
+  final changedEntries = await storage.getLocallyChangedEntriesForShard(
+      result.shardIri, lastSyncTimestamp);
   sw?.stop();
-  for (final entry in localEntries) {
-    if (entry.updatedAt > lastSyncTimestamp) {
-      yield SyncCandidate(
-        entry.resourceIri,
-        result.shardStorageId,
-        SyncDirection.remoteShardUnchanged,
-        result.typeIri,
-        localClockHash: entry.clockHash,
-      );
-    }
+  for (final entry in changedEntries) {
+    yield SyncCandidate(
+      entry.resourceIri,
+      result.shardStorageId,
+      SyncDirection.remoteShardUnchanged,
+      result.typeIri,
+      localClockHash: entry.clockHash,
+    );
   }
 
   yield ShardComplete(result.shardIri, result.shardStorageId,

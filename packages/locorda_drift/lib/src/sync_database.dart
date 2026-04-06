@@ -1399,6 +1399,31 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
         .toList();
   }
 
+  /// Get active entries for a shard that were locally modified after
+  /// [sinceTimestamp] (i.e. `updated_at > sinceTimestamp`).
+  ///
+  /// Fast path for the "shard not modified" case — avoids loading unchanged
+  /// entries that would be discarded by the caller.
+  Future<List<DriftIndexEntry>> getLocallyChangedEntriesForShard(
+      int shardIriId, int sinceTimestamp) async {
+    final query = select(db.indexEntries).join([
+      innerJoin(
+          db.syncIris, db.syncIris.id.equalsExp(db.indexEntries.resourceIriId))
+    ])
+      ..where(db.indexEntries.shardIri.equals(shardIriId) &
+          db.indexEntries.isDeleted.equals(false) &
+          db.indexEntries.updatedAt.isBiggerThanValue(sinceTimestamp));
+
+    final results = await query.get();
+
+    return results
+        .map((row) => DriftIndexEntry(
+              entry: row.readTable(db.indexEntries),
+              resourceIri: row.readTable(db.syncIris).iri,
+            ))
+        .toList();
+  }
+
   /// Batch variant of [getActiveIndexEntriesForShard] for multiple shards.
   ///
   /// Executes a single `WHERE shard_iri IN (...)` query, avoiding one
