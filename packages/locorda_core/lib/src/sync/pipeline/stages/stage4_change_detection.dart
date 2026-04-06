@@ -4,11 +4,17 @@
 /// This stage performs the 1:N fan-out (one [ShardResult] → N [SyncCandidate]
 /// events) and introduces [ShardComplete] at the end of each shard.
 ///
-/// **Implementation**: `asyncExpand` — 1:N fan-out; O(shards) events per cycle.
+/// **Implementation**: `StreamTransformer` with shard-level batching.
+/// Buffers shard events and issues a single bulk
+/// [Storage.getActiveIndexEntriesForShards] query per batch instead of
+/// one query per shard. Flushes on [PhaseComplete] or when [batchSize]
+/// shards have accumulated.
 ///
 /// **Input**: `Stream<ParsedShardEvent>`
 /// **Output**: `Stream<SyncCandidateEvent>`
 library;
+
+import 'dart:async';
 
 import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
@@ -20,33 +26,93 @@ import 'package:logging/logging.dart';
 
 final _log = Logger('Stage4.ChangeDetection');
 
-/// Returns an asyncExpand function for Stage 4.
+/// Returns a [StreamTransformer] for Stage 4.
 ///
-/// Usage: `stream.asyncExpand(changeDetection(storage, lastSyncTimestamp))`
-Stream<SyncCandidateEvent> Function(ParsedShardEvent) changeDetection(
+/// Buffers [ShardResult] events and flushes on each [PhaseComplete] boundary
+/// or when [batchSize] shards have accumulated. Each flush issues a single
+/// [Storage.getActiveIndexEntriesForShards] query for all buffered shards,
+/// replacing N individual per-shard roundtrips.
+///
+/// [batchSize] controls how many shard IRIs are included in one `IN (...)`
+/// query, respecting SQLite's variable limit.
+///
+/// Usage: `stream.transform(changeDetection(storage, lastSyncTimestamp))`
+// FIXME(pagination): The result set from getActiveIndexEntriesForShards is
+// unbounded — each shard can contain 1–2000+ entries, so a batch of 200
+// shards may return 100K+ rows. We need cursor-based pagination over the
+// DB result set to cap memory usage. The batchSize parameter only controls
+// the number of shard IRIs in the IN clause, not the result row count.
+StreamTransformer<ParsedShardEvent, SyncCandidateEvent> changeDetection(
   Storage storage,
   int lastSyncTimestamp, {
+  int batchSize = 200,
   PipeperfCollector? perf,
 }) {
-  return (ParsedShardEvent event) async* {
-    switch (event) {
-      case PhaseComplete():
-        yield event;
-      case ParsedShard():
-        yield* _handleParsedShard(event, storage, lastSyncTimestamp, perf);
-      case ShardResultNotModified():
-        yield* _handleNotModified(event, storage, lastSyncTimestamp, perf);
-      case ShardResultGone():
-        yield* _handleGone(event, storage, perf);
+  return StreamTransformer.fromBind((stream) async* {
+    final buffer = <ShardResult>[];
+
+    await for (final event in stream) {
+      switch (event) {
+        case PhaseComplete():
+          if (buffer.isNotEmpty) {
+            yield* _processBatch(buffer, storage, lastSyncTimestamp, perf);
+            buffer.clear();
+          }
+          yield event;
+        case ShardResult():
+          buffer.add(event);
+          if (buffer.length >= batchSize) {
+            yield* _processBatch(buffer, storage, lastSyncTimestamp, perf);
+            buffer.clear();
+          }
+      }
     }
-  };
+  });
+}
+
+/// Processes a batch of shard events with a single bulk local-entries query.
+Stream<SyncCandidateEvent> _processBatch(
+  List<ShardResult> batch,
+  Storage storage,
+  int lastSyncTimestamp,
+  PipeperfCollector? perf,
+) async* {
+  final sw = perf?.start('S04.ChangeDetect');
+
+  // Collect all shard IRIs for the bulk query.
+  final shardIris = batch.map((e) => switch (e) {
+        ParsedShard(:final shardIri) => shardIri,
+        ShardResultNotModified(:final shardIri) => shardIri,
+        ShardResultGone(:final shardIri) => shardIri,
+      });
+
+  // Single bulk query replaces N individual per-shard roundtrips.
+  final allLocalEntries =
+      await storage.getActiveIndexEntriesForShards(shardIris);
+
+  sw?.stop();
+
+  // Process each buffered shard using pre-loaded local entries.
+  for (final event in batch) {
+    switch (event) {
+      case ParsedShard():
+        yield* _handleParsedShard(
+            event, storage, allLocalEntries[event.shardIri] ?? [], perf);
+      case ShardResultNotModified():
+        yield* _handleNotModified(
+            event, allLocalEntries[event.shardIri] ?? [], lastSyncTimestamp);
+      case ShardResultGone():
+        yield* _handleGone(
+            event, allLocalEntries[event.shardIri] ?? []);
+    }
+  }
 }
 
 /// ParsedShard: diff local entries against remote entries, classify each.
 Stream<SyncCandidateEvent> _handleParsedShard(
   ParsedShard parsed,
   Storage storage,
-  int lastSyncTimestamp,
+  List<IndexEntryWithIri> localEntries,
   PipeperfCollector? perf,
 ) async* {
   final shardIri = parsed.shardIri;
@@ -59,7 +125,6 @@ Stream<SyncCandidateEvent> _handleParsedShard(
     yield ShardComplete(shardIri, shardStorageId);
     return;
   }
-  final sw = perf?.start('S04.ChangeDetect');
 
   // Determine effective fetch policy
   final effectiveFetchPolicy = parsed.allResourcesAvailable
@@ -74,9 +139,8 @@ Stream<SyncCandidateEvent> _handleParsedShard(
   // Build remote entry map from parsed entries + shard graph for filter values
   final remoteEntries = _buildRemoteEntryMap(parsed, filterPredicate);
 
-  // Load local entries; exclude remote-only placeholders from classification
-  // so they are never confused with genuine local state during diffing.
-  final localEntries = await storage.getActiveIndexEntriesForShard(shardIri);
+  // Exclude remote-only placeholders from classification so they are never
+  // confused with genuine local state during diffing.
   final genuineLocalEntries =
       localEntries.where((e) => !e.isRemoteOnly).toList(growable: false);
   final localByResource =
@@ -128,8 +192,6 @@ Stream<SyncCandidateEvent> _handleParsedShard(
     }
   }
 
-  sw?.stop();
-
   for (final candidate in candidates) {
     if (candidate != null) {
       yield candidate;
@@ -148,14 +210,9 @@ Stream<SyncCandidateEvent> _handleParsedShard(
 /// ShardNotModified: emit remoteShardUnchanged for locally-changed entries.
 Stream<SyncCandidateEvent> _handleNotModified(
   ShardResultNotModified result,
-  Storage storage,
+  List<IndexEntryWithIri> localEntries,
   int lastSyncTimestamp,
-  PipeperfCollector? perf,
 ) async* {
-  final sw = perf?.start('S04.ChangeDetect');
-  final localEntries =
-      await storage.getActiveIndexEntriesForShard(result.shardIri);
-  sw?.stop();
   for (final entry in localEntries) {
     if (entry.updatedAt > lastSyncTimestamp) {
       yield SyncCandidate(
@@ -175,14 +232,8 @@ Stream<SyncCandidateEvent> _handleNotModified(
 /// ShardGone: emit all local entries as shardGone.
 Stream<SyncCandidateEvent> _handleGone(
   ShardResultGone result,
-  Storage storage,
-  PipeperfCollector? perf,
+  List<IndexEntryWithIri> localEntries,
 ) async* {
-  final sw = perf?.start('S04.ChangeDetect');
-  final localEntries =
-      await storage.getActiveIndexEntriesForShard(result.shardIri);
-  sw?.stop();
-
   for (final entry in localEntries) {
     yield SyncCandidate(
       entry.resourceIri,

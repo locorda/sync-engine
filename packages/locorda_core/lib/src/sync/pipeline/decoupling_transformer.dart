@@ -60,9 +60,11 @@ StreamTransformer<T, T> decouplingTransformer<T>(String afterStage,
     var upstreamPauses = 0;
     var upstreamDone = false;
 
-    // Event-loop turn tracking: a Timer.run callback fires when the
-    // event loop regains control after draining the microtask queue.
-    // Between two such callbacks, every event delivery was a microtask.
+    // TODO(cleanup): Event-loop turn tracking is diagnostic-only.
+    // Consider removing once pipeline configuration is finalized.
+    // A Timer.run callback fires when the event loop regains control after
+    // draining the microtask queue. Between two such callbacks, every event
+    // delivery was a microtask.
     var turnProbeScheduled = false;
     var eventsThisTurn = 0;
     var maxEventsPerTurn = 0;
@@ -154,6 +156,9 @@ StreamTransformer<T, T> decouplingTransformer<T>(String afterStage,
 /// Forces periodic yields to the event loop by inserting `Timer.run` breaks
 /// every [yieldEvery] events.
 ///
+/// TODO(cleanup): Experimental — kept for diagnostics only. Proven not
+/// beneficial as a standalone optimization; deferredExpand is preferred.
+///
 /// **Purpose**: Tests the microtask starvation hypothesis. The default async
 /// [StreamController] delivers events via microtasks, which Dart processes
 /// completely before checking the event queue for I/O callbacks. This means
@@ -242,6 +247,8 @@ Stream<T> Function(S) deferredExpand<S, T>(Iterable<T> Function(S) fn) {
   };
 }
 
+/// TODO(cleanup): Experimental — unused. Remove if deferredExpand proves
+/// sufficient for all CPU-stage interleaving needs.
 Future<T> Function(S) deferredMap<S, T>(T Function(S) fn) {
   return (S event) async {
     await _yieldToEventLoop();

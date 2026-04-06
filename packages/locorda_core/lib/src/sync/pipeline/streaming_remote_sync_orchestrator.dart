@@ -130,7 +130,7 @@ class StreamingRemoteSyncOrchestrator {
         //.transform(decouplingTransformer("S02", maxBuffered: 1280))
         .map(perf.timedMap('S03.ShardParse', shardParse(_rdfCore)))
         //.transform(decouplingTransformer("S03", maxBuffered: 1280))
-        .asyncExpand(changeDetection(_storage, lastSyncTimestamp, perf: perf))
+        .transform(changeDetection(_storage, lastSyncTimestamp, perf: perf))
         //.transform(decouplingTransformer("S04", maxBuffered: 10_000))
         // Microtask hypothesis test: uncomment to force event-loop yields
         // between S04 and S05, allowing I/O callbacks to interleave.
