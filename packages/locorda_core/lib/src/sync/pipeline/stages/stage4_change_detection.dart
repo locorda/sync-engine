@@ -102,8 +102,7 @@ Stream<SyncCandidateEvent> _processBatch(
         yield* _handleNotModified(
             event, allLocalEntries[event.shardIri] ?? [], lastSyncTimestamp);
       case ShardResultGone():
-        yield* _handleGone(
-            event, allLocalEntries[event.shardIri] ?? []);
+        yield* _handleGone(event, allLocalEntries[event.shardIri] ?? []);
     }
   }
 }
