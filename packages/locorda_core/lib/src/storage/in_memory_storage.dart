@@ -672,6 +672,19 @@ class InMemoryStorage implements Storage {
   }
 
   @override
+  Future<Set<IriTerm>?> getShardsWithLocalChangesSince(int sinceTimestamp,
+      {int limit = 20}) async {
+    final result = <IriTerm>{};
+    for (final e in _indexEntries.values) {
+      if (!e.isDeleted && e.updatedAt > sinceTimestamp) {
+        result.add(e.shardIri);
+        if (result.length > limit) return null;
+      }
+    }
+    return result;
+  }
+
+  @override
   Future<Map<IriTerm, List<IndexEntryWithIri>>> getActiveIndexEntriesForShards(
       Iterable<IriTerm> shardIris) async {
     final shardSet = shardIris.toSet();

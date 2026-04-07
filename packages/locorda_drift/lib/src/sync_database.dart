@@ -1424,6 +1424,28 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
         .toList();
   }
 
+  /// Returns shard IRI strings that contain at least one non-deleted entry
+  /// with `updated_at > sinceTimestamp`, up to [limit] results.
+  ///
+  /// Single lightweight query used as a pre-filter to avoid per-shard
+  /// roundtrips for unchanged shards in change detection. Pass `limit + 1` to
+  /// allow the caller to detect overflow.
+  Future<List<String>> getShardsWithLocalChangesSince(int sinceTimestamp,
+      {int limit = 20}) async {
+    final results = await customSelect(
+      'SELECT DISTINCT s.iri FROM index_entries e '
+      'INNER JOIN sync_iris s ON s.id = e.shard_iri '
+      'WHERE e.updated_at > ? AND e.is_deleted = 0 '
+      'LIMIT ?',
+      variables: [
+        Variable.withInt(sinceTimestamp),
+        Variable.withInt(limit),
+      ],
+      readsFrom: {db.indexEntries, db.syncIris},
+    ).get();
+    return results.map((row) => row.read<String>('iri')).toList();
+  }
+
   /// Batch variant of [getActiveIndexEntriesForShard] for multiple shards.
   ///
   /// Executes a single `WHERE shard_iri IN (...)` query, avoiding one

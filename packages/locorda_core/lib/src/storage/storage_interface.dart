@@ -450,6 +450,19 @@ abstract interface class Storage {
   Future<List<IndexEntryWithIri>> getLocallyChangedEntriesForShard(
       IriTerm shardIri, int sinceTimestamp);
 
+  /// Returns the set of shard IRIs that contain at least one non-deleted entry
+  /// with `updatedAt > sinceTimestamp`, or `null` if the result exceeds [limit].
+  ///
+  /// Used as a cheap pre-filter in change detection: for "not modified" shards,
+  /// only those in the returned set need a per-shard DB query. All others can
+  /// emit [ShardComplete] immediately, avoiding an isolate roundtrip per shard.
+  ///
+  /// When many shards have changes, the upfront query is wasted overhead since
+  /// per-shard queries are needed anyway. [limit] caps the result; if the count
+  /// exceeds it, `null` signals the caller to fall back to per-shard queries.
+  Future<Set<IriTerm>?> getShardsWithLocalChangesSince(int sinceTimestamp,
+      {int limit = 20});
+
   /// Batch version of [getActiveIndexEntriesForShard] for multiple shards.
   ///
   /// Returns a map from each requested shard IRI to its active (non-deleted) entries.

@@ -1148,6 +1148,17 @@ class DriftStorage implements core.Storage {
   }
 
   @override
+  Future<Set<IriTerm>?> getShardsWithLocalChangesSince(int sinceTimestamp,
+      {int limit = 20}) async {
+    // Fetch limit+1 rows so we can detect overflow: if more than limit shards
+    // changed, return null to signal the caller to fall back to per-shard queries.
+    final iriStrings = await indexDao
+        .getShardsWithLocalChangesSince(sinceTimestamp, limit: limit + 1);
+    if (iriStrings.length > limit) return null;
+    return iriStrings.map(_iriTermFactory).toSet();
+  }
+
+  @override
   Future<Map<IriTerm, List<core.IndexEntryWithIri>>>
       getActiveIndexEntriesForShards(Iterable<IriTerm> shardIris) async {
     final shardIriList = shardIris.toList(growable: false);

@@ -26,9 +26,19 @@ final _log = Logger('Stage4.ChangeDetection');
 
 /// Returns a [StreamTransformer] for Stage 4.
 ///
-/// Each incoming [ShardResult] is expanded into its [SyncCandidate] events
-/// via a per-shard DB query. The per-shard approach keeps downstream stages
-/// busy while the next query is in flight, maximising pipeline parallelism.
+/// Issues a single upfront [Storage.getShardsWithLocalChangesSince] query to
+/// determine which shards have any locally-modified entries. For
+/// [ShardResultNotModified] events whose shard is *not* in this set, the
+/// transformer emits [ShardComplete] immediately — no per-shard DB roundtrip.
+/// This eliminates ~135 isolate roundtrips on no-change syncs.
+///
+/// If more shards than [limit] have local changes, the upfront query returns
+/// `null` and all [ShardResultNotModified] events fall back to per-shard
+/// queries (no worse than the pre-optimization path).
+///
+/// [ParsedShard] and [ShardResultGone] events are always processed fully
+/// (per-shard DB query), as they require the complete local entry set for
+/// diffing.
 ///
 /// Usage: `stream.transform(changeDetection(storage, lastSyncTimestamp))`
 StreamTransformer<ParsedShardEvent, SyncCandidateEvent> changeDetection(
@@ -36,15 +46,33 @@ StreamTransformer<ParsedShardEvent, SyncCandidateEvent> changeDetection(
   int lastSyncTimestamp, {
   PipeperfCollector? perf,
 }) {
-  return StreamTransformer.fromBind((stream) {
-    return stream.asyncExpand((event) => switch (event) {
-          PhaseComplete() => Stream.value(event),
-          ParsedShard() =>
-            _handleParsedShard(event, storage, lastSyncTimestamp, perf),
-          ShardResultNotModified() =>
-            _handleNotModified(event, storage, lastSyncTimestamp, perf),
-          ShardResultGone() => _handleGone(event, storage, perf),
-        });
+  return StreamTransformer.fromBind((stream) async* {
+    // Single upfront query: which shards have any locally-changed entries?
+    // Returns null if more than 20 shards changed — in that case we fall
+    // back to per-shard queries (the upfront filter isn't worth it).
+    final shardsWithChanges =
+        await storage.getShardsWithLocalChangesSince(lastSyncTimestamp);
+
+    await for (final event in stream) {
+      switch (event) {
+        case PhaseComplete():
+          yield event;
+        case ParsedShard():
+          yield* _handleParsedShard(event, storage, lastSyncTimestamp, perf);
+        case ShardResultNotModified():
+          if (shardsWithChanges == null ||
+              shardsWithChanges.contains(event.shardIri)) {
+            yield* _handleNotModified(event, storage, lastSyncTimestamp, perf);
+          } else {
+            // No local changes — skip DB query entirely.
+            yield ShardComplete(event.shardIri, event.shardStorageId,
+                existsOnRemote: event.existsOnRemote,
+                newEtag: event.storedEtag);
+          }
+        case ShardResultGone():
+          yield* _handleGone(event, storage, perf);
+      }
+    }
   });
 }
 
