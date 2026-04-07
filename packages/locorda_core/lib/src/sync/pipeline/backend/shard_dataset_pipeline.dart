@@ -167,9 +167,8 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
       yield ShardGone(event.shardIri, event.shardStorageId, event.fetchPolicy,
           event.typeIri);
     } else if (result.graph == null) {
-      yield ShardNotModified(event.shardIri, event.shardStorageId,
-          event.fetchPolicy, event.typeIri,
-          existsOnRemote: false);
+      yield ShardNotFound(event.shardIri, event.shardStorageId,
+          event.fetchPolicy, event.typeIri);
     } else {
       // CPU: decode raw → dataset, then populate resource cache.
       // Both steps happen before yield, so stopwatch is unaffected by
@@ -380,6 +379,9 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
               _uploadAccumulator.clear();
               yield event;
             case ConflictedShard():
+              yield event;
+            case ShardComplete():
+              yield* flush();
               yield event;
           }
         }

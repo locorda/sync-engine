@@ -85,6 +85,11 @@ Stream<LoadedShardEntriesEvent> Function(CommittedResourceEvent) shardEntryLoad(
         yield* _flush();
         yield event;
       case ShardComplete():
+        if (!event.hasLocalChanges) {
+          // No remote or local changes — pass straight through to S13.
+          yield event;
+          break;
+        }
         pendingShards.add(event);
         if (pendingShards.length >= batchSize) yield* _flush();
       case ConflictedShard():

@@ -23,6 +23,7 @@ FutureOr<ContractLoadedShardEvent> Function(PreparedShardEvent)
   return (PreparedShardEvent event) async => switch (event) {
         PhaseComplete() => event,
         ConflictedShard() => event,
+        ShardComplete() => event,
         PreparedShard() => ContractLoadedShard(
             prepared: event,
             mergeContract: await mergeContractLoader.load(event.governanceIris),

@@ -52,6 +52,8 @@ Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
       case ConflictedShard():
         conflictedShardIris.add(event.shardIri);
         yield event;
+      case ShardComplete():
+        yield event;
       case PhaseComplete():
         yield event; // pass through so caller can monitor
         final source = event.source;

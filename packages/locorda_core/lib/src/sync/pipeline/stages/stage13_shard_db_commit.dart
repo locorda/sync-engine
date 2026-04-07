@@ -103,6 +103,9 @@ Stream<CommittedShardEvent> Function(UploadedShardEvent) shardDbCommit(
         }
       case ConflictedShard():
         yield event;
+      case ShardComplete():
+        // hasLocalChanges=false — no document to write, no ETag to update.
+        yield ShardCommitResult(event.shardIri);
     }
   };
 }

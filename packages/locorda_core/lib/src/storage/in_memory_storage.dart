@@ -676,7 +676,8 @@ class InMemoryStorage implements Storage {
       {int limit = 20}) async {
     final result = <IriTerm>{};
     for (final e in _indexEntries.values) {
-      if (!e.isDeleted && e.updatedAt > sinceTimestamp) {
+      // Include deleted entries: local deletions must also trigger shard reprocessing.
+      if (e.updatedAt > sinceTimestamp) {
         result.add(e.shardIri);
         if (result.length > limit) return null;
       }

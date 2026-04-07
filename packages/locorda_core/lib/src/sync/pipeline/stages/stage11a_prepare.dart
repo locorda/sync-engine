@@ -39,6 +39,7 @@ Iterable<PreparedShardEvent> Function(LoadedShardEntriesEvent) prepareShards(
   return (LoadedShardEntriesEvent event) => switch (event) {
         PhaseComplete() => [event],
         ConflictedShard() => [event],
+        ShardComplete() => [event],
         LoadedShardEntries() => _prepare(event, shardDocGen, config, rdfCore),
       };
 }

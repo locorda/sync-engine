@@ -106,6 +106,10 @@ sealed class Boundary {
 ///
 /// Introduced by Stage 4 (Change Detection) after the 1:N fan-out.
 /// Flows from Stage 4 through Stage 9, then consumed by Stage 10.
+///
+/// When [hasLocalChanges] is `false`, Stage 4 has already determined that
+/// neither remote nor local state changed — Stage 10 and S11 can skip this
+/// shard entirely and pass it straight through to Stage 13 (ETag update).
 class ShardComplete extends Boundary
     implements
         SyncCandidateEvent,
@@ -115,7 +119,12 @@ class ShardComplete extends Boundary
         LoadedCandidateEvent,
         MergedResourceEvent,
         UploadedResourceEvent,
-        CommittedResourceEvent {
+        CommittedResourceEvent,
+        LoadedShardEntriesEvent,
+        PreparedShardEvent,
+        ContractLoadedShardEvent,
+        MergedShardEvent,
+        UploadedShardEvent {
   final IriTerm shardIri;
 
   /// Storage-internal identifier for the shard IRI.
@@ -135,12 +144,17 @@ class ShardComplete extends Boundary
   /// shard needs uploading (new shard → yes, existing shard → no).
   final bool existsOnRemote;
 
+  /// When `false`, Stage 4 confirmed that remote returned 304 *and* no local
+  /// changes exist — Stage 10 to S11c skip this shard entirely.
+  final bool hasLocalChanges;
+
   const ShardComplete(
     this.shardIri,
     this.shardStorageId, {
     this.remoteShardGraph,
     this.newEtag,
     this.existsOnRemote = false,
+    this.hasLocalChanges = true,
   });
 }
 
@@ -392,19 +406,16 @@ class ShardNotModified extends FetchedShard {
   final RootResourceFetchPolicy fetchPolicy;
   final IriTerm typeIri;
 
-  /// Whether the shard exists on remote (true for 304, false for 404-never-existed).
-  final bool existsOnRemote;
-
   /// The ETag that was sent as If-None-Match and confirmed by the 304 response.
   final String? storedEtag;
 
   const ShardNotModified(
       this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri,
-      {this.existsOnRemote = true, this.storedEtag});
+      {this.storedEtag});
 
   ShardNotModified copyWith({IriTerm? shardIri}) => ShardNotModified(
       shardIri ?? this.shardIri, shardStorageId, fetchPolicy, typeIri,
-      existsOnRemote: existsOnRemote, storedEtag: storedEtag);
+      storedEtag: storedEtag);
 }
 
 /// HTTP 404/410: shard removed.
@@ -418,6 +429,22 @@ class ShardGone extends FetchedShard {
       this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri);
 
   ShardGone copyWith({IriTerm? shardIri}) => ShardGone(
+      shardIri ?? this.shardIri, shardStorageId, fetchPolicy, typeIri);
+}
+
+/// HTTP 404: shard never uploaded — no prior ETag, first sync.
+///
+/// Distinct from [ShardGone] (had ETag, got 404 — shard was deleted remotely).
+class ShardNotFound extends FetchedShard {
+  final IriTerm shardIri;
+  final IriStorageId shardStorageId;
+  final RootResourceFetchPolicy fetchPolicy;
+  final IriTerm typeIri;
+
+  const ShardNotFound(
+      this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri);
+
+  ShardNotFound copyWith({IriTerm? shardIri}) => ShardNotFound(
       shardIri ?? this.shardIri, shardStorageId, fetchPolicy, typeIri);
 }
 
@@ -475,15 +502,12 @@ class ShardResultNotModified extends ShardResult {
   final RootResourceFetchPolicy fetchPolicy;
   final IriTerm typeIri;
 
-  /// Whether the shard exists on remote (true for 304, false for 404-never-existed).
-  final bool existsOnRemote;
-
   /// The ETag confirmed by the 304 response — valid for use as If-Match on upload.
   final String? storedEtag;
 
   const ShardResultNotModified(
       this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri,
-      {this.existsOnRemote = true, this.storedEtag});
+      {this.storedEtag});
 }
 
 /// Shard gone — pass-through from Stage 2.
@@ -494,6 +518,20 @@ class ShardResultGone extends ShardResult {
   final IriTerm typeIri;
 
   const ShardResultGone(
+      this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri);
+}
+
+/// Shard not found — pass-through from Stage 2.
+///
+/// Distinct from [ShardResultGone] (had ETag, got 404 — shard was deleted
+/// remotely). This shard was never uploaded — no prior ETag, first sync.
+class ShardResultNotFound extends ShardResult {
+  final IriTerm shardIri;
+  final IriStorageId shardStorageId;
+  final RootResourceFetchPolicy fetchPolicy;
+  final IriTerm typeIri;
+
+  const ShardResultNotFound(
       this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri);
 }
 

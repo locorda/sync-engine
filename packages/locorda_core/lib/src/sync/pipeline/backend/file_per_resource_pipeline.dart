@@ -99,9 +99,8 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
               return ShardGone(event.shardIri, event.shardStorageId,
                   event.fetchPolicy, event.typeIri);
             } else if (result.graph == null) {
-              return ShardNotModified(event.shardIri, event.shardStorageId,
-                  event.fetchPolicy, event.typeIri,
-                  existsOnRemote: false);
+              return ShardNotFound(event.shardIri, event.shardStorageId,
+                  event.fetchPolicy, event.typeIri);
             } else {
               return ShardContent(
                 event.shardIri,
@@ -218,6 +217,7 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
             MergedShard() => e.needsUpload ? e : null,
             PhaseComplete() => null,
             ConflictedShard() => null,
+            ShardComplete() => null,
           },
           toRequest: (e) => RemoteUploadRequest<RawContent>(
             documentIri: e.shardIri.getDocumentIri(),
@@ -238,6 +238,7 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
             MergedShard() => UploadedShard(e.shardIri, e),
             PhaseComplete() => e,
             ConflictedShard() => e,
+            ShardComplete() => e,
           },
         );
       });

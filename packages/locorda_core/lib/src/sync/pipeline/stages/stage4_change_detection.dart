@@ -64,11 +64,14 @@ StreamTransformer<ParsedShardEvent, SyncCandidateEvent> changeDetection(
               shardsWithChanges.contains(event.shardIri)) {
             yield* _handleNotModified(event, storage, lastSyncTimestamp, perf);
           } else {
-            // No local changes — skip DB query entirely.
+            // Remote unchanged AND no local changes — skip S10–S11 entirely.
             yield ShardComplete(event.shardIri, event.shardStorageId,
-                existsOnRemote: event.existsOnRemote,
-                newEtag: event.storedEtag);
+                existsOnRemote: true,
+                newEtag: event.storedEtag,
+                hasLocalChanges: false);
           }
+        case ShardResultNotFound():
+          yield* _handleNotFound(event, storage, lastSyncTimestamp, perf);
         case ShardResultGone():
           yield* _handleGone(event, storage, perf);
       }
@@ -200,8 +203,41 @@ Stream<SyncCandidateEvent> _handleNotModified(
     );
   }
 
+  // Note: we intentionally do NOT set hasLocalChanges based on
+  // changedEntries.isEmpty here. getLocallyChangedEntriesForShard only
+  // tracks resource-level changes within a shard, but entry *removals*
+  // (e.g. a resource moving groups) are invisible to it. The shard still
+  // needs S10–S11 to regenerate its entry list and produce tombstones.
+  // Only the upfront shardsWithChanges shortcut (which includes deleted
+  // entries) can safely set hasLocalChanges=false.
   yield ShardComplete(result.shardIri, result.shardStorageId,
-      existsOnRemote: result.existsOnRemote, newEtag: result.storedEtag);
+      existsOnRemote: true, newEtag: result.storedEtag);
+}
+
+/// ShardResultNotFound: shard never uploaded — treat local entries as
+/// [SyncDirection.remoteShardUnchanged] and mark shard as not on remote so
+/// Stage 11c creates and uploads it.
+Stream<SyncCandidateEvent> _handleNotFound(
+  ShardResultNotFound result,
+  Storage storage,
+  int lastSyncTimestamp,
+  PipeperfCollector? perf,
+) async* {
+  final sw = perf?.start('S04.ChangeDetect');
+  final changedEntries = await storage.getLocallyChangedEntriesForShard(
+      result.shardIri, lastSyncTimestamp);
+  sw?.stop();
+  for (final entry in changedEntries) {
+    yield SyncCandidate(
+      entry.resourceIri,
+      result.shardStorageId,
+      SyncDirection.remoteShardUnchanged,
+      result.typeIri,
+      localClockHash: entry.clockHash,
+    );
+  }
+  yield ShardComplete(result.shardIri, result.shardStorageId,
+      existsOnRemote: false, newEtag: null);
 }
 
 /// ShardGone: emit all local entries as shardGone.

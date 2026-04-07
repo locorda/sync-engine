@@ -732,6 +732,7 @@ class PipelineIriTranslatingRemoteSyncStorage
                   e.source, _iriTranslator.translateGraphToInternal),
             ),
           ShardNotModified() => e.copyWith(shardIri: _toInternal(e.shardIri)),
+          ShardNotFound() => e.copyWith(shardIri: _toInternal(e.shardIri)),
           ShardGone() => e.copyWith(shardIri: _toInternal(e.shardIri)),
           PhaseComplete() => e,
         },
@@ -813,6 +814,7 @@ class PipelineIriTranslatingRemoteSyncStorage
             ),
           PhaseComplete() => e,
           ConflictedShard() => ConflictedShard(_toExternal(e.shardIri)),
+          ShardComplete() => e,
         },
         (e) => switch (e) {
           UploadedShard() => e.copyWith(
@@ -824,6 +826,7 @@ class PipelineIriTranslatingRemoteSyncStorage
             ),
           PhaseComplete() => e,
           ConflictedShard() => ConflictedShard(_toInternal(e.shardIri)),
+          ShardComplete() => e,
         },
         perf: perf,
         perfStage: 'S12.IriXlat',

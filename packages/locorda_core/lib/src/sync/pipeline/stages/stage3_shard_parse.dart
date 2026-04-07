@@ -24,8 +24,13 @@ ParsedShardEvent Function(FetchedShardEvent) shardParse(RdfCore rdfCore) =>
               event.shardStorageId,
               event.fetchPolicy,
               event.typeIri,
-              existsOnRemote: event.existsOnRemote,
               storedEtag: event.storedEtag,
+            ),
+          ShardNotFound() => ShardResultNotFound(
+              event.shardIri,
+              event.shardStorageId,
+              event.fetchPolicy,
+              event.typeIri,
             ),
           ShardGone() => ShardResultGone(
               event.shardIri,
