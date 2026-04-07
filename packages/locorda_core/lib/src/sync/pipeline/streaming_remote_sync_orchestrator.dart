@@ -144,20 +144,29 @@ class StreamingRemoteSyncOrchestrator {
         //.transform(decouplingTransformer("S07a", maxBuffered: 1280))
         .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
             _shardDeterminer, _storage, _indexRdfGenerator, perf: perf))
+
+        /*
+         * deferred expand: if we do a normal expand or map for cpu intense 
+         * work, the work appearently ends up in the microtask queue and 
+         * can starve the event loop, preventing I/O callbacks (e.g. db reads) from
+         * interleaving until the entire batch is processed. 
+         * 
+         * So we decouple the pipeline before the merge and after the merge 
+         * to isolate the cpu-intense work (so that we can start with the next resources 
+         * and possibly even the next shards in the first stages of the pipeline
+         * while the merge is still running for the previous shard, and so that
+         * processing of the next cpu batch is not blocked by waiting for finishing
+         * the IO work coming after this cpu work either).
+         * 
+         * This should lead to proper interleaving at least for this cpu stage.
+         */
         .transform(decouplingTransformer("S7b", maxBuffered: 1280 /* 10_000*/))
         .asyncExpand(deferredExpand(mergeCandidates(
             _merger, _reconciler, _rdfCore,
             perf: perf, perfStage: 'S07c.CrdtMerge')))
-        /*
-        .expand(mergeCandidates(_merger, _reconciler, _rdfCore,
-            perf: perf, perfStage: 'S07c.CrdtMerge'))
-            */
-        // Deferred expand: yields to event loop before each CPU-heavy merge,
-        // allowing pending I/O callbacks to interleave. Uncomment to test:
-        //.asyncExpand(deferredExpand(mergeCandidates(_merger, _reconciler,
-        //    _rdfCore, perf: perf, perfStage: 'S07c.CrdtMerge')))
-        //.transform(eventLoopYieldTransformer("S07c→S08", yieldEvery: 50))
-        //.transform(decouplingTransformer("S07c", maxBuffered: 1280))
+        .transform(decouplingTransformer("S07c", maxBuffered: 1280))
+
+        /* continue the pipeline */
         .transform(_remote.resourceUpload(perf: perf))
         //.transform(decouplingTransformer("S08", maxBuffered: 1280))
         .asyncExpand(dbCommit(_storage, _indexManager, _remoteId, _saveService,
