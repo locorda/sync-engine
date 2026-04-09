@@ -56,39 +56,6 @@
     idx:containsEntry :entry-ce394f730640668924968eddf09c01bc, :entry-713129f56a309cabc970f22c7da295cf, :entry-6532e1cce2063165cab55f9425c47e0d, :entry-2e883124d69c377d8daff7f19ee0eaa6, :entry-a68c1c4f5dda5dbf177113200fb133a0;
     idx:isShardOf ifb:index .
 
-GRAPH <https://example.com/fullindex/index-full-5f68b5b7%2Findex> {
-  <https://example.com/fullindex/index-full-5f68b5b7%2Findex> a sync:ManagedDocument;
-      foaf:primaryTopic if2:index;
-      cm:clockHash "87a91984caab67445d1f953856329532";
-      cm:createdAt "2024-01-01T02:10:00.005Z"^^xsd:dateTime, "2024-01-01T00:00:00.005Z"^^xsd:dateTime;
-      cm:hasClockEntry if2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, if2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-      idx:belongsToIndexShard :shard;
-      sync:hasBlankNodeMapping if2:lcrd-ibn-md5-f7d7db17ed3c6b875f87c9c8c5e3894f;
-      sync:isGovernedBy (mappings:index-v1);
-      sync:managedResourceType idx:FullIndex .
-  if2:index a idx:FullIndex;
-      idx:hasShard if5mm10v:shard;
-      idx:indexedProperty _:b3;
-      idx:indexesClass idx:GroupIndexTemplate;
-      idx:populationState "active";
-      idx:readBy </clientinstallation/default-installation#installation>, </clientinstallation/foreign-device-installation#installation>;
-      idx:shardingAlgorithm [
-          a idx:ModuloHashSharding ;
-          idx:hashAlgorithm "md5" ;
-          idx:numberOfShards 1 ;
-          idx:configVersion "1_0_0" ;
-          idx:autoScaleThreshold 1000
-      ] .
-  if2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
-      cm:physicalTime 1704067200004 .
-  if2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
-      cm:physicalTime 1704075000004 .
-  if2:lcrd-ibn-md5-f7d7db17ed3c6b875f87c9c8c5e3894f sync:blankNode _:b3 .
-  _:b3 a idx:IndexedProperty;
-      idx:readBy </clientinstallation/default-installation#installation>, </clientinstallation/foreign-device-installation#installation>;
-      idx:trackedProperty idx:indexesClass .
-}
-
 GRAPH <https://example.com/fullindex/index-full-388036f3%2Findex> {
   <https://example.com/fullindex/index-full-388036f3%2Findex> a sync:ManagedDocument;
       foaf:primaryTopic if1:index;
@@ -116,20 +83,20 @@ GRAPH <https://example.com/fullindex/index-full-388036f3%2Findex> {
       cm:physicalTime 1704075000009 .
 }
 
-GRAPH <https://example.com/fullindex/index-full-d06ec919%2Findex> {
-  <https://example.com/fullindex/index-full-d06ec919%2Findex> a sync:ManagedDocument;
-      foaf:primaryTopic ifd:index;
-      cm:clockHash "78cf137f3f3d5d5e608e8f9421b297ae";
-      cm:createdAt "2024-01-01T02:10:00.013Z"^^xsd:dateTime, "2024-01-01T00:00:00.016Z"^^xsd:dateTime;
-      cm:hasClockEntry ifd:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, ifd:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+GRAPH <https://example.com/fullindex/index-full-5f68b5b7%2Findex> {
+  <https://example.com/fullindex/index-full-5f68b5b7%2Findex> a sync:ManagedDocument;
+      foaf:primaryTopic if2:index;
+      cm:clockHash "87a91984caab67445d1f953856329532";
+      cm:createdAt "2024-01-01T02:10:00.005Z"^^xsd:dateTime, "2024-01-01T00:00:00.005Z"^^xsd:dateTime;
+      cm:hasClockEntry if2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, if2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       idx:belongsToIndexShard :shard;
-      sync:hasBlankNodeMapping ifd:lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6;
+      sync:hasBlankNodeMapping if2:lcrd-ibn-md5-f7d7db17ed3c6b875f87c9c8c5e3894f;
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:FullIndex .
-  ifd:index a idx:FullIndex;
-      idx:hasShard ifdmm10v:shard;
-      idx:indexedProperty _:b8;
-      idx:indexesClass idx:GroupIndex;
+  if2:index a idx:FullIndex;
+      idx:hasShard if5mm10v:shard;
+      idx:indexedProperty _:b5;
+      idx:indexesClass idx:GroupIndexTemplate;
       idx:populationState "active";
       idx:readBy </clientinstallation/default-installation#installation>, </clientinstallation/foreign-device-installation#installation>;
       idx:shardingAlgorithm [
@@ -139,12 +106,12 @@ GRAPH <https://example.com/fullindex/index-full-d06ec919%2Findex> {
           idx:configVersion "1_0_0" ;
           idx:autoScaleThreshold 1000
       ] .
-  ifd:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
-      cm:physicalTime 1704067200015 .
-  ifd:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
-      cm:physicalTime 1704075000012 .
-  ifd:lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6 sync:blankNode _:b8 .
-  _:b8 a idx:IndexedProperty;
+  if2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+      cm:physicalTime 1704067200004 .
+  if2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
+      cm:physicalTime 1704075000004 .
+  if2:lcrd-ibn-md5-f7d7db17ed3c6b875f87c9c8c5e3894f sync:blankNode _:b5 .
+  _:b5 a idx:IndexedProperty;
       idx:readBy </clientinstallation/default-installation#installation>, </clientinstallation/foreign-device-installation#installation>;
       idx:trackedProperty idx:indexesClass .
 }
@@ -161,7 +128,7 @@ GRAPH <https://example.com/fullindex/index-full-bbcf09f5%2Findex> {
       sync:managedResourceType idx:FullIndex .
   ifb:index a idx:FullIndex;
       idx:hasShard :shard;
-      idx:indexedProperty _:b11;
+      idx:indexedProperty _:b8;
       idx:indexesClass idx:FullIndex;
       idx:populationState "active";
       idx:readBy </clientinstallation/default-installation#installation>, </clientinstallation/foreign-device-installation#installation>;
@@ -176,7 +143,40 @@ GRAPH <https://example.com/fullindex/index-full-bbcf09f5%2Findex> {
       cm:physicalTime 1704067200001 .
   ifb:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
       cm:physicalTime 1704075000001 .
-  ifb:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b sync:blankNode _:b11 .
+  ifb:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b sync:blankNode _:b8 .
+  _:b8 a idx:IndexedProperty;
+      idx:readBy </clientinstallation/default-installation#installation>, </clientinstallation/foreign-device-installation#installation>;
+      idx:trackedProperty idx:indexesClass .
+}
+
+GRAPH <https://example.com/fullindex/index-full-d06ec919%2Findex> {
+  <https://example.com/fullindex/index-full-d06ec919%2Findex> a sync:ManagedDocument;
+      foaf:primaryTopic ifd:index;
+      cm:clockHash "78cf137f3f3d5d5e608e8f9421b297ae";
+      cm:createdAt "2024-01-01T02:10:00.013Z"^^xsd:dateTime, "2024-01-01T00:00:00.016Z"^^xsd:dateTime;
+      cm:hasClockEntry ifd:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, ifd:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      idx:belongsToIndexShard :shard;
+      sync:hasBlankNodeMapping ifd:lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6;
+      sync:isGovernedBy (mappings:index-v1);
+      sync:managedResourceType idx:FullIndex .
+  ifd:index a idx:FullIndex;
+      idx:hasShard ifdmm10v:shard;
+      idx:indexedProperty _:b11;
+      idx:indexesClass idx:GroupIndex;
+      idx:populationState "active";
+      idx:readBy </clientinstallation/default-installation#installation>, </clientinstallation/foreign-device-installation#installation>;
+      idx:shardingAlgorithm [
+          a idx:ModuloHashSharding ;
+          idx:hashAlgorithm "md5" ;
+          idx:numberOfShards 1 ;
+          idx:configVersion "1_0_0" ;
+          idx:autoScaleThreshold 1000
+      ] .
+  ifd:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+      cm:physicalTime 1704067200015 .
+  ifd:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
+      cm:physicalTime 1704075000012 .
+  ifd:lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6 sync:blankNode _:b11 .
   _:b11 a idx:IndexedProperty;
       idx:readBy </clientinstallation/default-installation#installation>, </clientinstallation/foreign-device-installation#installation>;
       idx:trackedProperty idx:indexesClass .
