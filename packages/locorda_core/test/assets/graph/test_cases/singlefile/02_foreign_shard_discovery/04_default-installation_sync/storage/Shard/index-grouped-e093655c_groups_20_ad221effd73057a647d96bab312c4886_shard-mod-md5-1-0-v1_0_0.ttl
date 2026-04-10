@@ -1,0 +1,32 @@
+@base <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZ3JvdXBlZC1lMDkzNjU1Yy9ncm91cHMvMjBfYWQyMjFlZmZkNzMwNTdhNjQ3ZDk2YmFiMzEyYzQ4ODYvc2hhcmQtbW9kLW1kNS0xLTAtdjFfMF8w> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0dyb3VwSW5kZXg=:aW5kZXgtZ3JvdXBlZC1lMDkzNjU1Yy9ncm91cHMvMjBfYWQyMjFlZmZkNzMwNTdhNjQ3ZDk2YmFiMzEyYzQ4ODYvaW5kZXg=#> .
+@prefix ns2: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZ3JvdXBlZC1lMDkzNjU1Yy9ncm91cHMvMjBfYWQyMjFlZmZkNzMwNTdhNjQ3ZDk2YmFiMzEyYzQ4ODYvc2hhcmQtbW9kLW1kNS0xLTAtdjFfMF8w#> .
+@prefix ns3: <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlLWNha2U=#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZ3JvdXBlZC1lMDkzNjU1Yy9ncm91cHMvMjBfYWQyMjFlZmZkNzMwNTdhNjQ3ZDk2YmFiMzEyYzQ4ODYvc2hhcmQtbW9kLW1kNS0xLTAtdjFfMF8w> a sync:ManagedDocument;
+    foaf:primaryTopic ns2:shard;
+    cm:clockHash "95b2c6079e3e6d6d216f2ca352f19ab3";
+    cm:createdAt "2024-01-01T06:00:00.005Z"^^xsd:dateTime, "2024-01-01T02:00:00.002Z"^^xsd:dateTime;
+    cm:hasClockEntry ns2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, ns2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    sync:isGovernedBy (mappings:shard-v1);
+    sync:managedResourceType idx:Shard .
+
+ns2:entry-c93b50159754d7a665032fc90e56af1d cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
+    idx:resource ns3:it .
+
+ns2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
+    cm:physicalTime 1704074700011 .
+
+ns2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
+    cm:physicalTime 1704088800010 .
+
+ns2:shard a idx:Shard;
+    idx:containsEntry ns2:entry-c93b50159754d7a665032fc90e56af1d;
+    idx:isShardOf ns1:index .

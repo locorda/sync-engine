@@ -1,0 +1,6 @@
+@prefix schema: <https://schema.org/> .
+@prefix ex: <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:cmVjaXBlMTIz#> .
+
+ex:it a schema:Recipe ;
+    schema:name "Chocolate Cake" ;
+    schema:recipeIngredient "flour", "sugar", "cocoa" .
