@@ -15,6 +15,7 @@ import 'package:locorda_core/src/storage/remote_storage.dart';
 import 'package:locorda_core/src/sync/pipeline/backend/file_per_resource_pipeline.dart';
 import 'package:locorda_core/src/sync/pipeline/backend/remote_sync_backend.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_rdf_jelly/jelly.dart';
 import 'package:test/test.dart';
@@ -69,6 +70,10 @@ class _SuccessUploadBackend implements RemoteSyncBackend {
       );
     }
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 class _ConflictUploadBackend implements RemoteSyncBackend {
@@ -87,6 +92,10 @@ class _ConflictUploadBackend implements RemoteSyncBackend {
       );
     }
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 class _ConfigurableUploadBackend implements RemoteSyncBackend {
@@ -106,6 +115,10 @@ class _ConfigurableUploadBackend implements RemoteSyncBackend {
       yield _handler(request);
     }
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 /// Backend that reverses response order — tests that S12 enforces input-order.
@@ -127,6 +140,10 @@ class _ReverseOrderUploadBackend implements RemoteSyncBackend {
       );
     }
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 class _FailingUploadBackend implements RemoteSyncBackend {
@@ -148,6 +165,10 @@ class _FailingUploadBackend implements RemoteSyncBackend {
       Stream<RemoteUploadRequest<RawContent>> requests) {
     return Stream.error(StateError('upload failure'));
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 class _RecordingUploadBackend implements RemoteSyncBackend {
@@ -170,6 +191,10 @@ class _RecordingUploadBackend implements RemoteSyncBackend {
       );
     }
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 // ---------------------------------------------------------------------------

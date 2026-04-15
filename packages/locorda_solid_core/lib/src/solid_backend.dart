@@ -343,6 +343,10 @@ class SolidSyncBackend implements RemoteSyncBackend {
       );
     }
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 // ---------------------------------------------------------------------------

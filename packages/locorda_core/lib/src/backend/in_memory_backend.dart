@@ -2,10 +2,6 @@ import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:locorda_core/src/storage/remote_storage.dart'
-    show PipelineRemoteStorage, RemoteDownloadRequest, RemoteUploadRequest;
-import 'package:locorda_core/src/sync/pipeline/backend/remote_sync_backend.dart';
-import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart';
@@ -337,6 +333,10 @@ class _InMemorySyncBackend implements RemoteSyncBackend {
       return _uploadData(request.documentIri, data, ifMatch: request.ifMatch);
     });
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 
   RemoteUploadResult _uploadData(IriTerm documentIri, Object data,
       {String? ifMatch}) {

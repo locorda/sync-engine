@@ -3,7 +3,6 @@ library;
 
 import 'package:http/http.dart' as http;
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_worker/worker.dart';
 
 import '../gdrive_backend.dart';
@@ -39,18 +38,12 @@ import 'gdrive_auth_connector_worker.dart';
 /// ```
 class GDriveWorkerHandler implements RemoteWorkerHandler {
   final http.Client _httpClient;
-  final String _contentType;
-  final String _datasetContentType;
   final String id;
 
   GDriveWorkerHandler({
     http.Client? httpClient,
-    String? contentType,
-    String? datasetContentType,
     this.id = gDriveRemoteHandlerId,
-  })  : _httpClient = httpClient ?? http.Client(),
-        _contentType = contentType ?? turtle.primaryMimeType,
-        _datasetContentType = datasetContentType ?? trig.primaryMimeType;
+  }) : _httpClient = httpClient ?? http.Client();
 
   @override
   Future<Backend> createBackend(BackendWorkerHandlerContext context,
@@ -64,8 +57,7 @@ class GDriveWorkerHandler implements RemoteWorkerHandler {
       iriTermFactory: context.iriFactory,
       rdfCore: context.rdfCore,
       httpClient: _httpClient,
-      contentType: _contentType,
-      datasetContentType: _datasetContentType,
+      storageAccessFactory: context.storageAccessFactory,
       perflog: context.perflog,
     );
   }

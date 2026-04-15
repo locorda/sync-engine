@@ -1,3 +1,4 @@
+import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
 
 /// Google Drive folder storage mode.
@@ -83,25 +84,16 @@ class GDriveConfig {
 
   /// Local mirror configuration for experimental high-throughput sync.
   final GDriveLocalMirrorConfig localMirrorConfig;
-  // FIXME: concurrent synchronization currently leads to concurrency issues in tests (for example save_36)
-  final int maxConcurrentDocumentSyncs; //10;
 
-  // FIXME: concurrent synchronization currently leads to concurrency issues in tests (for example save_36)
-  final int maxConcurrentShardSyncs; //5;
-
-  // FIXME: concurrent synchronization currently leads to concurrency issues in tests (for example save_36)
-  final int maxConcurrentIndexSyncs; //3;
-  final bool useShardDatasets;
+  /// Remote resource organization strategy.
+  final RemoteStorageLayout layout;
 
   /// Default constructor: uses appDataFolder mode (private, no visible folder name needed)
   const GDriveConfig({
     this.typeFolderNames = const {},
     this.extraScopes = const [],
     this.localMirrorConfig = const GDriveLocalMirrorConfig(),
-    this.maxConcurrentDocumentSyncs = 1,
-    this.maxConcurrentShardSyncs = 1,
-    this.maxConcurrentIndexSyncs = 1,
-    this.useShardDatasets = true,
+    this.layout = const ShardDataset(),
   })  : appFolderName = null,
         folderMode = GDriveFolderMode.appDataFolder;
 
@@ -111,10 +103,7 @@ class GDriveConfig {
     this.extraScopes = const [],
     this.localMirrorConfig = const GDriveLocalMirrorConfig(),
     required this.appFolderName,
-    this.maxConcurrentDocumentSyncs = 1,
-    this.maxConcurrentShardSyncs = 1,
-    this.maxConcurrentIndexSyncs = 1,
-    this.useShardDatasets = true,
+    this.layout = const ShardDataset(),
   }) : folderMode = GDriveFolderMode.visibleFolder;
 
   /// Returns the OAuth scopes required for this configuration.
@@ -139,10 +128,7 @@ class GDriveConfig {
     GDriveFolderMode? folderMode,
     List<String>? extraScopes,
     GDriveLocalMirrorConfig? localMirrorConfig,
-    int? maxConcurrentDocumentSyncs,
-    int? maxConcurrentShardSyncs,
-    int? maxConcurrentIndexSyncs,
-    bool? useShardDatasets,
+    RemoteStorageLayout? layout,
   }) {
     // Validate: appFolderName must be set for visibleFolder mode
     final newMode = folderMode ?? this.folderMode;
@@ -159,26 +145,14 @@ class GDriveConfig {
             typeFolderNames: typeFolderNames ?? this.typeFolderNames,
             extraScopes: extraScopes ?? this.extraScopes,
             localMirrorConfig: localMirrorConfig ?? this.localMirrorConfig,
-            maxConcurrentDocumentSyncs:
-                maxConcurrentDocumentSyncs ?? this.maxConcurrentDocumentSyncs,
-            maxConcurrentShardSyncs:
-                maxConcurrentShardSyncs ?? this.maxConcurrentShardSyncs,
-            maxConcurrentIndexSyncs:
-                maxConcurrentIndexSyncs ?? this.maxConcurrentIndexSyncs,
-            useShardDatasets: useShardDatasets ?? this.useShardDatasets,
+            layout: layout ?? this.layout,
           )
         : GDriveConfig.visibleFolder(
             typeFolderNames: typeFolderNames ?? this.typeFolderNames,
             extraScopes: extraScopes ?? this.extraScopes,
             localMirrorConfig: localMirrorConfig ?? this.localMirrorConfig,
             appFolderName: newName!,
-            maxConcurrentDocumentSyncs:
-                maxConcurrentDocumentSyncs ?? this.maxConcurrentDocumentSyncs,
-            maxConcurrentShardSyncs:
-                maxConcurrentShardSyncs ?? this.maxConcurrentShardSyncs,
-            maxConcurrentIndexSyncs:
-                maxConcurrentIndexSyncs ?? this.maxConcurrentIndexSyncs,
-            useShardDatasets: useShardDatasets ?? this.useShardDatasets,
+            layout: layout ?? this.layout,
           );
   }
 }

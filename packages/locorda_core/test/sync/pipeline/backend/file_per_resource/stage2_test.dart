@@ -1,3 +1,5 @@
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
+
 /// Tests for Stage 2 (Shard Fetch) — file_per_resource layout.
 ///
 /// Verifies:
@@ -66,6 +68,10 @@ class _ConfigurableBackend implements RemoteSyncBackend {
   Stream<RemoteUploadResult> upload(
           Stream<RemoteUploadRequest<RawContent>> requests) =>
       const Stream.empty();
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 /// Backend that reverses the order of responses to test response-order.
@@ -88,6 +94,10 @@ class _ReverseOrderBackend implements RemoteSyncBackend {
   Stream<RemoteUploadResult> upload(
           Stream<RemoteUploadRequest<RawContent>> requests) =>
       const Stream.empty();
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 class _FailingBackend implements RemoteSyncBackend {
@@ -101,6 +111,10 @@ class _FailingBackend implements RemoteSyncBackend {
   Stream<RemoteUploadResult> upload(
           Stream<RemoteUploadRequest<RawContent>> requests) =>
       const Stream.empty();
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 // ---------------------------------------------------------------------------

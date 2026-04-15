@@ -123,6 +123,21 @@ class FakeGDriveClient implements GDriveApiClient {
   }
 
   @override
+  Future<({List<int>? bytes, String? etag, bool notModified})> downloadRaw(
+      String fileId,
+      {String? ifNoneMatch}) async {
+    if (deletedIds.contains(fileId)) {
+      throw StateError('Missing file: $fileId');
+    }
+    final file = filesById[fileId];
+    if (file == null) throw StateError('Missing file: $fileId');
+    if (ifNoneMatch != null && file.md5Checksum == ifNoneMatch) {
+      return (bytes: null, etag: ifNoneMatch, notModified: true);
+    }
+    return (bytes: file.bytes, etag: file.md5Checksum, notModified: false);
+  }
+
+  @override
   Future<String?> findFile({
     required String fileName,
     required String parentId,

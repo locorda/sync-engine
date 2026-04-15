@@ -13,6 +13,8 @@ library;
 import 'dart:typed_data';
 
 import 'package:locorda_core/src/storage/remote_storage.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 
 // ---------------------------------------------------------------------------
 // Raw content — opaque to the backend, just bytes/text with content type.
@@ -86,4 +88,6 @@ abstract interface class RemoteSyncBackend {
   /// on precondition failure.
   Stream<RemoteUploadResult> upload(
       Stream<RemoteUploadRequest<RawContent>> requests);
+
+  Future<void> finalize(SyncFinalizationState state, {PipeperfCollector? perf});
 }

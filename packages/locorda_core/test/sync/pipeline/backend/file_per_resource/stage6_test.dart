@@ -1,3 +1,5 @@
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
+
 /// Tests for Stage 6 (Resource Fetch) — file_per_resource layout.
 ///
 /// FPR does actual HTTP downloads for resource graphs. Tests verify:
@@ -66,6 +68,10 @@ class _ConfigurableBackend implements RemoteSyncBackend {
   Stream<RemoteUploadResult> upload(
           Stream<RemoteUploadRequest<RawContent>> requests) =>
       const Stream.empty();
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 class _ReverseOrderBackend implements RemoteSyncBackend {
@@ -87,6 +93,10 @@ class _ReverseOrderBackend implements RemoteSyncBackend {
   Stream<RemoteUploadResult> upload(
           Stream<RemoteUploadRequest<RawContent>> requests) =>
       const Stream.empty();
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 class _FailingBackend implements RemoteSyncBackend {
@@ -100,6 +110,10 @@ class _FailingBackend implements RemoteSyncBackend {
   Stream<RemoteUploadResult> upload(
           Stream<RemoteUploadRequest<RawContent>> requests) =>
       const Stream.empty();
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 /// Backend that records requests — verifies no requests sent for bypass.
@@ -123,6 +137,10 @@ class _RecordingBackend implements RemoteSyncBackend {
   Stream<RemoteUploadResult> upload(
           Stream<RemoteUploadRequest<RawContent>> requests) =>
       const Stream.empty();
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 // ---------------------------------------------------------------------------
@@ -269,7 +287,7 @@ void main() {
       expect(recording.requests, hasLength(1));
     });
 
-    test('notInRemoteShard sends request to backend', () async {
+    test('notInRemoteShard bypasses backend request', () async {
       final recording = _RecordingBackend((req) {
         return RemoteDownloadResult(
           documentIri: req.documentIri,
@@ -280,15 +298,19 @@ void main() {
       });
       final storage = _storageWith(recording);
 
-      await _transform(storage.resourceFetch(), [
+      final results = await _transform(storage.resourceFetch(), [
         _loaded(_resIri1, direction: SyncDirection.notInRemoteShard),
         ShardComplete(_shardIriA, null),
       ]);
 
-      expect(recording.requests, hasLength(1));
+      expect(results, hasLength(2));
+      final fetched = results[0] as FetchedCandidate;
+      expect(fetched.remoteSource, isNull);
+      expect(fetched.remoteEtag, isNull);
+      expect(recording.requests, isEmpty);
     });
 
-    test('shardGone sends request to backend', () async {
+    test('shardGone bypasses backend request', () async {
       final recording = _RecordingBackend((req) {
         return RemoteDownloadResult(
           documentIri: req.documentIri,
@@ -299,12 +321,16 @@ void main() {
       });
       final storage = _storageWith(recording);
 
-      await _transform(storage.resourceFetch(), [
+      final results = await _transform(storage.resourceFetch(), [
         _loaded(_resIri1, direction: SyncDirection.shardGone),
         ShardComplete(_shardIriA, null),
       ]);
 
-      expect(recording.requests, hasLength(1));
+      expect(results, hasLength(2));
+      final fetched = results[0] as FetchedCandidate;
+      expect(fetched.remoteSource, isNull);
+      expect(fetched.remoteEtag, isNull);
+      expect(recording.requests, isEmpty);
     });
   });
 

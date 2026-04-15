@@ -1,3 +1,4 @@
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 /// Tests for Stage 6 (Resource Fetch) — single_file layout.
 ///
 /// SF serves resource graphs from the download cache populated in S02 —
@@ -37,6 +38,9 @@ class _NullBackend implements RemoteSyncBackend {
   Stream<RemoteUploadResult> upload(
           Stream<RemoteUploadRequest<RawContent>> requests) =>
       const Stream.empty();
+
+  @override
+  Future<void> finalize(SyncFinalizationState state, {PipeperfCollector? perf}) async {}
 }
 
 class _StubStorageAccess implements BackendStorageAccess {

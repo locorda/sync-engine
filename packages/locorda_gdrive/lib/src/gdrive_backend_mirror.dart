@@ -153,6 +153,15 @@ class GDriveLocalMirror {
     );
   }
 
+  Future<RemoteDownloadResult<List<int>>> downloadRaw(
+    IriTerm documentIri, {
+    String? ifNoneMatch,
+  }) async {
+    final relativePath = _relativePathForDocument(documentIri);
+    return _store.downloadRaw(relativePath,
+        ifNoneMatch: ifNoneMatch, documentIri: documentIri);
+  }
+
   Future<RemoteUploadResult> upload<T>(IriTerm documentIri, T updatedGraph,
       {String? ifMatch,
       required String Function(T) convert,
@@ -160,6 +169,18 @@ class GDriveLocalMirror {
     final relativePath = _relativePathForDocument(documentIri);
     final content = convert(updatedGraph);
     final bytes = utf8.encode(content);
+    return _store.upload(
+      relativePath,
+      bytes,
+      ifMatch: ifMatch,
+      contentType: contentType,
+      documentIri: documentIri,
+    );
+  }
+
+  Future<RemoteUploadResult> uploadRaw(IriTerm documentIri, List<int> bytes,
+      {String? ifMatch, required String contentType}) async {
+    final relativePath = _relativePathForDocument(documentIri);
     return _store.upload(
       relativePath,
       bytes,
@@ -646,11 +667,31 @@ class _GDriveMirrorStore {
     String? ifNoneMatch,
     required IriTerm documentIri,
   }) async {
+    final raw = await downloadRaw(
+      relativePath,
+      ifNoneMatch: ifNoneMatch,
+      documentIri: documentIri,
+    );
+    final bytes = raw.graph;
+    return RemoteDownloadResult<String>(
+      documentIri: raw.documentIri,
+      requestETag: raw.requestETag,
+      graph: bytes == null ? null : utf8.decode(bytes),
+      etag: raw.etag,
+      notModified: raw.notModified,
+    );
+  }
+
+  Future<RemoteDownloadResult<List<int>>> downloadRaw(
+    String relativePath, {
+    String? ifNoneMatch,
+    required IriTerm documentIri,
+  }) async {
     final entry = _index.entries[relativePath];
     final file =
         File(GDriveLocalMirror._localFilePath(_filesDir, relativePath));
     if (!await file.exists()) {
-      return RemoteDownloadResult<String>(
+      return RemoteDownloadResult<List<int>>(
         documentIri: documentIri,
         requestETag: ifNoneMatch,
         graph: null,
@@ -661,15 +702,15 @@ class _GDriveMirrorStore {
 
     final currentEtag = entry?.localMd5 ?? await _computeFileMd5(file);
     if (ifNoneMatch != null && ifNoneMatch == currentEtag) {
-      return RemoteDownloadResult<String>.notModified(
+      return RemoteDownloadResult<List<int>>.notModified(
         documentIri: documentIri,
         requestETag: ifNoneMatch,
         etag: currentEtag,
       );
     }
 
-    final content = await file.readAsString();
-    return RemoteDownloadResult<String>(
+    final content = await file.readAsBytes();
+    return RemoteDownloadResult<List<int>>(
       documentIri: documentIri,
       requestETag: ifNoneMatch,
       graph: content,

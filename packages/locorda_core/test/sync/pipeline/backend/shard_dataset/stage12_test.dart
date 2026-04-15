@@ -1,3 +1,4 @@
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 /// Tests for Stage 12 (Shard Upload) — shard_dataset layout.
 ///
 /// Verifies:
@@ -60,6 +61,9 @@ class _FailingUploadBackend implements RemoteSyncBackend {
       Stream<RemoteUploadRequest<RawContent>> requests) {
     return Stream.error(StateError('upload failure'));
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state, {PipeperfCollector? perf}) async {}
 }
 
 class _StubStorageAccess implements BackendStorageAccess {

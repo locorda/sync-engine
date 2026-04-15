@@ -119,6 +119,11 @@ abstract interface class GDriveApiClient {
     required T Function(String) convert,
   });
 
+  Future<({List<int>? bytes, String? etag, bool notModified})> downloadRaw(
+    String fileId, {
+    String? ifNoneMatch,
+  });
+
   Future<List<int>> downloadRawBytes(String fileId);
 
   Future<RemoteUploadResult> upload<T>(
@@ -663,6 +668,55 @@ class GDriveClient implements GDriveApiClient {
     } catch (e, stackTrace) {
       _clientLog.severe('Failed to download file $fileId', e, stackTrace);
       throw GDriveClientException('Failed to download file $fileId: $e');
+    }
+  }
+
+  @override
+  Future<({List<int>? bytes, String? etag, bool notModified})> downloadRaw(
+      String fileId,
+      {String? ifNoneMatch}) async {
+    _clientLog.fine('Downloading raw file $fileId');
+
+    try {
+      final metadata = await _driveApi.get(
+        fileId,
+        $fields: 'md5Checksum',
+      ) as drive.File;
+
+      final currentEtag = metadata.md5Checksum;
+
+      if (ifNoneMatch != null && currentEtag == ifNoneMatch) {
+        _clientLog.fine('Raw file not modified (ETag match): $fileId');
+        return (bytes: null, etag: ifNoneMatch, notModified: true);
+      }
+
+      final media = await _driveApi.get(
+        fileId,
+        downloadOptions: drive.DownloadOptions.fullMedia,
+      ) as drive.Media;
+
+      final bytes = <int>[];
+      await for (final chunk in media.stream) {
+        bytes.addAll(chunk);
+      }
+
+      _clientLog.fine('Downloaded raw file: $fileId (ETag: $currentEtag)');
+      return (bytes: bytes, etag: currentEtag, notModified: false);
+    } on drive.DetailedApiRequestError catch (e, stackTrace) {
+      handleGDriveAuthError(e);
+
+      if (e.status == 404) {
+        _clientLog.fine('Raw file not found: $fileId');
+        return (bytes: null, etag: null, notModified: false);
+      }
+
+      _clientLog.severe(
+          'API error downloading raw file $fileId', e, stackTrace);
+      throw GDriveClientException(
+          'Failed to download raw file $fileId: ${e.status} ${e.message}');
+    } catch (e, stackTrace) {
+      _clientLog.severe('Failed to download raw file $fileId', e, stackTrace);
+      throw GDriveClientException('Failed to download raw file $fileId: $e');
     }
   }
 

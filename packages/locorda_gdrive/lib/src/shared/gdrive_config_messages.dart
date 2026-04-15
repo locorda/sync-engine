@@ -1,6 +1,7 @@
 /// Shared message types for GDriveConfig synchronization.
 library;
 
+import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
 
 import 'gdrive_config.dart';
@@ -27,10 +28,7 @@ class GDriveConfigMessage {
               config.localMirrorConfig.maxConcurrentDownloads,
           'maxConcurrentUploads': config.localMirrorConfig.maxConcurrentUploads,
         },
-        'maxConcurrentDocumentSyncs': config.maxConcurrentDocumentSyncs,
-        'maxConcurrentShardSyncs': config.maxConcurrentShardSyncs,
-        'maxConcurrentIndexSyncs': config.maxConcurrentIndexSyncs,
-        'useShardDatasets': config.useShardDatasets,
+        'layout': config.layout.toJson(),
       };
 
   static GDriveConfigMessage fromJson(Map<String, dynamic> json) {
@@ -62,13 +60,10 @@ class GDriveConfigMessage {
                 mirrorConfigRaw['maxConcurrentUploads'] as int? ?? 30,
           );
 
-    final maxConcurrentDocumentSyncs =
-        json['maxConcurrentDocumentSyncs'] as int? ?? 1;
-    final maxConcurrentShardSyncs =
-        json['maxConcurrentShardSyncs'] as int? ?? 1;
-    final maxConcurrentIndexSyncs =
-        json['maxConcurrentIndexSyncs'] as int? ?? 1;
-    final useShardDatasets = json['useShardDatasets'] as bool? ?? false;
+    final layoutRaw = json['layout'] as Map<String, dynamic>?;
+    final layout = layoutRaw == null
+        ? const ShardDataset()
+        : RemoteStorageLayout.fromJson(layoutRaw);
 
     return GDriveConfigMessage(
       config: folderMode == GDriveFolderMode.appDataFolder
@@ -76,20 +71,14 @@ class GDriveConfigMessage {
               typeFolderNames: typeFolderNames,
               extraScopes: extraScopes,
               localMirrorConfig: mirrorConfig,
-              maxConcurrentDocumentSyncs: maxConcurrentDocumentSyncs,
-              maxConcurrentShardSyncs: maxConcurrentShardSyncs,
-              maxConcurrentIndexSyncs: maxConcurrentIndexSyncs,
-              useShardDatasets: useShardDatasets,
+              layout: layout,
             )
           : GDriveConfig.visibleFolder(
               appFolderName: appFolderName!,
               typeFolderNames: typeFolderNames,
               extraScopes: extraScopes,
               localMirrorConfig: mirrorConfig,
-              maxConcurrentDocumentSyncs: maxConcurrentDocumentSyncs,
-              maxConcurrentShardSyncs: maxConcurrentShardSyncs,
-              maxConcurrentIndexSyncs: maxConcurrentIndexSyncs,
-              useShardDatasets: useShardDatasets,
+              layout: layout,
             ),
     );
   }

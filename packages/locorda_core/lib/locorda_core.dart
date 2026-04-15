@@ -97,7 +97,11 @@ export 'package:locorda_core/src/sync/pipeline/pipeline_types.dart'
         MergedResourceEvent,
         UploadedResourceEvent,
         MergedShardEvent,
-        UploadedShardEvent;
+        UploadedShardEvent,
+        SyncFinalizationState,
+        SyncFinalizationSuccess,
+        SyncFinalizationFailure,
+        SyncFinalizationIncomplete;
 
 export 'src/storage/storage_interface.dart'
     show
@@ -123,6 +127,7 @@ export 'src/sync/pipeline/pipeline_support.dart'
         BackendStorageAccessFactoryImpl,
         BackendStorageAccessImpl,
         PipelineRemoteSyncStorage;
+export 'src/sync/pipeline/pipeperf.dart' show PipeperfCollector;
 export 'src/sync/pipeline/backend/remote_sync_backend.dart'
     show RemoteSyncBackend, RawContent, TextContent, BinaryContent;
 export 'src/sync/pipeline/backend/remote_sync_storages.dart'

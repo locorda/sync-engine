@@ -315,6 +315,10 @@ class DirSyncStorage implements RemoteSyncBackend {
     }
   }
 
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
+
   Future<RemoteUploadResult> _uploadOne(
       RemoteUploadRequest<RawContent> request) async {
     final filePath = _iriToFilePath(request.documentIri);

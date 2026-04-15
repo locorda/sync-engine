@@ -38,8 +38,8 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
 
   @override
   Future<void> finalizeSync(SyncFinalizationState state,
-          {PipeperfCollector? perf}) =>
-      Future.value();
+        {PipeperfCollector? perf}) =>
+      backend.finalize(state, perf: perf);
 
   // ---------------------------------------------------------------------------
   // Stage 2: Shard Fetch

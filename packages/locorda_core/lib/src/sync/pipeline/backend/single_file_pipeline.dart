@@ -116,6 +116,7 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
     _cachedDataset = null;
     _downloaded = false;
     _notModified = false;
+    await backend.finalize(state, perf: perf);
   }
 
   // ---------------------------------------------------------------------------

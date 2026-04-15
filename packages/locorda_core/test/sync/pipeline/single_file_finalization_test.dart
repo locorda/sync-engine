@@ -1,3 +1,4 @@
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -14,6 +15,8 @@ import 'package:test/test.dart';
 class _SpyBackend implements RemoteSyncBackend {
   int uploadCallCount = 0;
   int downloadCallCount = 0;
+  int finalizeCallCount = 0;
+  SyncFinalizationState? finalizedState;
 
   @override
   Stream<RemoteDownloadResult<RawContent>> download(
@@ -40,6 +43,13 @@ class _SpyBackend implements RemoteSyncBackend {
         requestETag: request.ifMatch,
       );
     }
+  }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {
+    finalizeCallCount++;
+    finalizedState = state;
   }
 }
 
@@ -111,6 +121,8 @@ void main() {
       await storage.finalizeSync(const SyncFinalizationSuccess());
       expect(spyBackend.uploadCallCount, equals(1),
           reason: 'Should upload the single file on success');
+      expect(spyBackend.finalizeCallCount, equals(1));
+      expect(spyBackend.finalizedState, isA<SyncFinalizationSuccess>());
     });
 
     test('does NOT upload on SyncFinalizationFailure', () async {
@@ -120,6 +132,8 @@ void main() {
           StateError('test error'), StackTrace.current));
       expect(spyBackend.uploadCallCount, equals(0),
           reason: 'Must NOT upload the single file on failure');
+      expect(spyBackend.finalizeCallCount, equals(1));
+      expect(spyBackend.finalizedState, isA<SyncFinalizationFailure>());
     });
 
     test('does NOT upload on SyncFinalizationIncomplete', () async {
@@ -128,6 +142,8 @@ void main() {
       await storage.finalizeSync(const SyncFinalizationIncomplete());
       expect(spyBackend.uploadCallCount, equals(0),
           reason: 'Must NOT upload the single file on incomplete');
+      expect(spyBackend.finalizeCallCount, equals(1));
+      expect(spyBackend.finalizedState, isA<SyncFinalizationIncomplete>());
     });
 
     test('cleans up accumulators regardless of finalization state', () async {

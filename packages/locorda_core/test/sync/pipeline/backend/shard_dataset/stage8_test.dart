@@ -1,3 +1,4 @@
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 /// Tests for Stage 8 (Resource Upload) — shard_dataset layout.
 ///
 /// Verifies:
@@ -79,6 +80,9 @@ class _SuccessBackend implements RemoteSyncBackend {
       );
     }
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state, {PipeperfCollector? perf}) async {}
 }
 
 class _StubStorageAccess implements BackendStorageAccess {

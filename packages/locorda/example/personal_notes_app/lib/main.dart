@@ -73,7 +73,6 @@ Future<Locorda> initializeLocorda() async {
           config: SolidConfig()),
       await GDriveMainIntegration.create(
           config: GDriveConfig(
-              useShardDatasets: true,
               localMirrorConfig: GDriveLocalMirrorConfig(enabled: true))),
     ],
 

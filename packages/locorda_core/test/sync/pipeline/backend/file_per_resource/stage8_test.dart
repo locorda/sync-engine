@@ -1,3 +1,5 @@
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
+
 /// Tests for Stage 8 (Resource Upload) — file_per_resource layout.
 ///
 /// FPR uploads resources immediately via streaming (unlike SDS/SF which defer).
@@ -92,6 +94,10 @@ class _SuccessBackend implements RemoteSyncBackend {
       );
     }
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 class _ConflictBackend implements RemoteSyncBackend {
@@ -110,6 +116,10 @@ class _ConflictBackend implements RemoteSyncBackend {
       );
     }
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 /// Backend with configurable per-request behavior.
@@ -130,6 +140,10 @@ class _ConfigurableUploadBackend implements RemoteSyncBackend {
       yield _handler(request);
     }
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 /// Backend that reverses response order.
@@ -151,6 +165,10 @@ class _ReverseOrderUploadBackend implements RemoteSyncBackend {
       );
     }
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 class _FailingUploadBackend implements RemoteSyncBackend {
@@ -164,6 +182,10 @@ class _FailingUploadBackend implements RemoteSyncBackend {
       Stream<RemoteUploadRequest<RawContent>> requests) {
     return Stream.error(StateError('upload failure'));
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 /// Backend that records upload requests for assertion.
@@ -187,6 +209,10 @@ class _RecordingUploadBackend implements RemoteSyncBackend {
       );
     }
   }
+
+  @override
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 // ---------------------------------------------------------------------------
