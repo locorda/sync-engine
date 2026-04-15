@@ -23,6 +23,9 @@ import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart' show Storage;
 import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
+import 'package:logging/logging.dart';
+
+final _log = Logger('Stage10.ShardEntryLoad');
 
 /// Default shard batch size for Stage 10.
 ///
@@ -35,8 +38,7 @@ const defaultShardBatchSize = 20;
 /// Usage: `stream.asyncExpand(shardEntryLoad(storage))`
 ///
 /// Buffers [ShardComplete] events and flushes as a batch when [batchSize] is
-/// reached or on [PhaseComplete]. [CommitResult] events are consumed — they
-/// have served their purpose.
+/// reached or on [PhaseComplete].
 Stream<LoadedShardEntriesEvent> Function(CommittedResourceEvent) shardEntryLoad(
   Storage storage, {
   int batchSize = defaultShardBatchSize,
@@ -47,30 +49,41 @@ Stream<LoadedShardEntriesEvent> Function(CommittedResourceEvent) shardEntryLoad(
   Stream<LoadedShardEntriesEvent> _flush() async* {
     if (pendingShards.isEmpty) return;
 
-    final sw = perf?.start('S10.ShardEntryLoad');
+    try {
+      final sw = perf?.start('S10.ShardEntryLoad');
 
-    final shardIris = pendingShards.map((e) => e.shardIri).toList();
-    final shardDocumentIris =
-        shardIris.map((iri) => iri.getDocumentIri()).toList();
+      final shardIris = pendingShards.map((e) => e.shardIri).toList();
+      final shardDocumentIris =
+          shardIris.map((iri) => iri.getDocumentIri()).toList();
 
-    // Two batch queries instead of 2N per-shard queries.
-    final entriesByShardIri =
-        await storage.getActiveIndexEntriesForShards(shardIris);
-    final docsByIri = await storage.getRawDocumentsByIri(shardDocumentIris);
+      // Two batch queries instead of 2N per-shard queries.
+      final entriesByShardIri =
+          await storage.getActiveIndexEntriesForShards(shardIris);
+      final docsByIri = await storage.getRawDocumentsByIri(shardDocumentIris);
 
-    sw?.stop();
+      sw?.stop();
 
-    for (final event in pendingShards) {
-      final shardIri = event.shardIri;
-      yield LoadedShardEntries(
-        shardIri,
-        event.shardStorageId,
-        entriesByShardIri[shardIri] ?? [],
-        localDoc: docsByIri[shardIri.getDocumentIri()],
-        remoteShardGraph: event.remoteShardGraph,
-        newEtag: event.newEtag,
-        existsOnRemote: event.existsOnRemote,
-      );
+      for (final event in pendingShards) {
+        final shardIri = event.shardIri;
+        final entries = entriesByShardIri[shardIri] ?? [];
+        yield LoadedShardEntries(
+          shardIri,
+          event.shardStorageId,
+          entries,
+          localDoc: docsByIri[shardIri.getDocumentIri()],
+          remoteShardGraph: event.remoteShardGraph,
+          newEtag: event.newEtag,
+          existsOnRemote: event.existsOnRemote,
+        );
+      }
+    } catch (e, st) {
+      _log.warning(
+          'S10: batch shard entry load failed for ${pendingShards.length} shards',
+          e,
+          st);
+      for (final event in pendingShards) {
+        yield ShardError(event.shardIri, e, st);
+      }
     }
 
     pendingShards.clear();
@@ -78,21 +91,23 @@ Stream<LoadedShardEntriesEvent> Function(CommittedResourceEvent) shardEntryLoad(
 
   return (CommittedResourceEvent event) async* {
     switch (event) {
-      case CommitResult():
-        // consumed — doesn't propagate past shard entry load
-        break;
+      // --- Shard Events ---
+      case ShardComplete():
+        pendingShards.add(event);
+        if (pendingShards.length >= batchSize) yield* _flush();
+      case ShardSkipped():
+        yield event;
+      case ConflictedShard():
+        yield event;
+      case ShardError():
+        yield event;
+
+      // --- Phase Events ---
       case PhaseComplete():
         yield* _flush();
         yield event;
-      case ShardComplete():
-        if (!event.hasLocalChanges) {
-          // No remote or local changes — pass straight through to S13.
-          yield event;
-          break;
-        }
-        pendingShards.add(event);
-        if (pendingShards.length >= batchSize) yield* _flush();
-      case ConflictedShard():
+      case PhaseError():
+        pendingShards.clear();
         yield event;
     }
   };

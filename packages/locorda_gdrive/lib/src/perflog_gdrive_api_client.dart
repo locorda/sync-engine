@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_gdrive/src/gdrive_api.dart';
 
 class PerfLogGDriveApiClient implements GDriveApiClient {
@@ -111,21 +112,24 @@ class PerfLogGDriveApiClient implements GDriveApiClient {
 
   @override
   Future<RemoteUploadResult> upload<T>(String fileId, T updatedGraph,
-      {required String ifMatch, required String Function(T) convert}) {
+      {required String ifMatch,
+      required IriTerm documentIri,
+      required String Function(T) convert}) {
     return _perflog.measure(
         'upload',
         args: [fileId],
         () => _inner.upload(fileId, updatedGraph,
-            ifMatch: ifMatch, convert: convert));
+            ifMatch: ifMatch, documentIri: documentIri, convert: convert));
   }
 
   @override
   Future<RemoteUploadResult> uploadRaw(String fileId, List<int> bytes,
-      {required String ifMatch}) {
+      {required String ifMatch, required IriTerm documentIri}) {
     return _perflog.measure(
         'uploadRaw',
         args: [fileId],
-        () => _inner.uploadRaw(fileId, bytes, ifMatch: ifMatch));
+        () => _inner.uploadRaw(fileId, bytes,
+            ifMatch: ifMatch, documentIri: documentIri));
   }
 
   @override

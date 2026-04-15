@@ -25,9 +25,9 @@ import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart' as storage;
-import 'package:locorda_core/src/sync/pipeline/document_shard_reconciler.dart';
-import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_core/src/sync/pipeline/content_index_resolver.dart';
+import 'package:locorda_core/src/sync/pipeline/document_shard_reconciler.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/streaming_remote_sync_orchestrator.dart';
 import 'package:locorda_core/src/sync/remote_document_merger.dart';
 import 'package:locorda_core/src/sync/remote_sync_orchestrator.dart';
@@ -725,8 +725,9 @@ the streams yourself.''');
     final streamingOrchestratorFactory = (
       PipelineRemoteSyncStorage pipelineSupport,
       RemoteId remoteId,
-      SyncEngineConfig effectiveConfig,
-    ) =>
+      SyncEngineConfig effectiveConfig, {
+      required PipeperfCollector perf,
+    }) =>
         StreamingRemoteSyncOrchestrator(
           storage: storage,
           documentSaveService: documentSaveService,
@@ -742,6 +743,7 @@ the streams yourself.''');
           indexRdfGenerator: indexRdfGenerator,
           indexDiscovery: indexDiscovery,
           shardDeterminer: shardDeterminer,
+          perf: perf,
           indexResolver: ContentIndexResolver(
             storage: storage,
             indexRdfGenerator: indexRdfGenerator,

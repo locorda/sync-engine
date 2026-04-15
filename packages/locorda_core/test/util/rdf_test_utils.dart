@@ -35,8 +35,7 @@ Future<void> writeDatasetToFile(
   await file.writeAsString(trigContent);
 }
 
-String _getBaseUri(RdfGraph graph) =>
-    graph.getIdentifier(Sync.ManagedDocument).getDocumentIri().value;
+String _getBaseUri(RdfGraph graph) => extractDocumentIriFromGraph(graph).value;
 
 /// Reads an RDF graph from a Turtle file.
 ///

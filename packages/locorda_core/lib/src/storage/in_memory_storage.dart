@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
@@ -213,7 +212,7 @@ class InMemoryStorage implements Storage {
           existingDocument.metadata.updatedAt != ifMatchUpdatedAt) {
         // Conflict detected - document was modified since expected version
         throw ConcurrentUpdateException(
-            'Optimistic concurrency check failed for document $documentIri: expected updatedAt=$ifMatchUpdatedAt, actual updatedAt=${existingDocument.metadata.updatedAt}');
+            'Optimistic concurrency check failed for document ${documentIri.debug}: expected updatedAt=$ifMatchUpdatedAt, actual updatedAt=${existingDocument.metadata.updatedAt}');
       }
     }
 
@@ -243,13 +242,8 @@ class InMemoryStorage implements Storage {
   }
 
   @override
-  List<Uint8List>? preEncodeDocuments(List<SaveDocumentRequest> requests) =>
-      null;
-
-  @override
   Future<List<SaveDocumentResult>> saveDocuments(
-      Iterable<SaveDocumentRequest> requests,
-      {List<Uint8List>? preEncodedContents}) async {
+      Iterable<SaveDocumentRequest> requests) async {
     final results = <SaveDocumentResult>[];
     for (final request in requests) {
       results.add(await saveDocument(
@@ -937,6 +931,14 @@ class InMemoryStorage implements Storage {
     _registerRemote(remoteId);
     _settings.remove(
         'remote.etag.${remoteId.backend}.${remoteId.id}.${documentIri.value}');
+  }
+
+  @override
+  Future<void> clearRemoteETags(
+      RemoteId remoteId, Set<IriTerm> documentIris) async {
+    for (final documentIri in documentIris) {
+      await clearRemoteETag(remoteId, documentIri);
+    }
   }
 
   @override

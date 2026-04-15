@@ -147,17 +147,8 @@ class DriftStorage implements core.Storage {
   }
 
   @override
-  List<Uint8List>? preEncodeDocuments(List<core.SaveDocumentRequest> requests) {
-    if (requests.isEmpty) return const [];
-    return requests
-        .map((r) => _codec.encode(r.document))
-        .toList(growable: false);
-  }
-
-  @override
   Future<List<core.SaveDocumentResult>> saveDocuments(
-      Iterable<core.SaveDocumentRequest> requests,
-      {List<Uint8List>? preEncodedContents}) async {
+      Iterable<core.SaveDocumentRequest> requests) async {
     final requestList = requests.toList(growable: false);
     if (requestList.isEmpty) {
       return const [];
@@ -169,18 +160,18 @@ class DriftStorage implements core.Storage {
       allIriTerms.add(request.typeIri);
     }
 
-    // Use pre-encoded content if available (pipeline optimization),
-    // otherwise encode here before the transaction
-    final List<Uint8List> encodedContents = preEncodedContents ??
-        await _perflog.measure(
-          'saveDocuments.encode',
-          () async => requestList
-              .map((r) =>
-                  _codec.encode(r.document /*, baseUri: r.documentIri.value*/))
-              .toList(growable: false),
-          args: ['count=${requestList.length}'],
-          minDurationMs: 5,
-        );
+    // Use pre-encoded content from individual requests if available
+    // (pipeline optimization), otherwise encode here before the transaction.
+    final List<Uint8List> encodedContents = await _perflog.measure(
+      'saveDocuments.encode',
+      () async => requestList
+          .map((r) =>
+              r.encodedContent ??
+              _codec.encode(r.document /*, baseUri: r.documentIri.value*/))
+          .toList(growable: false),
+      args: ['count=${requestList.length}'],
+      minDurationMs: 5,
+    );
 
     return _database.transaction(() async {
       final iriIdMap = await _getOrCreateIriIdsMap(allIriTerms);
@@ -1469,6 +1460,14 @@ class DriftStorage implements core.Storage {
       documentIriId: documentIriId,
       remoteId: remoteIdInt,
     );
+  }
+
+  @override
+  Future<void> clearRemoteETags(
+      core.RemoteId remoteId, Set<IriTerm> documentIris) async {
+    for (final documentIri in documentIris) {
+      await clearRemoteETag(remoteId, documentIri);
+    }
   }
 
   List<core.StoredDocument> _convertToStoredDocuments(

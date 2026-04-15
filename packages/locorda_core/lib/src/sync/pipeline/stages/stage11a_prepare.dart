@@ -37,11 +37,31 @@ Iterable<PreparedShardEvent> Function(LoadedShardEntriesEvent) prepareShards(
   RdfCore rdfCore,
 ) {
   return (LoadedShardEntriesEvent event) => switch (event) {
-        PhaseComplete() => [event],
+        // --- Shard Events ---
         ConflictedShard() => [event],
-        ShardComplete() => [event],
-        LoadedShardEntries() => _prepare(event, shardDocGen, config, rdfCore),
+        ShardError() => [event],
+        ShardSkipped() => [event],
+        LoadedShardEntries() =>
+          _prepareOrError(event, shardDocGen, config, rdfCore),
+
+        // --- Phase Events ---
+        PhaseComplete() => [event],
+        PhaseError() => [event],
       };
+}
+
+Iterable<PreparedShardEvent> _prepareOrError(
+  LoadedShardEntries loaded,
+  ShardDocumentGenerator shardDocGen,
+  SyncEngineConfig config,
+  RdfCore rdfCore,
+) {
+  try {
+    return _prepare(loaded, shardDocGen, config, rdfCore);
+  } catch (e, st) {
+    _log.warning('S11a: failed to prepare shard ${loaded.shardIri}', e, st);
+    return [ShardError(loaded.shardIri, e, st)];
+  }
 }
 
 Iterable<PreparedShardEvent> _prepare(

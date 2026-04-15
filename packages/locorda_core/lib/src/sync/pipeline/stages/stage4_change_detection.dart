@@ -50,30 +50,76 @@ StreamTransformer<ParsedShardEvent, SyncCandidateEvent> changeDetection(
     // Single upfront query: which shards have any locally-changed entries?
     // Returns null if more than 20 shards changed — in that case we fall
     // back to per-shard queries (the upfront filter isn't worth it).
-    final shardsWithChanges =
-        await storage.getShardsWithLocalChangesSince(lastSyncTimestamp);
+    final Set<IriTerm>? shardsWithChanges;
+    try {
+      shardsWithChanges =
+          await storage.getShardsWithLocalChangesSince(lastSyncTimestamp);
+    } catch (e, st) {
+      _log.warning('S04: upfront query failed', e, st);
+      yield PhaseError(e, st, stage: 'S04');
+      return;
+    }
 
     await for (final event in stream) {
       switch (event) {
-        case PhaseComplete():
+        // --- Shard Events ---
+        case ShardError():
           yield event;
         case ParsedShard():
-          yield* _handleParsedShard(event, storage, lastSyncTimestamp, perf);
+          try {
+            await for (final e in _handleParsedShard(
+                event, storage, lastSyncTimestamp, perf)) {
+              yield e;
+            }
+          } catch (e, st) {
+            _log.warning(
+                'S04: failed to process shard ${event.shardIri}', e, st);
+            yield ShardError(event.shardIri, e, st);
+          }
         case ShardResultNotModified():
-          if (shardsWithChanges == null ||
-              shardsWithChanges.contains(event.shardIri)) {
-            yield* _handleNotModified(event, storage, lastSyncTimestamp, perf);
-          } else {
-            // Remote unchanged AND no local changes — skip S10–S11 entirely.
-            yield ShardComplete(event.shardIri, event.shardStorageId,
-                existsOnRemote: true,
-                newEtag: event.storedEtag,
-                hasLocalChanges: false);
+          try {
+            if (shardsWithChanges == null ||
+                shardsWithChanges.contains(event.shardIri)) {
+              await for (final e in _handleNotModified(
+                  event, storage, lastSyncTimestamp, perf)) {
+                yield e;
+              }
+            } else {
+              yield ShardSkipped(event.shardIri, event.shardStorageId,
+                  existsOnRemote: true, newEtag: event.storedEtag);
+            }
+          } catch (e, st) {
+            _log.warning(
+                'S04: failed to process shard ${event.shardIri}', e, st);
+            yield ShardError(event.shardIri, e, st);
           }
         case ShardResultNotFound():
-          yield* _handleNotFound(event, storage, lastSyncTimestamp, perf);
+          try {
+            await for (final e
+                in _handleNotFound(event, storage, lastSyncTimestamp, perf)) {
+              yield e;
+            }
+          } catch (e, st) {
+            _log.warning(
+                'S04: failed to process shard ${event.shardIri}', e, st);
+            yield ShardError(event.shardIri, e, st);
+          }
         case ShardResultGone():
-          yield* _handleGone(event, storage, perf);
+          try {
+            await for (final e in _handleGone(event, storage, perf)) {
+              yield e;
+            }
+          } catch (e, st) {
+            _log.warning(
+                'S04: failed to process shard ${event.shardIri}', e, st);
+            yield ShardError(event.shardIri, e, st);
+          }
+
+        // --- Phase Events ---
+        case PhaseComplete():
+          yield event;
+        case PhaseError():
+          yield event;
       }
     }
   });
@@ -93,7 +139,7 @@ Stream<SyncCandidateEvent> _handleParsedShard(
   final typeIri = parsed.typeIri;
   if (typeIri == null) {
     _log.warning('ParsedShard ${shardIri.debug} has no typeIri — skipping');
-    yield ShardComplete(shardIri, shardStorageId);
+    yield ShardSkipped(shardIri, shardStorageId);
     return;
   }
   final sw = perf?.start('S04.ChangeDetect');
@@ -203,13 +249,13 @@ Stream<SyncCandidateEvent> _handleNotModified(
     );
   }
 
-  // Note: we intentionally do NOT set hasLocalChanges based on
-  // changedEntries.isEmpty here. getLocallyChangedEntriesForShard only
-  // tracks resource-level changes within a shard, but entry *removals*
-  // (e.g. a resource moving groups) are invisible to it. The shard still
-  // needs S10–S11 to regenerate its entry list and produce tombstones.
+  // Note: we intentionally emit ShardComplete (not ShardSkipped) even when
+  // changedEntries is empty. getLocallyChangedEntriesForShard only tracks
+  // resource-level changes within a shard, but entry *removals* (e.g. a
+  // resource moving groups) are invisible to it. The shard still needs
+  // S10–S11 to regenerate its entry list and produce tombstones.
   // Only the upfront shardsWithChanges shortcut (which includes deleted
-  // entries) can safely set hasLocalChanges=false.
+  // entries) can safely emit ShardSkipped.
   yield ShardComplete(result.shardIri, result.shardStorageId,
       existsOnRemote: true, newEtag: result.storedEtag);
 }

@@ -55,7 +55,11 @@ Future<Locorda> initializeLocorda() async {
         await DirMainIntegration.create(
             id: dirDatasetPerShardRemoteId,
             displayName: 'Local Directory (Sharded)',
-            config: DirConfig(useShardDatasets: true)),
+            config: DirConfig(layout: ShardDataset())),
+        await DirMainIntegration.create(
+            id: dirSingleFileRemoteId,
+            displayName: 'Local Directory (Single File)',
+            config: DirConfig(layout: SingleFile())),
       ],
       await SolidMainIntegration.create(
           // SECURITY: This example demonstrates secure redirect URI configuration.

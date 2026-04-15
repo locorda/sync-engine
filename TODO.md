@@ -127,8 +127,9 @@
 
 # Priority 5.x: Performance and Pipeline
 - [x] Implement a sync pipeline
-- [ ] Get local directory performance for chat essence sync with 15k docs to below 5 s
-- [ ] !!!IMPORTANT BUGFIX!!! upload conflicts seem to stop the pipeline from terminating ?!?!
+- [x] Get local directory performance for chat essence sync with 15k docs to below 5 s (saw 4.9s in release build with jelly )
+- [x] !!!IMPORTANT BUGFIX!!! upload conflicts seem to stop the pipeline from terminating ?!?!
+- [ ] Optimize S14.Feedback: ~43ms for no-op sync seems a bit too much (but it is not sooo much that we really need to worry...)
 
 # Priority 6: Reality Check: make chat essence use sync engine
 - [ ] Port chat essence to sync engine

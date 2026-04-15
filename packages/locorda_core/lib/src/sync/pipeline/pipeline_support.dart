@@ -8,60 +8,107 @@ library;
 import 'dart:async';
 
 import 'package:locorda_core/src/mapping/iri_translator.dart';
+import 'package:locorda_core/src/storage/remote_id.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_rdf_core/core.dart';
 
-/// Loads resource graphs from the local DB for dataset assembly.
+/// Bridge between pipeline backends and the local storage layer.
 ///
-/// Provided by Core (via the worker context) so that shard-dataset backends
-/// can query locally-stored resource documents during Stage 12 upload.
-/// Returns decoded graphs keyed by document IRI; null values indicate
-/// missing documents.
-abstract interface class ResourceGraphLoader {
-  Future<Map<IriTerm, RdfGraph?>> load(Iterable<IriTerm> documentIris);
+/// Provides resource graph loading for dataset assembly (Stage 12) and
+/// remote ETag management for conditional HTTP requests (Stages 2, 12).
+/// The [RemoteId] is bound internally so backends don't need to track it.
+abstract interface class BackendStorageAccess {
+  /// Load resource graphs from the local DB for dataset assembly.
+  ///
+  /// Returns decoded graphs keyed by document IRI; null values indicate
+  /// missing documents.
+  Future<Map<IriTerm, RdfGraph?>> loadResourceGraphs(
+      Iterable<IriTerm> documentIris);
+
+  /// Load stored remote ETags for the given document IRIs.
+  ///
+  /// Returns a map with null values for documents without a stored ETag.
+  Future<Map<IriTerm, String?>> getRemoteETags(
+      Iterable<IriTerm> documentIris);
+
+  /// Persist remote ETags after successful download or upload.
+  Future<void> setRemoteETags(Map<IriTerm, String> etagsByDocument);
 }
 
-class ResourceGraphLoaderImpl implements ResourceGraphLoader {
+/// Factory for creating [RemoteId]-bound [BackendStorageAccess] instances.
+///
+/// Backends receive this factory (instead of a pre-bound access object)
+/// and call [forRemote] with their own [RemoteId] to obtain an instance
+/// scoped to the correct remote.
+abstract interface class BackendStorageAccessFactory {
+  BackendStorageAccess forRemote(RemoteId remoteId);
+}
+
+/// Default [BackendStorageAccessFactory] backed by a [Storage] instance.
+class BackendStorageAccessFactoryImpl implements BackendStorageAccessFactory {
   final Storage _storage;
 
-  ResourceGraphLoaderImpl({required Storage storage}) : _storage = storage;
+  BackendStorageAccessFactoryImpl({required Storage storage})
+      : _storage = storage;
 
-  Future<Map<IriTerm, RdfGraph?>> load(Iterable<IriTerm> documentIris) async {
+  @override
+  BackendStorageAccess forRemote(RemoteId remoteId) =>
+      BackendStorageAccessImpl(storage: _storage, remoteId: remoteId);
+}
+
+class BackendStorageAccessImpl implements BackendStorageAccess {
+  final Storage _storage;
+  final RemoteId _remoteId;
+
+  BackendStorageAccessImpl({
+    required Storage storage,
+    required RemoteId remoteId,
+  })  : _storage = storage,
+        _remoteId = remoteId;
+
+  @override
+  Future<Map<IriTerm, RdfGraph?>> loadResourceGraphs(
+      Iterable<IriTerm> documentIris) async {
     final docs = await _storage.getDocumentsByIri(documentIris);
     return docs.map((iri, doc) => MapEntry(iri, doc?.document));
   }
+
+  @override
+  Future<Map<IriTerm, String?>> getRemoteETags(
+          Iterable<IriTerm> documentIris) =>
+      _storage.getRemoteETags(_remoteId, documentIris);
+
+  @override
+  Future<void> setRemoteETags(Map<IriTerm, String> etagsByDocument) =>
+      _storage.setRemoteETags(_remoteId, etagsByDocument);
 }
 
-/// [ResourceGraphLoader] adapter for IRI-translating backends.
+/// [BackendStorageAccess] adapter for IRI-translating backends.
 ///
-/// When [ShardDatasetRemoteSyncSupport] is wrapped inside
-/// [PipelineIriTranslatingRemoteSyncStorage], it receives external IRIs from
-/// the pipeline. This loader bridges back to internal storage by:
-/// 1. Translating incoming external IRIs → internal before the DB query.
-/// 2. Translating internal IRIs in the returned graphs → external so that the
-///    caller (which works in external IRI space) can use them as named-graph keys.
-class IriTranslatingResourceGraphLoader implements ResourceGraphLoader {
-  final ResourceGraphLoader _inner;
+/// Bridges between external IRI space (used by pipeline) and internal IRI
+/// space (used by local storage) by:
+/// 1. Translating incoming external IRIs → internal before DB queries.
+/// 2. Translating internal IRIs in returned graphs → external for callers.
+class IriTranslatingBackendStorageAccess implements BackendStorageAccess {
+  final BackendStorageAccess _inner;
   final IriTranslator _iriTranslator;
 
-  IriTranslatingResourceGraphLoader({
-    required ResourceGraphLoader inner,
+  IriTranslatingBackendStorageAccess({
+    required BackendStorageAccess inner,
     required IriTranslator iriTranslator,
   })  : _inner = inner,
         _iriTranslator = iriTranslator;
 
   @override
-  Future<Map<IriTerm, RdfGraph?>> load(
+  Future<Map<IriTerm, RdfGraph?>> loadResourceGraphs(
       Iterable<IriTerm> externalDocumentIris) async {
-    // Translate external → internal for the storage query.
     final internalIris =
         externalDocumentIris.map(_iriTranslator.externalToInternal).toList();
 
-    final internalResults = await _inner.load(internalIris);
+    final internalResults = await _inner.loadResourceGraphs(internalIris);
 
-    // Re-key by external IRI and translate graph contents back to external.
     final externalResults = <IriTerm, RdfGraph?>{};
     for (var i = 0; i < internalIris.length; i++) {
       final externalIri = externalDocumentIris.elementAt(i);
@@ -70,6 +117,28 @@ class IriTranslatingResourceGraphLoader implements ResourceGraphLoader {
           graph != null ? _iriTranslator.translateGraphToExternal(graph) : null;
     }
     return externalResults;
+  }
+
+  @override
+  Future<Map<IriTerm, String?>> getRemoteETags(
+      Iterable<IriTerm> externalDocumentIris) {
+    final internalIris =
+        externalDocumentIris.map(_iriTranslator.externalToInternal).toList();
+    return _inner.getRemoteETags(internalIris).then((result) {
+      final externalResults = <IriTerm, String?>{};
+      for (var i = 0; i < internalIris.length; i++) {
+        externalResults[externalDocumentIris.elementAt(i)] =
+            result[internalIris[i]];
+      }
+      return externalResults;
+    });
+  }
+
+  @override
+  Future<void> setRemoteETags(Map<IriTerm, String> etagsByDocument) {
+    final internalEtags = etagsByDocument.map((externalIri, etag) =>
+        MapEntry(_iriTranslator.externalToInternal(externalIri), etag));
+    return _inner.setRemoteETags(internalEtags);
   }
 }
 
@@ -125,5 +194,11 @@ abstract interface class PipelineRemoteSyncStorage {
   StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload(
       {PipeperfCollector? perf});
 
-  Future<void> finalizeSync();
+  /// Called after all pipeline phases complete (or on error).
+  ///
+  /// Backends that defer work (e.g. single-file upload) should commit on
+  /// [SyncFinalizationSuccess] and clean up without uploading on
+  /// [SyncFinalizationFailure].
+  Future<void> finalizeSync(SyncFinalizationState state,
+      {PipeperfCollector? perf});
 }

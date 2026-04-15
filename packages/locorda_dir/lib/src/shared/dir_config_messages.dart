@@ -1,6 +1,8 @@
 /// Shared message types for DirConfig synchronization.
 library;
 
+import 'package:locorda_core/locorda_core.dart';
+
 import 'dir_config.dart';
 
 /// Message to send [DirConfig] from main thread to worker.
@@ -11,17 +13,15 @@ class DirConfigMessage {
 
   Map<String, dynamic> toJson() => {
         'type': 'DirConfigMessage',
-        'contentType': config.contentType,
-        'datasetContentType': config.datasetContentType,
-        'useShardDatasets': config.useShardDatasets,
+        'layout': config.layout.toJson(),
       };
 
   static DirConfigMessage fromJson(Map<String, dynamic> json) {
+    final layoutJson = json['layout'] as Map<String, dynamic>? ??
+        const {'type': 'filePerResource'};
     return DirConfigMessage(
       config: DirConfig(
-        contentType: json['contentType'] as String?,
-        datasetContentType: json['datasetContentType'] as String?,
-        useShardDatasets: json['useShardDatasets'] as bool? ?? false,
+        layout: RemoteStorageLayout.fromJson(layoutJson),
       ),
     );
   }

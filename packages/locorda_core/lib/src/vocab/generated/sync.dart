@@ -52,6 +52,16 @@ class Sync {
     'https://w3id.org/solid-crdt-sync/vocab/sync#IdentificationGraph',
   );
 
+  /// IRI for sync:SyncFile
+  ///
+  /// A single-file container that holds all shard and resource documents as
+  /// named graphs within one RDF dataset. The default graph identifies the
+  /// file and carries file-level metadata.
+  ///
+  static const SyncFile = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/sync#SyncFile',
+  );
+
   /// IRI for sync:isGovernedBy [Expects: http://www.w3.org/1999/02/22-rdf-syntax-ns#List]
   ///
   /// Links a data or index resource to an ordered list (rdf:List) of public mapping files that define its merge behavior. Documents are merged in list order with 'first wins' semantics - implementations should append only, not prepend, to avoid overriding existing definitions.

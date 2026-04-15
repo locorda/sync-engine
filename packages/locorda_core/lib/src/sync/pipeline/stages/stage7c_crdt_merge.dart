@@ -36,11 +36,38 @@ Iterable<pipeline.MergedResourceEvent> Function(
   String perfStage = 'S07c.CrdtMerge',
 }) {
   return (pipeline.PreloadedCandidateEvent event) => switch (event) {
-        PhaseComplete() => [event],
-        ShardComplete() => [event],
+        // --- Resource Events ---
+        ResourceError() => [event],
         PreloadedCandidate() =>
-          _merge(event, merger, reconciler, rdfCore, perf, perfStage),
+          _mergeOrError(event, merger, reconciler, rdfCore, perf, perfStage),
+
+        // --- Shard Events ---
+        ShardComplete() => [event],
+        ShardSkipped() => [event],
+        ShardError() => [event],
+
+        // --- Phase Events ---
+        PhaseComplete() => [event],
+        PhaseError() => [event],
       };
+}
+
+/// Wraps [_merge] with error handling — emits [ResourceError] on failure.
+List<pipeline.MergedResourceEvent> _mergeOrError(
+  PreloadedCandidate preloaded,
+  merger_lib.RemoteDocumentMerger merger,
+  DocumentShardReconciler reconciler,
+  RdfCore rdfCore,
+  PipeperfCollector? perf,
+  String perfStage,
+) {
+  try {
+    return _merge(preloaded, merger, reconciler, rdfCore, perf, perfStage);
+  } catch (e, st) {
+    _log.severe(
+        'Error merging resource ${preloaded.decoded.resourceIri.debug}', e, st);
+    return [ResourceError(preloaded.decoded.resourceIri, e, st)];
+  }
 }
 
 List<pipeline.MergeResult> _merge(

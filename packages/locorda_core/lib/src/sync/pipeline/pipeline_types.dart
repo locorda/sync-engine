@@ -102,14 +102,25 @@ sealed class Boundary {
   const Boundary();
 }
 
+/// Common base for all error events flowing through the pipeline.
+///
+/// Subtypes: [ResourceError], [ShardError], [PhaseError].
+/// Use `case ErrorEvent()` in switches to handle all error types uniformly
+/// where they share the same pass-through / flush-and-yield logic.
+sealed class ErrorEvent extends Boundary {
+  Object get error;
+  StackTrace get stackTrace;
+  const ErrorEvent();
+}
+
 /// All resources in this shard have been emitted / processed.
 ///
 /// Introduced by Stage 4 (Change Detection) after the 1:N fan-out.
 /// Flows from Stage 4 through Stage 9, then consumed by Stage 10.
 ///
-/// When [hasLocalChanges] is `false`, Stage 4 has already determined that
-/// neither remote nor local state changed — Stage 10 and S11 can skip this
-/// shard entirely and pass it straight through to Stage 13 (ETag update).
+/// Always implies that the shard needs downstream processing (entry load,
+/// shard CRDT merge, upload). For shards that need no processing at all,
+/// see [ShardSkipped].
 class ShardComplete extends Boundary
     implements
         SyncCandidateEvent,
@@ -119,12 +130,7 @@ class ShardComplete extends Boundary
         LoadedCandidateEvent,
         MergedResourceEvent,
         UploadedResourceEvent,
-        CommittedResourceEvent,
-        LoadedShardEntriesEvent,
-        PreparedShardEvent,
-        ContractLoadedShardEvent,
-        MergedShardEvent,
-        UploadedShardEvent {
+        CommittedResourceEvent {
   final IriTerm shardIri;
 
   /// Storage-internal identifier for the shard IRI.
@@ -144,25 +150,196 @@ class ShardComplete extends Boundary
   /// shard needs uploading (new shard → yes, existing shard → no).
   final bool existsOnRemote;
 
-  /// When `false`, Stage 4 confirmed that remote returned 304 *and* no local
-  /// changes exist — Stage 10 to S11c skip this shard entirely.
-  final bool hasLocalChanges;
-
   const ShardComplete(
     this.shardIri,
     this.shardStorageId, {
     this.remoteShardGraph,
     this.newEtag,
     this.existsOnRemote = false,
-    this.hasLocalChanges = true,
   });
+
+  ShardComplete copyWith({IriTerm? shardIri}) => ShardComplete(
+        shardIri ?? this.shardIri,
+        shardStorageId,
+        remoteShardGraph: remoteShardGraph,
+        newEtag: newEtag,
+        existsOnRemote: existsOnRemote,
+      );
+}
+
+/// A shard that needs no downstream processing — fast-path skip.
+///
+/// Introduced by Stage 4 when the upfront
+/// [Storage.getShardsWithLocalChangesSince] query confirms that a 304 (not
+/// modified) shard has no local changes either. Flows as a pass-through all
+/// the way to Stage 14 without any DB writes — the stored ETag is already
+/// correct and no commit is needed.
+///
+/// Distinct from [ShardComplete] (which always triggers S10–S12 processing)
+/// and [ShardError] (which signals failure). Together, these three event types
+/// represent the three possible terminal outcomes for a shard: success with
+/// processing, skip, or error — exactly one per shard per phase.
+class ShardSkipped extends Boundary
+    implements
+        SyncCandidateEvent,
+        FetchedCandidateEvent,
+        DecodedCandidateEvent,
+        PreloadedCandidateEvent,
+        LoadedCandidateEvent,
+        MergedResourceEvent,
+        UploadedResourceEvent,
+        CommittedResourceEvent,
+        LoadedShardEntriesEvent,
+        PreparedShardEvent,
+        ContractLoadedShardEvent,
+        MergedShardEvent,
+        UploadedShardEvent,
+        CommittedShardEvent {
+  final IriTerm shardIri;
+  final IriStorageId shardStorageId;
+
+  /// The stored ETag — preserved as metadata for downstream stages.
+  final String? newEtag;
+
+  /// Whether this shard exists on remote.
+  final bool existsOnRemote;
+
+  const ShardSkipped(
+    this.shardIri,
+    this.shardStorageId, {
+    this.newEtag,
+    this.existsOnRemote = false,
+  });
+
+  ShardSkipped copyWith({IriTerm? shardIri}) => ShardSkipped(
+        shardIri ?? this.shardIri,
+        shardStorageId,
+        newEtag: newEtag,
+        existsOnRemote: existsOnRemote,
+      );
+}
+
+/// A resource whose processing failed with an unexpected error.
+///
+/// Emitted when a resource-level operation fails:
+/// - **S05**: Local content load failure (batch DB read).
+/// - **S06**: Resource fetch failure (I/O or decode error).
+/// - **S07c**: CRDT merge failure.
+/// - **S08**: Resource upload/encode failure.
+///
+/// Backends may additionally convert one or more resource-level failures
+/// into a terminal [ShardError] at [ShardComplete], ensuring the shard is
+/// never uploaded or committed with partial/corrupt data.
+/// Stage 9 also handles forwarded [ResourceError] events and can emit
+/// [ShardError] at shard boundary when needed.
+///
+/// Introduced at S05 (first possible origin), so does not implement
+/// [SyncCandidateEvent] (S04 output / S05 input).
+class ResourceError extends ErrorEvent
+    implements
+        LoadedCandidateEvent,
+        FetchedCandidateEvent,
+        DecodedCandidateEvent,
+        PreloadedCandidateEvent,
+        MergedResourceEvent,
+        UploadedResourceEvent {
+  final IriTerm resourceIri;
+  @override
+  final Object error;
+  @override
+  final StackTrace stackTrace;
+  const ResourceError(this.resourceIri, this.error, this.stackTrace);
+
+  ResourceError copyWith({IriTerm? resourceIri}) =>
+      ResourceError(resourceIri ?? this.resourceIri, error, stackTrace);
+}
+
+/// A shard whose processing failed due to a resource error or shard-level error.
+///
+/// Emitted when a shard-level operation fails:
+/// - **S02**: Shard download/decode failure.
+/// - **S04**: Change detection failure (DB query).
+/// - **S08**: One or more [ResourceError]s occurred and shard processing was
+///   aborted at [ShardComplete].
+/// - **S09**: Resource-level failures or internal stage errors escalated to
+///   shard boundary.
+/// - **S11c**: Shard CRDT merge failure.
+/// - **S12**: Shard assembly/encode failure.
+/// - **S13**: DB commit failure (non-concurrent-update).
+///
+/// [ShardError] is a **terminal shard boundary**: stages that accumulate
+/// per-shard state (S05, S07b, S08, S09, S10, S13) must reset their state
+/// when receiving a [ShardError], just as they do for [ShardComplete].
+/// No [ShardComplete] follows a [ShardError] for the same shard.
+///
+/// Flows as a pass-through from the emitting stage through all downstream
+/// stages until Stage 14, which logs the error. Unlike [ConflictedShard],
+/// errored shards are **not** re-injected (the error would recur).
+class ShardError extends ErrorEvent
+    implements
+        FetchedShardEvent,
+        ParsedShardEvent,
+        SyncCandidateEvent,
+        LoadedCandidateEvent,
+        FetchedCandidateEvent,
+        DecodedCandidateEvent,
+        PreloadedCandidateEvent,
+        MergedResourceEvent,
+        UploadedResourceEvent,
+        CommittedResourceEvent,
+        LoadedShardEntriesEvent,
+        PreparedShardEvent,
+        ContractLoadedShardEvent,
+        MergedShardEvent,
+        UploadedShardEvent,
+        CommittedShardEvent {
+  final IriTerm shardIri;
+  @override
+  final Object error;
+  @override
+  final StackTrace stackTrace;
+  const ShardError(this.shardIri, this.error, this.stackTrace);
+
+  ShardError copyWith({IriTerm? shardIri}) =>
+      ShardError(shardIri ?? this.shardIri, error, stackTrace);
+}
+
+/// A resource whose upload was rejected due to a conflict (ETag mismatch).
+///
+/// Emitted by **S08** ([FilePerResourceRemoteSyncStorage.resourceUpload])
+/// when the remote backend returns [ConflictUploadResult].
+///
+/// **S09** consumes this event: writes the merge data to local DB (the CRDT
+/// merge was correct, only the upload failed), clears the stored remote ETag
+/// to force a fresh fetch on retry, and sets the shard-level conflict flag —
+/// at the [ShardComplete] boundary, the entire shard is emitted as
+/// [ConflictedShard] for retry via Stage 14.
+class ConflictedResource extends Boundary implements UploadedResourceEvent {
+  final IriTerm resourceIri;
+
+  /// The successfully merged result whose upload was rejected.
+  /// S09 uses this to persist the merge data to local DB.
+  final MergeResult mergeResult;
+  final String? message;
+  const ConflictedResource(this.resourceIri,
+      {required this.mergeResult, this.message});
+
+  ConflictedResource copyWith({
+    IriTerm? resourceIri,
+    MergeResult? mergeResult,
+  }) =>
+      ConflictedResource(
+        resourceIri ?? this.resourceIri,
+        mergeResult: mergeResult ?? this.mergeResult,
+        message: message,
+      );
 }
 
 /// A shard whose processing was aborted due to a conflict.
 ///
 /// Emitted in two situations:
-/// - **S09**: [ConcurrentUpdateException] during resource DB commit — the
-///   same resource was modified by a concurrently-processed shard.
+/// - **S09**: [ConcurrentUpdateException] during resource DB commit, or one
+///   or more [ConflictedResource] events within the shard.
 /// - **S12**: Upload ETag mismatch — another installation uploaded the shard
 ///   concurrently.
 ///
@@ -179,8 +356,15 @@ class ConflictedShard extends Boundary
         UploadedShardEvent,
         CommittedShardEvent {
   final IriTerm shardIri;
+  final Object? trigger;
+  final String? message;
+  const ConflictedShard(this.shardIri, {this.trigger, this.message});
 
-  const ConflictedShard(this.shardIri);
+  ConflictedShard copyWith({IriTerm? shardIri}) => ConflictedShard(
+        shardIri ?? this.shardIri,
+        trigger: trigger,
+        message: message,
+      );
 }
 
 /// All shards of this [SyncInput] batch have been emitted / processed.
@@ -216,6 +400,47 @@ class PhaseComplete extends Boundary
     this.processedShardCount, {
     this.zeroShardIndices = const [],
   });
+}
+
+/// A fatal, unrecoverable phase-level error.
+///
+/// Emitted when a stage encounters an exception outside any shard or resource
+/// context — e.g. a DB failure in S01 (shard resolution), S04 (upfront
+/// change-detection query), or S14 (meta-index stability check).
+///
+/// Every downstream stage MUST pass this through unchanged. When
+/// [safeDrain] encounters a `PhaseError` it throws, aborting the sync cycle
+/// without attempting `PhaseComplete`-driven finalization (which could
+/// corrupt data — e.g. overwriting a valid single-file with an empty one).
+class PhaseError extends ErrorEvent
+    implements
+        ShardRefEvent,
+        FetchedShardEvent,
+        ParsedShardEvent,
+        SyncCandidateEvent,
+        FetchedCandidateEvent,
+        DecodedCandidateEvent,
+        PreloadedCandidateEvent,
+        LoadedCandidateEvent,
+        MergedResourceEvent,
+        UploadedResourceEvent,
+        CommittedResourceEvent,
+        LoadedShardEntriesEvent,
+        PreparedShardEvent,
+        ContractLoadedShardEvent,
+        MergedShardEvent,
+        UploadedShardEvent,
+        CommittedShardEvent {
+  @override
+  final Object error;
+  @override
+  final StackTrace stackTrace;
+  final String stage;
+
+  const PhaseError(this.error, this.stackTrace, {required this.stage});
+
+  @override
+  String toString() => 'PhaseError($stage: $error)';
 }
 
 // ---------------------------------------------------------------------------
@@ -386,13 +611,14 @@ class ShardContent extends FetchedShard {
 
   ShardContent copyWith({
     IriTerm? shardIri,
+    IriTerm? typeIri,
     RdfGraphSource? source,
   }) =>
       ShardContent(
         shardIri ?? this.shardIri,
         shardStorageId,
         fetchPolicy,
-        typeIri,
+        typeIri ?? this.typeIri,
         source ?? this.source,
         newEtag,
         allResourcesAvailable: allResourcesAvailable,
@@ -413,9 +639,10 @@ class ShardNotModified extends FetchedShard {
       this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri,
       {this.storedEtag});
 
-  ShardNotModified copyWith({IriTerm? shardIri}) => ShardNotModified(
-      shardIri ?? this.shardIri, shardStorageId, fetchPolicy, typeIri,
-      storedEtag: storedEtag);
+  ShardNotModified copyWith({IriTerm? shardIri, IriTerm? typeIri}) =>
+      ShardNotModified(shardIri ?? this.shardIri, shardStorageId, fetchPolicy,
+          typeIri ?? this.typeIri,
+          storedEtag: storedEtag);
 }
 
 /// HTTP 404/410: shard removed.
@@ -428,8 +655,11 @@ class ShardGone extends FetchedShard {
   const ShardGone(
       this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri);
 
-  ShardGone copyWith({IriTerm? shardIri}) => ShardGone(
-      shardIri ?? this.shardIri, shardStorageId, fetchPolicy, typeIri);
+  ShardGone copyWith({IriTerm? shardIri, IriTerm? typeIri}) => ShardGone(
+      shardIri ?? this.shardIri,
+      shardStorageId,
+      fetchPolicy,
+      typeIri ?? this.typeIri);
 }
 
 /// HTTP 404: shard never uploaded — no prior ETag, first sync.
@@ -444,8 +674,9 @@ class ShardNotFound extends FetchedShard {
   const ShardNotFound(
       this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri);
 
-  ShardNotFound copyWith({IriTerm? shardIri}) => ShardNotFound(
-      shardIri ?? this.shardIri, shardStorageId, fetchPolicy, typeIri);
+  ShardNotFound copyWith({IriTerm? shardIri, IriTerm? typeIri}) =>
+      ShardNotFound(shardIri ?? this.shardIri, shardStorageId, fetchPolicy,
+          typeIri ?? this.typeIri);
 }
 
 // ---------------------------------------------------------------------------
@@ -589,14 +820,20 @@ class SyncCandidate implements SyncCandidateEvent {
     this.remoteClockHash,
   });
 
-  SyncCandidate copyWith({IriTerm? resourceIri}) => SyncCandidate(
+  SyncCandidate copyWith({IriTerm? resourceIri, IriTerm? typeIri}) =>
+      SyncCandidate(
         resourceIri ?? this.resourceIri,
         shardStorageId,
         direction,
-        typeIri,
+        typeIri ?? this.typeIri,
         localClockHash: localClockHash,
         remoteClockHash: remoteClockHash,
       );
+
+  /// Whether this candidate requires fetching the remote resource content.
+  /// Only [SyncDirection.remoteShardUnchanged] can skip the fetch (HTTP 304
+  /// on the shard guarantees no resource in that shard changed remotely).
+  bool get needsRemoteFetch => direction != SyncDirection.remoteShardUnchanged;
 }
 
 // ---------------------------------------------------------------------------
@@ -624,6 +861,13 @@ class LoadedCandidate implements LoadedCandidateEvent {
     this.localUpdatedAt,
     this.storedRemoteEtag,
   });
+
+  // Fetch when:
+  // 1. The sync direction requires it (anything except remoteShardUnchanged), OR
+  // 2. We have no stored ETag — the resource was never fetched before,
+  //    so we cannot safely skip it even if the shard is unchanged.
+  bool get needsRemoteFetch =>
+      candidate.needsRemoteFetch || storedRemoteEtag == null;
 
   LoadedCandidate copyWith({SyncCandidate? candidate}) => LoadedCandidate(
         candidate ?? this.candidate,
@@ -808,11 +1052,12 @@ class MergeResult implements MergedResourceEvent {
 
   MergeResult copyWith({
     IriTerm? resourceIri,
+    IriTerm? typeIri,
     DecodedGraphSource? mergedGraph,
   }) =>
       MergeResult(
         resourceIri ?? this.resourceIri,
-        typeIri,
+        typeIri ?? this.typeIri,
         mergedGraph ?? this.mergedGraph,
         encodedForDb,
         needsUpload: needsUpload,
@@ -851,17 +1096,6 @@ class UploadResult implements UploadedResourceEvent {
         mergeResult ?? this.mergeResult,
         newRemoteEtag: newRemoteEtag,
       );
-}
-
-// ---------------------------------------------------------------------------
-// Stage 9 output: DB Commit
-// ---------------------------------------------------------------------------
-
-/// Result of committing a resource to the local DB.
-class CommitResult implements CommittedResourceEvent {
-  final IriTerm resourceIri;
-
-  const CommitResult(this.resourceIri);
 }
 
 // ---------------------------------------------------------------------------
@@ -1052,11 +1286,13 @@ class ShardCommitResult implements CommittedShardEvent {
 //
 // Each stage has a dedicated sealed event type for the stream it produces.
 // Data events implement their stage's event type directly (zero overhead).
-// Boundary events ([ShardComplete], [PhaseComplete]) implement every event
-// interface they flow through, so they pass through stage switches as-is —
-// no wrapper allocations, no casts.
+// Boundary events ([ShardComplete], [ShardSkipped], [PhaseComplete])
+// implement every event interface they flow through, so they pass through
+// stage switches as-is — no wrapper allocations, no casts.
 //
-// [ShardComplete] implements stages 4–9 (introduced at 4, consumed at 10).
+// [ShardComplete] implements stages 4–12 (introduced at 4, consumed at 10).
+// [ShardSkipped] implements stages 4–12 (fast-path skip, consumed at 13).
+// [PhaseComplete] implements all stage event types.
 // [PhaseComplete] implements all 13 stage event types.
 // ---------------------------------------------------------------------------
 
@@ -1122,3 +1358,33 @@ sealed class UploadedShardEvent {}
 /// Stream elements emitted by Stage 13 (Shard DB Commit) — input to Stage 14.
 /// Also the terminal output type of the pipeline (Stage 14 is a pass-through).
 sealed class CommittedShardEvent {}
+
+// ---------------------------------------------------------------------------
+// Sync finalization outcome
+// ---------------------------------------------------------------------------
+
+/// Outcome passed to [PipelineRemoteSyncStorage.finalizeSync] so the backend
+/// can decide whether to commit deferred work (e.g. single-file upload) or
+/// just clean up.
+sealed class SyncFinalizationState {
+  const SyncFinalizationState();
+}
+
+/// All pipeline phases completed without errors.
+class SyncFinalizationSuccess extends SyncFinalizationState {
+  const SyncFinalizationSuccess();
+}
+
+/// Pipeline aborted due to an error — backend should clean up without
+/// uploading partial results.
+class SyncFinalizationFailure extends SyncFinalizationState {
+  final Object error;
+  final StackTrace stackTrace;
+  const SyncFinalizationFailure(this.error, this.stackTrace);
+}
+
+/// Pipeline did not run to completion — e.g. interrupted before the
+/// orchestrator finished. Backend should clean up without uploading.
+class SyncFinalizationIncomplete extends SyncFinalizationState {
+  const SyncFinalizationIncomplete();
+}

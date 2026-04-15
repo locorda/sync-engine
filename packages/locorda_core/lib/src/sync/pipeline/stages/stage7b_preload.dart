@@ -23,6 +23,9 @@ import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/util/lru_cache.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:logging/logging.dart';
+
+final _log = Logger('Stage7b.Preload');
 
 /// Returns a StreamTransformer for Stage 7b.
 ///
@@ -119,23 +122,71 @@ StreamTransformer<DecodedCandidateEvent, PreloadedCandidateEvent>
       }
     }
 
+    Stream<PreloadedCandidateEvent> preloadChunkSafe(
+        List<DecodedCandidate> chunk) async* {
+      try {
+        await for (final e in preloadChunk(chunk)) {
+          yield e;
+        }
+      } catch (e, st) {
+        _log.warning(
+            'S07b: batch preload failed for ${chunk.length} candidates', e, st);
+        for (final candidate in chunk) {
+          yield ResourceError(candidate.resourceIri, e, st);
+        }
+      }
+    }
+
     await for (final event in stream) {
       switch (event) {
+        // --- Resource Events ---
         case DecodedCandidate():
           buffer.add(event);
           if (buffer.length >= batchSize) {
-            yield* preloadChunk(buffer);
+            yield* preloadChunkSafe(buffer);
             buffer.clear();
           }
-        case ShardComplete():
+        case ResourceError():
+          yield event;
+
+        // --- Shard Events ---
+        case ShardError():
+          // ShardError could be triggered due to a failed resource in this shard - keep processing the rest of the batch
           if (buffer.isNotEmpty) {
-            yield* preloadChunk(buffer);
+            yield* preloadChunkSafe(buffer);
             buffer.clear();
           }
           yield event;
+        case ShardComplete():
+          if (buffer.isNotEmpty) {
+            yield* preloadChunkSafe(buffer);
+            buffer.clear();
+          }
+          yield event;
+        case ShardSkipped():
+          assert(buffer.isEmpty,
+              'S07b: buffer not empty at ShardSkipped — upstream protocol violation');
+          if (buffer.isNotEmpty) {
+            _log.severe('S07b: buffer unexpectedly non-empty '
+                '(${buffer.length} items) at ShardSkipped for '
+                '${event.shardIri} — discarding');
+            buffer.clear();
+          }
+          yield event;
+
+        // --- Phase Events ---
         case PhaseComplete():
           if (buffer.isNotEmpty) {
-            yield* preloadChunk(buffer);
+            yield* preloadChunkSafe(buffer);
+            buffer.clear();
+          }
+          yield event;
+        case PhaseError():
+          assert(buffer.isEmpty,
+              'S07b: buffer not empty at PhaseError — upstream protocol violation');
+          if (buffer.isNotEmpty) {
+            _log.severe('S07b: buffer unexpectedly non-empty '
+                '(${buffer.length} items) at PhaseError — discarding');
             buffer.clear();
           }
           yield event;

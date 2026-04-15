@@ -20,6 +20,7 @@
 @prefix ige2: <https://example.com/groupindextemplate/index-grouped-e093655c%2Findex#> .
 @prefix igemm10v: <https://example.com/shard/index-grouped-e093655c%2Fgroups%2F20_ad221effd73057a647d96bab312c4886%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix igf: <https://example.com/groupindextemplate/index-grouped-f615be90%2Findex#> .
+@prefix igfmm10v: <https://example.com/shard/index-grouped-f615be90%2Fgroups%2Fdesserts%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix mappings1: <https://example.org/test/mappings/> .
 @prefix mappings2: <https://w3id.org/solid-crdt-sync/mappings/> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -301,7 +302,7 @@ GRAPH recipe:chocolate-cake {
       cm:clockHash "a440f29c704d4aaec880b50db767fa0b";
       cm:createdAt "2024-01-01T02:00:00.001Z"^^xsd:dateTime;
       cm:hasClockEntry cc:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-      idx:belongsToIndexShard ifemm10v:shard, igemm10v:shard;
+      idx:belongsToIndexShard ifemm10v:shard, igfmm10v:shard, igemm10v:shard;
       sync:isGovernedBy (mappings1:recipe-v1);
       sync:managedResourceType schema:Recipe .
   cc:it a schema:Recipe;
@@ -331,7 +332,7 @@ GRAPH <https://example.com/shard/index-full-388036f3%2Fshard-mod-md5-1-0-v1_0_0>
   if3mm10v:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
       cm:physicalTime 1704074700009 .
   if3mm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
-      cm:physicalTime 1704075000030 .
+      cm:physicalTime 1704075000036 .
   if3mm10v:shard a idx:Shard;
       idx:containsEntry if3mm10v:entry-ab448ead48ff8785a91ce1fe1a078e40, if3mm10v:entry-dab29d46a8ad65d767b685c8ca60fbd8;
       idx:isShardOf if1:index .

@@ -47,6 +47,8 @@ class GDriveSyncStorage extends BaseGDriveSyncStorage {
         spaces: _spaces);
     if (fileId == null) {
       return RemoteDownloadResult(
+        documentIri: documentIri,
+        requestETag: ifNoneMatch,
         graph: null,
         etag: null,
         notModified: false,
@@ -55,16 +57,24 @@ class GDriveSyncStorage extends BaseGDriveSyncStorage {
     final result = await _client.download(fileId,
         ifNoneMatch: ifNoneMatch, convert: convert);
     if (result.notModified) {
-      return RemoteDownloadResult.notModified(etag: result.etag!);
+      return RemoteDownloadResult.notModified(
+        documentIri: documentIri,
+        requestETag: ifNoneMatch,
+        etag: result.etag!,
+      );
     }
     if (result.graph == null) {
       return RemoteDownloadResult(
+        documentIri: documentIri,
+        requestETag: ifNoneMatch,
         graph: null,
         etag: result.etag,
         notModified: false,
       );
     }
     return RemoteDownloadResult(
+      documentIri: documentIri,
+      requestETag: ifNoneMatch,
       graph: result.graph!,
       etag: result.etag,
       notModified: false,
@@ -98,13 +108,18 @@ class GDriveSyncStorage extends BaseGDriveSyncStorage {
         contentType: contentType,
         convert: convert,
       );
-      return SuccessUploadResult(created.etag);
+      return SuccessUploadResult(
+        created.etag,
+        documentIri: documentIri,
+        requestETag: ifMatch,
+      );
     } else {
       // Update existing file
       return await _client.upload(
         fileId,
         graph,
         ifMatch: ifMatch!,
+        documentIri: documentIri,
         convert: convert,
       );
     }

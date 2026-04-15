@@ -51,13 +51,19 @@ class DatasetBasedGraphSyncStorage extends GraphSyncStorage {
       // Conditional update: only succeed if etag matches
       if (existing == null || existing.etag != ifMatch) {
         // ETag mismatch - document was modified concurrently
-        return ConflictUploadResult();
+        return ConflictUploadResult(
+          documentIri: documentIri,
+          requestETag: ifMatch,
+        );
       }
     } else {
       // No ifMatch means we expect to create new document (got 404 on download)
       // If it exists now, it was created concurrently - conflict
       if (existing != null) {
-        return ConflictUploadResult();
+        return ConflictUploadResult(
+          documentIri: documentIri,
+          requestETag: ifMatch,
+        );
       }
     }
 
@@ -68,7 +74,11 @@ class DatasetBasedGraphSyncStorage extends GraphSyncStorage {
     _namedGraphs[documentIri] = (etag: etag, graph: graph);
 
     // Return clockHash as ETag
-    return SuccessUploadResult(etag);
+    return SuccessUploadResult(
+      etag,
+      documentIri: documentIri,
+      requestETag: ifMatch,
+    );
   }
 
   static String _extractETag(RdfGraph graph, RdfSubject documentIri) {
@@ -97,7 +107,13 @@ class DatasetBasedGraphSyncStorage extends GraphSyncStorage {
 
     if (res == null) {
       // Document not found in dataset - equivalent to 404
-      return RemoteDownloadResult(graph: null, etag: null, notModified: false);
+      return RemoteDownloadResult(
+        documentIri: documentIri,
+        requestETag: ifNoneMatch,
+        graph: null,
+        etag: null,
+        notModified: false,
+      );
     }
 
     // Extract clockHash from the graph to use as ETag
@@ -107,6 +123,8 @@ class DatasetBasedGraphSyncStorage extends GraphSyncStorage {
     // If identical, document hasn't changed - return 304 Not Modified
     if (ifNoneMatch != null && etag == ifNoneMatch) {
       return RemoteDownloadResult(
+        documentIri: documentIri,
+        requestETag: ifNoneMatch,
         graph: null,
         etag: etag,
         notModified: true,
@@ -115,6 +133,8 @@ class DatasetBasedGraphSyncStorage extends GraphSyncStorage {
 
     // Return the graph with its clockHash as ETag
     return RemoteDownloadResult(
+      documentIri: documentIri,
+      requestETag: ifNoneMatch,
       graph: res.graph,
       etag: etag,
       notModified: false,

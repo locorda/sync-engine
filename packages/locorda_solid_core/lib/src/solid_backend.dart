@@ -188,6 +188,7 @@ class SolidClient {
     String url, {
     bool requiresAuth = true,
     String? ifNoneMatch,
+    required IriTerm documentIri,
     required String acceptContentType,
     required T Function(String, {String? documentUrl, String? mimeType})
         convert,
@@ -225,11 +226,20 @@ class SolidClient {
 
     if (response.statusCode == 404) {
       //throw NotFoundException('Resource not found at $url');
-      return RemoteDownloadResult(graph: null, etag: null);
+      return RemoteDownloadResult(
+        documentIri: documentIri,
+        requestETag: ifNoneMatch,
+        graph: null,
+        etag: null,
+      );
     }
     if (response.statusCode == 304) {
       // Not modified
-      return RemoteDownloadResult.notModified(etag: ifNoneMatch!);
+      return RemoteDownloadResult.notModified(
+        documentIri: documentIri,
+        requestETag: ifNoneMatch,
+        etag: ifNoneMatch!,
+      );
     }
     if (response.statusCode != 200) {
       _log.warning('Failed to fetch $url: ${response.statusCode}');
@@ -245,6 +255,8 @@ class SolidClient {
     final mimeType = contentType.split(';').first.trim();
     final graph = convert(data, documentUrl: url, mimeType: mimeType);
     return RemoteDownloadResult(
+      documentIri: documentIri,
+      requestETag: ifNoneMatch,
       graph: graph,
       etag: response.headers['etag'],
     );
@@ -284,6 +296,7 @@ class SolidClient {
   Future<RemoteUploadResult> upload<T>(String url, T graph,
       {bool requiresAuth = true,
       String? ifMatch,
+      required IriTerm documentIri,
       required String Function(T) convert}) async {
     final turtle = convert(graph);
     final dpop = requiresAuth
@@ -324,7 +337,10 @@ class SolidClient {
     }
     if (response.statusCode == 409) {
       // Conflict
-      return RemoteUploadResult.conflict();
+      return RemoteUploadResult.conflict(
+        documentIri: documentIri,
+        requestETag: ifMatch,
+      );
     }
     if (response.statusCode >= 200 && response.statusCode < 300) {
       var etag = response.headers['etag'];
@@ -336,7 +352,11 @@ class SolidClient {
         }
       }
 
-      return RemoteUploadResult.success(etag ?? '');
+      return RemoteUploadResult.success(
+        etag ?? '',
+        documentIri: documentIri,
+        requestETag: ifMatch,
+      );
     }
     _log.warning('Failed to upload to $url: ${response.statusCode}');
     _log.warning('Response body: ${response.body}');
@@ -464,6 +484,7 @@ class SolidRemoteStorage implements RemoteStorage {
     final profile = await _client.download(
       webId,
       requiresAuth: true,
+      documentIri: IriTerm.validated(webId),
       acceptContentType: 'text/turtle, application/ld+json;q=0.9, */*;q=0.8',
       convert: (data, {documentUrl, mimeType}) => _rdfCore.decode(data,
           contentType: mimeType ?? 'text/turtle', documentUrl: documentUrl),
@@ -597,12 +618,15 @@ class SolidSyncStorage extends RemoteSyncStorage {
     final result = await _client.download<T>(
       podDocumentIri.value,
       requiresAuth: true,
+      documentIri: documentIri,
       acceptContentType: acceptContentType,
       ifNoneMatch: ifNoneMatch,
       convert: convert,
     );
     if (result.graph != null) {
       return RemoteDownloadResult<T>(
+        documentIri: result.documentIri,
+        requestETag: result.requestETag,
         graph: result.graph!,
         etag: result.etag,
         notModified: result.notModified,
@@ -621,6 +645,7 @@ class SolidSyncStorage extends RemoteSyncStorage {
       translatedGraph,
       requiresAuth: true,
       ifMatch: ifMatch,
+      documentIri: documentIri,
       convert: (graph) => _rdfCore.encode(graph, contentType: _contentType),
     );
   }
@@ -635,6 +660,7 @@ class SolidSyncStorage extends RemoteSyncStorage {
       translatedGraph,
       requiresAuth: true,
       ifMatch: ifMatch,
+      documentIri: documentIri,
       convert: (dataset) =>
           _rdfCore.encodeDataset(dataset, contentType: _datasetContentType),
     );

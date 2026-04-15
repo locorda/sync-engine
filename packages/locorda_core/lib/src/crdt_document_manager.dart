@@ -697,7 +697,7 @@ class CrdtDocumentManager {
 
       crdtDocument = RdfGraph.fromTriples(documentTriples);
 
-      sw?.stopSection('construct');
+      sw?.stopSection('frameworkMetaAndMerge');
 
       final documentMetadata = DocumentMetadata(
         ourPhysicalClock: physicalTimestamp,

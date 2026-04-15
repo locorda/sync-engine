@@ -29,6 +29,10 @@ sync:IdentificationGraph a rdfs:Class;
     rdfs:label "Identification Graph";
     rdfs:comment "Internal temporary graph structure used during canonical fragment generation for identified blank nodes. Contains only identifying properties and parent relationships. Never persisted in documents." .
 
+sync:SyncFile a rdfs:Class;
+    rdfs:label "Sync File";
+    rdfs:comment "A single-file container that holds all shard and resource documents as named graphs within one RDF dataset. The default graph of the dataset identifies the file and carries file-level metadata. Used in single-file storage mode where all sync data is aggregated into one remote file." .
+
 # --- Property Definitions ---
 
 sync:isGovernedBy a rdf:Property;

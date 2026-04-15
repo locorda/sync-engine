@@ -179,4 +179,158 @@ void main() {
       expect(result, events);
     });
   });
+
+  group('deferredExpandTransformer', () {
+    test('expands events via Timer.run', () async {
+      final result = await Stream.fromIterable([1, 2, 3])
+          .deferredExpand('test', (n) => [n, n * 10])
+          .toList();
+      expect(result, [1, 10, 2, 20, 3, 30]);
+    });
+
+    test('propagates errors from expand callback', () async {
+      // After the fix, errors in expand cancel upstream and close the
+      // controller, so drain() completes with the error.
+      var errorCount = 0;
+      try {
+        await Stream.fromIterable([1, 2, 3]).deferredExpand<int>('test', (n) {
+          if (n == 2) throw StateError('boom');
+          return [n];
+        }).drain<void>();
+      } on StateError catch (e) {
+        expect(e.message, 'boom');
+        errorCount++;
+      }
+      expect(errorCount, 1);
+    });
+
+    test('terminates on error when combined with decouplingTransformer',
+        () async {
+      // Reproduces the race condition: decouplingTransformer buffers
+      // multiple events ahead of deferredExpandTransformer. When the
+      // expand callback throws, the error must terminate the pipeline
+      // even though the decoupling buffer still has pending events.
+      //
+      // Without the fix (cancel upstream + close on error),
+      // the pipeline hangs because:
+      // 1. decouplingTransformer resumes and delivers the next buffered event
+      // 2. deferredExpand's Timer.run fires after cancel-cascade completes
+      // 3. controller.addError() is silently dropped (no listener)
+      // 4. controller.close() never fires → Done never delivered → hang
+      //
+      // The async stages after deferredExpand ensure that the cancel-cascade
+      // takes long enough for the race condition to manifest.
+      final source = StreamController<int>();
+
+      var errorCount = 0;
+      final pipeline = source.stream
+          .asyncExpand(_asyncExpandFkt)
+          .transform(_transformFkt())
+          .map((n) => n)
+          .transform(_transformFkt())
+          .transform(_transformFkt())
+          .transform(_transformFkt())
+          .map((n) => n)
+          .transform(_transformFkt())
+          .decoupled('pre', maxBuffered: 1280)
+          .deferredExpand<int>('merge', (n) {
+            throw StateError('CRDT merge failed');
+          })
+          .decoupled('post', maxBuffered: 1280)
+          .transform(_transformFkt())
+          .asyncExpand(_asyncExpandFkt)
+          .expand<int>((n) => [n])
+          .asyncMap<int>((n) async => n)
+          .expand((n) => [n])
+          .transform(_transformFkt())
+          .asyncExpand(_asyncExpandFkt)
+          .asyncExpand(_asyncExpandFkt); // simulate downstream async stage
+
+      // Pump enough events so the decoupling buffer fills well ahead
+      for (var i = 0; i < 50; i++) {
+        source.add(i);
+      }
+      source.close();
+
+      // Let events propagate into the pre-buffer before drain starts
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      // drain() = listen(null, cancelOnError: true).asFuture()
+      // Must complete (with error), not hang.
+      try {
+        await pipeline.drain<void>().timeout(const Duration(seconds: 5));
+      } on StateError catch (e) {
+        expect(e.message, 'CRDT merge failed');
+        errorCount++;
+      }
+
+      expect(errorCount, 1, reason: 'Pipeline should terminate with error');
+    });
+
+    test(
+        'terminates on upstream error when combined with '
+        'decouplingTransformer', () async {
+      // Upstream error (not from expand callback) must also terminate.
+      final source = StreamController<int>();
+
+      final pipeline = source.stream
+          .decoupled('pre', maxBuffered: 1280)
+          .deferredExpand<int>('merge', (n) => [n])
+          .decoupled('post', maxBuffered: 1280)
+          .asyncMap((n) async => n);
+
+      for (var i = 0; i < 10; i++) {
+        source.add(i);
+      }
+      source.addError(StateError('upstream failure'));
+      for (var i = 10; i < 20; i++) {
+        source.add(i);
+      }
+      source.close();
+
+      var errorCount = 0;
+      try {
+        await pipeline.drain<void>().timeout(const Duration(seconds: 5));
+      } on StateError catch (e) {
+        expect(e.message, 'upstream failure');
+        errorCount++;
+      }
+
+      expect(errorCount, 1);
+    });
+
+    test('works with empty stream', () async {
+      final result =
+          await Stream<int>.empty().deferredExpand('test', (n) => [n]).toList();
+      expect(result, isEmpty);
+    });
+
+    test('cancels upstream when downstream cancels', () async {
+      var upstreamCancelled = false;
+      final source = StreamController<int>(
+        onCancel: () => upstreamCancelled = true,
+      );
+
+      final sub =
+          source.stream.deferredExpand('test', (n) => [n]).listen((_) {});
+
+      source.add(1);
+      await Future<void>.delayed(Duration.zero);
+      await sub.cancel();
+
+      expect(upstreamCancelled, isTrue);
+    });
+  });
+}
+
+StreamTransformer<int, int> _transformFkt() {
+  return StreamTransformer.fromBind((stream) async* {
+    await for (final event in stream) {
+      yield event;
+    }
+  });
+}
+
+Stream<int>? _asyncExpandFkt(n) async* {
+  yield n;
 }

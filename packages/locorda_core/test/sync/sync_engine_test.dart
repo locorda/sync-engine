@@ -109,6 +109,7 @@ void main() {
           switch (suiteName) {
             case 'save':
             case 'dataset':
+            case 'singlefile':
             case 'group_index':
               setupTestLogging(Level.WARNING);
               await _executeSaveTestWithSteps(testJson, testAssetsDir, fetcher,
@@ -178,8 +179,16 @@ Future<void> _executeSaveTestWithSteps(
   }
 
   // Shared backend for all installations (simulates the remote storage)
-  // Get useShardDatasets flag from test config (defaults to false for backwards compatibility)
-  final useShardDatasets = testJson['use_shard_datasets'] as bool? ?? false;
+  // Parse storage mode from test config
+  final layoutJson = testJson['layout'];
+  final RemoteStorageLayout layout =
+      RemoteStorageLayout.fromJson(switch (layoutJson) {
+    Map<String, dynamic> json => json,
+    String layoutType => {'type': layoutType},
+    null => const {'type': 'filePerResource'},
+    _ => throw ArgumentError('Invalid layout format: $layoutJson'),
+  });
+
   final backendIriTranslator = IriTranslator.forConfig(
     resourceLocator: LocalResourceLocator(iriTermFactory: IriTerm.validated),
     resourceConfigs: installationConfigs.values
@@ -227,10 +236,11 @@ Future<void> _executeSaveTestWithSteps(
             TestPhysicalTimestampFactory(baseTimestamp: baseTimestamp);
 
         final sharedBackend = InMemoryBackend(
-          useShardDatasets: useShardDatasets,
+          layout: layout,
           iriTranslator: backendIriTranslator,
           rdfCore: rdfCore,
-          resourceGraphLoader: ResourceGraphLoaderImpl(storage: storage),
+          storageAccessFactory:
+              BackendStorageAccessFactoryImpl(storage: storage),
           store: store,
         );
 
@@ -1169,7 +1179,8 @@ Future<void> _executeSaveErrorTest(
           InMemoryBackend(
               rdfCore: rdfCore,
               store: InMemoryBackendStore(),
-              resourceGraphLoader: ResourceGraphLoaderImpl(storage: storage))
+              storageAccessFactory:
+                  BackendStorageAccessFactoryImpl(storage: storage))
         ],
         storage: storage,
         fetcher: fetcher,

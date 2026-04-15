@@ -45,18 +45,18 @@ class InMemoryBackend implements PipelineBackend {
   final IriTranslator? iriTranslator;
 
   InMemoryBackend({
-    bool useShardDatasets = false,
+    RemoteStorageLayout layout = const FilePerResource(),
     this.iriTranslator,
     required RdfCore rdfCore,
-    required ResourceGraphLoader resourceGraphLoader,
+    required BackendStorageAccessFactory storageAccessFactory,
     required InMemoryBackendStore store,
   })  : _remotes = [
           InMemoryRemoteStorage(
             RemoteId('in-memory', 'default'),
-            useShardDatasets: useShardDatasets,
+            layout: layout,
             iriTranslator: iriTranslator,
             rdfCore: rdfCore,
-            resourceGraphLoader: resourceGraphLoader,
+            storageAccessFactory: storageAccessFactory,
             store: store,
           )
         ],
@@ -88,24 +88,25 @@ class InMemoryBackend implements PipelineBackend {
 class InMemoryRemoteStorage implements PipelineRemoteStorage {
   @override
   final RemoteId remoteId;
-  @override
-  final bool useShardDatasets;
+
+  final RemoteStorageLayout _layout;
   final IriTranslator? iriTranslator;
   final RdfCore _rdfCore;
-  final ResourceGraphLoader _resourceGraphLoader;
+  final BackendStorageAccess _storageAccess;
 
   /// Storage: documentIri -> (graph, etag)
   final InMemoryBackendStore _store;
 
   InMemoryRemoteStorage(
     this.remoteId, {
-    this.useShardDatasets = false,
+    RemoteStorageLayout layout = const FilePerResource(),
     this.iriTranslator,
     required RdfCore rdfCore,
-    required ResourceGraphLoader resourceGraphLoader,
+    required BackendStorageAccessFactory storageAccessFactory,
     required InMemoryBackendStore store,
-  })  : _rdfCore = rdfCore,
-        _resourceGraphLoader = resourceGraphLoader,
+  })  : _layout = layout,
+        _rdfCore = rdfCore,
+        _storageAccess = storageAccessFactory.forRemote(remoteId),
         _store = store;
 
   @override
@@ -117,33 +118,24 @@ class InMemoryRemoteStorage implements PipelineRemoteStorage {
   @override
   Future<PipelineRemoteSyncStorage> createPipelineSyncStorage(
       SyncEngineConfig config) async {
-    final mode =
-        RemoteStorageMode.fromFlags(useShardDatasets: useShardDatasets);
-    final contentType = mode.defaultContentType;
-    final isBinary = isBinaryContentType(contentType);
     final backend = _InMemorySyncBackend(
       storage: _store,
       rdfCore: _rdfCore,
-      contentType: contentType,
-      isBinary: isBinary,
+      contentType: _layout.contentType,
     );
     if (iriTranslator != null) {
       return RemoteSyncStorages.createIriTranslated(
-          mode: mode,
-          contentType: contentType,
+          layout: _layout,
           backend: backend,
           rdfCore: _rdfCore,
-          resourceGraphLoader: _resourceGraphLoader,
-          translator: iriTranslator!,
-          isBinary: isBinary);
+          storageAccess: _storageAccess,
+          translator: iriTranslator!);
     }
     return RemoteSyncStorages.create(
-      mode: mode,
+      layout: _layout,
       backend: backend,
       rdfCore: _rdfCore,
-      resourceGraphLoader: _resourceGraphLoader,
-      contentType: contentType,
-      isBinary: isBinary,
+      storageAccess: _storageAccess,
     );
   }
 
@@ -233,16 +225,18 @@ class _InMemorySyncBackend implements RemoteSyncBackend {
   final InMemoryBackendStore _storage;
   final RdfCore _rdfCore;
   final String _contentType;
+  final bool _isDataset;
   final bool _isBinary;
   _InMemorySyncBackend({
     required InMemoryBackendStore storage,
     required RdfCore rdfCore,
     required String contentType,
-    bool? isBinary,
   })  : _storage = storage,
         _rdfCore = rdfCore,
         _contentType = contentType,
-        _isBinary = isBinary ?? isBinaryContentType(contentType);
+        _isBinary = rdfCore.contentTypeInfo(contentType)?.isBinary ?? false,
+        _isDataset =
+            rdfCore.contentTypeInfo(contentType)?.supportsDataset ?? false;
 
   @override
   Stream<RemoteDownloadResult<RawContent>> download(
@@ -251,12 +245,13 @@ class _InMemorySyncBackend implements RemoteSyncBackend {
       _logger.fine(
           'Downloading document: ${request.documentIri.debug}, ifNoneMatch:${request.ifNoneMatch}');
 
-      // Try as RdfGraph first (FPR mode), then as RdfDataset (SDS mode).
       final stored = _storage.getDocument(request.documentIri);
 
       if (stored == null) {
         _logger.fine('Document not found: ${request.documentIri.debug}');
         return RemoteDownloadResult<RawContent>(
+          documentIri: request.documentIri,
+          requestETag: request.ifNoneMatch,
           graph: null,
           etag: null,
           notModified: false,
@@ -265,38 +260,47 @@ class _InMemorySyncBackend implements RemoteSyncBackend {
 
       if (request.ifNoneMatch != null && request.ifNoneMatch == stored.etag) {
         _logger.fine('Document not modified: ${request.documentIri.debug}');
-        return RemoteDownloadResult<RawContent>.notModified(etag: stored.etag);
+        return RemoteDownloadResult<RawContent>.notModified(
+          documentIri: request.documentIri,
+          requestETag: request.ifNoneMatch,
+          etag: stored.etag,
+        );
       }
 
       _logger.fine(
           'Document downloaded: ${request.documentIri.debug}, etag:${stored.etag}');
 
       // Encode stored data to raw content for the pipeline.
+      // Real backends actually store the encoded content and not the decoded
+      // graph/dataset as we do, you will probably not see any other backend than the
+      // in-memory one doing this dance here.
       final RawContent content;
       final data = stored.data;
-      if (data is RdfGraph) {
+      if (_isDataset) {
         if (_isBinary) {
-          final encodedBytes =
-              _rdfCore.encodeBinary(data, contentType: _contentType);
+          final encodedBytes = _rdfCore.encodeBinaryDataset(data as RdfDataset,
+              contentType: _contentType);
           content = BinaryContent(encodedBytes, contentType: _contentType);
         } else {
-          final text = _rdfCore.encode(data, contentType: _contentType);
-          content = TextContent(text, contentType: _contentType);
-        }
-      } else if (data is RdfDataset) {
-        if (_isBinary) {
-          final encodedBytes =
-              _rdfCore.encodeBinaryDataset(data, contentType: _contentType);
-          content = BinaryContent(encodedBytes, contentType: _contentType);
-        } else {
-          final text = _rdfCore.encodeDataset(data, contentType: _contentType);
+          final text = _rdfCore.encodeDataset(data as RdfDataset,
+              contentType: _contentType);
           content = TextContent(text, contentType: _contentType);
         }
       } else {
-        throw StateError('Unknown stored data type: ${data.runtimeType}');
+        if (_isBinary) {
+          final encodedBytes = _rdfCore.encodeBinary(data as RdfGraph,
+              contentType: _contentType);
+          content = BinaryContent(encodedBytes, contentType: _contentType);
+        } else {
+          final text =
+              _rdfCore.encode(data as RdfGraph, contentType: _contentType);
+          content = TextContent(text, contentType: _contentType);
+        }
       }
 
       return RemoteDownloadResult<RawContent>(
+        documentIri: request.documentIri,
+        requestETag: request.ifNoneMatch,
         graph: content,
         etag: stored.etag,
         notModified: false,
@@ -314,21 +318,19 @@ class _InMemorySyncBackend implements RemoteSyncBackend {
       // Decode raw content to the appropriate type for storage.
       final raw = request.document;
       final Object data;
-      final ct = raw.contentType;
-
-      // Heuristic: dataset formats → RdfDataset, otherwise → RdfGraph.
-      if (isDatasetContentType(ct)) {
+      if (_isDataset) {
         data = switch (raw) {
           TextContent(:final text) =>
-            _rdfCore.decodeDataset(text, contentType: ct),
+            _rdfCore.decodeDataset(text, contentType: _contentType),
           BinaryContent(:final bytes) =>
-            _rdfCore.decodeBinaryDataset(bytes, contentType: ct),
+            _rdfCore.decodeBinaryDataset(bytes, contentType: _contentType),
         };
       } else {
         data = switch (raw) {
-          TextContent(:final text) => _rdfCore.decode(text, contentType: ct),
+          TextContent(:final text) =>
+            _rdfCore.decode(text, contentType: _contentType),
           BinaryContent(:final bytes) =>
-            _rdfCore.decodeBinary(bytes, contentType: ct),
+            _rdfCore.decodeBinary(bytes, contentType: _contentType),
         };
       }
 
@@ -344,27 +346,44 @@ class _InMemorySyncBackend implements RemoteSyncBackend {
       if (stored != null) {
         _logger.fine(
             'Document already exists: ${documentIri.debug}, cannot create');
-        return RemoteUploadResult.conflict();
+        return RemoteUploadResult.conflict(
+          documentIri: documentIri,
+          requestETag: ifMatch,
+        );
       }
       final newEtag = _storage.storeDocument(documentIri, data);
       _logger.fine('Document created: ${documentIri.debug}, etag:$newEtag');
-      return RemoteUploadResult.success(newEtag);
+      return RemoteUploadResult.success(
+        newEtag,
+        documentIri: documentIri,
+        requestETag: ifMatch,
+      );
     }
 
     if (stored == null) {
       _logger.fine('Document not found: ${documentIri.debug}, cannot update');
-      return RemoteUploadResult.conflict();
+      return RemoteUploadResult.conflict(
+        documentIri: documentIri,
+        requestETag: ifMatch,
+      );
     }
 
     if (stored.etag != ifMatch) {
       _logger.fine(
           'ETag mismatch for document: ${documentIri.debug}, cannot update (ifMatch: $ifMatch, currentEtag: ${stored.etag})');
-      return RemoteUploadResult.conflict();
+      return RemoteUploadResult.conflict(
+        documentIri: documentIri,
+        requestETag: ifMatch,
+      );
     }
 
     final newEtag = _storage.storeDocument(documentIri, data);
     _logger.fine('Document updated: ${documentIri.debug}, new etag:$newEtag');
-    return RemoteUploadResult.success(newEtag);
+    return RemoteUploadResult.success(
+      newEtag,
+      documentIri: documentIri,
+      requestETag: ifMatch,
+    );
   }
 
   Future<void> delete(IriTerm documentIri, {String? ifMatch}) async {

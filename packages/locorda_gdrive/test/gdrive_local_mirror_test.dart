@@ -81,6 +81,7 @@ class FakeGDriveClient implements GDriveApiClient {
     String fileId,
     List<int> bytes, {
     required String ifMatch,
+    required IriTerm documentIri,
   }) async {
     if (deletedIds.contains(fileId)) {
       throw GDriveClientException('File not found: $fileId');
@@ -88,11 +89,18 @@ class FakeGDriveClient implements GDriveApiClient {
     final file = filesById[fileId];
     if (file == null) throw StateError('Missing file: $fileId');
     if (file.md5Checksum != ifMatch) {
-      return RemoteUploadResult.conflict();
+      return RemoteUploadResult.conflict(
+        documentIri: documentIri,
+        requestETag: ifMatch,
+      );
     }
     file.bytes = bytes;
     file.md5Checksum = md5.convert(bytes).toString();
-    return RemoteUploadResult.success(file.md5Checksum);
+    return RemoteUploadResult.success(
+      file.md5Checksum,
+      documentIri: documentIri,
+      requestETag: ifMatch,
+    );
   }
 
   @override
@@ -100,6 +108,7 @@ class FakeGDriveClient implements GDriveApiClient {
     String fileId,
     T updatedGraph, {
     required String ifMatch,
+    required IriTerm documentIri,
     required String Function(T) convert,
   }) {
     throw UnimplementedError();

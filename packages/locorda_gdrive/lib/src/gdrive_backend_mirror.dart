@@ -126,17 +126,31 @@ class GDriveLocalMirror {
     required T Function(String) convert,
   }) async {
     final relativePath = _relativePathForDocument(documentIri);
-    final result =
-        await _store.download(relativePath, ifNoneMatch: ifNoneMatch);
+    final result = await _store.download(relativePath,
+        ifNoneMatch: ifNoneMatch, documentIri: documentIri);
     if (result.notModified) {
-      return RemoteDownloadResult<T>.notModified(etag: result.etag ?? '');
+      return RemoteDownloadResult<T>.notModified(
+        documentIri: documentIri,
+        requestETag: ifNoneMatch,
+        etag: result.etag ?? '',
+      );
     }
     if (result.graph == null) {
       return RemoteDownloadResult<T>(
-          graph: null, etag: null, notModified: false);
+        documentIri: documentIri,
+        requestETag: ifNoneMatch,
+        graph: null,
+        etag: null,
+        notModified: false,
+      );
     }
     final graph = convert(result.graph!);
-    return RemoteDownloadResult<T>(graph: graph, etag: result.etag);
+    return RemoteDownloadResult<T>(
+      documentIri: documentIri,
+      requestETag: ifNoneMatch,
+      graph: graph,
+      etag: result.etag,
+    );
   }
 
   Future<RemoteUploadResult> upload<T>(IriTerm documentIri, T updatedGraph,
@@ -151,6 +165,7 @@ class GDriveLocalMirror {
       bytes,
       ifMatch: ifMatch,
       contentType: contentType,
+      documentIri: documentIri,
     );
   }
 
@@ -191,8 +206,9 @@ class GDriveLocalMirror {
 
         final ifMatch = entry.remoteMd5 ?? localMd5;
         try {
-          final result =
-              await _client.uploadRaw(entry.fileId!, bytes, ifMatch: ifMatch);
+          final result = await _client.uploadRaw(entry.fileId!, bytes,
+              ifMatch: ifMatch,
+              documentIri: IriTerm.validated('internal:mirror:${entry.path}'));
           if (result is SuccessUploadResult) {
             _index.entries[entry.path] = entry.copyWith(
               remoteMd5: result.etag,
@@ -534,12 +550,14 @@ class GDriveMirrorTypeIndexBackend extends TypeIndexManagerBackend {
     required String contentType,
     required String Function(T) convert,
   }) async {
+    final syntheticIri = IriTerm.validated('internal:mirror:$fileName');
     final bytes = utf8.encode(convert(data));
     final result = await _store.upload(
       fileName,
       bytes,
       ifMatch: null,
       contentType: contentType,
+      documentIri: syntheticIri,
     );
 
     if (result is SuccessUploadResult) {
@@ -547,7 +565,7 @@ class GDriveMirrorTypeIndexBackend extends TypeIndexManagerBackend {
       return (fileId: fileName, etag: result.etag);
     }
 
-    final existing = await _store.download(fileName);
+    final existing = await _store.download(fileName, documentIri: syntheticIri);
     if (existing.graph == null) {
       throw StateError('Failed to create or read file: $fileName');
     }
@@ -560,7 +578,9 @@ class GDriveMirrorTypeIndexBackend extends TypeIndexManagerBackend {
     fileId, {
     required T Function(String) convert,
   }) async {
-    final result = await _store.download(fileId as String);
+    final id = fileId as String;
+    final result = await _store.download(id,
+        documentIri: IriTerm.validated('internal:mirror:$id'));
     return (
       graph: result.graph == null ? null : convert(result.graph!),
       etag: result.etag,
@@ -585,11 +605,13 @@ class GDriveMirrorTypeIndexBackend extends TypeIndexManagerBackend {
     required String ifMatch,
     required String Function(T) convert,
   }) async {
+    final id = fileId as String;
     final bytes = utf8.encode(convert(updatedGraph));
     final result = await _store.upload(
-      fileId as String,
+      id,
       bytes,
       ifMatch: ifMatch,
+      documentIri: IriTerm.validated('internal:mirror:$id'),
     );
     await _onIndexChanged?.call();
     return result;
@@ -622,12 +644,15 @@ class _GDriveMirrorStore {
   Future<RemoteDownloadResult<String>> download(
     String relativePath, {
     String? ifNoneMatch,
+    required IriTerm documentIri,
   }) async {
     final entry = _index.entries[relativePath];
     final file =
         File(GDriveLocalMirror._localFilePath(_filesDir, relativePath));
     if (!await file.exists()) {
       return RemoteDownloadResult<String>(
+        documentIri: documentIri,
+        requestETag: ifNoneMatch,
         graph: null,
         etag: null,
         notModified: false,
@@ -636,11 +661,20 @@ class _GDriveMirrorStore {
 
     final currentEtag = entry?.localMd5 ?? await _computeFileMd5(file);
     if (ifNoneMatch != null && ifNoneMatch == currentEtag) {
-      return RemoteDownloadResult<String>.notModified(etag: currentEtag);
+      return RemoteDownloadResult<String>.notModified(
+        documentIri: documentIri,
+        requestETag: ifNoneMatch,
+        etag: currentEtag,
+      );
     }
 
     final content = await file.readAsString();
-    return RemoteDownloadResult<String>(graph: content, etag: currentEtag);
+    return RemoteDownloadResult<String>(
+      documentIri: documentIri,
+      requestETag: ifNoneMatch,
+      graph: content,
+      etag: currentEtag,
+    );
   }
 
   Future<RemoteUploadResult> upload(
@@ -648,20 +682,30 @@ class _GDriveMirrorStore {
     List<int> bytes, {
     String? ifMatch,
     String? contentType,
+    required IriTerm documentIri,
   }) async {
     final entry = _index.entries[relativePath];
 
     if (ifMatch == null) {
       if (entry != null) {
-        return RemoteUploadResult.conflict();
+        return RemoteUploadResult.conflict(
+          documentIri: documentIri,
+          requestETag: ifMatch,
+        );
       }
     } else {
       if (entry == null) {
-        return RemoteUploadResult.conflict();
+        return RemoteUploadResult.conflict(
+          documentIri: documentIri,
+          requestETag: ifMatch,
+        );
       }
       final currentEtag = entry.localMd5 ?? entry.remoteMd5;
       if (currentEtag != ifMatch) {
-        return RemoteUploadResult.conflict();
+        return RemoteUploadResult.conflict(
+          documentIri: documentIri,
+          requestETag: ifMatch,
+        );
       }
     }
 
@@ -679,7 +723,11 @@ class _GDriveMirrorStore {
     );
 
     _index.entries[relativePath] = updatedEntry;
-    return RemoteUploadResult.success(newMd5);
+    return RemoteUploadResult.success(
+      newMd5,
+      documentIri: documentIri,
+      requestETag: ifMatch,
+    );
   }
 
   Future<bool> exists(String relativePath) async {

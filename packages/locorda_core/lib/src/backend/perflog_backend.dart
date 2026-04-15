@@ -363,9 +363,6 @@ class PerflogPipelineRemoteStorage implements PipelineRemoteStorage {
   RemoteId get remoteId => _inner.remoteId;
 
   @override
-  bool get useShardDatasets => _inner.useShardDatasets;
-
-  @override
   Future<void> dispose() async {
     await _perflog.dispose();
   }

@@ -49,7 +49,7 @@ abstract class WorkerHandlerContext {
 }
 
 abstract class BackendWorkerHandlerContext implements WorkerHandlerContext {
-  ResourceGraphLoader get resourceGraphLoader;
+  BackendStorageAccessFactory get storageAccessFactory;
   RdfCore get rdfCore;
   IriTermFactory? get iriFactory;
 }
@@ -72,14 +72,17 @@ class WorkerHandlerContextImpl implements WorkerHandlerContext {
 }
 
 class BackendWorkerHandlerContextImpl implements BackendWorkerHandlerContext {
-  final ResourceGraphLoader resourceGraphLoader;
+  @override
+  final BackendStorageAccessFactory storageAccessFactory;
   final WorkerHandlerContext _context;
+  @override
   final RdfCore rdfCore;
+  @override
   final IriTermFactory? iriFactory;
 
   BackendWorkerHandlerContextImpl({
     required WorkerHandlerContext context,
-    required this.resourceGraphLoader,
+    required this.storageAccessFactory,
     required this.rdfCore,
     this.iriFactory,
   }) : _context = context;

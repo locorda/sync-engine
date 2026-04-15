@@ -206,18 +206,19 @@ class RemoteDocumentMerger {
     }
     final localStatement = localGraph.getStatementForKey(subject.localKey);
     final remoteStatement = remoteGraph.getStatementForKey(subject.remoteKey);
+
+    final localExists = subject.local != null;
+    final remoteExists = subject.remote != null;
+
     final mergeInstructions = computeMergeInstructions(
       mergeContext.clockComparison,
       localStatement,
-      subject.local != null,
+      localExists,
       localGraph,
       remoteStatement,
-      subject.remote != null,
+      remoteExists,
       remoteGraph,
     );
-
-    //print(
-    //   '📄 ${documentIri.debug}\n\t${subject.localKey?.value.debug} & ${subject.remoteKey?.value.debug}\n\t=> $mergeInstructions');
 
     switch (mergeInstructions) {
       case MergeInstruction.keepLocal:

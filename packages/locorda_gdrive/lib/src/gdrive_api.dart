@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:http/http.dart' as http;
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
@@ -124,6 +125,7 @@ abstract interface class GDriveApiClient {
     String fileId,
     T updatedGraph, {
     required String ifMatch,
+    required IriTerm documentIri,
     required String Function(T) convert,
   });
 
@@ -131,6 +133,7 @@ abstract interface class GDriveApiClient {
     String fileId,
     List<int> bytes, {
     required String ifMatch,
+    required IriTerm documentIri,
   });
 
   Future<List<GDriveListedEntry>> listFilesRecursively({
@@ -694,6 +697,7 @@ class GDriveClient implements GDriveApiClient {
     String fileId,
     T updatedGraph, {
     required String ifMatch,
+    required IriTerm documentIri,
     required String Function(T) convert,
   }) async {
     _clientLog.fine('Uploading file $fileId');
@@ -711,7 +715,10 @@ class GDriveClient implements GDriveApiClient {
       if (currentEtag != ifMatch) {
         _clientLog.warning(
             'ETag mismatch for file $fileId: expected=$ifMatch, actual=$currentEtag');
-        return RemoteUploadResult.conflict();
+        return RemoteUploadResult.conflict(
+          documentIri: documentIri,
+          requestETag: ifMatch,
+        );
       }
 
       // 3. Serialize RDF graph to Turtle format
@@ -733,7 +740,11 @@ class GDriveClient implements GDriveApiClient {
 
       final newEtag = updated.md5Checksum!;
       _clientLog.info('Updated file: $fileId (new ETag: $newEtag)');
-      return RemoteUploadResult.success(newEtag);
+      return RemoteUploadResult.success(
+        newEtag,
+        documentIri: documentIri,
+        requestETag: ifMatch,
+      );
     } on drive.DetailedApiRequestError catch (e, stackTrace) {
       // Handle API-specific errors
       handleGDriveAuthError(e);
@@ -755,7 +766,7 @@ class GDriveClient implements GDriveApiClient {
 
   @override
   Future<RemoteUploadResult> uploadRaw(String fileId, List<int> bytes,
-      {required String ifMatch}) async {
+      {required String ifMatch, required IriTerm documentIri}) async {
     _clientLog.fine('Uploading raw file $fileId');
 
     try {
@@ -768,7 +779,10 @@ class GDriveClient implements GDriveApiClient {
       if (currentEtag != ifMatch) {
         _clientLog.warning(
             'ETag mismatch for raw file $fileId: expected=$ifMatch, actual=$currentEtag');
-        return RemoteUploadResult.conflict();
+        return RemoteUploadResult.conflict(
+          documentIri: documentIri,
+          requestETag: ifMatch,
+        );
       }
 
       final media = drive.Media(Stream.value(bytes), bytes.length);
@@ -781,7 +795,11 @@ class GDriveClient implements GDriveApiClient {
 
       final newEtag = updated.md5Checksum ?? '';
       _clientLog.info('Updated raw file: $fileId (new ETag: $newEtag)');
-      return RemoteUploadResult.success(newEtag);
+      return RemoteUploadResult.success(
+        newEtag,
+        documentIri: documentIri,
+        requestETag: ifMatch,
+      );
     } on drive.DetailedApiRequestError catch (e, stackTrace) {
       handleGDriveAuthError(e);
 

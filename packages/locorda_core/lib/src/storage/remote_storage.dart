@@ -6,19 +6,37 @@ import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_rdf_core/core.dart';
 
 /// Result of a remote download operation with ETag support.
+///
+/// [documentIri] and [requestETag] echo back the request identity so the
+/// pipeline can match results to requests when backends return them
+/// out-of-order (cross-shard batching).
 class RemoteDownloadResult<T> {
+  /// The IRI of the document this result belongs to.
+  final IriTerm documentIri;
+
+  /// The `ifNoneMatch` ETag from the originating request (if any).
+  final String? requestETag;
+
   final T? graph;
   final String? etag;
   final bool notModified; // true if 304 Not Modified
 
   const RemoteDownloadResult({
+    required this.documentIri,
+    this.requestETag,
     required this.graph,
     required this.etag,
     this.notModified = false,
   });
 
-  factory RemoteDownloadResult.notModified({required String etag}) {
+  factory RemoteDownloadResult.notModified({
+    required IriTerm documentIri,
+    String? requestETag,
+    required String etag,
+  }) {
     return RemoteDownloadResult<T>(
+      documentIri: documentIri,
+      requestETag: requestETag,
       graph: null,
       etag: etag,
       notModified: true,
@@ -26,11 +44,15 @@ class RemoteDownloadResult<T> {
   }
 
   RemoteDownloadResult<T> copyWith({
+    IriTerm? documentIri,
+    String? requestETag,
     T? graph,
     String? etag,
     bool? notModified,
   }) {
     return RemoteDownloadResult<T>(
+      documentIri: documentIri ?? this.documentIri,
+      requestETag: requestETag ?? this.requestETag,
       graph: graph ?? this.graph,
       etag: etag ?? this.etag,
       notModified: notModified ?? this.notModified,
@@ -50,24 +72,63 @@ class RemoteDownloadRequest {
 }
 
 /// Result of a remote upload operation with ETag support.
+///
+/// [documentIri] and [requestETag] echo back the request identity so the
+/// pipeline can match results to requests when backends return them
+/// out-of-order (cross-shard batching).
 sealed class RemoteUploadResult {
+  /// The IRI of the document this result belongs to.
+  IriTerm get documentIri;
+
+  /// The `ifMatch` ETag from the originating request (if any).
+  String? get requestETag;
+
   const RemoteUploadResult();
 
-  factory RemoteUploadResult.conflict() {
-    return const ConflictUploadResult();
+  factory RemoteUploadResult.conflict({
+    required IriTerm documentIri,
+    String? requestETag,
+  }) {
+    return ConflictUploadResult(
+      documentIri: documentIri,
+      requestETag: requestETag,
+    );
   }
-  factory RemoteUploadResult.success(String etag) {
-    return SuccessUploadResult(etag);
+  factory RemoteUploadResult.success(
+    String etag, {
+    required IriTerm documentIri,
+    String? requestETag,
+  }) {
+    return SuccessUploadResult(
+      etag,
+      documentIri: documentIri,
+      requestETag: requestETag,
+    );
   }
 }
 
 final class ConflictUploadResult extends RemoteUploadResult {
-  const ConflictUploadResult();
+  @override
+  final IriTerm documentIri;
+  @override
+  final String? requestETag;
+  const ConflictUploadResult({
+    required this.documentIri,
+    this.requestETag,
+  });
 }
 
 final class SuccessUploadResult extends RemoteUploadResult {
+  @override
+  final IriTerm documentIri;
+  @override
+  final String? requestETag;
   final String etag;
-  const SuccessUploadResult(this.etag);
+  const SuccessUploadResult(
+    this.etag, {
+    required this.documentIri,
+    this.requestETag,
+  });
 }
 
 /// Request descriptor for conditional remote uploads.
@@ -322,16 +383,6 @@ abstract class PipelineRemoteStorage {
   /// Throws if backend cannot be initialized (e.g., auth failure, missing config).
   Future<PipelineRemoteSyncStorage> createPipelineSyncStorage(
       SyncEngineConfig config);
-
-  /// Whether this remote storage uses shard datasets (all resources in one file per shard).
-  ///
-  /// **Important Implications:**
-  /// - When true: All RootResourceFetchPolicy must be Prefetch() (lazy loading impossible)
-  /// - When true: All index entries must have corresponding documents in storage
-  /// - Backend switch: Can only switch to dataset mode if storage is complete
-  ///
-  /// This is a global flag (not per-type) to simplify the experimental phase.
-  bool get useShardDatasets => false;
 
   Future<void> dispose() async {}
 }
@@ -635,6 +686,27 @@ class IriTranslatingRemoteSyncStorage extends RemoteSyncStorage {
   }
 }
 
+/// Decorates a [PipelineRemoteSyncStorage] with IRI translation between
+/// Locorda-internal (`tag:locorda.org,2025:l:…`) and backend-specific IRIs.
+///
+/// **Translation invariant:** Every event carrying an [IriTerm] or an
+/// [RdfGraph]/[RdfDataset] must be translated — not just the "primary" data
+/// events, but also boundary events ([ShardComplete], [ResourceError],
+/// [ShardError], [ConflictedShard]).
+///
+/// Why boundary events must be translated too:
+/// - **Input side:** The delegate implementation receives events with IRIs and
+///   may inspect them (e.g., for logging, error tracking, or accumulator
+///   lookups keyed by IRI). If boundary IRIs remain internal while data IRIs
+///   are external, the delegate sees an inconsistent IRI space.
+/// - **Output side:** The delegate may *create* new boundary events (e.g., a
+///   [ResourceError] from a failed resource fetch, or a [ConflictedShard] from
+///   an ETag mismatch). Those IRIs will be in external form and must be
+///   translated back to internal.
+///
+/// [PhaseComplete] is the sole exception — it carries pipeline-internal
+/// [SyncInput] metadata (index IRIs, retry counts) that are never
+/// backend-specific and therefore need no translation.
 class PipelineIriTranslatingRemoteSyncStorage
     implements PipelineRemoteSyncStorage {
   final PipelineRemoteSyncStorage _remote;
@@ -649,10 +721,15 @@ class PipelineIriTranslatingRemoteSyncStorage
         _iriTranslator = iriTranslator;
 
   // ---------------------------------------------------------------------------
-  // RemoteSyncPipelineSupport — wraps _pipelineSupport with IRI translation.
+  // Stage transformers — wrap delegate with IRI translation on both sides.
   //
-  // Input events: translate locorda-internal IRIs → external (backend) IRIs
-  // Output events: translate external IRIs/graphs → locorda-internal IRIs
+  // Every event carrying an IriTerm (or a graph/dataset containing IRIs) is
+  // translated:
+  //   Input:  internal → external  (so the delegate sees backend-native IRIs)
+  //   Output: external → internal  (so the rest of the pipeline sees internal)
+  //
+  // PhaseComplete is the only exception — it carries pipeline metadata
+  // (SyncInput) that is never backend-specific.
   // ---------------------------------------------------------------------------
 
   /// Translates decoded graph sources, leaving encoded sources as-is
@@ -722,19 +799,36 @@ class PipelineIriTranslatingRemoteSyncStorage
       _wrap(
         _remote.shardFetch(perf: perf),
         (e) => switch (e) {
-          ShardRef() => e.copyWith(shardIri: _toExternal(e.shardIri)),
+          ShardRef() => e.copyWith(
+              shardIri: _toExternal(e.shardIri),
+              indexIri: _toExternal(e.indexIri),
+              typeIri: _toExternal(e.typeIri),
+            ),
           PhaseComplete() => e,
+          PhaseError() => e,
         },
         (e) => switch (e) {
           ShardContent() => e.copyWith(
               shardIri: _toInternal(e.shardIri),
+              typeIri: e.typeIri != null ? _toInternal(e.typeIri!) : null,
               source: _translateSource(
                   e.source, _iriTranslator.translateGraphToInternal),
             ),
-          ShardNotModified() => e.copyWith(shardIri: _toInternal(e.shardIri)),
-          ShardNotFound() => e.copyWith(shardIri: _toInternal(e.shardIri)),
-          ShardGone() => e.copyWith(shardIri: _toInternal(e.shardIri)),
+          ShardNotModified() => e.copyWith(
+              shardIri: _toInternal(e.shardIri),
+              typeIri: _toInternal(e.typeIri),
+            ),
+          ShardNotFound() => e.copyWith(
+              shardIri: _toInternal(e.shardIri),
+              typeIri: _toInternal(e.typeIri),
+            ),
+          ShardGone() => e.copyWith(
+              shardIri: _toInternal(e.shardIri),
+              typeIri: _toInternal(e.typeIri),
+            ),
+          ShardError() => e.copyWith(shardIri: _toInternal(e.shardIri)),
           PhaseComplete() => e,
+          PhaseError() => e,
         },
         perf: perf,
         perfStage: 'S02.IriXlat',
@@ -749,24 +843,37 @@ class PipelineIriTranslatingRemoteSyncStorage
         _remote.resourceFetch(perf: perf),
         (e) => switch (e) {
           LoadedCandidate() => e.copyWith(
-              candidate: e.candidate
-                  .copyWith(resourceIri: _toExternal(e.candidate.resourceIri))),
-          ShardComplete() => e,
+                candidate: e.candidate.copyWith(
+              resourceIri: _toExternal(e.candidate.resourceIri),
+              typeIri: _toExternal(e.candidate.typeIri),
+            )),
+          ResourceError() =>
+            e.copyWith(resourceIri: _toExternal(e.resourceIri)),
+          ShardError() => e.copyWith(shardIri: _toExternal(e.shardIri)),
+          ShardComplete() => e.copyWith(shardIri: _toExternal(e.shardIri)),
+          ShardSkipped() => e.copyWith(shardIri: _toExternal(e.shardIri)),
           PhaseComplete() => e,
+          PhaseError() => e,
         },
         (e) => switch (e) {
           FetchedCandidate() => e.copyWith(
               loaded: e.loaded.copyWith(
                   candidate: e.loaded.candidate.copyWith(
-                      resourceIri:
-                          _toInternal(e.loaded.candidate.resourceIri))),
+                resourceIri: _toInternal(e.loaded.candidate.resourceIri),
+                typeIri: _toInternal(e.loaded.candidate.typeIri),
+              )),
               remoteSource: e.remoteSource != null
                   ? _translateSource(
                       e.remoteSource!, _iriTranslator.translateGraphToInternal)
                   : null,
             ),
-          ShardComplete() => e,
+          ResourceError() =>
+            e.copyWith(resourceIri: _toInternal(e.resourceIri)),
+          ShardError() => e.copyWith(shardIri: _toInternal(e.shardIri)),
+          ShardComplete() => e.copyWith(shardIri: _toInternal(e.shardIri)),
+          ShardSkipped() => e.copyWith(shardIri: _toInternal(e.shardIri)),
           PhaseComplete() => e,
+          PhaseError() => e,
         },
         perf: perf,
         perfStage: 'S06.IriXlat',
@@ -782,19 +889,39 @@ class PipelineIriTranslatingRemoteSyncStorage
         (e) => switch (e) {
           MergeResult() => e.copyWith(
               resourceIri: _toExternal(e.resourceIri),
+              typeIri: _toExternal(e.typeIri),
               mergedGraph: _graphToExternal(e.mergedGraph),
             ),
-          ShardComplete() => e,
+          ResourceError() =>
+            e.copyWith(resourceIri: _toExternal(e.resourceIri)),
+          ShardError() => e.copyWith(shardIri: _toExternal(e.shardIri)),
+          ShardComplete() => e.copyWith(shardIri: _toExternal(e.shardIri)),
+          ShardSkipped() => e.copyWith(shardIri: _toExternal(e.shardIri)),
           PhaseComplete() => e,
+          PhaseError() => e,
         },
         (e) => switch (e) {
           UploadResult() => e.copyWith(
                 mergeResult: e.mergeResult.copyWith(
               resourceIri: _toInternal(e.mergeResult.resourceIri),
+              typeIri: _toInternal(e.mergeResult.typeIri),
               mergedGraph: _graphToInternal(e.mergeResult.mergedGraph),
             )),
-          ShardComplete() => e,
+          ConflictedResource() => e.copyWith(
+              resourceIri: _toInternal(e.resourceIri),
+              mergeResult: e.mergeResult.copyWith(
+                resourceIri: _toInternal(e.mergeResult.resourceIri),
+                typeIri: _toInternal(e.mergeResult.typeIri),
+                mergedGraph: _graphToInternal(e.mergeResult.mergedGraph),
+              ),
+            ),
+          ResourceError() =>
+            e.copyWith(resourceIri: _toInternal(e.resourceIri)),
+          ShardError() => e.copyWith(shardIri: _toInternal(e.shardIri)),
+          ShardComplete() => e.copyWith(shardIri: _toInternal(e.shardIri)),
+          ShardSkipped() => e.copyWith(shardIri: _toInternal(e.shardIri)),
           PhaseComplete() => e,
+          PhaseError() => e,
         },
         perf: perf,
         perfStage: 'S08.IriXlat',
@@ -812,9 +939,11 @@ class PipelineIriTranslatingRemoteSyncStorage
               shardIri: _toExternal(e.shardIri),
               mergedGraph: _graphToExternal(e.mergedGraph),
             ),
+          ConflictedShard() => e.copyWith(shardIri: _toExternal(e.shardIri)),
+          ShardError() => e.copyWith(shardIri: _toExternal(e.shardIri)),
+          ShardSkipped() => e.copyWith(shardIri: _toExternal(e.shardIri)),
           PhaseComplete() => e,
-          ConflictedShard() => ConflictedShard(_toExternal(e.shardIri)),
-          ShardComplete() => e,
+          PhaseError() => e,
         },
         (e) => switch (e) {
           UploadedShard() => e.copyWith(
@@ -824,14 +953,18 @@ class PipelineIriTranslatingRemoteSyncStorage
                 mergedGraph: _graphToInternal(e.mergedShard.mergedGraph),
               ),
             ),
+          ConflictedShard() => e.copyWith(shardIri: _toInternal(e.shardIri)),
+          ShardError() => e.copyWith(shardIri: _toInternal(e.shardIri)),
+          ShardSkipped() => e.copyWith(shardIri: _toInternal(e.shardIri)),
           PhaseComplete() => e,
-          ConflictedShard() => ConflictedShard(_toInternal(e.shardIri)),
-          ShardComplete() => e,
+          PhaseError() => e,
         },
         perf: perf,
         perfStage: 'S12.IriXlat',
       );
 
   @override
-  Future<void> finalizeSync() => _remote.finalizeSync();
+  Future<void> finalizeSync(SyncFinalizationState state,
+          {PipeperfCollector? perf}) =>
+      _remote.finalizeSync(state, perf: perf);
 }

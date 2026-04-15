@@ -14,9 +14,9 @@
 
 <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlLWNha2U=> a sync:ManagedDocument;
     foaf:primaryTopic ns4:it;
-    cm:clockHash "23c446546a1f047533ce590194fc25e3";
-    cm:createdAt "2024-01-01T06:00:00.001Z"^^xsd:dateTime;
-    cm:hasClockEntry ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
+    cm:createdAt "2024-01-01T02:00:00.001Z"^^xsd:dateTime;
+    cm:hasClockEntry ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
     idx:belongsToIndexShard ns3:shard, ns2:shard, ns1:shard;
     sync:isGovernedBy (mappings:recipe-v1);
     sync:managedResourceType schema:Recipe .
@@ -29,6 +29,9 @@ ns4:it a schema:Recipe;
     schema:prepTime "PT20M";
     schema:recipeCategory "Desserts";
     schema:recipeYield "8 servings" .
+
+ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+    cm:physicalTime 1704074400000 .
 
 ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
     cm:physicalTime 1704088800000 .

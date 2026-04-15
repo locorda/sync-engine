@@ -11,14 +11,18 @@ import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:logging/logging.dart';
+
+final _log = Logger('Stage3.ShardParse');
 
 /// Returns a map function for Stage 3 that parses fetched shards.
 ///
 /// Usage: `stream.map(shardParse(rdfCore))`
 ParsedShardEvent Function(FetchedShardEvent) shardParse(RdfCore rdfCore) =>
     (FetchedShardEvent event) => switch (event) {
-          PhaseComplete() => event,
-          ShardContent() => _parseShardContent(event, rdfCore),
+          // --- Shard Events ---
+          ShardError() => event,
+          ShardContent() => _parseOrError(event, rdfCore),
           ShardNotModified() => ShardResultNotModified(
               event.shardIri,
               event.shardStorageId,
@@ -38,7 +42,20 @@ ParsedShardEvent Function(FetchedShardEvent) shardParse(RdfCore rdfCore) =>
               event.fetchPolicy,
               event.typeIri,
             ),
+
+          // --- Phase Events ---
+          PhaseComplete() => event,
+          PhaseError() => event,
         };
+
+ParsedShardEvent _parseOrError(ShardContent content, RdfCore rdfCore) {
+  try {
+    return _parseShardContent(content, rdfCore);
+  } catch (e, st) {
+    _log.warning('S03: failed to parse shard ${content.shardIri}', e, st);
+    return ShardError(content.shardIri, e, st);
+  }
+}
 
 ShardResult _parseShardContent(ShardContent content, RdfCore rdfCore) {
   // Decode the graph source

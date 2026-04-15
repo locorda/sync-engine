@@ -19,7 +19,7 @@
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
-ns4:entry-9c4afa0052fbf6bf78d6bcab30280fa8 cm:clockHash "1203068cee83c5b8a28cb68df793bc96";
+ns4:entry-9c4afa0052fbf6bf78d6bcab30280fa8 cm:clockHash "26823e087858420cdfa5e055c21b8634";
     idx:resource ns2:index .
 
 ns4:entry-c34a65e8aaabca687ad30dc757ab9ce1 cm:clockHash "e47da075e07a2fec7dd714916ca403ff";

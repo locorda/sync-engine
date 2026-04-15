@@ -44,129 +44,179 @@ Stream<CommittedShardEvent> Function(CommittedShardEvent) feedback(
 }) {
   // Accumulated across the phase — cleared after re-injection.
   final conflictedShardIris = <IriTerm>{};
+  final erroredShardIris = <IriTerm>{};
 
   return (CommittedShardEvent event) async* {
     switch (event) {
+      // --- Shard Events ---
       case ShardCommitResult():
         yield event;
       case ConflictedShard():
         conflictedShardIris.add(event.shardIri);
         yield event;
-      case ShardComplete():
+      case ShardError():
+        _log.severe(
+            'Shard ${event.shardIri.debug} failed with error '
+            '(not retrying): ${event.error}',
+            event.error,
+            event.stackTrace);
+        erroredShardIris.add(event.shardIri);
+        yield event;
+      case ShardSkipped():
+        yield event;
+
+      // --- Phase Events ---
+      case PhaseError():
         yield event;
       case PhaseComplete():
         yield event; // pass through so caller can monitor
-        final source = event.source;
-
-        // Conflict re-injection takes priority — re-process the entire
-        // input so that all indices (including those with conflicted shards)
-        // are re-fetched and re-merged with fresh data.
-        if (conflictedShardIris.isNotEmpty) {
-          final count = conflictedShardIris.length;
-          final shardIrisCopy = Set<IriTerm>.of(conflictedShardIris);
-          conflictedShardIris.clear();
-          if (source.retryCount >= _maxRetries) {
-            _log.severe('Shard conflicts persist after $_maxRetries retries '
-                '($count conflicted shards)');
-            inputSink.close();
-            return;
-          }
-          _log.info('$count shard(s) had conflicts — '
-              'reinjecting (retry ${source.retryCount + 1})');
-          inputSink.add(SyncInput(
-            source.indexIris,
-            retryCount: source.retryCount + 1,
-            indexInfos: source.indexInfos,
-            metaIndexClockHashes: source.metaIndexClockHashes,
-            conflictedShardIris: shardIrisCopy,
-          ));
-          return;
-        }
-
-        // Safety net: re-inject indices that had 0 shards.
-        // TODO: is this really useful? When would it help? Should we simply remove it?
-        if (event.zeroShardIndices.isNotEmpty) {
-          if (source.retryCount >= _maxRetries) {
-            _log.severe('Indices have no shards after $_maxRetries retries: '
-                '${event.zeroShardIndices.map((iri) => iri.debug).join(', ')}');
-            inputSink.close();
-            return;
-          }
-          _log.warning(
-              '${event.zeroShardIndices.length} indices had 0 shards — '
-              'reinjecting (retry ${source.retryCount + 1})');
-          inputSink.add(SyncInput(
-            event.zeroShardIndices,
-            retryCount: source.retryCount + 1,
-            indexInfos: {
-              for (final iri in event.zeroShardIndices)
-                if (source.indexInfos.containsKey(iri))
-                  iri: source.indexInfos[iri]!,
-            },
-            metaIndexClockHashes: source.metaIndexClockHashes,
-          ));
-          return;
-        }
-
-        final isMetaPhase = source.isMetaIndexPhase;
-
-        if (isMetaPhase) {
-          // Check stability of ALL meta-index documents.
-          final sw = perf?.start(perfStage);
-          final snapshots = source.metaIndexClockHashes!;
-          final newHashes = await readClockHashes(storage, snapshots.keys);
-          // Every key in snapshots had a clock hash when we snapshotted — if
-          // one disappears after a pipeline pass that is data corruption, not
-          // a normal change.
-          final missingKeys =
-              snapshots.keys.where((k) => !newHashes.containsKey(k)).toList();
-          if (missingKeys.isNotEmpty) {
-            sw?.stop();
-            throw StateError(
-                'Meta-index document(s) lost their clock hash during sync: '
-                '$missingKeys');
-          }
-          final anyChanged =
-              snapshots.entries.any((e) => newHashes[e.key] != e.value);
-
-          if (anyChanged) {
-            if (source.retryCount >= _maxRetries) {
-              _log.severe('Meta-indices unstable after $_maxRetries retries');
-              sw?.stop();
-              inputSink.close();
-              return;
-            }
-            _log.fine(
-                'Meta-indices changed — re-injecting (retry ${source.retryCount + 1})');
-            sw?.stop();
-            inputSink.add(SyncInput(
-              source.indexIris,
-              retryCount: source.retryCount + 1,
-              indexInfos: source.indexInfos,
-              metaIndexClockHashes: newHashes,
-            ));
-          } else {
-            // Meta-indices stable → transition to content phase.
-            _log.fine('Meta-indices stable — transitioning to content phase');
-
-            final contentIndices = await indexResolver.resolveContentIndices();
-            sw?.stop();
-            if (contentIndices.isEmpty) {
-              _log.info('No content indices found — closing pipeline');
-              inputSink.close();
-              return;
-            }
-
-            inputSink.add(SyncInput(
-              contentIndices.keys.toList(),
-              indexInfos: contentIndices,
-            ));
-          }
-        } else {
-          // Content phase complete — close the pipeline.
-          _log.fine('Content phase complete — closing pipeline');
-          inputSink.close();
+        try {
+          await _handlePhaseComplete(
+            event,
+            inputSink,
+            storage,
+            indexResolver,
+            conflictedShardIris,
+            erroredShardIris,
+            perf,
+            perfStage,
+          );
+        } catch (e, st) {
+          _log.severe('S14: phase feedback failed', e, st);
+          yield PhaseError(e, st, stage: 'S14');
         }
     }
   };
+}
+
+/// Extracted PhaseComplete handler for [feedback].
+Future<void> _handlePhaseComplete(
+  PhaseComplete event,
+  StreamSink<SyncInput> inputSink,
+  Storage storage,
+  ContentIndexResolver indexResolver,
+  Set<IriTerm> conflictedShardIris,
+  Set<IriTerm> erroredShardIris,
+  PipeperfCollector? perf,
+  String perfStage,
+) async {
+  final source = event.source;
+
+  // Log errored shards — these are NOT re-injected (errors would recur).
+  if (erroredShardIris.isNotEmpty) {
+    _log.severe('${erroredShardIris.length} shard(s) failed with errors '
+        '(skipped, not retrying)');
+    // Remove errored shards from conflict set — no point retrying them.
+    conflictedShardIris.removeAll(erroredShardIris);
+    erroredShardIris.clear();
+  }
+
+  // Conflict re-injection takes priority — re-process the entire
+  // input so that all indices (including those with conflicted shards)
+  // are re-fetched and re-merged with fresh data.
+  if (conflictedShardIris.isNotEmpty) {
+    final count = conflictedShardIris.length;
+    final shardIrisCopy = Set<IriTerm>.of(conflictedShardIris);
+    conflictedShardIris.clear();
+    if (source.retryCount >= _maxRetries) {
+      _log.severe('Shard conflicts persist after $_maxRetries retries '
+          '($count conflicted shards)');
+      inputSink.close();
+      return;
+    }
+    _log.info('$count shard(s) had conflicts — '
+        'reinjecting (retry ${source.retryCount + 1})');
+
+    inputSink.add(SyncInput(
+      source.indexIris,
+      retryCount: source.retryCount + 1,
+      indexInfos: source.indexInfos,
+      metaIndexClockHashes: source.metaIndexClockHashes,
+      conflictedShardIris: shardIrisCopy,
+    ));
+    return;
+  }
+
+  // Safety net: re-inject indices that had 0 shards.
+  // TODO: is this really useful? When would it help? Should we simply remove it?
+  if (event.zeroShardIndices.isNotEmpty) {
+    if (source.retryCount >= _maxRetries) {
+      _log.severe('Indices have no shards after $_maxRetries retries: '
+          '${event.zeroShardIndices.map((iri) => iri.debug).join(', ')}');
+      inputSink.close();
+      return;
+    }
+    _log.warning('${event.zeroShardIndices.length} indices had 0 shards — '
+        'reinjecting (retry ${source.retryCount + 1})');
+    inputSink.add(SyncInput(
+      event.zeroShardIndices,
+      retryCount: source.retryCount + 1,
+      indexInfos: {
+        for (final iri in event.zeroShardIndices)
+          if (source.indexInfos.containsKey(iri)) iri: source.indexInfos[iri]!,
+      },
+      metaIndexClockHashes: source.metaIndexClockHashes,
+    ));
+    return;
+  }
+
+  final isMetaPhase = source.isMetaIndexPhase;
+
+  if (isMetaPhase) {
+    // Check stability of ALL meta-index documents.
+    final sw = perf?.start(perfStage);
+    final snapshots = source.metaIndexClockHashes!;
+    final newHashes = await readClockHashes(storage, snapshots.keys);
+    // Every key in snapshots had a clock hash when we snapshotted — if
+    // one disappears after a pipeline pass that is data corruption, not
+    // a normal change.
+    final missingKeys =
+        snapshots.keys.where((k) => !newHashes.containsKey(k)).toList();
+    if (missingKeys.isNotEmpty) {
+      sw?.stop();
+      throw StateError(
+          'Meta-index document(s) lost their clock hash during sync: '
+          '$missingKeys');
+    }
+    final anyChanged =
+        snapshots.entries.any((e) => newHashes[e.key] != e.value);
+
+    if (anyChanged) {
+      if (source.retryCount >= _maxRetries) {
+        _log.severe('Meta-indices unstable after $_maxRetries retries');
+        sw?.stop();
+        inputSink.close();
+        return;
+      }
+      _log.fine(
+          'Meta-indices changed — re-injecting (retry ${source.retryCount + 1})');
+      sw?.stop();
+      inputSink.add(SyncInput(
+        source.indexIris,
+        retryCount: source.retryCount + 1,
+        indexInfos: source.indexInfos,
+        metaIndexClockHashes: newHashes,
+      ));
+    } else {
+      // Meta-indices stable → transition to content phase.
+      _log.fine('Meta-indices stable — transitioning to content phase');
+
+      final contentIndices = await indexResolver.resolveContentIndices();
+      sw?.stop();
+      if (contentIndices.isEmpty) {
+        _log.info('No content indices found — closing pipeline');
+        inputSink.close();
+        return;
+      }
+
+      inputSink.add(SyncInput(
+        contentIndices.keys.toList(),
+        indexInfos: contentIndices,
+      ));
+    }
+  } else {
+    // Content phase complete — close the pipeline.
+    _log.fine('Content phase complete — closing pipeline');
+    inputSink.close();
+  }
 }

@@ -9,8 +9,6 @@
 /// cheap DB query instead of parsing full RDF documents at runtime.
 library;
 
-import 'dart:typed_data';
-
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_rdf_core/core.dart';
@@ -46,14 +44,12 @@ class DocumentSaveService {
   /// Save multiple documents, updating the shard index table for any index-type
   /// documents in the batch.
   Future<List<SaveDocumentResult>> saveDocuments(
-    Iterable<SaveDocumentRequest> requests, {
-    List<Uint8List>? preEncodedContents,
-  }) async {
+    Iterable<SaveDocumentRequest> requests,
+  ) async {
     final requestList = requests is List<SaveDocumentRequest>
         ? requests
         : requests.toList(growable: false);
-    final results = await _storage.saveDocuments(requestList,
-        preEncodedContents: preEncodedContents);
+    final results = await _storage.saveDocuments(requestList);
     await _saveIndexShardsIfNeeded(requestList);
     return results;
   }

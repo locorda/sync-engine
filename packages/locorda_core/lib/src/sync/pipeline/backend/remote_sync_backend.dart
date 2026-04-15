@@ -13,37 +13,6 @@ library;
 import 'dart:typed_data';
 
 import 'package:locorda_core/src/storage/remote_storage.dart';
-import 'package:locorda_rdf_core/core.dart';
-import 'package:locorda_rdf_jelly/jelly.dart';
-
-// ---------------------------------------------------------------------------
-// Content-type helpers
-// ---------------------------------------------------------------------------
-
-/// Whether [contentType] is a binary RDF format (Jelly).
-bool isBinaryContentType(String contentType) =>
-    contentType == jellyGraph.primaryMimeType ||
-    contentType == jelly.primaryMimeType;
-
-/// Whether [contentType] encodes an RDF dataset (quads) rather than a graph.
-bool isDatasetContentType(String contentType) =>
-    contentType == trig.primaryMimeType ||
-    contentType == nquads.primaryMimeType ||
-    contentType == jelly.primaryMimeType;
-
-/// Canonical file extension (without leading dot) for a known RDF content type.
-///
-/// Falls back to `'bin'` for unknown types — intentionally not `'rdf'` (which
-/// is the registered extension for RDF/XML) to avoid format confusion.
-String extensionForContentType(String contentType) => switch (contentType) {
-      'text/turtle' => 'ttl',
-      'application/trig' => 'trig',
-      'application/n-triples' => 'nt',
-      'application/n-quads' => 'nq',
-      'application/ld+json' => 'jsonld',
-      'application/x-jelly-rdf' => 'jelly',
-      _ => 'bin',
-    };
 
 // ---------------------------------------------------------------------------
 // Raw content — opaque to the backend, just bytes/text with content type.

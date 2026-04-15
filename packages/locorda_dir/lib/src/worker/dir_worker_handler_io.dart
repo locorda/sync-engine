@@ -49,12 +49,10 @@ class DirWorkerHandler implements RemoteWorkerHandler {
 
     final backend = DirBackend(
       auth: auth,
-      contentType: dirConfig.contentType,
-      datasetContentType: dirConfig.datasetContentType,
       rdfCore: context.rdfCore,
-      useShardDatasets: dirConfig.useShardDatasets,
+      layout: dirConfig.layout,
       perflog: context.perflog,
-      resourceGraphLoader: context.resourceGraphLoader,
+      storageAccessFactory: context.storageAccessFactory,
     );
     if (context.perflog != Perflog.disabled) {
       return PerflogPipelineBackend(backend, perflog: context.perflog);

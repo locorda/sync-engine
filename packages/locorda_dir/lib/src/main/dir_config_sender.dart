@@ -28,7 +28,7 @@ class DirConfigSender implements MainHandler {
   @override
   Future<void> initialize() async {
     _log.fine('Sending DirConfig to worker: '
-        'useShardDatasets=${_config.useShardDatasets}');
+        'layout=${_config.layout}');
     _workerHandle.send(DirConfigMessage(config: _config).toJson());
   }
 

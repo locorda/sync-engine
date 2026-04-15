@@ -25,10 +25,36 @@ DecodedCandidateEvent Function(FetchedCandidateEvent) decodeCandidates(
   RdfCore rdfCore,
 ) {
   return (FetchedCandidateEvent event) => switch (event) {
-        PhaseComplete() => event,
+        // --- Resource Events ---
+        ResourceError() => event,
+        FetchedCandidate() =>
+          _decodeOrError(event, mergeContractLoader, rdfCore),
+
+        // --- Shard Events ---
+        ShardSkipped() => event,
+        ShardError() => event,
         ShardComplete() => event,
-        FetchedCandidate() => _decode(event, mergeContractLoader, rdfCore),
+
+        // --- Phase Events ---
+        PhaseComplete() => event,
+        PhaseError() => event,
       };
+}
+
+DecodedCandidateEvent _decodeOrError(
+  FetchedCandidate fetched,
+  MergeContractLoader mergeContractLoader,
+  RdfCore rdfCore,
+) {
+  try {
+    return _decode(fetched, mergeContractLoader, rdfCore);
+  } catch (e, st) {
+    _log.warning(
+        'S07a: failed to decode ${fetched.loaded.candidate.resourceIri}',
+        e,
+        st);
+    return ResourceError(fetched.loaded.candidate.resourceIri, e, st);
+  }
 }
 
 DecodedCandidate _decode(
@@ -42,12 +68,22 @@ DecodedCandidate _decode(
   final remoteGraph = fetched.remoteSource?.decodeWith(rdfCore).graph;
   final localGraph = fetched.loaded.localSource?.decodeWith(rdfCore).graph;
 
-  // Upgrade remoteOnly → conflictCandidate when local graph already exists
-  // (e.g. resource modified via a different shard).
-  final effectiveDirection =
-      candidate.direction == SyncDirection.remoteOnly && localGraph != null
-          ? SyncDirection.conflictCandidate
-          : candidate.direction;
+  // Derive effective direction from actual data availability, not just the
+  // S04 classification which is shard-scoped. S06 may have fetched remote
+  // data even for remoteShardUnchanged (null ETag → forced fetch) or
+  // notInRemoteShard (resource exists in a different remote shard).
+  // Whenever both graphs are present we must merge, not pick a winner.
+  final effectiveDirection = switch (candidate.direction) {
+    SyncDirection.remoteOnly when localGraph != null =>
+      SyncDirection.conflictCandidate,
+    SyncDirection.remoteShardUnchanged
+        when remoteGraph != null && localGraph != null =>
+      SyncDirection.conflictCandidate,
+    SyncDirection.notInRemoteShard
+        when remoteGraph != null && localGraph != null =>
+      SyncDirection.conflictCandidate,
+    _ => candidate.direction,
+  };
 
   final governanceIris = mergeContractLoader.getMergedGovernanceIris(
     [

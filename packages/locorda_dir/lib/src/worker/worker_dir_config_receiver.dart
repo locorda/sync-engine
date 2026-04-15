@@ -35,7 +35,7 @@ class WorkerDirConfigReceiver {
     if (type == 'DirConfigMessage') {
       final configMsg = DirConfigMessage.fromJson(message);
       _log.fine('Received DirConfig: '
-          'useShardDatasets=${configMsg.config.useShardDatasets}');
+          'layout=${configMsg.config.layout}');
       if (!_configCompleter.isCompleted) {
         _configCompleter.complete(configMsg.config);
       }

@@ -75,6 +75,7 @@ class GDriveTypeIndexManagerBackend extends TypeIndexManagerBackend {
         fileId,
         updatedGraph,
         ifMatch: ifMatch,
+        documentIri: IriTerm.validated('internal:gdrive:$fileId'),
         convert: convert,
       );
 

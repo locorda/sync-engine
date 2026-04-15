@@ -30,31 +30,25 @@ class DirBackend implements PipelineBackend {
   final DirAuthProvider _auth;
   List<PipelineRemoteStorage> _remotes = [];
   final RdfCore _rdfCore;
-  final String _contentType;
-  final String _datasetContentType;
-  final bool _useShardDatasets;
+  final RemoteStorageLayout _layout;
   late final BehaviorSubject<List<PipelineRemoteStorage>>
       _remotesChangedSubject;
   final IriTranslator? _iriTranslator;
   final Perflog _perflog;
-  final ResourceGraphLoader _resourceGraphLoader;
+  final BackendStorageAccessFactory _storageAccessFactory;
 
   DirBackend({
     required DirAuthProvider auth,
     required RdfCore rdfCore,
-    required String contentType,
-    required String datasetContentType,
-    required bool useShardDatasets,
+    required RemoteStorageLayout layout,
     IriTranslator? iriTranslator,
     required Perflog perflog,
-    required ResourceGraphLoader resourceGraphLoader,
+    required BackendStorageAccessFactory storageAccessFactory,
   })  : _auth = auth,
         _rdfCore = rdfCore,
-        _contentType = contentType,
-        _datasetContentType = datasetContentType,
-        _useShardDatasets = useShardDatasets,
+        _layout = layout,
         _perflog = perflog,
-        _resourceGraphLoader = resourceGraphLoader,
+        _storageAccessFactory = storageAccessFactory,
         _iriTranslator = iriTranslator {
     _remotesChangedSubject = BehaviorSubject<List<PipelineRemoteStorage>>();
     _auth.isAuthenticatedNotifier.addListener(_authStateChanged);
@@ -82,12 +76,10 @@ class DirBackend implements PipelineBackend {
         DirRemoteStorage(
           directoryPath: syncDirectoryPath,
           rdfCore: _rdfCore,
-          contentType: _contentType,
-          datasetContentType: _datasetContentType,
-          useShardDatasets: _useShardDatasets,
+          layout: _layout,
           iriTranslator: _iriTranslator,
           perflog: _perflog,
-          resourceGraphLoader: _resourceGraphLoader,
+          storageAccessFactory: _storageAccessFactory,
         )
       ];
 
@@ -120,35 +112,27 @@ class DirBackend implements PipelineBackend {
 class DirRemoteStorage implements PipelineRemoteStorage {
   final String _directoryPath;
   final RemoteId _remoteId;
-  final String _contentType;
-  final String _datasetContentType;
   final RdfCore _rdfCore;
-  final bool _useShardDatasets;
+  final RemoteStorageLayout _layout;
   final IriTranslator? _iriTranslator;
   final Perflog _perflog;
-  final ResourceGraphLoader _resourceGraphLoader;
+  final BackendStorageAccess _storageAccess;
 
   DirRemoteStorage({
     required String directoryPath,
-    required String contentType,
-    required String datasetContentType,
     required RdfCore rdfCore,
-    required bool useShardDatasets,
+    required RemoteStorageLayout layout,
     required IriTranslator? iriTranslator,
     required Perflog perflog,
-    required ResourceGraphLoader resourceGraphLoader,
+    required BackendStorageAccessFactory storageAccessFactory,
   })  : _directoryPath = directoryPath,
-        _contentType = contentType,
-        _datasetContentType = datasetContentType,
         _rdfCore = rdfCore,
         _remoteId = RemoteId('local-dir', directoryPath),
-        _useShardDatasets = useShardDatasets,
+        _layout = layout,
         _iriTranslator = iriTranslator,
         _perflog = perflog,
-        _resourceGraphLoader = resourceGraphLoader;
-
-  @override
-  bool get useShardDatasets => _useShardDatasets;
+        _storageAccess = storageAccessFactory
+            .forRemote(RemoteId('local-dir', directoryPath));
 
   @override
   RemoteId get remoteId => _remoteId;
@@ -178,15 +162,15 @@ class DirRemoteStorage implements PipelineRemoteStorage {
       _log.info('Created sync directory: $_directoryPath');
     }
 
-    final mode =
-        RemoteStorageMode.fromFlags(useShardDatasets: useShardDatasets);
-    final effectiveContentType =
-        useShardDatasets ? _datasetContentType : _contentType;
-    final isBinary = isBinaryContentType(effectiveContentType);
+    final layout = _layout;
+    final effectiveContentType = layout.contentType;
+    final isBinary =
+        _rdfCore.contentTypeInfo(effectiveContentType)?.isBinary ?? false;
 
     final storage = DirSyncStorage(
       directoryPath: _directoryPath,
       contentType: effectiveContentType,
+      fileExtension: layout.fileExtension,
       perflog: _perflog,
       isBinary: isBinary,
     );
@@ -194,21 +178,17 @@ class DirRemoteStorage implements PipelineRemoteStorage {
     if (_iriTranslator != null) {
       return RemoteSyncStorages.createIriTranslated(
         backend: storage,
-        mode: mode,
+        layout: layout,
         rdfCore: _rdfCore,
-        resourceGraphLoader: _resourceGraphLoader,
-        contentType: effectiveContentType,
-        isBinary: isBinary,
+        storageAccess: _storageAccess,
         translator: _iriTranslator,
       );
     }
     return RemoteSyncStorages.create(
-        mode: mode,
+        layout: layout,
         backend: storage,
         rdfCore: _rdfCore,
-        contentType: effectiveContentType,
-        isBinary: isBinary,
-        resourceGraphLoader: _resourceGraphLoader);
+        storageAccess: _storageAccess);
   }
 
   @override
@@ -226,6 +206,7 @@ class DirRemoteStorage implements PipelineRemoteStorage {
 class DirSyncStorage implements RemoteSyncBackend {
   final String _directoryPath;
   final String _contentType;
+  final String _fileExtension;
   final bool _isBinary;
   final ResourceLocator _resourceLocator;
   final Perflog _perflog;
@@ -237,10 +218,12 @@ class DirSyncStorage implements RemoteSyncBackend {
   DirSyncStorage({
     required String directoryPath,
     required String contentType,
+    required String fileExtension,
     required Perflog perflog,
     required bool isBinary,
   })  : _directoryPath = directoryPath,
         _contentType = contentType,
+        _fileExtension = fileExtension,
         _isBinary = isBinary,
         _perflog = perflog.create('Backend', 'DirSyncStorage'),
         _resourceLocator =
@@ -252,7 +235,7 @@ class DirSyncStorage implements RemoteSyncBackend {
   String _iriToFilePath(IriTerm documentIri) {
     final identifier = _resourceLocator.fromIri(documentIri);
     final typeLocalName = identifier.typeIri.localName;
-    final ext = extensionForContentType(_contentType);
+    final ext = _fileExtension;
     return path.join(_directoryPath, typeLocalName, '${identifier.id}.$ext');
   }
 
@@ -283,14 +266,23 @@ class DirSyncStorage implements RemoteSyncBackend {
 
     if (!await file.exists()) {
       _log.fine('File not found: $filePath');
-      return RemoteDownloadResult(graph: null, etag: null);
+      return RemoteDownloadResult(
+        documentIri: request.documentIri,
+        requestETag: request.ifNoneMatch,
+        graph: null,
+        etag: null,
+      );
     }
 
     final currentETag = _generateETag(file);
 
     if (request.ifNoneMatch != null && request.ifNoneMatch == currentETag) {
       _log.fine('File not modified: $filePath');
-      return RemoteDownloadResult.notModified(etag: currentETag);
+      return RemoteDownloadResult.notModified(
+        documentIri: request.documentIri,
+        requestETag: request.ifNoneMatch,
+        etag: currentETag,
+      );
     }
 
     try {
@@ -303,7 +295,12 @@ class DirSyncStorage implements RemoteSyncBackend {
         content = TextContent(text, contentType: _contentType);
       }
       _log.fine('Downloaded: $filePath, etag: $currentETag');
-      return RemoteDownloadResult(graph: content, etag: currentETag);
+      return RemoteDownloadResult(
+        documentIri: request.documentIri,
+        requestETag: request.ifNoneMatch,
+        graph: content,
+        etag: currentETag,
+      );
     } catch (e, stackTrace) {
       _log.severe('Failed to read file: $filePath', e, stackTrace);
       rethrow;
@@ -343,19 +340,28 @@ class DirSyncStorage implements RemoteSyncBackend {
       final exists = await file.exists();
       if (exists) {
         _log.fine('File already exists, cannot create: $filePath');
-        return RemoteUploadResult.conflict();
+        return RemoteUploadResult.conflict(
+          documentIri: request.documentIri,
+          requestETag: request.ifMatch,
+        );
       }
     } else {
       final exists = await file.exists();
       if (!exists) {
         _log.fine('File does not exist, cannot update: $filePath');
-        return RemoteUploadResult.conflict();
+        return RemoteUploadResult.conflict(
+          documentIri: request.documentIri,
+          requestETag: request.ifMatch,
+        );
       }
       final currentETag = _generateETag(file);
       if (currentETag != request.ifMatch) {
         _log.fine(
             'ETag mismatch: $filePath (current: $currentETag, expected: ${request.ifMatch})');
-        return RemoteUploadResult.conflict();
+        return RemoteUploadResult.conflict(
+          documentIri: request.documentIri,
+          requestETag: request.ifMatch,
+        );
       }
     }
 
@@ -381,7 +387,11 @@ class DirSyncStorage implements RemoteSyncBackend {
       );
       final newETag = _generateETag(file);
       _log.fine('Uploaded: $filePath, new etag: $newETag');
-      return RemoteUploadResult.success(newETag);
+      return RemoteUploadResult.success(
+        newETag,
+        documentIri: request.documentIri,
+        requestETag: request.ifMatch,
+      );
     } catch (e, stackTrace) {
       _log.severe('Failed to write file: $filePath', e, stackTrace);
       rethrow;

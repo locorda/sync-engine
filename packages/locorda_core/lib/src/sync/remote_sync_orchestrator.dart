@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' show min;
-import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
 import 'package:locorda_core/locorda_core.dart';
@@ -1615,20 +1614,8 @@ class _DocumentSyncHelper {
     _log.fine('Splitting commit into ${chunks.length} chunks '
         '($totalDocs docs, chunk size $_maxDocumentsPerCommitChunk)');
 
-    // Pipeline: pre-encode chunk 0, then for each chunk start the DB commit
-    // and encode the next chunk in parallel on the main isolate while the
-    // Drift isolate processes the transaction.
-    var preEncoded =
-        _storage.preEncodeDocuments(chunks.first.saveRequests.toList());
     for (var i = 0; i < chunks.length; i++) {
-      final commitFuture = _commitBatchChunk(
-        chunks[i],
-        preEncodedContents: preEncoded,
-      );
-      preEncoded = (i + 1 < chunks.length)
-          ? _storage.preEncodeDocuments(chunks[i + 1].saveRequests.toList())
-          : null;
-      await commitFuture;
+      await _commitBatchChunk(chunks[i]);
     }
   }
 
@@ -1639,18 +1626,13 @@ class _DocumentSyncHelper {
   /// costs across saveDocuments, saveIndexEntries, and setRemoteETags into
   /// a single commit, and allows saveIndexEntries to reuse IRI IDs cached
   /// by saveDocuments without separate DB round-trips.
-  ///
-  /// When [preEncodedContents] is provided, the encode step inside
-  /// saveDocuments is skipped (pipeline optimization).
   Future<void> _commitBatchChunk(
-    _DeferredBatchCommit deferred, {
-    List<Uint8List>? preEncodedContents,
-  }) async {
+    _DeferredBatchCommit deferred,
+  ) async {
     final commit = () async {
       await _perflog.measure(
         'batch.commit.saveDocuments',
-        () => _saveService.saveDocuments(deferred.saveRequests,
-            preEncodedContents: preEncodedContents),
+        () => _saveService.saveDocuments(deferred.saveRequests),
         args: ['count=${deferred.saveRequests.length}'],
         minDurationMs: 5,
       );

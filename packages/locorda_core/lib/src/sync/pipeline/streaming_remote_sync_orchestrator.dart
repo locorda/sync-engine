@@ -62,6 +62,7 @@ class StreamingRemoteSyncOrchestrator {
   final IndexDiscovery _indexDiscovery;
   final ShardDeterminer _shardDeterminer;
   final ContentIndexResolver _indexResolver;
+  final PipeperfCollector _perf;
 
   var _syncCounter = 0;
 
@@ -81,6 +82,7 @@ class StreamingRemoteSyncOrchestrator {
     required IndexDiscovery indexDiscovery,
     required ShardDeterminer shardDeterminer,
     required ContentIndexResolver indexResolver,
+    required PipeperfCollector perf,
   })  : _storage = storage,
         _saveService = documentSaveService,
         _remoteId = remoteId,
@@ -95,7 +97,8 @@ class StreamingRemoteSyncOrchestrator {
         _indexRdfGenerator = indexRdfGenerator,
         _indexDiscovery = indexDiscovery,
         _shardDeterminer = shardDeterminer,
-        _indexResolver = indexResolver;
+        _indexResolver = indexResolver,
+        _perf = perf;
 
   Future<void> sync(
     DateTime syncTime,
@@ -121,27 +124,17 @@ class StreamingRemoteSyncOrchestrator {
 
     // Compose and run the pipeline
     final inputController = StreamController<SyncInput>();
-    final perf = PipeperfCollector();
+    final perf = _perf;
 
     final pipeline = inputController.stream
         .asyncExpand(shardResolution(_storage, _remoteId, perf: perf))
-        //.transform(decouplingTransformer("S01", maxBuffered: 1280))
         .transform(_remote.shardFetch(perf: perf))
-        //.transform(decouplingTransformer("S02", maxBuffered: 1280))
         .map(perf.timedMap('S03.ShardParse', shardParse(_rdfCore)))
-        //.transform(decouplingTransformer("S03", maxBuffered: 1280))
         .transform(changeDetection(_storage, lastSyncTimestamp, perf: perf))
-        //.transform(decouplingTransformer("S04", maxBuffered: 10_000))
-        // Microtask hypothesis test: uncomment to force event-loop yields
-        // between S04 and S05, allowing I/O callbacks to interleave.
-        //.transform(eventLoopYieldTransformer("S04→S05", yieldEvery: 50))
         .transform(localContentLoad(_storage, _remoteId, perf: perf))
-        //.transform(decouplingTransformer("S05", maxBuffered: 1280))
         .transform(_remote.resourceFetch(perf: perf))
-        //.transform(decouplingTransformer("S06", maxBuffered: 1280))
         .map(perf.timedMap(
             'S07a.Decode', decodeCandidates(_mergeContractLoader, _rdfCore)))
-        //.transform(decouplingTransformer("S07a", maxBuffered: 1280))
         .transform(preloadCandidates(_mergeContractLoader, _indexDiscovery,
             _shardDeterminer, _storage, _indexRdfGenerator, perf: perf))
 
@@ -160,35 +153,28 @@ class StreamingRemoteSyncOrchestrator {
          * 
          * This should lead to proper interleaving at least for this cpu stage.
          */
-        .transform(decouplingTransformer("S7b", maxBuffered: 1280 /* 10_000*/))
-        .asyncExpand(deferredExpand(mergeCandidates(
-            _merger, _reconciler, _rdfCore,
-            perf: perf, perfStage: 'S07c.CrdtMerge')))
-        .transform(decouplingTransformer("S07c", maxBuffered: 1280))
+        .decoupled("S07c.pre", maxBuffered: 1280 /* 10_000*/)
+        .deferredExpand(
+            'S07c.CrdtMerge',
+            mergeCandidates(_merger, _reconciler, _rdfCore,
+                perf: perf, perfStage: 'S07c.CrdtMerge'))
+        .decoupled("S07c.post", maxBuffered: 1280)
 
         /* continue the pipeline */
         .transform(_remote.resourceUpload(perf: perf))
-        //.transform(decouplingTransformer("S08", maxBuffered: 1280))
         .asyncExpand(dbCommit(_storage, _indexManager, _remoteId, _saveService,
             perf: perf))
-        //.transform(decouplingTransformer("S09", maxBuffered: 1280))
         .asyncExpand(shardEntryLoad(_storage, perf: perf))
-        //.transform(decouplingTransformer("S10", maxBuffered: 1280))
         .expand(perf.timedExpand(
             'S11a.Prepare', prepareShards(_shardDocGen, config, _rdfCore)))
-        //.transform(decouplingTransformer("S11a", maxBuffered: 1280))
         .asyncMap(perf.timedAsyncMap(
             'S11b.ContractLoad', loadShardContracts(_mergeContractLoader)))
-        //.transform(decouplingTransformer("S11b", maxBuffered: 128))
         .expand(mergeShards(_documentManager, _merger, _rdfCore,
             perf: perf, perfStage: 'S11c.Merge'))
-        //.transform(decouplingTransformer("S11c", maxBuffered: 1280))
         .transform(_remote.shardUpload(perf: perf))
-        //.transform(decouplingTransformer("S12", maxBuffered: 1280))
         .asyncExpand(shardDbCommit(_storage, _remoteId, perf: perf))
-        //.transform(decouplingTransformer("S13", maxBuffered: 1280))
-        .asyncExpand(
-            feedback(inputController.sink, _storage, _indexResolver, perf: perf));
+        .asyncExpand(feedback(inputController.sink, _storage, _indexResolver,
+            perf: perf));
 
     // Seed with meta-index phase
     _log.fine('Seeding pipeline with meta indices: '
@@ -201,8 +187,24 @@ class StreamingRemoteSyncOrchestrator {
       indexInfos: metaIndexInfos,
     ));
 
-    await pipeline.drain();
-    perf.report();
+    final shardErrors = <ShardError>[];
+    await pipeline.safeDrain(
+      onData: (event) {
+        if (event is PhaseError) {
+          throw StateError(
+            'Sync aborted: phase-level error in ${event.stage}: ${event.error}',
+          );
+        }
+        if (event is ShardError) shardErrors.add(event);
+      },
+    );
+    if (shardErrors.isNotEmpty) {
+      final first = shardErrors.first;
+      throw StateError(
+        'Sync failed: ${shardErrors.length} shard(s) encountered errors '
+        'during sync. First error: ${first.error}',
+      );
+    }
     _log.info('Streaming pipeline sync completed');
   }
 }

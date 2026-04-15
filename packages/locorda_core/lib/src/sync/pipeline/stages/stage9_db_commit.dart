@@ -15,8 +15,6 @@
 /// **Output**: `Stream<CommittedResourceEvent>`
 library;
 
-import 'dart:typed_data';
-
 import 'package:locorda_core/src/index/index_manager.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart'
     show ResolvedGroupIndex;
@@ -49,10 +47,8 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
   String perfStage = 'S09.DbCommit',
 }) {
   final pendingSaves = <SaveDocumentRequest>[];
-  final pendingBytes = <Uint8List>[];
   final pendingIndexEntries = <SaveIndexEntryRequest>[];
   final pendingEtags = <IriTerm, String>{};
-  final pendingResourceIris = <IriTerm>[];
   // Collect resolved GroupIndices across the batch for batched creation.
   final pendingGroupIndices = <IriTerm, ResolvedGroupIndex>{};
   // Track GroupIndex IRIs already confirmed to exist (avoids repeated DB lookups).
@@ -64,28 +60,39 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
     IriTerm resourceIri,
     int physicalTime
   })>[];
+  // Document IRIs whose stored remote ETag should be cleared (set to null)
+  // within the flush transaction — used for ConflictedResource events where
+  // the CRDT merge data is saved but the upload ETag is invalidated.
+  final pendingEtagClears = <IriTerm>{};
 
   // Track whether the current shard's flush failed due to a concurrent
   // update — set by _flush(), read by the ShardComplete handler.
   var _currentShardConflicted = false;
 
+  // Track resource errors within the current shard — if any, the shard
+  // is converted to a ShardError at the ShardComplete boundary.
+  Object? _currentShardError;
+  StackTrace? _currentShardErrorStack;
+
   void _clearPending() {
     pendingSaves.clear();
-    pendingBytes.clear();
     pendingIndexEntries.clear();
     pendingEtags.clear();
-    pendingResourceIris.clear();
+    pendingEtagClears.clear();
+    pendingGroupIndices.clear();
+    pendingTombstones.clear();
   }
 
-  // Writes the entire pending batch atomically and yields CommitResults.
+  // Writes the entire pending batch atomically.
   // No internal chunking — the caller controls batch size via [batchSize].
   //
   // On [ConcurrentUpdateException] the transaction is rolled back by the
   // storage layer, all pending state is cleared, and [_currentShardConflicted]
   // is set so the [ShardComplete] handler can emit [ConflictedShard].
-  Stream<CommitResult> _flush() async* {
+  Future<void> _flush() async {
     if (pendingSaves.isEmpty &&
         pendingEtags.isEmpty &&
+        pendingEtagClears.isEmpty &&
         pendingGroupIndices.isEmpty &&
         pendingTombstones.isEmpty) return;
 
@@ -132,50 +139,123 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
       }
       pendingTombstones.clear();
     }
+    final flushSaves = List<SaveDocumentRequest>.of(pendingSaves);
+    final flushIndexEntries =
+        List<SaveIndexEntryRequest>.of(pendingIndexEntries);
+    final flushEtags = Map<IriTerm, String>.of(pendingEtags);
+    final flushEtagClears = Set<IriTerm>.of(pendingEtagClears);
+    _clearPending();
 
     try {
       await storage.inTransaction(() async {
-        if (pendingSaves.isNotEmpty) {
-          await documentSaveService.saveDocuments(pendingSaves,
-              preEncodedContents: pendingBytes);
+        if (flushSaves.isNotEmpty) {
+          await documentSaveService.saveDocuments(flushSaves);
         }
-        if (pendingIndexEntries.isNotEmpty) {
-          await storage.saveIndexEntries(pendingIndexEntries);
+        if (flushIndexEntries.isNotEmpty) {
+          await storage.saveIndexEntries(flushIndexEntries);
         }
-        if (pendingEtags.isNotEmpty) {
-          await storage.setRemoteETags(remoteId, pendingEtags);
+        if (flushEtags.isNotEmpty) {
+          await storage.setRemoteETags(remoteId, flushEtags);
+        }
+        if (flushEtagClears.isNotEmpty) {
+          await storage.clearRemoteETags(remoteId, flushEtagClears);
         }
       });
     } on ConcurrentUpdateException catch (e) {
-      _log.warning('Concurrent update during DB commit — '
+      _log.info('Concurrent update during DB commit — '
           'shard will be re-injected: $e');
       _currentShardConflicted = true;
-      _clearPending();
+      // Note: here, we are effectively discarding all resource events instead of converting them to conflict events
+      return;
+    } catch (e, st) {
+      _log.warning('DB commit failed: $e', e, st);
+      _currentShardError ??= e;
+      _currentShardErrorStack ??= st;
+      // Note: here, we are effectively discarding all resource events instead of converting them to error events
       return;
     }
 
     sw?.stop();
+  }
 
-    for (final iri in pendingResourceIris) {
-      yield CommitResult(iri);
+  void _clearCurrentShardState() {
+    _currentShardConflicted = false;
+    _currentShardError = null;
+    _currentShardErrorStack = null;
+  }
+
+  /// Enqueues a [MergeResult] for DB write: document save, index entries,
+  /// tombstones, group indices, and resource IRI tracking.
+  void _enqueueMergeForDb(MergeResult mergeResult) {
+    final documentIri = mergeResult.resourceIri.getDocumentIri();
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    pendingSaves.add(SaveDocumentRequest(
+      documentIri: documentIri,
+      typeIri: mergeResult.typeIri,
+      document: mergeResult.mergedGraph.graph,
+      metadata: DocumentMetadata(
+        ourPhysicalClock: mergeResult.clock.physicalTime,
+        updatedAt: now,
+      ),
+      changes: const [],
+      ifMatchUpdatedAt: mergeResult.localUpdatedAt,
+      encodedContent: mergeResult.encodedForDb.bytes,
+    ));
+
+    for (final entry in mergeResult.indexEntries) {
+      pendingIndexEntries.add(entry.withUpdatedAt(now));
+    }
+    for (final shardIri in mergeResult.tombstonedShardIris) {
+      pendingTombstones.add((
+        shardIri: shardIri,
+        resourceIri: mergeResult.resourceIri,
+        typeIri: mergeResult.typeIri,
+        physicalTime: mergeResult.clock.physicalTime,
+      ));
+    }
+    for (final resolved in mergeResult.resolvedGroupIndices) {
+      pendingGroupIndices[resolved.groupIndexIri] = resolved;
     }
 
-    _clearPending();
   }
 
   return (UploadedResourceEvent event) async* {
     switch (event) {
-      case PhaseComplete():
-        yield* _flush();
-        yield event;
-      case ShardComplete():
-        yield* _flush();
-        if (_currentShardConflicted) {
-          _currentShardConflicted = false;
-          yield ConflictedShard(event.shardIri);
-        } else {
-          yield event;
+      // --- Resource Events ---
+      case ResourceError():
+        // Resource-level failure propagated from upstream stages (including
+        // backend-specific S08 implementations). Flag the shard so a terminal
+        // ShardError is emitted at shard boundary.
+        _currentShardError ??= event.error;
+        _currentShardErrorStack ??= event.stackTrace;
+        _log.warning('Resource error in shard: '
+            '${event.resourceIri.debug}: ${event.error}');
+      // Note: we are effectively swallowing the ResourceError here.
+
+      case ConflictedResource():
+        // Resource upload rejected (ETag mismatch) — the CRDT merge was
+        // correct, only the upload failed. Persist the merge data locally
+        // and clear the stored remote ETag to force a fresh fetch on retry.
+        // Also, flagging the shard is important so it is not persisted but re-processed.
+        _currentShardConflicted = true;
+        _log.info('Resource upload conflict in shard: '
+            '${event.resourceIri.debug}: ${event.message}');
+
+        // Clear the stored ETag unconditionally — the upload failed so we
+        // don't know the current remote state, regardless of whether the
+        // merge result needs a DB write.
+        pendingEtagClears.add(event.mergeResult.resourceIri.getDocumentIri());
+
+        if (event.mergeResult.needsDbWrite) {
+          _enqueueMergeForDb(event.mergeResult);
+
+          if (pendingSaves.length >= batchSize ||
+              pendingEtags.length >= batchSize) {
+            await _flush();
+          }
         }
+
       case UploadResult():
         final mergeResult = event.mergeResult;
         final etag = event.remoteEtag;
@@ -185,61 +265,75 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
           // localOnly uploads (across multiple index shards) can use If-Match.
           if (etag != null) {
             pendingEtags[mergeResult.resourceIri.getDocumentIri()] = etag;
-            if (pendingEtags.length >= batchSize) yield* _flush();
+            if (pendingEtags.length >= batchSize) await _flush();
           }
-          yield CommitResult(mergeResult.resourceIri);
           return;
         }
 
-        final documentIri = mergeResult.resourceIri.getDocumentIri();
-        final now = DateTime.now().millisecondsSinceEpoch;
+        _enqueueMergeForDb(mergeResult);
 
-        pendingSaves.add(SaveDocumentRequest(
-          documentIri: documentIri,
-          typeIri: mergeResult.typeIri,
-          document: mergeResult.mergedGraph.graph,
-          metadata: DocumentMetadata(
-            ourPhysicalClock: mergeResult.clock.physicalTime,
-            updatedAt: now,
-          ),
-          changes: const [],
-          ifMatchUpdatedAt: mergeResult.localUpdatedAt,
-        ));
-        pendingBytes.add(mergeResult.encodedForDb.bytes);
-
-        // Stamp pre-built index entries with the actual commit timestamp.
-        for (final entry in mergeResult.indexEntries) {
-          pendingIndexEntries.add(entry.withUpdatedAt(now));
-        }
-
-        // Collect tombstoned shard IRIs for batched indexIri resolution in _flush().
-        for (final shardIri in mergeResult.tombstonedShardIris) {
-          pendingTombstones.add((
-            shardIri: shardIri,
-            resourceIri: mergeResult.resourceIri,
-            typeIri: mergeResult.typeIri,
-            physicalTime: mergeResult.clock.physicalTime,
-          ));
-        }
-
-        // Collect resolved GroupIndices for batched creation in _flush().
-        for (final resolved in mergeResult.resolvedGroupIndices) {
-          pendingGroupIndices[resolved.groupIndexIri] = resolved;
-        }
-
-        // Prefer upload-response ETag; fall back to stored remote ETag from
-        // Stage 5 (needed for remoteOnly resources so subsequent localOnly
-        // uploads can use If-Match).
         if (etag != null) {
-          pendingEtags[documentIri] = etag;
+          pendingEtags[mergeResult.resourceIri.getDocumentIri()] = etag;
         }
-
-        pendingResourceIris.add(mergeResult.resourceIri);
 
         if (pendingSaves.length >= batchSize ||
             pendingEtags.length >= batchSize) {
-          yield* _flush();
+          await _flush();
         }
+
+      // --- Shard Events ---
+      case ShardComplete():
+        await _flush();
+        if (_currentShardConflicted) {
+          _clearCurrentShardState();
+          yield ConflictedShard(event.shardIri,
+              trigger: event, message: "dbCommit.ShardComplete");
+        } else if (_currentShardError != null) {
+          final error = _currentShardError!;
+          final stack = _currentShardErrorStack!;
+          _clearCurrentShardState();
+          yield ShardError(event.shardIri, error, stack);
+        } else {
+          _clearCurrentShardState();
+          yield event;
+        }
+
+      case ShardError():
+        // Terminal shard boundary: discard any partial data and reset
+        // per-shard state so the next shard starts clean.
+        //
+        // Note: this might swallow resource events that were part of the failed
+        // shard, but that's acceptable since the shard is being aborted due to an error.
+        _clearPending();
+        _clearCurrentShardState();
+        yield event;
+
+      case ShardSkipped():
+        assert(
+            pendingSaves.isEmpty &&
+                pendingTombstones.isEmpty &&
+                pendingGroupIndices.isEmpty,
+            'S09: pending state not empty at ShardSkipped — '
+            'upstream protocol violation');
+        if (pendingSaves.isNotEmpty ||
+            pendingTombstones.isNotEmpty ||
+            pendingGroupIndices.isNotEmpty) {
+          _log.severe('S09: pending state unexpectedly non-empty '
+              'at ShardSkipped for ${event.shardIri} — clearing');
+          _clearPending();
+        }
+        yield event;
+
+      // --- Phase Events ---
+      case PhaseComplete():
+        await _flush();
+        _clearCurrentShardState();
+        yield event;
+
+      case PhaseError():
+        _clearPending();
+        _clearCurrentShardState();
+        yield event;
     }
   };
 }

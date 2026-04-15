@@ -117,20 +117,20 @@ export 'src/storage/storage_interface.dart'
         RemoteOnlyEntry;
 export 'src/sync/pipeline/pipeline_support.dart'
     show
-        ResourceGraphLoader,
-        ResourceGraphLoaderImpl,
+        BackendStorageAccess,
+        BackendStorageAccessFactory,
+        BackendStorageAccessFactoryImpl,
+        BackendStorageAccessImpl,
         PipelineRemoteSyncStorage;
 export 'src/sync/pipeline/backend/remote_sync_backend.dart'
-    show
-        RemoteSyncBackend,
-        RawContent,
-        TextContent,
-        BinaryContent,
-        isBinaryContentType,
-        isDatasetContentType,
-        extensionForContentType;
+    show RemoteSyncBackend, RawContent, TextContent, BinaryContent;
 export 'src/sync/pipeline/backend/remote_sync_storages.dart'
-    show RemoteSyncStorages, RemoteStorageMode;
+    show
+        RemoteSyncStorages,
+        RemoteStorageLayout,
+        FilePerResource,
+        ShardDataset,
+        SingleFile;
 export 'src/sync/standard_sync_manager.dart' show StandardSyncManager;
 export 'src/sync/sync_manager.dart' show SyncManager, AutoSyncConfig;
 export 'src/sync/sync_state.dart' show SyncState, SyncStatus, SyncTrigger;

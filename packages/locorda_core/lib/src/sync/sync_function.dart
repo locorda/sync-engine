@@ -2,7 +2,8 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/standard_sync_engine.dart';
 import 'package:locorda_core/src/storage/sync_timestamp_storage.dart';
-import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/streaming_remote_sync_orchestrator.dart';
 import 'package:locorda_core/src/sync/remote_sync_orchestrator.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
@@ -18,8 +19,9 @@ typedef OrchestratorFactory = RemoteSyncOrchestrator Function(
 typedef StreamingOrchestratorFactory = StreamingRemoteSyncOrchestrator Function(
   PipelineRemoteSyncStorage pipelineSupport,
   RemoteId remoteId,
-  SyncEngineConfig config,
-);
+  SyncEngineConfig config, {
+  required PipeperfCollector perf,
+});
 
 /// Synchronization function orchestrating complete sync cycle.
 ///
@@ -281,6 +283,9 @@ class SyncFunction {
 
         final lastSyncTimestamp =
             await _storage.getLastRemoteSyncTimestamp(remote.remoteId);
+        final perf = PipeperfCollector();
+        SyncFinalizationState finalizationState =
+            const SyncFinalizationIncomplete();
         try {
           // Select streaming or legacy orchestrator based on backend support
           _log.fine('Using streaming pipeline orchestrator');
@@ -288,6 +293,7 @@ class SyncFunction {
             remoteSyncStorage,
             remote.remoteId,
             config,
+            perf: perf,
           );
           await orchestrator.sync(
             syncTime,
@@ -295,17 +301,19 @@ class SyncFunction {
             config: config,
           );
 
+          finalizationState = const SyncFinalizationSuccess();
           _log.info('Remote synchronization completed successfully');
           await _storage.updateLastRemoteSyncTimestamp(
               remote.remoteId, syncTime.millisecondsSinceEpoch);
         } catch (e, st) {
           _log.severe('Error during remote synchronization', e, st);
+          finalizationState = SyncFinalizationFailure(e, st);
           // Don't update any timestamps on failure - will retry next sync
           // FIXME: Really rethrow? Shouldn't we just log and continue with next remote?
           rethrow;
         } finally {
-          // Always finalize, even on error
-          await remoteSyncStorage.finalizeSync();
+          await remoteSyncStorage.finalizeSync(finalizationState, perf: perf);
+          perf.report();
         }
       }
     }

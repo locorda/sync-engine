@@ -31,6 +31,8 @@ class _FakeGraphSyncStorage extends GraphSyncStorage {
     downloadCalls
         .add(_GraphCall(documentIri: documentIri, conditional: ifNoneMatch));
     return RemoteDownloadResult<RdfGraph>(
+      documentIri: documentIri,
+      requestETag: ifNoneMatch,
       graph: RdfGraph(),
       etag: 'd-${documentIri.value}',
     );
@@ -43,7 +45,11 @@ class _FakeGraphSyncStorage extends GraphSyncStorage {
       _GraphUploadCall(
           documentIri: documentIri, ifMatch: ifMatch, graph: graph),
     );
-    return RemoteUploadResult.success('u-${documentIri.value}');
+    return RemoteUploadResult.success(
+      'u-${documentIri.value}',
+      documentIri: documentIri,
+      requestETag: ifMatch,
+    );
   }
 }
 
@@ -78,6 +84,8 @@ class _FakeRemoteSyncStorage extends RemoteSyncStorage {
     graphDownloadCalls
         .add(_GraphCall(documentIri: documentIri, conditional: ifNoneMatch));
     return RemoteDownloadResult<RdfGraph>(
+      documentIri: documentIri,
+      requestETag: ifNoneMatch,
       graph: RdfGraph(),
       etag: 'g-${documentIri.value}',
     );
@@ -90,7 +98,11 @@ class _FakeRemoteSyncStorage extends RemoteSyncStorage {
       _GraphUploadCall(
           documentIri: documentIri, ifMatch: ifMatch, graph: graph),
     );
-    return RemoteUploadResult.success('gu-${documentIri.value}');
+    return RemoteUploadResult.success(
+      'gu-${documentIri.value}',
+      documentIri: documentIri,
+      requestETag: ifMatch,
+    );
   }
 
   @override
@@ -99,6 +111,8 @@ class _FakeRemoteSyncStorage extends RemoteSyncStorage {
     datasetDownloadCalls
         .add(_DatasetCall(documentIri: documentIri, conditional: ifNoneMatch));
     return RemoteDownloadResult<RdfDataset>(
+      documentIri: documentIri,
+      requestETag: ifNoneMatch,
       graph: RdfDataset(defaultGraph: RdfGraph(), namedGraphs: const {}),
       etag: 'ds-${documentIri.value}',
     );
@@ -115,7 +129,11 @@ class _FakeRemoteSyncStorage extends RemoteSyncStorage {
         dataset: dataset,
       ),
     );
-    return RemoteUploadResult.success('du-${documentIri.value}');
+    return RemoteUploadResult.success(
+      'du-${documentIri.value}',
+      documentIri: documentIri,
+      requestETag: ifMatch,
+    );
   }
 }
 

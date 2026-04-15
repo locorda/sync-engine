@@ -15,9 +15,9 @@ import 'package:locorda_core/src/storage/remote_id.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
+import 'package:logging/logging.dart';
 
-/// SQLite SQLITE_MAX_VARIABLE_NUMBER default is 999; [defaultPipelineBatchSize]
-/// provides headroom.
+final _log = Logger('Stage5.LocalContentLoad');
 
 /// Returns a StreamTransformer for Stage 5.
 ///
@@ -37,27 +37,84 @@ StreamTransformer<SyncCandidateEvent, LoadedCandidateEvent> localContentLoad(
 
     await for (final event in stream) {
       switch (event) {
+        // --- Resource Events ---
         case SyncCandidate():
           buffer.add(event);
           if (buffer.length >= batchSize) {
-            yield* _loadChunk(buffer, storage, remoteId, perf, perfStage);
+            yield* _loadChunkSafe(buffer, storage, remoteId, perf, perfStage);
             buffer.clear();
           }
-        case ShardComplete():
+
+        // --- Shard Events ---
+        case ShardError():
+          assert(buffer.isEmpty,
+              'S05: buffer not empty at ShardError — upstream protocol violation');
           if (buffer.isNotEmpty) {
-            yield* _loadChunk(buffer, storage, remoteId, perf, perfStage);
+            _log.severe('S05: buffer unexpectedly non-empty '
+                '(${buffer.length} items) at ShardError for '
+                '${event.shardIri} — discarding');
             buffer.clear();
           }
           yield event;
+
+        case ShardComplete():
+          if (buffer.isNotEmpty) {
+            yield* _loadChunkSafe(buffer, storage, remoteId, perf, perfStage);
+            buffer.clear();
+          }
+          yield event;
+        case ShardSkipped():
+          assert(buffer.isEmpty,
+              'S05: buffer not empty at ShardSkipped — upstream protocol violation');
+          if (buffer.isNotEmpty) {
+            _log.severe('S05: buffer unexpectedly non-empty '
+                '(${buffer.length} items) at ShardSkipped for '
+                '${event.shardIri} — discarding');
+            buffer.clear();
+          }
+          yield event;
+
+        // --- Phase Events ---
         case PhaseComplete():
           if (buffer.isNotEmpty) {
-            yield* _loadChunk(buffer, storage, remoteId, perf, perfStage);
+            yield* _loadChunkSafe(buffer, storage, remoteId, perf, perfStage);
+            buffer.clear();
+          }
+          yield event;
+        case PhaseError():
+          assert(buffer.isEmpty,
+              'S05: buffer not empty at PhaseError — upstream protocol violation');
+          if (buffer.isNotEmpty) {
+            _log.severe('S05: buffer unexpectedly non-empty '
+                '(${buffer.length} items) at PhaseError — discarding');
             buffer.clear();
           }
           yield event;
       }
     }
   });
+}
+
+/// Safe wrapper around [_loadChunk] — emits [ResourceError] per candidate on failure.
+Stream<LoadedCandidateEvent> _loadChunkSafe(
+  List<SyncCandidate> chunk,
+  Storage storage,
+  RemoteId remoteId,
+  PipeperfCollector? perf,
+  String perfStage,
+) async* {
+  try {
+    await for (final e
+        in _loadChunk(chunk, storage, remoteId, perf, perfStage)) {
+      yield e;
+    }
+  } catch (e, st) {
+    _log.warning(
+        'S05: batch load failed for ${chunk.length} candidates', e, st);
+    for (final candidate in chunk) {
+      yield ResourceError(candidate.resourceIri, e, st);
+    }
+  }
 }
 
 /// Executes two batch DB queries for [chunk] and yields [LoadedCandidate] events.

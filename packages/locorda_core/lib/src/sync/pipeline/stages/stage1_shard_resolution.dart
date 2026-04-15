@@ -28,71 +28,76 @@ Stream<ShardRefEvent> Function(SyncInput) shardResolution(
   PipeperfCollector? perf,
 }) {
   return (SyncInput input) async* {
-    final sw = perf?.start('S01.ShardResolution');
-    final zeroShardIndices = <IriTerm>[];
-    var processedShardCount = 0;
+    try {
+      final sw = perf?.start('S01.ShardResolution');
+      final zeroShardIndices = <IriTerm>[];
+      var processedShardCount = 0;
 
-    // Single DB query replaces document load + RDF parse per index.
-    final indexToShards = await storage.getIndexShards(input.indexIris);
+      // Single DB query replaces document load + RDF parse per index.
+      final indexToShards = await storage.getIndexShards(input.indexIris);
 
-    // Collect all shard IRIs for bulk ETag query.
-    final allShardIris = <IriTerm>{};
-    final indexShards = <IriTerm, (List<IriTerm>, IndexInputInfo)>{};
+      // Collect all shard IRIs for bulk ETag query.
+      final allShardIris = <IriTerm>{};
+      final indexShards = <IriTerm, (List<IriTerm>, IndexInputInfo)>{};
 
-    for (final indexIri in input.indexIris) {
-      final shardIris = indexToShards[indexIri] ?? const [];
-      if (shardIris.isEmpty) {
-        zeroShardIndices.add(indexIri);
-        continue;
+      for (final indexIri in input.indexIris) {
+        final shardIris = indexToShards[indexIri] ?? const [];
+        if (shardIris.isEmpty) {
+          zeroShardIndices.add(indexIri);
+          continue;
+        }
+
+        final info = input.indexInfos[indexIri];
+        if (info == null) {
+          _log.warning('No index info for ${indexIri.debug} — skipping');
+          continue;
+        }
+
+        final filtered = input.conflictedShardIris != null
+            ? shardIris
+                .where((s) => input.conflictedShardIris!.contains(s))
+                .toList()
+            : shardIris;
+        if (filtered.isEmpty) continue;
+
+        allShardIris.addAll(filtered);
+        indexShards[indexIri] = (filtered, info);
       }
 
-      final info = input.indexInfos[indexIri];
-      if (info == null) {
-        _log.warning('No index info for ${indexIri.debug} — skipping');
-        continue;
+      // Bulk ETag query — ETags are keyed by document IRI (without fragment),
+      // matching Stage 13 which stores them via shardIri.getDocumentIri().
+      final shardDocIris = allShardIris.map((s) => s.getDocumentIri()).toSet();
+      final etagsByDocIri = shardDocIris.isNotEmpty
+          ? await storage.getRemoteETags(remoteId, shardDocIris)
+          : <IriTerm, String?>{};
+
+      sw?.stop();
+
+      for (final entry in indexShards.entries) {
+        final indexIri = entry.key;
+        final (shardIris, info) = entry.value;
+
+        for (final shardIri in shardIris) {
+          yield ShardRef(
+            indexIri,
+            shardIri,
+            shardIri, // shardStorageId — use IRI as opaque ID for now
+            info.fetchPolicy,
+            info.typeIri,
+            storedEtag: etagsByDocIri[shardIri.getDocumentIri()],
+          );
+          processedShardCount++;
+        }
       }
 
-      final filtered = input.conflictedShardIris != null
-          ? shardIris
-              .where((s) => input.conflictedShardIris!.contains(s))
-              .toList()
-          : shardIris;
-      if (filtered.isEmpty) continue;
-
-      allShardIris.addAll(filtered);
-      indexShards[indexIri] = (filtered, info);
+      yield PhaseComplete(
+        input,
+        processedShardCount,
+        zeroShardIndices: zeroShardIndices,
+      );
+    } catch (e, st) {
+      _log.severe('S01: shard resolution failed', e, st);
+      yield PhaseError(e, st, stage: 'S01');
     }
-
-    // Bulk ETag query — ETags are keyed by document IRI (without fragment),
-    // matching Stage 13 which stores them via shardIri.getDocumentIri().
-    final shardDocIris = allShardIris.map((s) => s.getDocumentIri()).toSet();
-    final etagsByDocIri = shardDocIris.isNotEmpty
-        ? await storage.getRemoteETags(remoteId, shardDocIris)
-        : <IriTerm, String?>{};
-
-    sw?.stop();
-
-    for (final entry in indexShards.entries) {
-      final indexIri = entry.key;
-      final (shardIris, info) = entry.value;
-
-      for (final shardIri in shardIris) {
-        yield ShardRef(
-          indexIri,
-          shardIri,
-          shardIri, // shardStorageId — use IRI as opaque ID for now
-          info.fetchPolicy,
-          info.typeIri,
-          storedEtag: etagsByDocIri[shardIri.getDocumentIri()],
-        );
-        processedShardCount++;
-      }
-    }
-
-    yield PhaseComplete(
-      input,
-      processedShardCount,
-      zeroShardIndices: zeroShardIndices,
-    );
   };
 }

@@ -31,7 +31,11 @@ export 'package:locorda_core/locorda_core.dart'
         StandardSyncEngine,
         SimpleConfigService,
         AuthValueListenable,
-        Auth;
+        Auth,
+        RemoteStorageLayout,
+        FilePerResource,
+        ShardDataset,
+        SingleFile;
 export 'package:locorda_ui/locorda_ui.dart'
     show
         LocordaUILocalizations,

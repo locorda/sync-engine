@@ -60,17 +60,6 @@ StreamTransformer<T, T> decouplingTransformer<T>(String afterStage,
     var upstreamPauses = 0;
     var upstreamDone = false;
 
-    // TODO(cleanup): Event-loop turn tracking is diagnostic-only.
-    // Consider removing once pipeline configuration is finalized.
-    // A Timer.run callback fires when the event loop regains control after
-    // draining the microtask queue. Between two such callbacks, every event
-    // delivery was a microtask.
-    var turnProbeScheduled = false;
-    var eventsThisTurn = 0;
-    var maxEventsPerTurn = 0;
-    var totalTurns = 0;
-    var totalEventsDelivered = 0;
-
     void resumeIfNeeded() {
       if (buffered < maxBuffered && !upstreamDone) {
         subscription?.resume();
@@ -88,16 +77,21 @@ StreamTransformer<T, T> decouplingTransformer<T>(String afterStage,
             upstreamPauses++;
           }
         },
-        onError: controller.addError,
+        onError: (error, stackTrace) {
+          if (!controller.isClosed) {
+            controller.addError(error, stackTrace);
+          } else {
+            _log.severe(
+                'Error after stream closed in '
+                'DecouplingTransformer ($afterStage)',
+                error,
+                stackTrace);
+          }
+        },
         onDone: () {
           upstreamDone = true;
-          final avgPerTurn = totalTurns > 0
-              ? (totalEventsDelivered / totalTurns).toStringAsFixed(1)
-              : 'N/A';
           _log.info('DecouplingTransformer ($afterStage) done: '
-              'peak=$maxObserved/$maxBuffered, upstreamPauses=$upstreamPauses, '
-              'eventLoopTurns=$totalTurns, maxEventsPerTurn=$maxEventsPerTurn, '
-              'avgEventsPerTurn=$avgPerTurn');
+              'peak=$maxObserved/$maxBuffered, upstreamPauses=$upstreamPauses');
           controller.close();
         },
       );
@@ -106,7 +100,12 @@ StreamTransformer<T, T> decouplingTransformer<T>(String afterStage,
     controller.onCancel = () {
       final sub = subscription;
       subscription = null;
-      return sub?.cancel() ?? Future.value();
+      final isPaused = sub?.isPaused ?? false;
+      final f = sub?.cancel();
+      // Apparently, cancelling a paused subscription currently (Dart SDK 3.6)
+      // returns a Future that never completes. The cancel IS initiated (resources ARE cleaned up),
+      // but the Future doesn't resolve. So we fire-and-forget the upstream cancel in that case.
+      return isPaused || f == null ? Future.value() : f;
     };
 
     controller.onPause = () {
@@ -121,138 +120,146 @@ StreamTransformer<T, T> decouplingTransformer<T>(String afterStage,
       resumeIfNeeded();
     };
 
-    // Track consumption via a wrapper stream that decrements the counter
-    // and records event-loop turn statistics.
-    return controller.stream.transform(
-      StreamTransformer<T, T>.fromBind((Stream<T> bufferedStream) {
-        return bufferedStream.map((event) {
-          buffered--;
-          totalEventsDelivered++;
-          eventsThisTurn++;
-          // Schedule a Timer.run probe (event-queue level) to detect when
-          // the current microtask burst ends. All events delivered before
-          // this callback fires were microtasks in the same turn.
-          if (!turnProbeScheduled) {
-            turnProbeScheduled = true;
-            Timer.run(() {
-              turnProbeScheduled = false;
-              totalTurns++;
-              if (eventsThisTurn > maxEventsPerTurn) {
-                maxEventsPerTurn = eventsThisTurn;
+    // Decrement buffer counter so upstream can be resumed when space frees.
+    // Error events pass through .map() natively without calling the callback.
+    return controller.stream.map((event) {
+      buffered--;
+      resumeIfNeeded();
+      return event;
+    });
+  });
+}
+
+/// A [StreamTransformer] that defers a synchronous `expand` callback to the
+/// **event queue**, enabling I/O interleaving between CPU-heavy expand calls.
+///
+/// For each upstream event:
+/// 1. Pauses upstream (back-pressure during CPU work).
+/// 2. Yields to the event loop via `Timer.run` — pending I/O callbacks fire.
+/// 3. Executes [fn] synchronously.
+/// 4. Emits results and resumes upstream.
+///
+/// Errors from [fn] are forwarded to downstream via [StreamController.addError]
+/// without going through `addStream`, guaranteeing correct propagation.
+StreamTransformer<S, T> deferredExpandTransformer<S, T>(
+    String label, Iterable<T> Function(S) fn) {
+  return StreamTransformer<S, T>.fromBind((Stream<S> input) {
+    final controller = StreamController<T>();
+    StreamSubscription<S>? subscription;
+
+    void _cancelUpstream() {
+      final sub = subscription;
+      subscription = null;
+      sub?.cancel();
+    }
+
+    controller.onListen = () {
+      subscription = input.listen(
+        (event) {
+          subscription!.pause();
+          void cb() {
+            try {
+              if (controller.isClosed) return;
+              for (final item in fn(event)) {
+                if (controller.isClosed) return;
+                controller.add(item);
               }
-              _log.fine('DecouplingTransformer ($afterStage) turn $totalTurns: '
-                  '$eventsThisTurn events delivered as microtasks');
-              eventsThisTurn = 0;
-            });
+            } catch (e, st) {
+              // On error: forward downstream, cancel upstream, close.
+              // This ensures Done is delivered even when the downstream
+              // cancel-cascade races with Timer.run callbacks.
+              if (!controller.isClosed) {
+                controller.addError(e, st);
+              }
+              _cancelUpstream();
+              if (!controller.isClosed) controller.close();
+              return;
+            }
+            subscription?.resume();
           }
-          resumeIfNeeded();
-          return event;
+
+          Timer.run(cb);
+        },
+        onError: (error, stackTrace) {
+          // Upstream error: forward, cancel, close — same pattern.
+          if (!controller.isClosed) {
+            controller.addError(error, stackTrace);
+          }
+          _cancelUpstream();
+          if (!controller.isClosed) controller.close();
+        },
+        onDone: () {
+          _log.fine('deferredExpandTransformer ($label) done');
+          controller.close();
+        },
+      );
+    };
+
+    controller.onCancel = () {
+      final sub = subscription;
+      subscription = null;
+      if (sub == null) return Future.value();
+      final isPaused = sub.isPaused;
+      final f = sub.cancel();
+      // Dart SDK bug (3.6): cancel() on a paused subscription to an async*
+      // StreamTransformer.fromBind stream returns a Future that never
+      // completes. The cancel IS initiated, but the Future doesn't resolve.
+      // Fire-and-forget when paused to avoid hanging the cancel cascade.
+      return isPaused ? Future.value() : f;
+    };
+    controller.onPause = () => subscription?.pause();
+    controller.onResume = () => subscription?.resume();
+
+    return controller.stream;
+  });
+}
+
+extension StreamX<T> on Stream<T> {
+  /// A convenience method for `transform(deferredExpandTransformer(label, fn))`.
+  Stream<V> deferredExpand<V>(String label, Iterable<V> Function(T) fn) =>
+      transform(deferredExpandTransformer(label, fn));
+
+  Stream<T> decoupled(String label, {int maxBuffered = 1280}) =>
+      transform(decouplingTransformer(label, maxBuffered: maxBuffered));
+
+  /// Drains this stream, completing on Done or the first error.
+  ///
+  /// Unlike [Stream.drain], this applies a timeout to the cancel Future
+  /// to work around a Dart SDK bug (3.6) where `cancel()` on a paused
+  /// subscription to an `async*` `StreamTransformer.fromBind` stream
+  /// returns a Future that never completes.
+  ///
+  /// Use [onData] to inspect data events flowing through (e.g. to detect
+  /// materialized error events that flow as data to bypass async*
+  /// backpressure issues).
+  ///
+  /// On error, cancel is attempted with a [cancelTimeout] safety net.
+  /// If the cancel Future doesn't complete in time, the error is still
+  /// propagated and the cancel continues in the background.
+  Future<void> safeDrain({
+    Duration cancelTimeout = const Duration(milliseconds: 500),
+    void Function(T)? onData,
+  }) {
+    final completer = Completer<void>();
+    late final StreamSubscription<T> sub;
+    sub = listen(
+      onData,
+      onError: (Object e, StackTrace st) {
+        if (completer.isCompleted) return;
+        sub.cancel().timeout(cancelTimeout, onTimeout: () {
+          _log.warning(
+            'safeDrain: cancel() timed out after $cancelTimeout — '
+            'likely Dart SDK bug (paused async* subscription). '
+            'Proceeding with error propagation.',
+          );
+        }).whenComplete(() {
+          if (!completer.isCompleted) completer.completeError(e, st);
         });
-      }),
+      },
+      onDone: () {
+        if (!completer.isCompleted) completer.complete();
+      },
     );
-  });
-}
-
-/// Forces periodic yields to the event loop by inserting `Timer.run` breaks
-/// every [yieldEvery] events.
-///
-/// TODO(cleanup): Experimental — kept for diagnostics only. Proven not
-/// beneficial as a standalone optimization; deferredExpand is preferred.
-///
-/// **Purpose**: Tests the microtask starvation hypothesis. The default async
-/// [StreamController] delivers events via microtasks, which Dart processes
-/// completely before checking the event queue for I/O callbacks. This means
-/// hundreds or thousands of stream events can fire without any I/O callback
-/// (DB result, ReceivePort message) getting a chance to run.
-///
-/// This transformer inserts explicit event-queue yield points: every
-/// [yieldEvery] events it awaits a [Timer.run] callback, allowing pending
-/// I/O callbacks to fire before continuing.
-///
-/// **Usage**: Compose after a [decouplingTransformer] to compare behavior:
-/// ```dart
-/// // Microtask-only delivery (baseline):
-/// .transform(decouplingTransformer("S04", maxBuffered: 10000))
-///
-/// // With event-loop yielding (test):
-/// .transform(decouplingTransformer("S04", maxBuffered: 10000))
-/// .transform(eventLoopYieldTransformer("S04→S05", yieldEvery: 50))
-/// ```
-///
-/// If yielding improves interleaving (visible in pipeperf overlap%), the
-/// microtask starvation hypothesis is confirmed.
-StreamTransformer<T, T> eventLoopYieldTransformer<T>(String label,
-    {int yieldEvery = 50}) {
-  return StreamTransformer<T, T>.fromBind((Stream<T> input) async* {
-    var sinceYield = 0;
-    var totalYields = 0;
-    await for (final event in input) {
-      yield event;
-      sinceYield++;
-      if (sinceYield >= yieldEvery) {
-        sinceYield = 0;
-        totalYields++;
-        // Timer.run schedules on the event queue, NOT the microtask queue.
-        // Awaiting it lets pending I/O callbacks fire before we continue.
-        await _yieldToEventLoop();
-      }
-    }
-    _log.info('EventLoopYieldTransformer ($label) done: '
-        'totalYields=$totalYields, yieldEvery=$yieldEvery');
-  });
-}
-
-/// Yields control to the event loop by scheduling a Timer.run callback.
-///
-/// Unlike `Future.value()` or `scheduleMicrotask`, `Timer.run` places the
-/// callback on the **event queue**. The Dart event loop processes all pending
-/// microtasks first, then checks the event queue — so awaiting this Future
-/// guarantees that any pending I/O callbacks (ReceivePort messages from Drift
-/// isolates, file I/O completions, etc.) get a chance to fire.
-Future<void> _yieldToEventLoop() {
-  final completer = Completer<void>();
-  Timer.run(completer.complete);
-  return completer.future;
-}
-
-/// Wraps a synchronous `expand` callback so it runs on the **event queue**
-/// instead of inline on the microtask queue.
-///
-/// Dart's `Stream.expand` executes the callback synchronously and emits all
-/// results as microtasks — no I/O callback can fire in between. This function
-/// returns an `asyncExpand` callback that:
-///
-/// 1. Yields to the event loop via `Timer.run` **before** running [fn].
-/// 2. Executes [fn] synchronously (pure CPU, same as `.expand`).
-/// 3. Emits the results as a `Stream.fromIterable`.
-///
-/// The initial yield gives pending I/O callbacks (Drift ReceivePort messages,
-/// file completions) a chance to run before the CPU-heavy expand blocks the
-/// event loop again.
-///
-/// Usage:
-/// ```dart
-/// // Instead of:
-/// .expand(mergeCandidates(...))
-/// // Use:
-/// .asyncExpand(deferredExpand(mergeCandidates(...)))
-/// ```
-Stream<T> Function(S) deferredExpand<S, T>(Iterable<T> Function(S) fn) {
-  return (S event) async* {
-    await _yieldToEventLoop();
-    final results = fn(event);
-    for (final item in results) {
-      yield item;
-    }
-  };
-}
-
-/// TODO(cleanup): Experimental — unused. Remove if deferredExpand proves
-/// sufficient for all CPU-stage interleaving needs.
-Future<T> Function(S) deferredMap<S, T>(T Function(S) fn) {
-  return (S event) async {
-    await _yieldToEventLoop();
-    final result = fn(event);
-    return result;
-  };
+    return completer.future;
+  }
 }

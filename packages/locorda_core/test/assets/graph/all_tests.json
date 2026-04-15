@@ -2053,7 +2053,7 @@
           "title": "Shard Dataset: First save of new resource",
           "description": "Shard Dataset: Saving a new resource when no data exists in storage should add all triples with CRDT metadata",
           "config": "shared/configs/basic_config.json",
-          "use_shard_datasets": true,
+          "layout": "shardDataset",
           "steps": [
             {
               "action": "save",
@@ -2083,7 +2083,7 @@
           "id": "dataset_02",
           "title": "Cross-app sync with heterogeneous index configurations",
           "description": "Validates that different applications with different indexing strategies can seamlessly sync the same data resources. Foreign device creates resource with FullIndex + GroupIndex for dateCreated, local device has GroupIndex for recipeCategory. The system correctly discovers and updates foreign shard entries while maintaining separate index infrastructures. This proves the fundamental design goal: applications can have different indexing strategies while sharing the same data.",
-          "use_shard_datasets": true,
+          "layout": "shardDataset",
           "installations": [
             {
               "id": "foreign-device-installation",
@@ -2198,6 +2198,124 @@
               "expected": {
                 "documents_dir": "test_cases/dataset/02_foreign_shard_discovery/04_default-installation_sync/storage",
                 "remote_documents_dir": "test_cases/dataset/02_foreign_shard_discovery/04_default-installation_sync/remote"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "suite": "singlefile",
+      "description": "Tests for Single-File storage mode (all data in one TriG dataset)",
+      "tests": [
+        {
+          "id": "singlefile_01",
+          "title": "Single File: First save of new resource",
+          "description": "Single File: Saving a new resource when no data exists should produce one TriG dataset containing all shard and resource named graphs",
+          "config": "shared/configs/basic_config.json",
+          "layout": "singleFile",
+          "steps": [
+            {
+              "action": "save",
+              "typeIri": "https://schema.org/Recipe",
+              "input_resource": "test_cases/singlefile/01_first_save/input_resource.ttl",
+              "expected": {
+                "documents_dir": "test_cases/singlefile/01_first_save/step01_storage",
+                "remote_documents_dir": "test_cases/singlefile/01_first_save/step01_remote"
+              },
+              "action_ts": {
+                "save": "2024-01-01T02:00:00Z"
+              }
+            },
+            {
+              "action": "sync",
+              "action_ts": {
+                "sync": "2024-01-01T02:00:00.001Z"
+              },
+              "expected": {
+                "documents_dir": "test_cases/singlefile/01_first_save/step02_storage",
+                "remote_documents_dir": "test_cases/singlefile/01_first_save/step02_remote"
+              }
+            }
+          ]
+        },
+        {
+          "id": "singlefile_02",
+          "title": "Single File: Cross-app sync with heterogeneous index configurations",
+          "description": "Validates that different applications with different indexing strategies can seamlessly sync via a single TriG file. Foreign device creates resource with FullIndex + GroupIndex for dateCreated, local device has GroupIndex for recipeCategory.",
+          "layout": "singleFile",
+          "installations": [
+            {
+              "id": "foreign-device-installation",
+              "config": "shared/configs/foreign_app_config.json"
+            },
+            {
+              "id": "default-installation",
+              "config": "shared/configs/group_index_config.json"
+            }
+          ],
+          "steps": [
+            {
+              "action": "save",
+              "installation_id": "foreign-device-installation",
+              "typeIri": "https://schema.org/Recipe",
+              "input_resource": "test_cases/singlefile/02_foreign_shard_discovery/00_foreign-device-installation_save/foreign_input_recipe.ttl",
+              "action_ts": {
+                "save": "2024-01-01T02:00:00Z"
+              }
+            },
+            {
+              "action": "sync",
+              "installation_id": "foreign-device-installation",
+              "action_ts": {
+                "sync": "2024-01-01T02:05:00Z"
+              },
+              "expected": {
+                "documents_dir": "test_cases/singlefile/02_foreign_shard_discovery/01_foreign-device-installation_sync/storage",
+                "remote_documents_dir": "test_cases/singlefile/02_foreign_shard_discovery/01_foreign-device-installation_sync/remote"
+              }
+            },
+            {
+              "action": "sync",
+              "installation_id": "default-installation",
+              "action_ts": {
+                "sync": "2024-01-01T02:10:00Z"
+              },
+              "expected": {
+                "documents_dir": "test_cases/singlefile/02_foreign_shard_discovery/02_default-installation_sync/storage",
+                "remote_documents_dir": "test_cases/singlefile/02_foreign_shard_discovery/02_default-installation_sync/remote"
+              }
+            },
+            {
+              "action": "save",
+              "installation_id": "default-installation",
+              "typeIri": "https://schema.org/Recipe",
+              "input_resource": "test_cases/singlefile/02_foreign_shard_discovery/03_default-installation_save/input_resource.ttl",
+              "expected": {
+                "property_changes": [
+                  {
+                    "resource_iri": "tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlLWNha2U=#it",
+                    "property_iri": "https://schema.org/name",
+                    "changed_at": "2024-01-01T06:00:00Z",
+                    "logical_clock": 1
+                  }
+                ],
+                "documents_dir": "test_cases/singlefile/02_foreign_shard_discovery/03_default-installation_save/storage",
+                "remote_documents_dir": "test_cases/singlefile/02_foreign_shard_discovery/03_default-installation_save/remote"
+              },
+              "action_ts": {
+                "save": "2024-01-01T06:00:00Z"
+              }
+            },
+            {
+              "action": "sync",
+              "installation_id": "default-installation",
+              "action_ts": {
+                "sync": "2024-01-01T06:00:00.001Z"
+              },
+              "expected": {
+                "documents_dir": "test_cases/singlefile/02_foreign_shard_discovery/04_default-installation_sync/storage",
+                "remote_documents_dir": "test_cases/singlefile/02_foreign_shard_discovery/04_default-installation_sync/remote"
               }
             }
           ]

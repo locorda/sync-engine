@@ -12,6 +12,9 @@ import 'dart:async';
 
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
+import 'package:logging/logging.dart';
+
+final _log = Logger('Stage11b.ContractLoad');
 
 /// Returns an `.asyncMap()` function for Stage 11b.
 ///
@@ -20,13 +23,29 @@ FutureOr<ContractLoadedShardEvent> Function(PreparedShardEvent)
     loadShardContracts(
   MergeContractLoader mergeContractLoader,
 ) {
-  return (PreparedShardEvent event) async => switch (event) {
-        PhaseComplete() => event,
+  return (PreparedShardEvent event) async {
+    try {
+      return switch (event) {
+        // --- Shard Events ---
         ConflictedShard() => event,
-        ShardComplete() => event,
+        ShardError() => event,
+        ShardSkipped() => event,
         PreparedShard() => ContractLoadedShard(
             prepared: event,
             mergeContract: await mergeContractLoader.load(event.governanceIris),
           ),
+
+        // --- Phase Events ---
+        PhaseComplete() => event,
+        PhaseError() => event,
       };
+    } catch (e, st) {
+      if (event is PreparedShard) {
+        _log.warning(
+            'S11b: failed to load contract for shard ${event.shardIri}', e, st);
+        return ShardError(event.shardIri, e, st);
+      }
+      rethrow;
+    }
+  };
 }

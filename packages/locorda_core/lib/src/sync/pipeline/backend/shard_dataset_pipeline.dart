@@ -12,6 +12,8 @@ import 'dart:async';
 
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/storage/remote_storage.dart';
+import 'package:locorda_core/src/sync/pipeline/backend/backend_converter.dart';
+import 'package:locorda_core/src/sync/pipeline/backend/backend_pipe.dart';
 import 'package:locorda_core/src/sync/pipeline/backend/remote_sync_backend.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
@@ -41,13 +43,11 @@ import 'package:logging/logging.dart';
 ///   from the merged shard graph (defaultGraph) and resource graphs
 ///   (namedGraphs). Changed resources come from the Stage 8 accumulator;
 ///   unchanged resources are loaded from the local DB via
-///   [ResourceGraphLoader]. The dataset is encoded and uploaded via
+///   [BackendStorageAccess]. The dataset is encoded and uploaded via
 ///   [RemoteSyncBackend.upload].
 class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
   final _log = Logger('ShardDatasetRemoteSyncStorage');
   final RemoteSyncBackend backend;
-  final RdfCore _rdfCore;
-  final String _contentType;
 
   /// Per-shard resource graph cache from Stage 2 downloads.
   ///
@@ -62,56 +62,26 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
   /// Populated in [resourceUpload], consumed and cleared in [shardUpload].
   final Map<String, Map<IriTerm, DecodedGraphSource>> _uploadAccumulator = {};
 
-  /// Temporary buffer for resources arriving before the shard boundary.
-  ///
-  /// Resources are accumulated here until [ShardComplete] arrives,
-  /// at which point they are flushed into [_uploadAccumulator] under
-  /// the correct shard key.
-  final Map<IriTerm, DecodedGraphSource> _pendingResources = {};
-
-  /// Resource graph loader injected by the orchestrator.
-  ///
-  /// Loads resource graphs from the local DB for dataset assembly in Stage 12.
-  ResourceGraphLoader _resourceGraphLoader;
-  final bool _isBinary;
+  /// Storage access for loading resource graphs and managing ETags.
+  final BackendStorageAccess _storageAccess;
+  final BackendDatasetConverter _converter;
 
   ShardDatasetRemoteSyncStorage(
     this.backend, {
     required RdfCore rdfCore,
     required String contentType,
-    required ResourceGraphLoader resourceGraphLoader,
-    bool? isBinary,
-  })  : _rdfCore = rdfCore,
-        _contentType = contentType,
-        _resourceGraphLoader = resourceGraphLoader,
-        _isBinary = isBinary ?? isBinaryContentType(contentType);
+    required BackendStorageAccess storageAccess,
+  })  : _storageAccess = storageAccess,
+        _converter = BackendDatasetConverter(
+          rdfCore: rdfCore,
+          isBinary: rdfCore.contentTypeInfo(contentType)?.isBinary ?? false,
+          contentType: contentType,
+        );
 
   @override
-  Future<void> finalizeSync() => Future.value();
-
-  // ---------------------------------------------------------------------------
-  // Encoding helpers
-  // ---------------------------------------------------------------------------
-
-  /// Decode [RawContent] from backend into an [RdfDataset].
-  RdfDataset _decodeDataset(RawContent raw) => switch (raw) {
-        TextContent(:final text, :final contentType) =>
-          _rdfCore.decodeDataset(text, contentType: contentType),
-        BinaryContent(:final bytes, :final contentType) =>
-          _rdfCore.decodeBinaryDataset(bytes, contentType: contentType),
-      };
-
-  /// Encode an [RdfDataset] to [RawContent] for the backend.
-  RawContent _encodeDataset(RdfDataset dataset) {
-    if (_isBinary) {
-      final encodedBytes =
-          _rdfCore.encodeBinaryDataset(dataset, contentType: _contentType);
-      return BinaryContent(encodedBytes, contentType: _contentType);
-    }
-
-    final encoded = _rdfCore.encodeDataset(dataset, contentType: _contentType);
-    return TextContent(encoded, contentType: _contentType);
-  }
+  Future<void> finalizeSync(SyncFinalizationState state,
+          {PipeperfCollector? perf}) =>
+      Future.value();
 
   // ---------------------------------------------------------------------------
   // Stage 2: Shard Fetch — download datasets, cache named graphs
@@ -120,88 +90,82 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
   @override
   StreamTransformer<ShardRefEvent, FetchedShardEvent> shardFetch(
           {PipeperfCollector? perf}) =>
-      StreamTransformer.fromBind((stream) async* {
-        final buffer = <ShardRef>[];
+      StreamTransformer.fromBind((stream) => backendPipe<
+              ShardRef,
+              ShardRefEvent,
+              FetchedShardEvent,
+              RemoteDownloadRequest,
+              RemoteDownloadResult<RawContent>>(
+            stream: stream,
+            logger: _log,
+            perf: perf,
+            perfStage: 'S02.ShardFetch',
+            classify: (e) => switch (e) {
+              // --- Shard Events ---
+              ShardRef() => BackendRequest(
+                  (e.shardIri.getDocumentIri(), e.storedEtag),
+                  e,
+                  RemoteDownloadRequest(
+                    documentIri: e.shardIri.getDocumentIri(),
+                    ifNoneMatch: e.storedEtag,
+                  ),
+                ),
 
-        Stream<FetchedShardEvent> flush() async* {
-          if (buffer.isEmpty) return;
+              // --- Phase Events ---
+              PhaseComplete() => BackendBoundary(e),
+              PhaseError() => BackendBoundary(e),
+            },
+            backendCall: backend.download,
+            resultKey: (r) => (r.documentIri, r.requestETag),
+            toOutput: (event, result) {
+              if (result.notModified) {
+                return ShardNotModified(event.shardIri, event.shardStorageId,
+                    event.fetchPolicy, event.typeIri,
+                    storedEtag: event.storedEtag);
+              } else if (result.graph == null && event.storedEtag != null) {
+                return ShardGone(event.shardIri, event.shardStorageId,
+                    event.fetchPolicy, event.typeIri);
+              } else if (result.graph == null) {
+                return ShardNotFound(event.shardIri, event.shardStorageId,
+                    event.fetchPolicy, event.typeIri);
+              }
+              try {
+                // CPU: decode raw → dataset, then populate resource cache.
+                final sw = perf?.start('S02.ShardFetch.decode');
+                final dataset = _converter.decodeDataset(result.graph!);
+                final shardDocIri = event.shardIri.getDocumentIri();
 
-          final swIo = perf?.start('S02.ShardFetch.io');
-          final requests = buffer.map((e) => RemoteDownloadRequest(
-                documentIri: e.shardIri.getDocumentIri(),
-                ifNoneMatch: e.storedEtag,
-              ));
+                // Cache named graphs (resource documents) for Stage 6.
+                final resourceCache = <IriTerm, RdfGraph>{};
+                for (final graphName in dataset.graphNames) {
+                  if (graphName is IriTerm) {
+                    final graph = dataset.graph(graphName);
+                    if (graph != null) {
+                      resourceCache[graphName] = graph;
+                    }
+                  }
+                }
+                _downloadCache[shardDocIri.value] = resourceCache;
+                sw?.stop();
 
-          final results =
-              await backend.download(Stream.fromIterable(requests)).toList();
-
-          swIo?.stop();
-
-          for (var i = 0; i < buffer.length; i++) {
-            yield* _processShardResult(buffer[i], results[i], perf: perf);
-          }
-          buffer.clear();
-        }
-
-        await for (final event in stream) {
-          switch (event) {
-            case ShardRef():
-              buffer.add(event);
-            case PhaseComplete():
-              yield* flush();
-              yield event;
-          }
-        }
-
-        yield* flush();
-      });
-
-  Stream<FetchedShardEvent> _processShardResult(
-      ShardRef event, RemoteDownloadResult<RawContent> result,
-      {PipeperfCollector? perf}) async* {
-    if (result.notModified) {
-      yield ShardNotModified(event.shardIri, event.shardStorageId,
-          event.fetchPolicy, event.typeIri,
-          storedEtag: event.storedEtag);
-    } else if (result.graph == null && event.storedEtag != null) {
-      yield ShardGone(event.shardIri, event.shardStorageId, event.fetchPolicy,
-          event.typeIri);
-    } else if (result.graph == null) {
-      yield ShardNotFound(event.shardIri, event.shardStorageId,
-          event.fetchPolicy, event.typeIri);
-    } else {
-      // CPU: decode raw → dataset, then populate resource cache.
-      // Both steps happen before yield, so stopwatch is unaffected by
-      // downstream backpressure.
-      final sw = perf?.start('S02.ShardFetch.decode');
-      final dataset = _decodeDataset(result.graph!);
-      final shardDocIri = event.shardIri.getDocumentIri();
-
-      // Cache named graphs (resource documents) for Stage 6.
-      final resourceCache = <IriTerm, RdfGraph>{};
-      for (final graphName in dataset.graphNames) {
-        if (graphName is IriTerm) {
-          final graph = dataset.graph(graphName);
-          if (graph != null) {
-            resourceCache[graphName] = graph;
-          }
-        }
-      }
-      _downloadCache[shardDocIri.value] = resourceCache;
-      sw?.stop();
-
-      // Emit the default graph (shard metadata) as ShardContent.
-      yield ShardContent(
-        event.shardIri,
-        event.shardStorageId,
-        event.fetchPolicy,
-        event.typeIri,
-        DecodedGraphSource(dataset.defaultGraph),
-        result.etag!,
-        allResourcesAvailable: true,
-      );
-    }
-  }
+                return ShardContent(
+                  event.shardIri,
+                  event.shardStorageId,
+                  event.fetchPolicy,
+                  event.typeIri,
+                  DecodedGraphSource(dataset.defaultGraph),
+                  result.etag!,
+                  allResourcesAvailable: true,
+                );
+              } catch (e, st) {
+                _log.warning(
+                    'Shard decode failed for ${event.shardIri}: $e', e, st);
+                return ShardError(event.shardIri, e, st);
+              }
+            },
+            onError: (event, error, stackTrace) =>
+                ShardError(event.shardIri, error, stackTrace),
+          ));
 
   // ---------------------------------------------------------------------------
   // Stage 6: Resource Fetch — serve from download cache, no HTTP
@@ -213,13 +177,12 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
       StreamTransformer.fromBind((stream) async* {
         await for (final event in stream) {
           switch (event) {
+            // --- Resource Events ---
             case LoadedCandidate():
-              final direction = event.candidate.direction;
+              final needsFetch = event.needsRemoteFetch;
 
-              // Pass-through directions that don't need a remote fetch.
-              if (direction == SyncDirection.remoteShardUnchanged ||
-                  direction == SyncDirection.notInRemoteShard ||
-                  direction == SyncDirection.shardGone) {
+              // Pass-through when remote shard is unchanged (304).
+              if (!needsFetch) {
                 yield FetchedCandidate(event,
                     remoteEtag: event.storedRemoteEtag);
                 continue;
@@ -236,11 +199,23 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
               }
 
               if (cached != null) {
-                yield FetchedCandidate(
-                  event,
-                  remoteSource: DecodedGraphSource(cached),
-                  remoteEtag: event.storedRemoteEtag,
-                );
+                // Extract clockHash from cached resource graph as synthetic ETag.
+                final newClockHash = cached.clockHash(docIri);
+
+                if (newClockHash != null &&
+                    newClockHash == event.storedRemoteEtag) {
+                  // 304 equivalent: resource unchanged within the changed shard.
+                  // Skip remoteSource to avoid unnecessary merge.
+                  yield FetchedCandidate(event, remoteEtag: newClockHash);
+                } else {
+                  // 200 equivalent: resource changed (or no prior ETag stored).
+                  // Pass fresh graph with new clockHash as ETag.
+                  yield FetchedCandidate(
+                    event,
+                    remoteSource: DecodedGraphSource(cached),
+                    remoteEtag: newClockHash,
+                  );
+                }
               } else {
                 // Resource not in cache — shouldn't happen with
                 // allResourcesAvailable, but degrade gracefully.
@@ -249,14 +224,32 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
                     remoteEtag: event.storedRemoteEtag);
               }
 
-            case ShardComplete():
-              // Clear this shard's download cache to free memory.
-              final shardDocIri = event.shardIri.getDocumentIri();
-              _downloadCache.remove(shardDocIri.value);
+            case ResourceError():
               yield event;
 
+            // --- Shard Events ---
+            case ShardError():
+              // Clear this shard's download cache on error as well.
+              _clearShard(event.shardIri);
+              yield event;
+
+            case ShardComplete():
+              // Clear this shard's download cache to free memory.
+              _clearShard(event.shardIri);
+              yield event;
+
+            case ShardSkipped():
+              // Clear this shard's download cache to free memory.
+              _clearShard(event.shardIri);
+              yield event;
+
+            // --- Phase Events ---
             case PhaseComplete():
               // Clear all remaining cache on phase boundary.
+              _downloadCache.clear();
+              yield event;
+
+            case PhaseError():
               _downloadCache.clear();
               yield event;
           }
@@ -267,38 +260,122 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
   // Stage 8: Resource Upload — accumulate, don't upload
   // ---------------------------------------------------------------------------
 
+  /// Accumulates merged resource graphs per shard instead of uploading them
+  /// individually. The actual upload happens in Stage 12 as a single dataset.
+  ///
+  /// **Error handling — abort-on-first-error per shard:**
+  ///
+  /// Unlike FPR mode (where each resource is uploaded individually and its
+  /// new ETag is immediately valid for the next sync cycle), dataset mode
+  /// defers the upload to S12. If a shard's S12 upload never happens (due
+  /// to an error in any resource), *none* of the accumulated ETags are valid
+  /// on remote — the retry cycle will re-download the old shard and re-merge
+  /// every resource anyway.
+  ///
+  /// Continuing to accumulate after a [ResourceError] would therefore be
+  /// wasted work. Worse, it would overwrite the stored remote ETags (via
+  /// S09) with values that don't match remote, forcing unnecessary re-merges
+  /// on retry. By aborting early and emitting [ShardError] at the shard
+  /// boundary, we preserve the old stored ETags for unprocessed resources
+  /// so they can benefit from 304-equivalent skips on the next attempt.
   @override
   StreamTransformer<MergedResourceEvent, UploadedResourceEvent> resourceUpload(
-          {PipeperfCollector? perf}) =>
-      StreamTransformer.fromBind((stream) async* {
-        await for (final event in stream) {
-          switch (event) {
-            case MergeResult():
-              if (event.needsUpload) {
-                // Buffer merged graph until ShardComplete reveals the shard.
-                final docIri = event.resourceIri.getDocumentIri();
-                _pendingResources[docIri] = event.mergedGraph;
-              }
-              // Always emit UploadResult (no remote ETag — deferred).
-              yield UploadResult(event);
+      {PipeperfCollector? perf}) {
+    /// Per-shard error flag: set when [ResourceError] is received, cleared on
+    /// shard/phase boundary. Prevents accumulation of partial/corrupt data.
+    bool shardHasError = false;
+    Object? shardError;
+    StackTrace? shardErrorStack;
 
-            case ShardComplete():
+    /// Temporary buffer for resources arriving before the shard boundary.
+    ///
+    /// Resources are accumulated here until [ShardComplete] arrives,
+    /// at which point they are flushed into [_uploadAccumulator] under
+    /// the correct shard key.
+    final Map<IriTerm, DecodedGraphSource> _pendingResources = {};
+
+    /// Resets all per-shard accumulation state — call on every shard/phase
+    /// boundary to ensure the next shard starts clean.
+    void clearCurrentShard() {
+      _pendingResources.clear();
+      shardHasError = false;
+      shardError = null;
+      shardErrorStack = null;
+    }
+
+    return StreamTransformer.fromBind((stream) async* {
+      await for (final event in stream) {
+        switch (event) {
+          // --- Resource Events ---
+          case MergeResult() when shardHasError:
+            // Shard already failed — keep event flow, but do not synthesize a
+            // post-upload ETag for data that will not be uploaded in S12.
+            yield UploadResult(event);
+
+          case MergeResult() when event.needsUpload:
+            final docIri = event.resourceIri.getDocumentIri();
+            _pendingResources[docIri] = event.mergedGraph;
+            // Extract clockHash from merged graph as synthetic ETag.
+            // S12 will upload this graph, so the remote clockHash after
+            // upload matches this value — S09 must persist it so S06
+            // can detect unchanged resources on the next sync cycle.
+            final newClockHash = event.mergedGraph.graph
+                .clockHash(event.resourceIri.getDocumentIri());
+            yield UploadResult(event, newRemoteEtag: newClockHash);
+
+          case MergeResult():
+            // No upload needed, just pass through.
+            yield UploadResult(event);
+
+          case ResourceError():
+            // Flag the shard — all subsequent resources are skipped.
+            shardHasError = true;
+            shardError ??= event.error;
+            shardErrorStack ??= event.stackTrace;
+            _pendingResources.clear();
+            // Forward the original resource failure; shard-level abort is
+            // still emitted at ShardComplete.
+            yield event;
+
+          // --- Shard Events ---
+          case ShardError():
+            clearCurrentShard();
+            yield event;
+
+          case ShardComplete():
+            if (shardHasError) {
+              final error = shardError!;
+              final stack = shardErrorStack!;
+              clearCurrentShard();
+              yield ShardError(event.shardIri, error, stack);
+            } else {
               // Flush pending resources into accumulator under this shard.
               if (_pendingResources.isNotEmpty) {
                 final shardKey = event.shardIri.getDocumentIri().value;
                 _uploadAccumulator
                     .putIfAbsent(shardKey, () => {})
                     .addAll(_pendingResources);
-                _pendingResources.clear();
               }
+              clearCurrentShard();
               yield event;
+            }
 
-            case PhaseComplete():
-              _pendingResources.clear();
-              yield event;
-          }
+          case ShardSkipped():
+            clearCurrentShard();
+            yield event;
+
+          // --- Phase Events ---
+          case PhaseComplete():
+            clearCurrentShard();
+            yield event;
+
+          case PhaseError():
+            clearCurrentShard();
+            yield event;
         }
-      });
+      }
+    });
+  }
 
   // ---------------------------------------------------------------------------
   // Stage 12: Shard Upload — assemble and upload dataset
@@ -307,86 +384,83 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
   @override
   StreamTransformer<MergedShardEvent, UploadedShardEvent> shardUpload(
           {PipeperfCollector? perf}) =>
-      StreamTransformer.fromBind((stream) async* {
-        final buffer = <MergedShard>[];
-        final passThrough = <MergedShard>[];
-
-        Stream<UploadedShardEvent> flush() async* {
-          for (final e in passThrough) {
-            yield UploadedShard(e.shardIri, e);
-          }
-          passThrough.clear();
-
-          if (buffer.isEmpty) return;
-
-          // Pass 1 — I/O: load resource graphs from DB and assemble datasets.
-          final datasets = <(MergedShard, RdfDataset)>[];
-          for (final shard in buffer) {
-            final swDbLoad = perf?.start('S12.ShardUpload.dbLoad');
-            final dataset = await _assembleDataset(shard);
-            swDbLoad?.stop();
-            datasets.add((shard, dataset));
-          }
-
-          // Pass 2 — CPU: encode all datasets to wire format.
-          final requests = <RemoteUploadRequest<RawContent>>[];
-          for (final (shard, dataset) in datasets) {
-            final swEncode = perf?.start('S12.ShardUpload.encode');
-            final encoded = _encodeDataset(dataset);
-            swEncode?.stop();
-
-            requests.add(RemoteUploadRequest<RawContent>(
-              documentIri: shard.shardIri.getDocumentIri(),
-              document: encoded,
-              ifMatch: shard.newEtag,
-            ));
-          }
-
-          // Pass 3 — I/O: upload via backend stream.
-          final swIo = perf?.start('S12.ShardUpload.io');
-          final results =
-              await backend.upload(Stream.fromIterable(requests)).toList();
-          swIo?.stop();
-
-          for (var i = 0; i < buffer.length; i++) {
-            final event = buffer[i];
-            final result = results[i];
-
-            if (result is SuccessUploadResult) {
-              yield UploadedShard(event.shardIri, event,
-                  newRemoteEtag: result.etag);
-            } else {
-              final docIri = event.shardIri.getDocumentIri();
-              _log.warning(
-                  'Dataset upload conflict for ${docIri.debug} — skipping');
-              yield ConflictedShard(event.shardIri);
-            }
-          }
-          buffer.clear();
-        }
-
-        await for (final event in stream) {
+      StreamTransformer.fromBind((stream) {
+        // Pre-process: assemble datasets and encode for shards needing upload.
+        // asyncExpand processes events sequentially, so _assembleDataset calls
+        // consume their accumulator entries before PhaseComplete clears the rest.
+        final prepared = stream.asyncExpand((event) async* {
           switch (event) {
-            case MergedShard():
-              if (!event.needsUpload) {
-                passThrough.add(event);
-              } else {
-                buffer.add(event);
+            case MergedShard() when event.needsUpload:
+              try {
+                final swDbLoad = perf?.start('S12.ShardUpload.dbLoad');
+                final dataset = await _assembleDataset(event);
+                swDbLoad?.stop();
+                final swEncode = perf?.start('S12.ShardUpload.encode');
+                final content = _converter.encodeDataset(dataset);
+                swEncode?.stop();
+                yield _ReadyToUpload(event, content);
+              } catch (e, st) {
+                _log.warning(
+                    'Dataset assembly failed for ${event.shardIri}: $e', e, st);
+                yield _RawS12Event(ShardError(event.shardIri, e, st));
               }
             case PhaseComplete():
-              yield* flush();
-              // Clean up accumulator on phase boundary.
               _uploadAccumulator.clear();
-              yield event;
-            case ConflictedShard():
-              yield event;
-            case ShardComplete():
-              yield* flush();
-              yield event;
+              yield _RawS12Event(event);
+            case PhaseError():
+              _uploadAccumulator.clear();
+              yield _RawS12Event(event);
+            default:
+              yield _RawS12Event(event);
           }
-        }
+        });
 
-        yield* flush();
+        return backendPipe<MergedShard, _S12Input, UploadedShardEvent,
+            RemoteUploadRequest<RawContent>, RemoteUploadResult>(
+          stream: prepared,
+          logger: _log,
+          perf: perf,
+          perfStage: 'S12.ShardUpload',
+          classify: (e) => switch (e) {
+            _ReadyToUpload(:final shard, :final content) => BackendRequest(
+                (shard.shardIri.getDocumentIri(), shard.newEtag),
+                shard,
+                RemoteUploadRequest<RawContent>(
+                  documentIri: shard.shardIri.getDocumentIri(),
+                  document: content,
+                  ifMatch: shard.newEtag,
+                ),
+              ),
+            _RawS12Event(:final event) => switch (event) {
+                // --- Shard Events ---
+                MergedShard() =>
+                  BackendPassThrough(UploadedShard(event.shardIri, event)),
+                ConflictedShard() => BackendPassThrough(event),
+                ShardError() => BackendPassThrough(event),
+                ShardSkipped() => BackendPassThrough(event),
+
+                // --- Phase Events ---
+                PhaseComplete() => BackendBoundary(event),
+                PhaseError() => BackendBoundary(event),
+              },
+          },
+          backendCall: backend.upload,
+          resultKey: (r) => (r.documentIri, r.requestETag),
+          toOutput: (event, result) => switch (result) {
+            SuccessUploadResult(:final etag) =>
+              UploadedShard(event.shardIri, event, newRemoteEtag: etag),
+            ConflictUploadResult() => () {
+                final docIri = event.shardIri.getDocumentIri();
+                _log.info(
+                    'Dataset upload conflict for ${docIri.debug} (If-Match: ${result.requestETag ?? 'none'}) — will retry');
+                return ConflictedShard(event.shardIri,
+                    trigger: event,
+                    message: 'Dataset upload conflict for ${docIri.debug}');
+              }(),
+          },
+          onError: (event, error, stackTrace) =>
+              ShardError(event.shardIri, error, stackTrace),
+        );
       });
 
   /// Assemble a complete [RdfDataset] from the merged shard graph and
@@ -396,20 +470,32 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
     final shardIri = shard.shardIri;
     final shardDocIri = shardIri.getDocumentIri();
 
-    // Extract resource document IRIs from the shard graph entries.
+    // Extract resource document IRIs and expected clock hashes from shard
+    // entries. The clock hash is used to detect stale accumulator entries
+    // that were produced before a cross-shard CRDT merge updated the DB.
     final entryIris = shardGraph.getMultiValueObjects<IriTerm>(
         shardIri, IdxShard.containsEntry);
 
     final resourceDocIris = <IriTerm>{};
+    final expectedClockHashes = <IriTerm, String>{};
     for (final entryIri in entryIris) {
       final resourceIri = shardGraph.expectSingleObject<IriTerm>(
           entryIri, IdxShardEntry.resource);
       if (resourceIri != null) {
-        resourceDocIris.add(resourceIri.getDocumentIri());
+        final docIri = resourceIri.getDocumentIri();
+        resourceDocIris.add(docIri);
+        final clockHash = shardGraph.clockHash(entryIri);
+        if (clockHash != null) {
+          expectedClockHashes[docIri] = clockHash;
+        }
       }
     }
 
     // Collect named graphs: accumulated (changed) resources first.
+    // Accumulated graphs may be stale when a resource was processed for this
+    // shard before another shard's CRDT merge produced a newer version and
+    // committed it to DB. Detect this by comparing the accumulated graph's
+    // clock hash against the expected clock hash from the shard entry.
     final namedGraphs = <RdfGraphName, RdfGraph>{};
     final accumulated = _uploadAccumulator[shardDocIri.value] ?? {};
     final missingDocIris = <IriTerm>[];
@@ -417,20 +503,31 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
     for (final docIri in resourceDocIris) {
       final accumulatedGraph = accumulated[docIri];
       if (accumulatedGraph != null) {
-        namedGraphs[docIri] = accumulatedGraph.graph;
+        final accClockHash = accumulatedGraph.graph.clockHash(docIri);
+        final expected = expectedClockHashes[docIri];
+        if (expected != null && accClockHash != expected) {
+          // Accumulated graph is stale — load fresh version from DB.
+          _log.fine('Stale accumulator for ${docIri.debug} in '
+              '${shardDocIri.debug}: accumulated=$accClockHash, '
+              'expected=$expected — loading from DB');
+          missingDocIris.add(docIri);
+        } else {
+          namedGraphs[docIri] = accumulatedGraph.graph;
+        }
       } else {
         missingDocIris.add(docIri);
       }
     }
 
-    // Load unchanged resources from local DB via the injected loader.
+    // Load unchanged (or stale-replaced) resources from local DB.
     if (missingDocIris.isNotEmpty) {
-      final dbGraphs = await _resourceGraphLoader.load(missingDocIris);
-      for (final entry in dbGraphs.entries) {
-        if (entry.value != null) {
-          namedGraphs[entry.key] = entry.value!;
+      final dbGraphs = await _storageAccess.loadResourceGraphs(missingDocIris);
+      for (final iri in missingDocIris) {
+        final graph = dbGraphs[iri];
+        if (graph != null) {
+          namedGraphs[iri] = graph;
         } else {
-          _log.warning('Resource ${entry.key.debug} not found in local DB '
+          _log.warning('Resource ${iri.debug} not found in local DB '
               'during dataset assembly for ${shardDocIri.debug}');
         }
       }
@@ -444,4 +541,40 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
       namedGraphs: namedGraphs,
     );
   }
+
+  void _clearShard(IriTerm shardIri) {
+    // Clear this shard's download cache to free memory.
+    final shardDocIri = shardIri.getDocumentIri();
+    _downloadCache.remove(shardDocIri.value);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stage 12 pre-processing types
+// ---------------------------------------------------------------------------
+
+/// Pre-processed input for Stage 12 [backendPipe].
+///
+/// [asyncExpand] pre-processing converts [MergedShard] events that need
+/// upload into [_ReadyToUpload] (with assembled+encoded content), wrapping
+/// all other events in [_RawS12Event].
+sealed class _S12Input {}
+
+/// A shard that has been assembled into a dataset and encoded for upload.
+final class _ReadyToUpload implements _S12Input {
+  final MergedShard shard;
+  final RawContent content;
+  _ReadyToUpload(this.shard, this.content);
+}
+
+/// Wrapper for events that need no pre-processing.
+final class _RawS12Event implements _S12Input {
+  final MergedShardEvent event;
+  _RawS12Event(this.event);
+}
+
+extension _ClockHashExtension on RdfGraph {
+  /// Extract the `crdt:clockHash` literal value for [subject], or `null`.
+  String? clockHash(RdfSubject subject) =>
+      findSingleObject<LiteralTerm>(subject, Crdt.clockHash)?.value;
 }

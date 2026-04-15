@@ -17,6 +17,9 @@ import 'package:locorda_core/src/sync/shard_document_generator.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_rdf_jelly/jelly.dart';
+import 'package:logging/logging.dart';
+
+final _log = Logger('Stage11c.ShardMerge');
 
 /// Returns an `.expand()` function for Stage 11c.
 ///
@@ -36,12 +39,34 @@ Iterable<MergedShardEvent> Function(ContractLoadedShardEvent) mergeShards(
   String perfStage = 'S11c.ShardMerge',
 }) {
   return (ContractLoadedShardEvent event) => switch (event) {
-        PhaseComplete() => [event],
+        // --- Shard Events ---
         ConflictedShard() => [event],
-        ShardComplete() => [event],
-        ContractLoadedShard() =>
-          _merge(event, documentManager, merger, rdfCore, perf, perfStage),
+        ShardError() => [event],
+        ShardSkipped() => [event],
+        ContractLoadedShard() => _mergeOrError(
+            event, documentManager, merger, rdfCore, perf, perfStage),
+
+        // --- Phase Events ---
+        PhaseComplete() => [event],
+        PhaseError() => [event],
       };
+}
+
+/// Wraps [_merge] with error handling — emits [ShardError] on failure.
+List<MergedShardEvent> _mergeOrError(
+  ContractLoadedShard loaded,
+  CrdtDocumentManager documentManager,
+  RemoteDocumentMerger merger,
+  RdfCore rdfCore,
+  PipeperfCollector? perf,
+  String perfStage,
+) {
+  try {
+    return _merge(loaded, documentManager, merger, rdfCore, perf, perfStage);
+  } catch (e, st) {
+    _log.severe('Error merging shard ${loaded.prepared.shardIri.debug}', e, st);
+    return [ShardError(loaded.prepared.shardIri, e, st)];
+  }
 }
 
 List<MergedShardEvent> _merge(
