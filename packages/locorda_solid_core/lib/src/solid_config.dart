@@ -1,70 +1,40 @@
+import 'package:locorda_core/locorda_core.dart';
+
 /// Configuration for Solid backend synchronization behavior.
 ///
 /// This config is shared between main and worker isolates and is transferred
 /// as JSON during worker initialization.
 class SolidConfig {
-  /// Maximum number of documents to sync concurrently.
-  final int maxConcurrentDocumentSyncs;
-
-  /// Maximum number of shards to sync concurrently.
-  final int maxConcurrentShardSyncs;
-
-  /// Maximum number of indices to sync concurrently.
-  final int maxConcurrentIndexSyncs;
-
-  /// Whether to sync shard datasets instead of individual documents.
-  final bool useShardDatasets;
+  /// Storage layout determining how resources are organized on the Solid Pod.
+  ///
+  /// Defaults to [FilePerResource] (one Turtle file per resource), which aligns
+  /// with Solid's linked-data philosophy of distinct IRIs per resource.
+  final RemoteStorageLayout layout;
 
   const SolidConfig({
-    this.maxConcurrentDocumentSyncs = 1,
-    this.maxConcurrentShardSyncs = 1,
-    this.maxConcurrentIndexSyncs = 1,
-    this.useShardDatasets = false,
+    this.layout = const FilePerResource(),
   });
 
   /// Encode config to JSON.
   Map<String, dynamic> toJson() => {
-        'maxConcurrentDocumentSyncs': maxConcurrentDocumentSyncs,
-        'maxConcurrentShardSyncs': maxConcurrentShardSyncs,
-        'maxConcurrentIndexSyncs': maxConcurrentIndexSyncs,
-        'useShardDatasets': useShardDatasets,
+        'layout': layout.toJson(),
       };
 
-  /// Decode config from JSON.
+  /// Decode config from JSON, defaulting to [FilePerResource] if missing.
   factory SolidConfig.fromJson(Map<String, dynamic> json) {
+    final layoutJson = json['layout'] as Map<String, dynamic>? ??
+        const {'type': 'filePerResource'};
     return SolidConfig(
-      maxConcurrentDocumentSyncs:
-          json['maxConcurrentDocumentSyncs'] as int? ?? 1,
-      maxConcurrentShardSyncs: json['maxConcurrentShardSyncs'] as int? ?? 1,
-      maxConcurrentIndexSyncs: json['maxConcurrentIndexSyncs'] as int? ?? 1,
-      useShardDatasets: json['useShardDatasets'] as bool? ?? true,
+      layout: RemoteStorageLayout.fromJson(layoutJson),
     );
   }
 
-  SolidConfig copyWith({
-    int? maxConcurrentDocumentSyncs,
-    int? maxConcurrentShardSyncs,
-    int? maxConcurrentIndexSyncs,
-    bool? useShardDatasets,
-  }) {
+  SolidConfig copyWith({RemoteStorageLayout? layout}) {
     return SolidConfig(
-      maxConcurrentDocumentSyncs:
-          maxConcurrentDocumentSyncs ?? this.maxConcurrentDocumentSyncs,
-      maxConcurrentShardSyncs:
-          maxConcurrentShardSyncs ?? this.maxConcurrentShardSyncs,
-      maxConcurrentIndexSyncs:
-          maxConcurrentIndexSyncs ?? this.maxConcurrentIndexSyncs,
-      useShardDatasets: useShardDatasets ?? this.useShardDatasets,
+      layout: layout ?? this.layout,
     );
   }
 
   @override
-  String toString() {
-    return 'SolidConfig('
-        'maxConcurrentDocumentSyncs: $maxConcurrentDocumentSyncs, '
-        'maxConcurrentShardSyncs: $maxConcurrentShardSyncs, '
-        'maxConcurrentIndexSyncs: $maxConcurrentIndexSyncs, '
-        'useShardDatasets: $useShardDatasets'
-        ')';
-  }
+  String toString() => 'SolidConfig(layout: $layout)';
 }

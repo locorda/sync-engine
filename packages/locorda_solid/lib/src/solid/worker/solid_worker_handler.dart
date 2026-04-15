@@ -26,18 +26,12 @@ import 'solid_config_connector_worker.dart';
 /// to the worker via [SolidAuthConnector].
 class SolidWorkerHandler implements RemoteWorkerHandler {
   final http.Client _httpClient;
-  final String _contentType;
-  final String _datasetContentType;
   final String id;
 
   SolidWorkerHandler({
     http.Client? httpClient,
-    String? contentType,
-    String? datasetContentType,
     this.id = solidRemoteHandlerId,
-  })  : _httpClient = httpClient ?? http.Client(),
-        _contentType = contentType ?? turtle.primaryMimeType,
-        _datasetContentType = datasetContentType ?? trig.primaryMimeType;
+  }) : _httpClient = httpClient ?? http.Client();
 
   @override
   Future<Backend> createBackend(
@@ -49,12 +43,11 @@ class SolidWorkerHandler implements RemoteWorkerHandler {
       rdfCore: context.rdfCore,
       iriTermFactory: context.iriFactory ?? IriTerm.validated,
       httpClient: _httpClient,
-      contentType: _contentType,
-      datasetContentType: _datasetContentType,
       config: solidConfig,
+      storageAccessFactory: context.storageAccessFactory,
     );
     if (context.perflog != Perflog.disabled) {
-      return PerflogBackend(backend, perflog: context.perflog);
+      return PerflogPipelineBackend(backend, perflog: context.perflog);
     } else {
       return backend;
     }

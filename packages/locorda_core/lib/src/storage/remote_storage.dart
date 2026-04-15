@@ -459,14 +459,14 @@ class AuthAwareRemoteStorage implements RemoteStorage {
   RemoteId get remoteId => _inner.remoteId;
 
   @override
-  Future<bool> isAvailable() => _retryOnAuthFailure(
+  Future<bool> isAvailable() => retryOnAuthFailure(
       config: _config,
       onAuthFailure: _onAuthFailure,
       operation: _inner.isAvailable);
 
   @override
   Future<RemoteSyncStorage> createSyncStorage(SyncEngineConfig config) async {
-    final syncStorage = await _retryOnAuthFailure(
+    final syncStorage = await retryOnAuthFailure(
       config: _config,
       onAuthFailure: _onAuthFailure,
       operation: () => _inner.createSyncStorage(config),
@@ -510,7 +510,7 @@ class AuthAwareSyncStorage implements RemoteSyncStorage {
     RdfGraph graph, {
     String? ifMatch,
   }) =>
-      _retryOnAuthFailure(
+      retryOnAuthFailure(
           config: _config,
           onAuthFailure: _onAuthFailure,
           operation: () => _inner.upload(documentIri, graph, ifMatch: ifMatch));
@@ -520,7 +520,7 @@ class AuthAwareSyncStorage implements RemoteSyncStorage {
     IriTerm documentIri, {
     String? ifNoneMatch,
   }) =>
-      _retryOnAuthFailure(
+      retryOnAuthFailure(
           config: _config,
           onAuthFailure: _onAuthFailure,
           operation: () =>
@@ -529,7 +529,7 @@ class AuthAwareSyncStorage implements RemoteSyncStorage {
   @override
   Future<List<RemoteDownloadResult<RdfGraph>>> downloadMany(
           Iterable<RemoteDownloadRequest> requests) =>
-      _retryOnAuthFailure(
+      retryOnAuthFailure(
           config: _config,
           onAuthFailure: _onAuthFailure,
           operation: () => _inner.downloadMany(requests));
@@ -540,7 +540,7 @@ class AuthAwareSyncStorage implements RemoteSyncStorage {
     RdfDataset dataset, {
     String? ifMatch,
   }) =>
-      _retryOnAuthFailure(
+      retryOnAuthFailure(
           config: _config,
           onAuthFailure: _onAuthFailure,
           operation: () =>
@@ -551,7 +551,7 @@ class AuthAwareSyncStorage implements RemoteSyncStorage {
     IriTerm documentIri, {
     String? ifNoneMatch,
   }) =>
-      _retryOnAuthFailure(
+      retryOnAuthFailure(
           config: _config,
           onAuthFailure: _onAuthFailure,
           operation: () =>
@@ -560,7 +560,7 @@ class AuthAwareSyncStorage implements RemoteSyncStorage {
   @override
   Future<List<RemoteUploadResult>> uploadMany(
           Iterable<RemoteUploadRequest<RdfGraph>> requests) =>
-      _retryOnAuthFailure(
+      retryOnAuthFailure(
           config: _config,
           onAuthFailure: _onAuthFailure,
           operation: () => _inner.uploadMany(requests));
@@ -568,7 +568,7 @@ class AuthAwareSyncStorage implements RemoteSyncStorage {
   @override
   Future<List<RemoteDownloadResult<RdfDataset>>> downloadManyDatasets(
           Iterable<RemoteDownloadRequest> requests) =>
-      _retryOnAuthFailure(
+      retryOnAuthFailure(
           config: _config,
           onAuthFailure: _onAuthFailure,
           operation: () => _inner.downloadManyDatasets(requests));
@@ -576,7 +576,7 @@ class AuthAwareSyncStorage implements RemoteSyncStorage {
   @override
   Future<List<RemoteUploadResult>> uploadManyDatasets(
           Iterable<RemoteUploadRequest<RdfDataset>> requests) =>
-      _retryOnAuthFailure(
+      retryOnAuthFailure(
           config: _config,
           onAuthFailure: _onAuthFailure,
           operation: () => _inner.uploadManyDatasets(requests));
@@ -597,7 +597,7 @@ class AuthAwareSyncStorage implements RemoteSyncStorage {
   String toString() => 'AuthAware(${_inner.toString()})';
 }
 
-Future<T> _retryOnAuthFailure<T>(
+Future<T> retryOnAuthFailure<T>(
     {required AuthRetryConfig config,
     required Future<void> Function() onAuthFailure,
     required Future<T> Function() operation}) async {

@@ -86,7 +86,8 @@ export 'src/storage/remote_storage.dart'
         RemoteUploadRequest,
         AuthAwareRemoteStorage,
         AuthException,
-        AuthRetryConfig;
+        AuthRetryConfig,
+        retryOnAuthFailure;
 export 'package:locorda_core/src/sync/pipeline/pipeline_types.dart'
     show
         ShardRefEvent,
