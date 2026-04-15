@@ -829,11 +829,6 @@ class SyncCandidate implements SyncCandidateEvent {
         localClockHash: localClockHash,
         remoteClockHash: remoteClockHash,
       );
-
-  /// Whether this candidate requires fetching the remote resource content.
-  /// Only [SyncDirection.remoteShardUnchanged] can skip the fetch (HTTP 304
-  /// on the shard guarantees no resource in that shard changed remotely).
-  bool get needsRemoteFetch => direction != SyncDirection.remoteShardUnchanged;
 }
 
 // ---------------------------------------------------------------------------
@@ -862,12 +857,19 @@ class LoadedCandidate implements LoadedCandidateEvent {
     this.storedRemoteEtag,
   });
 
-  // Fetch when:
-  // 1. The sync direction requires it (anything except remoteShardUnchanged), OR
-  // 2. We have no stored ETag — the resource was never fetched before,
-  //    so we cannot safely skip it even if the shard is unchanged.
   bool get needsRemoteFetch =>
-      candidate.needsRemoteFetch || storedRemoteEtag == null;
+      // Note that we do not try to download resources if the
+      // remote shard does not exist (gone) because then
+      // we would try to download each resource on original sync.
+      //
+      // If it is unchanged then we can assume that we should have downloaded
+      // its resources before and not having an etag means in this case
+      // that we do need to fetch it (for example it is a on-demand fetch shard
+      // and now we have created a resource that belongs to that shard )
+      (candidate.direction == SyncDirection.remoteShardUnchanged &&
+          storedRemoteEtag == null) ||
+      candidate.direction == SyncDirection.conflictCandidate ||
+      candidate.direction == SyncDirection.remoteOnly;
 
   LoadedCandidate copyWith({SyncCandidate? candidate}) => LoadedCandidate(
         candidate ?? this.candidate,
