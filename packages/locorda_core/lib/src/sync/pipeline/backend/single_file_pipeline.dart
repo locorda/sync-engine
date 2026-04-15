@@ -131,7 +131,7 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
     final storedEtags = await _storageAccess.getRemoteETags([_fileDocumentIri]);
     final storedEtag = storedEtags[_fileDocumentIri];
 
-    final swIo = perf?.start('S02.ShardFetch.io');
+    final swIo = perf?.start('S02.ShardFetch.SF.io');
     final results = await backend
         .download(Stream.fromIterable([
           RemoteDownloadRequest(
@@ -148,7 +148,7 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
       _downloadedEtag = storedEtag;
       _notModified = true;
     } else if (result.graph != null) {
-      final sw = perf?.start('S02.ShardFetch.decode');
+      final sw = perf?.start('S02.ShardFetch.SF.decode');
       _cachedDataset = _converter.decodeDataset(result.graph!);
       _downloadedEtag = result.etag;
       sw?.stop();
@@ -577,7 +577,7 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
     // Nothing changed — no upload needed.
     if (_mergedShardGraphs.isEmpty && _uploadAccumulator.isEmpty) return;
 
-    final swAssemble = perf?.start('S12.ShardUpload.assemble');
+    final swAssemble = perf?.start('S12.ShardUpload.SF.assemble');
 
     final namedGraphs = <RdfGraphName, RdfGraph>{};
 
@@ -642,7 +642,7 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
     final missingDocIris =
         allResourceDocIris.difference(accumulatedDocIris).toList();
     if (missingDocIris.isNotEmpty) {
-      final swDbLoad = perf?.start('S12.ShardUpload.dbLoad');
+      final swDbLoad = perf?.start('S12.ShardUpload.SF.dbLoad');
       final dbGraphs = await _storageAccess.loadResourceGraphs(missingDocIris);
       swDbLoad?.stop();
       for (final entry in dbGraphs.entries) {
@@ -682,11 +682,11 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
       namedGraphs: namedGraphs,
     );
 
-    final swEncode = perf?.start('S12.ShardUpload.encode');
+    final swEncode = perf?.start('S12.ShardUpload.SF.encode');
     final encoded = _converter.encodeDataset(dataset);
     swEncode?.stop();
 
-    final swIo = perf?.start('S12.ShardUpload.io');
+    final swIo = perf?.start('S12.ShardUpload.SF.io');
     final results = await backend
         .upload(Stream.fromIterable([
           RemoteUploadRequest<RawContent>(

@@ -99,7 +99,7 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
             stream: stream,
             logger: _log,
             perf: perf,
-            perfStage: 'S02.ShardFetch',
+            perfStage: 'S02.ShardFetch.SD',
             classify: (e) => switch (e) {
               // --- Shard Events ---
               ShardRef() => BackendRequest(
@@ -131,7 +131,7 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
               }
               try {
                 // CPU: decode raw → dataset, then populate resource cache.
-                final sw = perf?.start('S02.ShardFetch.decode');
+                final sw = perf?.start('S02.ShardFetch.SD.decode');
                 final dataset = _converter.decodeDataset(result.graph!);
                 final shardDocIri = event.shardIri.getDocumentIri();
 
@@ -392,10 +392,10 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
           switch (event) {
             case MergedShard() when event.needsUpload:
               try {
-                final swDbLoad = perf?.start('S12.ShardUpload.dbLoad');
+                final swDbLoad = perf?.start('S12.ShardUpload.SD.dbLoad');
                 final dataset = await _assembleDataset(event);
                 swDbLoad?.stop();
-                final swEncode = perf?.start('S12.ShardUpload.encode');
+                final swEncode = perf?.start('S12.ShardUpload.SD.encode');
                 final content = _converter.encodeDataset(dataset);
                 swEncode?.stop();
                 yield _ReadyToUpload(event, content);
@@ -420,7 +420,7 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
           stream: prepared,
           logger: _log,
           perf: perf,
-          perfStage: 'S12.ShardUpload',
+          perfStage: 'S12.ShardUpload.SD',
           classify: (e) => switch (e) {
             _ReadyToUpload(:final shard, :final content) => BackendRequest(
                 (shard.shardIri.getDocumentIri(), shard.newEtag),

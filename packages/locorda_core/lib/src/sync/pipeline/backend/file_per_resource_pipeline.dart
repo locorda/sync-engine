@@ -57,7 +57,7 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
             stream: stream,
             logger: _logger,
             perf: perf,
-            perfStage: 'S02.ShardFetch',
+            perfStage: 'S02.ShardFetch.FPR',
             classify: (e) => switch (e) {
               // --- Shard Events ---
               ShardRef() => BackendRequest(
@@ -117,7 +117,7 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
             stream: stream,
             logger: _logger,
             perf: perf,
-            perfStage: 'S06.ResourceFetch',
+            perfStage: 'S06.ResourceFetch.FPR',
             classify: (e) => switch (e) {
               // --- Resource Events ---
               LoadedCandidate() when e.needsRemoteFetch => BackendRequest(
@@ -182,7 +182,7 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
             stream: stream,
             logger: _logger,
             perf: perf,
-            perfStage: 'S08.ResourceUpload',
+            perfStage: 'S08.ResourceUpload.FPR',
             classify: (e) => switch (e) {
               // --- Resource Events ---
               MergeResult() when e.needsUpload => BackendRequest(
@@ -240,7 +240,7 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
             stream: stream,
             logger: _logger,
             perf: perf,
-            perfStage: 'S12.ShardUpload',
+            perfStage: 'S12.ShardUpload.FPR',
             classify: (e) => switch (e) {
               // --- Shard Events ---
               MergedShard() when e.needsUpload => BackendRequest(
