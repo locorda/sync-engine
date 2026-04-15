@@ -112,10 +112,18 @@ Stream<TOut> backendPipe<TData, TIn, TOut, TReq, TRes>({
   );
 
   out.onListen = () {
-    final swIo = perf?.start('$perfStage.io');
+    // Active-interval I/O tracking: measures the union of all in-flight
+    // backend request intervals, avoiding double-counting of overlapping
+    // batch requests. Stopwatch runs while pendingIo > 0.
+    var pendingIo = 0;
+    PipeperfClock? swIo;
 
     backendSub = backendStream.listen(
       (result) {
+        if (--pendingIo == 0) {
+          swIo?.stop();
+          swIo = null;
+        }
         deque.addResult(result);
         checkDone();
       },
@@ -157,9 +165,10 @@ Stream<TOut> backendPipe<TData, TIn, TOut, TReq, TRes>({
               }
             } else {
               deque.addData(entry);
-              final swEnc = perf?.start('$perfStage.encode');
+              if (pendingIo++ == 0) {
+                swIo = perf?.start('$perfStage.io');
+              }
               requestSink.add(entry.request);
-              swEnc?.stop();
             }
           case BackendBoundary<TData, TOut, TReq>():
             deque.addBoundary(entry);
@@ -169,7 +178,6 @@ Stream<TOut> backendPipe<TData, TIn, TOut, TReq, TRes>({
       },
       onDone: () {
         inputDone = true;
-        swIo?.stop();
         unawaited(requestSink.close());
         checkDone();
       },
