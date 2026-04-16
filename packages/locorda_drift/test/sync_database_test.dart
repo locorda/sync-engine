@@ -493,10 +493,10 @@ void main() {
       testWidgets('creates all tables and indices', (tester) async {
         // Act - Database should be initialized in setUp
         final tables = await database
-            .customSelect('SELECT name FROM sqlite_master WHERE type="table"')
+            .customSelect("SELECT name FROM sqlite_master WHERE type='table'")
             .get();
         final indices = await database
-            .customSelect('SELECT name FROM sqlite_master WHERE type="index"')
+            .customSelect("SELECT name FROM sqlite_master WHERE type='index'")
             .get();
 
         // Assert

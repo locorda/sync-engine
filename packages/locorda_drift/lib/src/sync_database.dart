@@ -1000,22 +1000,11 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
       return IndexEntriesPage(entries: [], hasMore: false, lastCursor: null);
     }
 
-    // Batch load resource IRIs
-    final resourceIriIds = entries.map((e) => e.resourceIriId).toSet();
-    final iriMap = await getIrisBatch(resourceIriIds);
-
-    final entriesWithIris = entries
-        .map((e) => DriftIndexEntry(
-              entry: e,
-              resourceIri: iriMap[e.resourceIriId]!,
-            ))
-        .toList();
-
     final lastCursor = entries.last.updatedAt;
     final hasMore = entries.length == limit;
 
     return IndexEntriesPage(
-      entries: entriesWithIris,
+      entries: entries,
       hasMore: hasMore,
       lastCursor: lastCursor,
     );
@@ -1029,7 +1018,7 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
   /// Combines WHERE clause filtering (DB-level efficiency) with in-memory progressive filtering (avoiding re-emissions).
   ///
   /// This minimizes the number of entries re-emitted when a single entry in a shard changes.
-  Stream<List<DriftIndexEntry>> watchIndexEntries({
+  Stream<List<IndexEntry>> watchIndexEntries({
     required Iterable<int> indexIds,
     int? cursorTimestamp,
   }) {
@@ -1046,23 +1035,10 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
 
     query = query..orderBy([(e) => OrderingTerm.asc(e.updatedAt)]);
 
-    return query
-        .watchWithCursor(
+    return query.watchWithCursor(
       getCursor: (e) => e.updatedAt,
       initialCursor: initialCursor,
-    )
-        .asyncMap((newEntries) async {
-      // Batch load resource IRIs only for new entries
-      final resourceIriIds = newEntries.map((e) => e.resourceIriId).toSet();
-      final iriMap = await getIrisBatch(resourceIriIds);
-
-      return newEntries
-          .map((e) => DriftIndexEntry(
-                entry: e,
-                resourceIri: iriMap[e.resourceIriId]!,
-              ))
-          .toList();
-    });
+    );
   }
 
   /// Save or update a group index subscription
@@ -1113,40 +1089,23 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
 
   /// Get subscribed group indices for a specific indexed type.
   ///
-  /// Returns records containing the group index IRI string, indexed type IRI,
-  /// and item fetch policy for all group indices that index the given type.
+  /// Returns records containing group/indexed type IRI IDs and item fetch
+  /// policy for all group indices that index the given type.
   /// Used during remote sync to determine which indices need synchronization.
   Future<List<SubscribedGroupIndexData>> getSubscribedGroupIndices(
-      String indexedTypeIri) async {
-    // Create aliases to disambiguate the two sync_iris joins
-    final groupIndexIriTable = alias(db.syncIris, 'group_index_iris');
-    final indexedTypeIriTable = alias(db.syncIris, 'indexed_type_iris');
+      int indexedTypeIriId) async {
+    final subscriptions = await (select(db.groupIndexSubscriptions)
+          ..where((s) => s.indexedTypeIriId.equals(indexedTypeIriId)))
+        .get();
+    if (subscriptions.isEmpty) return const [];
 
-    final query = select(db.groupIndexSubscriptions).join([
-      innerJoin(
-        groupIndexIriTable,
-        groupIndexIriTable.id
-            .equalsExp(db.groupIndexSubscriptions.groupIndexIriId),
-      ),
-      innerJoin(
-        indexedTypeIriTable,
-        indexedTypeIriTable.id
-            .equalsExp(db.groupIndexSubscriptions.indexedTypeIriId),
-      ),
-    ])
-      ..where(indexedTypeIriTable.iri.equals(indexedTypeIri));
-
-    final results = await query.get();
-
-    return results.map((row) {
-      final subscription = row.readTable(db.groupIndexSubscriptions);
-      final groupIndexIri = row.readTable(groupIndexIriTable);
-      return SubscribedGroupIndexData(
-        groupIndexIri: groupIndexIri.iri,
-        indexedTypeIri: indexedTypeIri, // We filtered by this
-        rootResourceFetchPolicy: subscription.itemFetchPolicy,
-      );
-    }).toList();
+    return subscriptions
+        .map((subscription) => SubscribedGroupIndexData(
+              groupIndexIriId: subscription.groupIndexIriId,
+              indexedTypeIriId: indexedTypeIriId,
+              rootResourceFetchPolicy: subscription.itemFetchPolicy,
+            ))
+        .toList();
   }
 
   /// Batch variant of [getSubscribedGroupIndices] for a set of indexed type IDs.
@@ -1157,35 +1116,18 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
       Set<int> typeIriIds) async {
     if (typeIriIds.isEmpty) return const [];
 
-    final groupIndexIriTable = alias(db.syncIris, 'group_index_iris');
-    final indexedTypeIriTable = alias(db.syncIris, 'indexed_type_iris');
+    final subscriptions = await (select(db.groupIndexSubscriptions)
+          ..where((s) => s.indexedTypeIriId.isIn(typeIriIds.toList())))
+        .get();
+    if (subscriptions.isEmpty) return const [];
 
-    final query = select(db.groupIndexSubscriptions).join([
-      innerJoin(
-        groupIndexIriTable,
-        groupIndexIriTable.id
-            .equalsExp(db.groupIndexSubscriptions.groupIndexIriId),
-      ),
-      innerJoin(
-        indexedTypeIriTable,
-        indexedTypeIriTable.id
-            .equalsExp(db.groupIndexSubscriptions.indexedTypeIriId),
-      ),
-    ])
-      ..where(db.groupIndexSubscriptions.indexedTypeIriId
-          .isIn(typeIriIds.toList()));
-
-    final results = await query.get();
-    return results.map((row) {
-      final subscription = row.readTable(db.groupIndexSubscriptions);
-      final groupIndexIri = row.readTable(groupIndexIriTable);
-      final indexedTypeIri = row.readTable(indexedTypeIriTable);
-      return SubscribedGroupIndexData(
-        groupIndexIri: groupIndexIri.iri,
-        indexedTypeIri: indexedTypeIri.iri,
-        rootResourceFetchPolicy: subscription.itemFetchPolicy,
-      );
-    }).toList();
+    return subscriptions
+        .map((subscription) => SubscribedGroupIndexData(
+              groupIndexIriId: subscription.groupIndexIriId,
+              indexedTypeIriId: subscription.indexedTypeIriId,
+              rootResourceFetchPolicy: subscription.itemFetchPolicy,
+            ))
+        .toList();
   }
 
   ///
@@ -1380,23 +1322,11 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
   /// Get all active (non-deleted) entries for a shard.
   ///
   /// Used for sync to generate shard documents.
-  Future<List<DriftIndexEntry>> getActiveIndexEntriesForShard(
-      int shardIriId) async {
-    final query = select(db.indexEntries).join([
-      innerJoin(
-          db.syncIris, db.syncIris.id.equalsExp(db.indexEntries.resourceIriId))
-    ])
-      ..where(db.indexEntries.shardIri.equals(shardIriId) &
-          db.indexEntries.isDeleted.equals(false));
-
-    final results = await query.get();
-
-    return results
-        .map((row) => DriftIndexEntry(
-              entry: row.readTable(db.indexEntries),
-              resourceIri: row.readTable(db.syncIris).iri,
-            ))
-        .toList();
+  Future<List<IndexEntry>> getActiveIndexEntriesForShard(int shardIriId) async {
+    return (select(db.indexEntries)
+          ..where(
+              (e) => e.shardIri.equals(shardIriId) & e.isDeleted.equals(false)))
+        .get();
   }
 
   /// Get active entries for a shard that were locally modified after
@@ -1404,24 +1334,14 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
   ///
   /// Fast path for the "shard not modified" case — avoids loading unchanged
   /// entries that would be discarded by the caller.
-  Future<List<DriftIndexEntry>> getLocallyChangedEntriesForShard(
+  Future<List<IndexEntry>> getLocallyChangedEntriesForShard(
       int shardIriId, int sinceTimestamp) async {
-    final query = select(db.indexEntries).join([
-      innerJoin(
-          db.syncIris, db.syncIris.id.equalsExp(db.indexEntries.resourceIriId))
-    ])
-      ..where(db.indexEntries.shardIri.equals(shardIriId) &
-          db.indexEntries.isDeleted.equals(false) &
-          db.indexEntries.updatedAt.isBiggerThanValue(sinceTimestamp));
-
-    final results = await query.get();
-
-    return results
-        .map((row) => DriftIndexEntry(
-              entry: row.readTable(db.indexEntries),
-              resourceIri: row.readTable(db.syncIris).iri,
-            ))
-        .toList();
+    return (select(db.indexEntries)
+          ..where((e) =>
+              e.shardIri.equals(shardIriId) &
+              e.isDeleted.equals(false) &
+              e.updatedAt.isBiggerThanValue(sinceTimestamp)))
+        .get();
   }
 
   /// Returns shard IRI strings that contain at least one non-deleted entry
@@ -1452,26 +1372,18 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
   /// Executes a single `WHERE shard_iri IN (...)` query, avoiding one
   /// isolate roundtrip per shard. Returns a map keyed by shard IRI integer ID.
   /// Shards with no active entries are not present in the returned map.
-  Future<Map<int, List<DriftIndexEntry>>> getActiveIndexEntriesForShards(
+  Future<Map<int, List<IndexEntry>>> getActiveIndexEntriesForShards(
       List<int> shardIriIds) async {
     if (shardIriIds.isEmpty) return {};
 
-    final query = select(db.indexEntries).join([
-      innerJoin(
-          db.syncIris, db.syncIris.id.equalsExp(db.indexEntries.resourceIriId))
-    ])
-      ..where(db.indexEntries.shardIri.isIn(shardIriIds) &
-          db.indexEntries.isDeleted.equals(false));
+    final entries = await (select(db.indexEntries)
+          ..where(
+              (e) => e.shardIri.isIn(shardIriIds) & e.isDeleted.equals(false)))
+        .get();
 
-    final results = await query.get();
-
-    final grouped = <int, List<DriftIndexEntry>>{};
-    for (final row in results) {
-      final entry = row.readTable(db.indexEntries);
-      final resourceIri = row.readTable(db.syncIris).iri;
-      grouped
-          .putIfAbsent(entry.shardIri, () => [])
-          .add(DriftIndexEntry(entry: entry, resourceIri: resourceIri));
+    final grouped = <int, List<IndexEntry>>{};
+    for (final entry in entries) {
+      grouped.putIfAbsent(entry.shardIri, () => []).add(entry);
     }
     return grouped;
   }
@@ -2015,33 +1927,25 @@ class RemoteSyncStateDao extends DatabaseAccessor<SyncDatabase>
   }
 }
 
-/// Index entry with resolved resource IRI (internal Drift representation)
-class DriftIndexEntry {
-  final IndexEntry entry;
-  final String resourceIri;
-
-  DriftIndexEntry({
-    required this.entry,
-    required this.resourceIri,
-  });
-}
-
-/// Subscribed group index data with IRI and fetch policy
+/// Subscribed group index data with integer IRI IDs and fetch policy.
+///
+/// DriftStorage is responsible for resolving these IDs to [IriTerm] instances
+/// via its LRU caches.
 class SubscribedGroupIndexData {
-  final String groupIndexIri;
-  final String indexedTypeIri;
+  final int groupIndexIriId;
+  final int indexedTypeIriId;
   final String rootResourceFetchPolicy;
 
   SubscribedGroupIndexData({
-    required this.groupIndexIri,
-    required this.indexedTypeIri,
+    required this.groupIndexIriId,
+    required this.indexedTypeIriId,
     required this.rootResourceFetchPolicy,
   });
 }
 
 /// Page of index entries with pagination info (internal Drift representation)
 class IndexEntriesPage {
-  final List<DriftIndexEntry> entries;
+  final List<IndexEntry> entries;
   final bool hasMore;
   final int? lastCursor;
 

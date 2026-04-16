@@ -695,6 +695,27 @@ class DriftStorage implements core.Storage {
     return result;
   }
 
+  /// Internal helper: read-only IRI -> ID lookup (with cache).
+  ///
+  /// Returns null when no row exists in SyncIris.
+  Future<int?> _getExistingIriId(IriTerm iri) async {
+    final cachedId = _iriIdCache[iri.value];
+    if (cachedId != null) {
+      return cachedId;
+    }
+
+    final row = await (_database.select(_database.syncIris)
+          ..where((i) => i.iri.equals(iri.value)))
+        .getSingleOrNull();
+    if (row == null) {
+      return null;
+    }
+
+    _iriIdCache[row.iri] = row.id;
+    _idIriCache[row.id] = iri;
+    return row.id;
+  }
+
   @override
   Future<core.IndexEntriesPage> getIndexEntries({
     required Iterable<IriTerm> indexIris,
@@ -711,17 +732,19 @@ class DriftStorage implements core.Storage {
       limit: limit,
     );
 
+    final idToIri =
+        await _getIris(page.entries.map((e) => e.resourceIriId).toSet());
+
     return core.IndexEntriesPage(
       entries: page.entries
           .map((e) => core.IndexEntryWithIri(
-                resourceIri: _iriTermFactory(e.resourceIri),
-                clockHash: e.entry.clockHash,
-                headerProperties:
-                    _decodeHeaderProperties(e.entry.headerProperties),
-                updatedAt: e.entry.updatedAt,
-                isDeleted: e.entry.isDeleted,
-                isRemoteOnly: e.entry.isRemoteOnly,
-                ourPhysicalClock: e.entry.ourPhysicalClock,
+                resourceIri: idToIri[e.resourceIriId]!,
+                clockHash: e.clockHash,
+                headerProperties: _decodeHeaderProperties(e.headerProperties),
+                updatedAt: e.updatedAt,
+                isDeleted: e.isDeleted,
+                isRemoteOnly: e.isRemoteOnly,
+                ourPhysicalClock: e.ourPhysicalClock,
               ))
           .toList(),
       hasMore: page.hasMore,
@@ -740,21 +763,24 @@ class DriftStorage implements core.Storage {
     // Watch using internal IDs
     yield* indexDao
         .watchIndexEntries(
-          indexIds: indexIds,
-          cursorTimestamp: cursorTimestamp,
-        )
-        .map((entries) => entries
-            .map((e) => core.IndexEntryWithIri(
-                  resourceIri: _iriTermFactory(e.resourceIri),
-                  clockHash: e.entry.clockHash,
-                  headerProperties:
-                      _decodeHeaderProperties(e.entry.headerProperties),
-                  updatedAt: e.entry.updatedAt,
-                  ourPhysicalClock: e.entry.ourPhysicalClock,
-                  isDeleted: e.entry.isDeleted,
-                  isRemoteOnly: e.entry.isRemoteOnly,
-                ))
-            .toList());
+      indexIds: indexIds,
+      cursorTimestamp: cursorTimestamp,
+    )
+        .asyncMap((entries) async {
+      final idToIri =
+          await _getIris(entries.map((e) => e.resourceIriId).toSet());
+      return entries
+          .map((e) => core.IndexEntryWithIri(
+                resourceIri: idToIri[e.resourceIriId]!,
+                clockHash: e.clockHash,
+                headerProperties: _decodeHeaderProperties(e.headerProperties),
+                updatedAt: e.updatedAt,
+                ourPhysicalClock: e.ourPhysicalClock,
+                isDeleted: e.isDeleted,
+                isRemoteOnly: e.isRemoteOnly,
+              ))
+          .toList();
+    });
   }
 
   @override
@@ -859,12 +885,23 @@ class DriftStorage implements core.Storage {
   @override
   Future<List<(IriTerm, IriTerm, core.RootResourceFetchPolicy)>>
       getSubscribedGroupIndices(IriTerm indexedType) async {
+    final indexedTypeIriId = await _getExistingIriId(indexedType);
+    if (indexedTypeIriId == null) return [];
+
     final subscriptions =
-        await indexDao.getSubscribedGroupIndices(indexedType.value);
+        await indexDao.getSubscribedGroupIndices(indexedTypeIriId);
+    if (subscriptions.isEmpty) return [];
+
+    final allIriIds = <int>{};
+    for (final sub in subscriptions) {
+      allIriIds.add(sub.groupIndexIriId);
+      allIriIds.add(sub.indexedTypeIriId);
+    }
+    final idToIri = await _getIris(allIriIds);
 
     return subscriptions.map((subscription) {
-      final groupIndexIri = _iriTermFactory(subscription.groupIndexIri);
-      final indexedTypeIri = _iriTermFactory(subscription.indexedTypeIri);
+      final groupIndexIri = idToIri[subscription.groupIndexIriId]!;
+      final indexedTypeIri = idToIri[subscription.indexedTypeIriId]!;
       final fetchPolicy = core.RootResourceFetchPolicy.fromMap(
         json.decode(subscription.rootResourceFetchPolicy),
       );
@@ -884,11 +921,17 @@ class DriftStorage implements core.Storage {
     final subscriptions =
         await indexDao.getAllSubscribedGroupIndices(typeIriIds);
 
+    final allIriIds = <int>{
+      ...subscriptions.map((s) => s.groupIndexIriId),
+      ...subscriptions.map((s) => s.indexedTypeIriId),
+    };
+    final idToIri = await _getIris(allIriIds);
+
     final result =
         <IriTerm, List<(IriTerm, IriTerm, core.RootResourceFetchPolicy)>>{};
     for (final sub in subscriptions) {
-      final groupIndexIri = _iriTermFactory(sub.groupIndexIri);
-      final indexedTypeIri = _iriTermFactory(sub.indexedTypeIri);
+      final groupIndexIri = idToIri[sub.groupIndexIriId]!;
+      final indexedTypeIri = idToIri[sub.indexedTypeIriId]!;
       final fetchPolicy = core.RootResourceFetchPolicy.fromMap(
           json.decode(sub.rootResourceFetchPolicy));
       result
@@ -1083,18 +1126,21 @@ class DriftStorage implements core.Storage {
 
     return _perflog.measure(
       'storage.getActiveIndexEntriesForShard.mapResults',
-      () async => driftEntries
-          .map((driftEntry) => core.IndexEntryWithIri(
-                resourceIri: _iriTermFactory(driftEntry.resourceIri),
-                clockHash: driftEntry.entry.clockHash,
-                headerProperties:
-                    _decodeHeaderProperties(driftEntry.entry.headerProperties),
-                updatedAt: driftEntry.entry.updatedAt,
-                ourPhysicalClock: driftEntry.entry.ourPhysicalClock,
-                isDeleted: driftEntry.entry.isDeleted,
-                isRemoteOnly: driftEntry.entry.isRemoteOnly,
-              ))
-          .toList(growable: false),
+      () async {
+        final idToIri =
+            await _getIris(driftEntries.map((e) => e.resourceIriId).toSet());
+        return driftEntries
+            .map((e) => core.IndexEntryWithIri(
+                  resourceIri: idToIri[e.resourceIriId]!,
+                  clockHash: e.clockHash,
+                  headerProperties: _decodeHeaderProperties(e.headerProperties),
+                  updatedAt: e.updatedAt,
+                  ourPhysicalClock: e.ourPhysicalClock,
+                  isDeleted: e.isDeleted,
+                  isRemoteOnly: e.isRemoteOnly,
+                ))
+            .toList(growable: false);
+      },
       resultArgsBuilder: (entries) => ['resultCount=${entries.length}'],
       minDurationMs: 5,
     );
@@ -1124,16 +1170,17 @@ class DriftStorage implements core.Storage {
       minDurationMs: 5,
     );
 
+    final idToIri =
+        await _getIris(driftEntries.map((e) => e.resourceIriId).toSet());
     return driftEntries
-        .map((driftEntry) => core.IndexEntryWithIri(
-              resourceIri: _iriTermFactory(driftEntry.resourceIri),
-              clockHash: driftEntry.entry.clockHash,
-              headerProperties:
-                  _decodeHeaderProperties(driftEntry.entry.headerProperties),
-              updatedAt: driftEntry.entry.updatedAt,
-              ourPhysicalClock: driftEntry.entry.ourPhysicalClock,
-              isDeleted: driftEntry.entry.isDeleted,
-              isRemoteOnly: driftEntry.entry.isRemoteOnly,
+        .map((e) => core.IndexEntryWithIri(
+              resourceIri: idToIri[e.resourceIriId]!,
+              clockHash: e.clockHash,
+              headerProperties: _decodeHeaderProperties(e.headerProperties),
+              updatedAt: e.updatedAt,
+              ourPhysicalClock: e.ourPhysicalClock,
+              isDeleted: e.isDeleted,
+              isRemoteOnly: e.isRemoteOnly,
             ))
         .toList(growable: false);
   }
@@ -1186,6 +1233,13 @@ class DriftStorage implements core.Storage {
 
     final grouped = await indexDao.getActiveIndexEntriesForShards(shardIriIds);
 
+    // Resolve all resource IRI IDs in one batch via the LRU cache.
+    final allResourceIriIds = <int>{};
+    for (final entries in grouped.values) {
+      allResourceIriIds.addAll(entries.map((e) => e.resourceIriId));
+    }
+    final resourceIdToIri = await _getIris(allResourceIriIds);
+
     // Build result: every requested shard gets an entry (even if empty).
     final result = <IriTerm, List<core.IndexEntryWithIri>>{
       for (final shardIri in shardIriList) shardIri: const [],
@@ -1194,15 +1248,14 @@ class DriftStorage implements core.Storage {
       final shardIri = shardIdToIri[entry.key];
       if (shardIri == null) continue;
       result[shardIri] = entry.value
-          .map((driftEntry) => core.IndexEntryWithIri(
-                resourceIri: _iriTermFactory(driftEntry.resourceIri),
-                clockHash: driftEntry.entry.clockHash,
-                headerProperties:
-                    _decodeHeaderProperties(driftEntry.entry.headerProperties),
-                updatedAt: driftEntry.entry.updatedAt,
-                ourPhysicalClock: driftEntry.entry.ourPhysicalClock,
-                isDeleted: driftEntry.entry.isDeleted,
-                isRemoteOnly: driftEntry.entry.isRemoteOnly,
+          .map((e) => core.IndexEntryWithIri(
+                resourceIri: resourceIdToIri[e.resourceIriId]!,
+                clockHash: e.clockHash,
+                headerProperties: _decodeHeaderProperties(e.headerProperties),
+                updatedAt: e.updatedAt,
+                ourPhysicalClock: e.ourPhysicalClock,
+                isDeleted: e.isDeleted,
+                isRemoteOnly: e.isRemoteOnly,
               ))
           .toList(growable: false);
     }
@@ -1597,19 +1650,48 @@ class DriftStorage implements core.Storage {
   @override
   Future<core.IndexInstanceSyncState> getIndexInstanceSyncState(
       IriTerm indexInstanceIri) async {
-    final query = _buildIndexSyncStateQuery(indexInstanceIri);
-    final rows = await query.get();
+    final indexInstanceIriId = await _getExistingIriId(indexInstanceIri);
+
+    if (indexInstanceIriId == null) {
+      return core.IndexInstanceSyncState(
+        indexInstanceIri: indexInstanceIri,
+        perRemote: const {},
+      );
+    }
+
+    final rows = await (_database.select(_database.indexInstanceSyncStates)
+          ..where((s) => s.indexInstanceIriId.equals(indexInstanceIriId)))
+        .get();
 
     return _rowsToIndexSyncState(rows, indexInstanceIri);
   }
 
-  core.IndexInstanceSyncState _rowsToIndexSyncState(
-      List<TypedResult> rows, IriTerm indexInstanceIri) {
+  Future<core.IndexInstanceSyncState> _rowsToIndexSyncState(
+      List<IndexInstanceSyncState> rows, IriTerm indexInstanceIri) async {
+    if (rows.isEmpty) {
+      return core.IndexInstanceSyncState(
+        indexInstanceIri: indexInstanceIri,
+        perRemote: const {},
+      );
+    }
+
+    final remoteSettingIds = rows.map((row) => row.remoteSettingId).toSet();
+    final remoteRows = await (_database.select(_database.remoteSettings)
+          ..where((r) => r.id.isIn(remoteSettingIds.toList())))
+        .get();
+    final remoteById = {
+      for (final remote in remoteRows) remote.id: remote,
+    };
+
     final perRemote = <core.RemoteId, core.RemoteSyncEntry>{};
     for (final row in rows) {
+      final remote = remoteById[row.remoteSettingId];
+      if (remote == null) {
+        continue;
+      }
       final snapshot = _toRemoteIndexSyncStateSnapshot(
-        row.readTable(_database.indexInstanceSyncStates),
-        row.readTable(_database.remoteSettings),
+        row,
+        remote,
       );
       assert(
         !perRemote.containsKey(snapshot.remoteId),
@@ -1624,31 +1706,31 @@ class DriftStorage implements core.Storage {
     );
   }
 
-  Selectable<TypedResult> _buildIndexSyncStateQuery(IriTerm indexInstanceIri) {
-    final indexIriTable = _database.syncIris.createAlias('index_iri');
-    final query = _database.select(_database.indexInstanceSyncStates).join([
-      innerJoin(
-        indexIriTable,
-        indexIriTable.id
-            .equalsExp(_database.indexInstanceSyncStates.indexInstanceIriId),
-      ),
-      innerJoin(
-        _database.remoteSettings,
-        _database.remoteSettings.id
-            .equalsExp(_database.indexInstanceSyncStates.remoteSettingId),
-      ),
-    ])
-      ..where(indexIriTable.iri.equals(indexInstanceIri.value));
-    return query;
-  }
-
   @override
   Stream<core.IndexInstanceSyncState> watchIndexInstanceSyncState(
       IriTerm indexInstanceIri) {
-    final query = _buildIndexSyncStateQuery(indexInstanceIri);
-    return query
-        .watch()
-        .map((rows) => _rowsToIndexSyncState(rows, indexInstanceIri));
+    return (_database.select(_database.syncIris)
+          ..where((i) => i.iri.equals(indexInstanceIri.value)))
+        .watchSingleOrNull()
+        .asyncExpand((indexIriRow) {
+      if (indexIriRow == null) {
+        return Stream.value(
+          core.IndexInstanceSyncState(
+            indexInstanceIri: indexInstanceIri,
+            perRemote: const {},
+          ),
+        );
+      }
+
+      _iriIdCache[indexIriRow.iri] = indexIriRow.id;
+      _idIriCache[indexIriRow.id] = indexInstanceIri;
+
+      final stateQuery = _database.select(_database.indexInstanceSyncStates)
+        ..where((s) => s.indexInstanceIriId.equals(indexIriRow.id));
+      return stateQuery
+          .watch()
+          .asyncMap((rows) => _rowsToIndexSyncState(rows, indexInstanceIri));
+    });
   }
 
   @override
