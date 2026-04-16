@@ -11,11 +11,12 @@ import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/index/shard_manager.dart';
 import 'package:locorda_core/src/mapping/resource_locator.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:locorda_core/src/rdf/xsd.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
+
+import 'package:locorda_rdf_terms_core/xsd.dart';
 
 /// Generates RDF graphs for index resources.
 ///

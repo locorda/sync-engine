@@ -6,8 +6,9 @@
 library;
 
 import 'package:locorda_core/src/vocab/generated/_index.dart';
-import 'package:locorda_core/src/rdf/xsd.dart';
+
 import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_terms_core/xsd.dart';
 
 /// Controls whether root resources referenced by an index are proactively
 /// fetched from remotes during sync, or only when explicitly requested.

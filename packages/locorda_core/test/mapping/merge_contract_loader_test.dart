@@ -7,8 +7,8 @@ import 'package:locorda_core/src/mapping/merge_contract.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:locorda_core/src/rdf/xsd.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_terms_core/xsd.dart';
 import 'package:test/test.dart';
 
 class MockRecursiveRdfLoader extends RecursiveRdfLoader {
