@@ -1363,9 +1363,6 @@ class DriftStorage implements core.Storage {
     return result;
   }
 
-  // Note: Sync timestamp helpers are provided by SyncTimestampStorage extension
-  // from locorda_core. No need to duplicate them here.
-
   // ========================================================================
   // Remote ETag Management (Multi-Remote Support)
   // ========================================================================

@@ -21,7 +21,6 @@ import 'package:logging/logging.dart';
 
 final _log = Logger('CrdtDocumentManager');
 
-typedef IdentifiedGraph = (IriTerm id, RdfGraph graph);
 typedef DocumentSaveResult = ({
   RdfSubject resourceIri,
   IriTerm documentIri,

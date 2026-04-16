@@ -70,8 +70,7 @@ class InMemoryStorage implements Storage {
   final Map<String, _IndexEntry> _indexEntries =
       {}; // key: "$shardIri|$resourceIri"
 
-  // Note: Sync timestamps now stored in _settings via SyncTimestampStorage extension
-  // Remote ETags also stored in _settings
+  // Remote ETags are stored in _settings.
 
   // Index shard storage: index IRI → ordered list of shard IRIs
   final Map<IriTerm, List<IriTerm>> _indexShards = {};
@@ -881,8 +880,6 @@ class InMemoryStorage implements Storage {
     }
     return result;
   }
-
-  // Sync timestamps now handled by SyncTimestampStorage extension using _settings
 
   // ========================================================================
   // Remote ETag Management (Multi-Remote Support)

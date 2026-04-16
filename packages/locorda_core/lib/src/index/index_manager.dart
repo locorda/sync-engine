@@ -775,8 +775,3 @@ class IndexManager {
     return tombstonedShards;
   }
 }
-
-/// Extension to expose internal helper methods for testing.
-extension IndexManagerTestHelpers on IndexManager {
-  IndexRdfGenerator get rdfGenerator => _rdfGenerator;
-}

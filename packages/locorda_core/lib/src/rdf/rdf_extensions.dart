@@ -190,26 +190,6 @@ extension RdfSubjectExtensions on RdfSubject? {
   }
 }
 
-extension RdfObjectExtensions on RdfObject? {
-  String get debug {
-    if (this == null) {
-      return 'null';
-    } else if (this is IriTerm) {
-      return (this as IriTerm).debug;
-    } else {
-      return this.toString();
-    }
-  }
-
-  bool get isIri {
-    return this is IriTerm;
-  }
-
-  bool get isBlankNode {
-    return this is BlankNodeTerm;
-  }
-}
-
 extension IriTermExtensions on IriTerm {
   static final LRUCache<IriTerm, String> _debugStringCache =
       LRUCache<IriTerm, String>(maxCacheSize: 100);
