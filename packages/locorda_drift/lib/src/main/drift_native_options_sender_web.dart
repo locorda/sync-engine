@@ -21,6 +21,8 @@ class DriftNativeOptionsSender implements MainHandler {
     final Future<String> Function()? databasePath,
     final Future<Object> Function()? databaseDirectory,
     final Future<String?> Function()? tempDirectoryPath,
+    bool enableWal = false,
+    int readPool = 0,
   }) {
     return (MainHandlerContext context) {
       return const DriftNativeOptionsSender._();
