@@ -527,6 +527,12 @@ class SolidClient {
         requestETag: ifMatch,
       );
     }
+    if (response.statusCode == 412) {
+      return RemoteUploadResult.conflict(
+        documentIri: documentIri,
+        requestETag: ifMatch,
+      );
+    }
     if (response.statusCode >= 200 && response.statusCode < 300) {
       var etag = response.headers['etag'];
       if (etag == null) {
