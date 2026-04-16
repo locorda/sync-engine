@@ -70,7 +70,7 @@ Future<Locorda> initializeLocorda() async {
           appUrlScheme: 'dev.locorda.example.personalNotesApp',
           frontendRedirectUrl: Uri.parse(
               '${kDebugMode ? 'http://localhost:3815' : appVocab.appBaseUri}/redirect.html'),
-          config: SolidConfig()),
+          config: SolidConfig(layout: ShardDataset())),
       await GDriveMainIntegration.create(
           config: GDriveConfig(
               localMirrorConfig: GDriveLocalMirrorConfig(enabled: true))),

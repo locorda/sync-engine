@@ -238,6 +238,10 @@ class SolidRemoteStorage implements PipelineRemoteStorage {
       contentType: layout.contentType,
       isBinary: isBinary,
       onAuthFailure: _onAuthFailure,
+      documentUrlMapper: SolidPhysicalDocumentUrlMapper(
+        appendFileExtension: layout is! FilePerResource,
+        fileExtension: layout.fileExtension,
+      ),
     );
     return RemoteSyncStorages.createIriTranslated(
       layout: layout,
@@ -296,26 +300,30 @@ class SolidSyncBackend implements RemoteSyncBackend {
   final String _contentType;
   final bool _isBinary;
   final Future<void> Function() _onAuthFailure;
+  final SolidPhysicalDocumentUrlMapper _documentUrlMapper;
 
   SolidSyncBackend({
     required SolidClient client,
     required String contentType,
     required bool isBinary,
     required Future<void> Function() onAuthFailure,
+    required SolidPhysicalDocumentUrlMapper documentUrlMapper,
   })  : _client = client,
         _contentType = contentType,
         _isBinary = isBinary,
-        _onAuthFailure = onAuthFailure;
+        _onAuthFailure = onAuthFailure,
+        _documentUrlMapper = documentUrlMapper;
 
   @override
   Stream<RemoteDownloadResult<RawContent>> download(
       Stream<RemoteDownloadRequest> requests) async* {
     await for (final request in requests) {
+      final url = _documentUrlMapper.toDocumentUrl(request.documentIri);
       yield await retryOnAuthFailure(
         config: const AuthRetryConfig.retryOnce(),
         onAuthFailure: _onAuthFailure,
         operation: () => _client.downloadRaw(
-          request.documentIri.value,
+          url,
           requiresAuth: true,
           documentIri: request.documentIri,
           ifNoneMatch: request.ifNoneMatch,
@@ -330,11 +338,12 @@ class SolidSyncBackend implements RemoteSyncBackend {
   Stream<RemoteUploadResult> upload(
       Stream<RemoteUploadRequest<RawContent>> requests) async* {
     await for (final request in requests) {
+      final url = _documentUrlMapper.toDocumentUrl(request.documentIri);
       yield await retryOnAuthFailure(
         config: const AuthRetryConfig.retryOnce(),
         onAuthFailure: _onAuthFailure,
         operation: () => _client.upload(
-          request.documentIri.value,
+          url,
           request.document,
           requiresAuth: true,
           ifMatch: request.ifMatch,
@@ -347,6 +356,35 @@ class SolidSyncBackend implements RemoteSyncBackend {
   @override
   Future<void> finalize(SyncFinalizationState state,
       {PipeperfCollector? perf}) async {}
+}
+
+/// Maps semantic document IRIs to physical Solid document URLs.
+///
+/// For file-per-resource layouts this is identity mapping.
+/// For dataset layouts this appends the configured file extension.
+class SolidPhysicalDocumentUrlMapper {
+  final bool _appendFileExtension;
+  final String _fileExtension;
+
+  SolidPhysicalDocumentUrlMapper({
+    required bool appendFileExtension,
+    required String fileExtension,
+  })  : _appendFileExtension = appendFileExtension,
+        _fileExtension = fileExtension;
+
+  String toDocumentUrl(IriTerm documentIri) {
+    final url = documentIri.value;
+    if (!_appendFileExtension || _fileExtension.isEmpty) {
+      return url;
+    }
+
+    final uri = Uri.parse(url);
+    final suffix = '.$_fileExtension';
+    if (uri.path.endsWith(suffix)) {
+      return url;
+    }
+    return uri.replace(path: '${uri.path}$suffix').toString();
+  }
 }
 
 // ---------------------------------------------------------------------------
