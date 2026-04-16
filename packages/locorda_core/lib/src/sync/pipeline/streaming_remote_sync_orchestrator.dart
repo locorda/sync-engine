@@ -23,7 +23,6 @@ import 'package:locorda_core/src/sync/pipeline/content_index_resolver.dart';
 import 'package:locorda_core/src/sync/pipeline/decoupling_transformer.dart';
 import 'package:locorda_core/src/sync/pipeline/document_shard_reconciler.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
-import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage10_shard_entry_load.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage11a_prepare.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage11b_contract_load.dart';

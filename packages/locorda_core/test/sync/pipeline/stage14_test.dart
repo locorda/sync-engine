@@ -14,8 +14,6 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/sync/pipeline/content_index_resolver.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage14_feedback.dart';
-import 'package:locorda_core/src/vocab/generated/_index.dart'
-    show SyncManagedDocument;
 import 'package:locorda_rdf_core/core.dart';
 import 'package:test/test.dart';
 

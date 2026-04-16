@@ -72,7 +72,6 @@ export 'src/storage/in_memory_storage.dart' show InMemoryStorage;
 export 'src/storage/remote_id.dart' show RemoteId;
 export 'src/storage/remote_storage.dart'
     show
-        RemoteSyncStorage,
         PipelineIriTranslatingRemoteSyncStorage,
         PipelineRemoteStorage,
         RemoteUploadResult,

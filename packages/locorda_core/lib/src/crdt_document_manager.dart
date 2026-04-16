@@ -4,21 +4,20 @@ library;
 import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_core/src/local_document_merger.dart';
-import 'package:locorda_core/src/storage/document_save_service.dart';
-import 'package:locorda_core/src/standard_sync_engine.dart';
-import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
-import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/hlc_service.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart';
+import 'package:locorda_core/src/local_document_merger.dart';
 import 'package:locorda_core/src/mapping/framework_iri_generator.dart';
 import 'package:locorda_core/src/mapping/identified_blank_node_builder.dart';
 import 'package:locorda_core/src/mapping/merge_contract.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/split_document.dart';
-import 'package:logging/logging.dart';
+import 'package:locorda_core/src/standard_sync_engine.dart';
+import 'package:locorda_core/src/storage/document_save_service.dart';
+import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:logging/logging.dart';
 
 final _log = Logger('CrdtDocumentManager');
 
