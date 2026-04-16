@@ -19,14 +19,13 @@ import 'config/locorda_config_validator.dart';
 import 'index/group_index_sync_failed_exception.dart';
 import 'index/group_index_subscription_manager.dart';
 import 'mapping/local_resource_iri_service.dart';
-import 'mapping/solid_mapping_context.dart';
+import 'mapping/mapping_context.dart';
 
 /// Type alias for mapper initializer functions.
 ///
-/// These functions receive framework services via SolidMappingContext
+/// These functions receive framework services via MappingContext
 /// and return a fully configured RdfMapper.
-typedef MapperInitializerFunction = RdfMapper Function(
-    SolidMappingContext context);
+typedef MapperInitializerFunction = RdfMapper Function(MappingContext context);
 
 /// Type alias for a hydration batch with decoded objects of type [T].
 typedef TypedHydrationBatch<T> = ({
@@ -155,7 +154,7 @@ class ObjectSyncEngine {
     final localResourceLocator =
         LocalResourceLocator(iriTermFactory: iriTermFactory);
     final iriService = LocalResourceIriService(localResourceLocator);
-    final mappingContext = SolidMappingContext(
+    final mappingContext = MappingContext(
       resourceIriFactory: iriService.createResourceIriMapper,
       resourceRefFactory: iriService.createResourceRefMapper,
       indexItemIriFactory: iriService.createIndexItemIriMapper,

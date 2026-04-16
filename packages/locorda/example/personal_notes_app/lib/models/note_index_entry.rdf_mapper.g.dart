@@ -35,9 +35,7 @@ class NoteIndexEntryMapper
        _iriMapper = iriMapper;
 
   @override
-  IriTerm? get typeIri => const IriTerm(
-    'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#NoteIndexEntry',
-  );
+  IriTerm? get typeIri => null;
 
   @override
   nie.NoteIndexEntry fromRdfResource(

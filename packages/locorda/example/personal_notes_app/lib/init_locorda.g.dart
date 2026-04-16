@@ -14,6 +14,7 @@ library;
 import 'dart:core';
 import 'init_rdf_mapper.g.dart' as mpr;
 import 'locorda_config.g.dart' as cfg;
+import 'package:locorda_core/src/backend/perflog_backend.dart' as pb;
 import 'package:locorda_flutter/locorda_flutter.dart';
 import 'package:locorda_flutter_core/src/integration.dart' as integration;
 import 'package:locorda_rdf_core/core.dart' as core;
@@ -30,6 +31,7 @@ Future<Locorda> initLocorda({
   rdf_term.IriTermFactory? iriTermFactory,
   core.RdfCore? rdfCore,
   String? debugName,
+  pb.Perflog? perflog,
 }) async => Locorda.create(
   workerSetup: wrk.generatedWorkerSetup,
   jsScript: 'worker_generated.dart.js',
@@ -47,4 +49,5 @@ Future<Locorda> initLocorda({
   iriTermFactory: iriTermFactory,
   rdfCore: rdfCore,
   debugName: debugName,
+  perflog: perflog,
 );

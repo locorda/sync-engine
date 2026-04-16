@@ -5,8 +5,8 @@ import 'package:locorda_rdf_terms_core/xsd.dart';
 import 'package:locorda_rdf_terms_core/owl.dart';
 
 const appVocab = AppVocab(
-  appBaseUri: 'https://locorda.dev/example/personal_notes_app',
-  vocabPath: 'vocabulary/personal-notes',
+  appBaseUri: appBaseUri,
+  vocabPath: vocabPath,
   label: 'Personal Notes App Vocabulary',
   comment:
       'A vocabulary for personal note-taking applications with categories and organization features.',
@@ -16,3 +16,7 @@ const appVocab = AppVocab(
     (Owl.versionInfo, LiteralTerm('1.0.0')),
   ],
 );
+
+const appBaseUri = 'https://locorda.dev/example/personal_notes_app';
+const vocabPath = '/vocabulary/personal-notes';
+const vocabNs = '$appBaseUri$vocabPath#';

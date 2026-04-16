@@ -4,8 +4,8 @@ import 'package:locorda_objects/src/config/locorda_config_util.dart'
     show ResourceTypeCache;
 import 'package:locorda_objects/src/mapping/local_resource_iri_service.dart'
     show LocalResourceIriService;
-import 'package:locorda_objects/src/mapping/solid_mapping_context.dart'
-    show SolidMappingContext;
+import 'package:locorda_objects/src/mapping/mapping_context.dart'
+    show MappingContext;
 import 'package:locorda_rdf_core/core.dart';
 import 'package:locorda_rdf_mapper/mapper.dart';
 
@@ -28,7 +28,7 @@ RdfMapper createTestMapper(
       LocalResourceLocator(iriTermFactory: iriTermFactory);
   final iriService = LocalResourceIriService(localResourceLocator);
 
-  final context = SolidMappingContext(
+  final context = MappingContext(
     resourceIriFactory: iriService.createResourceIriMapper,
     resourceRefFactory: iriService.createResourceRefMapper,
     indexItemIriFactory: iriService.createIndexItemIriMapper,

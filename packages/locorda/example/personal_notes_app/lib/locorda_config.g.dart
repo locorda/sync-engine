@@ -49,6 +49,9 @@ LocordaConfig generateLocordaConfig() => LocordaConfig(
             const rdf_term.IriTerm('https://schema.org/dateCreated'),
             const rdf_term.IriTerm('https://schema.org/dateModified'),
             const rdf_term.IriTerm('https://schema.org/keywords'),
+            const rdf_term.IriTerm(
+              'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#belongsToCategory',
+            ),
           }),
         ),
       ],

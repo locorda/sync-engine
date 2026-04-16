@@ -94,7 +94,7 @@
       }
     },
     "personal_notes_app/lib/models/note_group_key.dart#NoteGroupKey": {
-      "classIri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#NoteGroupKey",
+      "classIri": "dart:NoteGroupKey",
       "properties": {
         "createdMonth": {
           "iri": "https://schema.org/dateCreated",
@@ -103,11 +103,11 @@
       }
     },
     "personal_notes_app/lib/models/note_index_entry.dart#NoteIndexEntry": {
-      "classIri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#NoteIndexEntry",
+      "classIri": "dart:NoteIndexEntry",
       "properties": {
         "categoryId": {
           "iri": "https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#belongsToCategory",
-          "source": "define"
+          "source": "external"
         },
         "dateCreated": {
           "iri": "https://schema.org/dateCreated",

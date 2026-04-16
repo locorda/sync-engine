@@ -9,17 +9,26 @@ import 'package:locorda_rdf_terms_core/rdf.dart' show Rdf;
 import 'package:locorda_rdf_terms_core/rdfs.dart';
 import 'package:locorda_rdf_terms_schema/schema.dart';
 
-import '../consts.dart' show appVocab;
+import '../consts.dart' show appVocab, vocabNs;
 import '../utils/optional.dart';
 import 'category.dart';
 import 'comment.dart';
 import 'weblink.dart';
 
+const _belongsToCategoryFragment = 'belongsToCategory';
+const _belongsToCategoryIri = IriTerm('$vocabNs$_belongsToCategoryFragment');
+
 class NoteCategoryProperty extends RdfProperty {
+  const NoteCategoryProperty.ref()
+      : super(
+          _belongsToCategoryIri,
+          iri: const RootResourceRef(Category),
+        );
+
   const NoteCategoryProperty()
       : super.define(
           iri: const RootResourceRef(Category),
-          fragment: 'belongsToCategory',
+          fragment: _belongsToCategoryFragment,
           label: 'belongs to category',
           comment:
               'Indicates that a note belongs to a specific notes category.',

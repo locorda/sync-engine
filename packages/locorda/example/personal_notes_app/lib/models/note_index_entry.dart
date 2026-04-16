@@ -43,7 +43,7 @@ class NoteIndexEntry {
   final Set<String> keywords;
 
   /// Category ID for grouping
-  @NoteCategoryProperty()
+  @NoteCategoryProperty.ref()
   final String? categoryId;
 
   const NoteIndexEntry({

@@ -34,16 +34,6 @@ pn:Note a owl:Class;
     rdfs:label "Personal Note";
     rdfs:subClassOf schema:NoteDigitalDocument .
 
-pn:NoteGroupKey a owl:Class;
-    rdfs:isDefinedBy pn:;
-    rdfs:label "Note Group Key";
-    rdfs:subClassOf schema:NoteDigitalDocument .
-
-pn:NoteIndexEntry a owl:Class;
-    rdfs:isDefinedBy pn:;
-    rdfs:label "Note Index Entry";
-    rdfs:subClassOf schema:NoteDigitalDocument .
-
 pn:Weblink a owl:Class;
     rdfs:isDefinedBy pn:;
     rdfs:label "Weblink";
