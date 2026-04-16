@@ -183,7 +183,7 @@ class _DirLoginScreenState extends State<DirLoginScreen> {
   Future<void> _chooseDirectory() async {
     _log.info('Opening directory picker...');
     try {
-      final selectedPath = await FilePicker.platform.getDirectoryPath(
+      final selectedPath = await FilePicker.getDirectoryPath(
         dialogTitle: 'Choose Sync Directory',
         initialDirectory: widget.dirAuth.syncDirectoryPath,
       );

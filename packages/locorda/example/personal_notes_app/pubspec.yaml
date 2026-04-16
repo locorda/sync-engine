@@ -15,8 +15,8 @@ dependencies:
     sdk: flutter
     
   # Drift (SQLite) storage
-  drift: ^2.19.0
-  drift_flutter: ^0.2.0
+  drift: ^2.32.1
+  drift_flutter: ^0.3.0
   
   # Solid AUTH
   # TODO: Use published version when available
@@ -34,12 +34,12 @@ dependencies:
   locorda_dir: any
 
   # We need RdfGraph to be passed through in our models
-  locorda_rdf_core: ^0.11.12
+  locorda_rdf_core: ^0.12.0
 
   # RDF Vocabularies we use
-  locorda_rdf_terms_schema: ^0.11.4
-  locorda_rdf_terms_common: ^0.11.4
-  locorda_rdf_terms_core: ^0.11.12
+  locorda_rdf_terms_schema: ^0.12.0
+  locorda_rdf_terms_common: ^0.12.0
+  locorda_rdf_terms_core: ^0.12.0
   
   # UI
   flutter_chips_input: ^2.0.0
@@ -61,11 +61,11 @@ dev_dependencies:
   
   # Code generation
   build_runner: ^2.4.0
-  drift_dev: ^2.19.0
+  drift_dev: ^2.31.0
   locorda_dev: any
 
   # Needed by tests to verify RDF output
-  locorda_rdf_mapper: ^0.11.12
+  locorda_rdf_mapper: ^0.12.0
 
   # Documentation
   excerpter:

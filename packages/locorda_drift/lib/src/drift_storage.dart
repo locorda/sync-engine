@@ -58,7 +58,7 @@ class DriftStorage implements core.Storage {
   /// Create DriftStorage with automatic platform detection.
   ///
   /// Uses conditional imports to select the right implementation:
-  /// - Native platforms: Uses drift_flutter with sqlite3_flutter_libs
+  /// - Native platforms: Uses drift_flutter with bundled SQLite (via Dart hooks)
   /// - Web: Uses drift/wasm with WasmDatabase
   ///
   /// Example:

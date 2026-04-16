@@ -9,7 +9,7 @@ environment:
   sdk: ^3.6.0
 
 dependencies:
-  locorda_rdf_mapper_annotations: ^0.11.12
+  locorda_rdf_mapper_annotations: ^0.12.0
   locorda_core: any
 
 dev_dependencies:
