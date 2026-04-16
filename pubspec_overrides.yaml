@@ -1,8 +1,0 @@
-# Workspace-wide dependency overrides for all packages in this monorepo
-dependency_overrides:
-  # Use unreleased fix from GitHub (not yet published)
-  locorda_rdf_mapper_generator:
-    git:
-      url: https://github.com/locorda/rdf
-      path: packages/locorda_rdf_mapper_generator
-      ref: a593011c77aa23b8d30181c17de20e23327b6f1a
