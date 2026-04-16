@@ -612,11 +612,7 @@ the streams yourself.''');
       crdtTypeRegistry: crdtTypeRegistry,
       frameworkIriGenerator: frameworkIriGenerator,
     );
-    final shardDocumentGenerator = ShardDocumentGenerator(
-      storage: storage,
-      documentManager: crdtDocumentManager,
-      indexManager: indexManager,
-    );
+    final shardDocumentGenerator = const ShardDocumentGenerator();
     final documentShardReconciler = DocumentShardReconciler(
       shardDeterminer: shardDeterminer,
       localDocumentMerger: localDocumentMerger,

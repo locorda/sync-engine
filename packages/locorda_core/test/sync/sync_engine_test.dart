@@ -3,23 +3,7 @@ import 'dart:io';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/backend/in_memory_backend.dart';
-import 'package:locorda_core/src/crdt/crdt_types.dart';
-import 'package:locorda_core/src/crdt_document_manager.dart';
-import 'package:locorda_core/src/hlc_service.dart';
-import 'package:locorda_core/src/index/index_discovery.dart';
-import 'package:locorda_core/src/index/index_manager.dart';
-import 'package:locorda_core/src/index/index_parser.dart';
-import 'package:locorda_core/src/index/index_rdf_generator.dart';
-import 'package:locorda_core/src/index/shard_determiner.dart';
-import 'package:locorda_core/src/index/shard_manager.dart';
-import 'package:locorda_core/src/installation_service.dart';
-import 'package:locorda_core/src/local_document_merger.dart';
-import 'package:locorda_core/src/mapping/framework_iri_generator.dart';
-import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
-import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:locorda_core/src/storage/document_save_service.dart';
-import 'package:locorda_core/src/sync/shard_document_generator.dart';
 import 'package:locorda_core/src/util/build_effective_config.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
@@ -381,94 +365,6 @@ Future<void> _executeStep({
     return;
   }
 
-  if (action == 'generate_shard_documents') {
-    // make sure the SyncEngine instance is fully initialized
-    await installationContext.syncFuture;
-    setTime(actionTs?['generate'], timestampFactory);
-    final DateTime syncTime = timestampFactory();
-    final lastSyncTimestamp = 0;
-    final effectiveConfig = buildEffectiveConfig(config);
-    final hlcService = HlcService(
-        installationLocalId: baseInstallationId!,
-        physicalTimestampFactory: timestampFactory);
-    final shardManager = ShardManager();
-    final iriTermFactory = IriTerm.validated;
-    final resourceLocator =
-        LocalResourceLocator(iriTermFactory: iriTermFactory);
-    final rdfGenerator = IndexRdfGenerator(
-        resourceLocator: resourceLocator, shardManager: shardManager);
-    final parser =
-        IndexParser(knownConfig: effectiveConfig, rdfGenerator: rdfGenerator);
-    final indexDiscovery = IndexDiscovery(
-      storage: storage,
-      configService: SimpleConfigService(effectiveConfig),
-      parser: parser,
-      rdfGenerator: rdfGenerator,
-    );
-    final shardDeterminer = ShardDeterminer(
-      indexDiscovery: indexDiscovery,
-      rdfGenerator: rdfGenerator,
-      shardManager: shardManager,
-      storage: storage,
-    );
-    final crdtTypeRegistry = CrdtTypeRegistry.forStandardTypes();
-    final frameworkIriGenerator = FrameworkIriGenerator();
-    final localDocumentMerger = LocalDocumentMerger(
-      crdtTypeRegistry: crdtTypeRegistry,
-      frameworkIriGenerator: frameworkIriGenerator,
-    );
-    final mergeContractLoader = StandardMergeContractLoader(
-        RecursiveRdfLoader(
-          fetcher:
-              StandardRdfGraphFetcher(fetcher: testFetcher, rdfCore: rdfCore),
-          iriFactory: iriTermFactory,
-        ),
-        crdtTypeRegistry);
-    final crdtDocumentManager = CrdtDocumentManager(
-        storage: storage,
-        configService: SimpleConfigService(effectiveConfig),
-        hlcService: hlcService,
-        localDocumentMerger: localDocumentMerger,
-        mergeContractLoader: mergeContractLoader,
-        physicalTimestampFactory: timestampFactory,
-        shardDeterminer: shardDeterminer,
-        documentSaveService: DocumentSaveService(storage));
-    final installationIri = InstallationService.createInstallationIri(
-        resourceLocator, baseInstallationId);
-    final indexManager = IndexManager(
-      crdtDocumentManager: crdtDocumentManager,
-      rdfGenerator: rdfGenerator,
-      storage: storage,
-      installationIri: installationIri,
-      configService: SimpleConfigService(effectiveConfig),
-      indexDiscovery: indexDiscovery,
-      resourceLocator: resourceLocator,
-      shardDeterminer: shardDeterminer,
-    );
-    final shardDocumentGenerator = ShardDocumentGenerator(
-        documentManager: crdtDocumentManager,
-        storage: storage,
-        indexManager: indexManager);
-
-    await shardDocumentGenerator.prepareSync(syncTime, lastSyncTimestamp);
-
-    // Verify expectations if provided
-    final expectedJson = stepJson['expected'] as Map<String, dynamic>?;
-    if (expectedJson != null) {
-      await _verifyExpectations(
-        testId: testId,
-        stepIndex: stepIndex,
-        expectedJson: expectedJson,
-        testAssetsDir: testAssetsDir,
-        storage: storage,
-        config: effectiveConfig,
-        iriTranslator: iriTranslator,
-        backendIriTranslator: backendIriTranslator,
-        store: store,
-      );
-    }
-    return;
-  }
   if (action != 'save') {
     fail('Unknown action: $action');
   }

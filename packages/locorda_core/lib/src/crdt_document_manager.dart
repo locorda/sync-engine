@@ -36,7 +36,7 @@ typedef DocumentSaveResult = ({
 
 /// Encapsulates the computed state for a deferred document write.
 ///
-/// Returned by [CrdtDocumentManager.prepareModify] to enable batching multiple
+/// Returned by [CrdtDocumentManager.prepareModifyWithContract] to enable batching multiple
 /// document writes into a single [Storage.saveDocuments] call. Callers must
 /// pass [request] to [Storage.saveDocuments] to commit the change atomically.
 typedef PreparedDocumentSave = ({
@@ -249,7 +249,6 @@ Iterable<Triple> toBlankNodeMappingTriples(
       // Add type for the mapping
       yield Triple(
         canonicalIri,
-        Rdf.type,
         SyncBlankNodeMapping.classIri,
       );
       */
@@ -395,56 +394,7 @@ class CrdtDocumentManager {
     );
   }
 
-  /// Like [modify] but accepts a pre-loaded [preloadedDoc] to skip the storage
-  /// read, and returns a [PreparedDocumentSave] without committing to storage.
-  ///
-  /// Enables callers to batch-load all required documents via
-  /// [Storage.getDocumentsByIri] upfront and commit all results in a single
-  /// [Storage.saveDocuments] call instead of one isolate roundtrip per document.
-  ///
-  /// Returns null if no property changes are detected (document unchanged).
-  @Deprecated('delete me')
-  Future<PreparedDocumentSave?> prepareModify(
-    IriTerm type,
-    IriTerm primaryResourceIri,
-    RdfGraph Function(RdfGraph oldAppData) modifier,
-    StoredDocument? preloadedDoc, {
-    int? physicalTime,
-    bool acceptMissing = false,
-  }) async {
-    final documentIri = primaryResourceIri.getDocumentIri();
-    final oldDocument = preloadedDoc?.document;
-    final oldUpdatedAt = preloadedDoc?.metadata.updatedAt;
-
-    final governedByFiles =
-        computeIsGovernedBy(oldDocument, documentIri, _config, type);
-    final mergeContract = await _mergeContractLoader.load(governedByFiles);
-
-    final (appGraph: oldAppData, frameworkGraph: oldFrameworkGraph) =
-        oldDocument == null
-            ? (appGraph: null, frameworkGraph: null)
-            : splitDocument(oldDocument, documentIri, mergeContract);
-
-    if (oldAppData == null && !acceptMissing) {
-      throw ArgumentError(
-          'Cannot patch non-existing document ${documentIri.debug} - use save() instead');
-    }
-    final appData = modifier(oldAppData ?? RdfGraph());
-    return _computeSave(
-      type,
-      primaryResourceIri,
-      documentIri,
-      appData,
-      oldAppData,
-      oldFrameworkGraph,
-      mergeContract,
-      governedByFiles,
-      physicalTime: physicalTime,
-      oldUpdatedAt: oldUpdatedAt,
-    );
-  }
-
-  /// Sync variant of [prepareModify] using a pre-loaded [MergeContract].
+  /// Sync-only deferred-write variant using a pre-loaded [MergeContract].
   ///
   /// Shard calculation is skipped — callers must pass the expected shards
   /// directly. For shard documents ([IdxShard]), this is always empty.
@@ -538,8 +488,7 @@ class CrdtDocumentManager {
   /// CPU-only CRDT merge and document construction, without a storage write.
   ///
   /// Returns null if no property changes are detected (document unchanged).
-  /// Used by [_save] (which adds the storage write) and [prepareModify]
-  /// (which defers the write for batch commits).
+  /// Used by [_save], which adds the storage write.
   Future<PreparedDocumentSave?> _computeSave(
     IriTerm type,
     IriTerm resourceIri,
