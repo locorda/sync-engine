@@ -64,7 +64,8 @@ final class _FakeSolidAuthProvider implements SolidAuthProvider {
   Future<({String accessToken, String dPoP})> getDpopToken(
     String url,
     String method,
-  ) async => (accessToken: 'token', dPoP: 'proof');
+  ) async =>
+      (accessToken: 'token', dPoP: 'proof');
 
   @override
   Future<bool> isAuthenticated() async => true;
