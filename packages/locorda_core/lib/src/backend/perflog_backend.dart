@@ -1,10 +1,6 @@
 import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
-import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:locorda_rdf_core/src/dataset/rdf_dataset.dart';
-import 'package:locorda_rdf_core/src/graph/rdf_graph.dart';
-import 'package:locorda_rdf_core/src/graph/rdf_term.dart';
 import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -256,86 +252,6 @@ class PerflogPipelineBackend implements PipelineBackend {
   String toString() => 'Perflog(${_inner.toString()})';
 }
 
-class PerflogBackend implements ClassicBackend {
-  final ClassicBackend _inner;
-  final Perflog _perflog;
-  late final BehaviorSubject<List<RemoteStorage>> _remotesSubject;
-  late final StreamSubscription _remotesSubscription;
-
-  PerflogBackend(
-    this._inner, {
-    String name = 'Backend',
-    bool? includeArgs,
-    required Perflog perflog,
-  }) : _perflog = perflog.create(name, _inner, includeArgs: includeArgs) {
-    _remotesSubject = BehaviorSubject.seeded(wrapRemotes(_inner.remotes));
-    _remotesSubscription = _inner.remotesChanged.listen((remotes) {
-      _remotesSubject.add(wrapRemotes(remotes));
-    });
-  }
-  List<RemoteStorage> wrapRemotes(List<RemoteStorage> remotes) =>
-      remotes.map((r) => PerflogRemoteStorage(r, perflog: _perflog)).toList();
-
-  @override
-  Future<void> dispose() async {
-    await _perflog.measure('Backend.dispose', () async {
-      await _remotesSubscription.cancel();
-      return _inner.dispose();
-    });
-    await _perflog.dispose();
-  }
-
-  @override
-  String get name => _inner.name;
-
-  @override
-  List<RemoteStorage> get remotes => _remotesSubject.value;
-
-  @override
-  Stream<List<RemoteStorage>> get remotesChanged => _remotesSubject.stream;
-
-  @override
-  String toString() => 'Perflog(${_inner.toString()})';
-}
-
-class PerflogRemoteStorage implements RemoteStorage {
-  final RemoteStorage _inner;
-  final Perflog _perflog;
-
-  PerflogRemoteStorage(
-    this._inner, {
-    required Perflog perflog,
-    String name = 'RemoteStorage',
-    bool? includeArgs,
-  }) : _perflog = perflog.create(name, _inner, includeArgs: includeArgs);
-
-  @override
-  Future<RemoteSyncStorage> createSyncStorage(SyncEngineConfig config) =>
-      _perflog.measure(
-          'createSyncStorage',
-          () async => PerflogRemoteSyncStorage(
-              await _inner.createSyncStorage(config),
-              perflog: _perflog));
-
-  @override
-  Future<bool> isAvailable() =>
-      _perflog.measure('isAvailable', () => _inner.isAvailable());
-
-  @override
-  RemoteId get remoteId => _inner.remoteId;
-
-  @override
-  bool get useShardDatasets => _inner.useShardDatasets;
-
-  @override
-  Future<void> dispose() async {
-    await _perflog.dispose();
-  }
-
-  @override
-  String toString() => 'Perflog(${_inner.toString()})';
-}
-
 class PerflogPipelineRemoteStorage implements PipelineRemoteStorage {
   final PipelineRemoteStorage _inner;
   final Perflog _perflog;
@@ -367,106 +283,6 @@ class PerflogPipelineRemoteStorage implements PipelineRemoteStorage {
     await _perflog.dispose();
   }
 
-  @override
-  String toString() => 'Perflog(${_inner.toString()})';
-}
-
-class PerflogRemoteSyncStorage implements RemoteSyncStorage {
-  final RemoteSyncStorage _inner;
-  final Perflog perflog;
-  final LocalResourceLocator _localResourceLocator =
-      LocalResourceLocator(iriTermFactory: IriTerm.validated);
-  PerflogRemoteSyncStorage(this._inner,
-      {required Perflog perflog,
-      String name = 'RemoteSyncStorage',
-      bool? includeArgs})
-      : this.perflog = perflog.create(name, _inner, includeArgs: includeArgs);
-
-  @override
-  Future<RemoteDownloadResult<RdfGraph>> download(IriTerm documentIri,
-          {String? ifNoneMatch}) =>
-      perflog.measure('download',
-          () => _inner.download(documentIri, ifNoneMatch: ifNoneMatch),
-          args: [documentIri.debug]);
-
-  @override
-  Future<List<RemoteDownloadResult<RdfGraph>>> downloadMany(
-          Iterable<RemoteDownloadRequest> requests) =>
-      perflog
-          .measure('downloadMany', () => _inner.downloadMany(requests), args: [
-        'count=${requests.length}',
-        if (requests.isNotEmpty)
-          'firstType=${getType(requests.first.documentIri)}'
-      ]);
-
-  @override
-  Future<RemoteDownloadResult<RdfDataset>> downloadDataset(IriTerm documentIri,
-          {String? ifNoneMatch}) =>
-      perflog.measure('downloadDataset',
-          () => _inner.downloadDataset(documentIri, ifNoneMatch: ifNoneMatch),
-          args: [documentIri.debug]);
-
-  @override
-  Future<List<RemoteDownloadResult<RdfDataset>>> downloadManyDatasets(
-          Iterable<RemoteDownloadRequest> requests) =>
-      perflog.measure(
-          'downloadManyDatasets', () => _inner.downloadManyDatasets(requests),
-          args: [
-            'count=${requests.length}',
-            if (requests.isNotEmpty)
-              'firstType=${getType(requests.first.documentIri)}'
-          ]);
-
-  String getType(IriTerm documentIri) =>
-      _localResourceLocator.fromIri(documentIri).typeIri.localName;
-
-  @override
-  Future<void> finalizeSync() async {
-    await perflog.measure('finalizeSync', () => _inner.finalizeSync());
-    await perflog.dispose();
-  }
-
-  @override
-  int get maxConcurrentDocumentSyncs => _inner.maxConcurrentDocumentSyncs;
-
-  @override
-  int get maxConcurrentIndexSyncs => _inner.maxConcurrentIndexSyncs;
-
-  @override
-  int get maxConcurrentShardSyncs => _inner.maxConcurrentShardSyncs;
-  @override
-  Future<RemoteUploadResult> upload(IriTerm documentIri, RdfGraph graph,
-          {String? ifMatch}) =>
-      perflog.measure(
-          'upload', () => _inner.upload(documentIri, graph, ifMatch: ifMatch),
-          args: [documentIri.debug]);
-
-  @override
-  Future<List<RemoteUploadResult>> uploadMany(
-          Iterable<RemoteUploadRequest<RdfGraph>> requests) =>
-      perflog.measure('uploadMany', () => _inner.uploadMany(requests), args: [
-        'count=${requests.length}',
-        if (requests.isNotEmpty)
-          'firstType=${getType(requests.first.documentIri)}'
-      ]);
-
-  @override
-  Future<RemoteUploadResult> uploadDataset(
-          IriTerm documentIri, RdfDataset dataset, {String? ifMatch}) =>
-      perflog.measure('uploadDataset',
-          () => _inner.uploadDataset(documentIri, dataset, ifMatch: ifMatch),
-          args: [documentIri.debug]);
-
-  @override
-  Future<List<RemoteUploadResult>> uploadManyDatasets(
-          Iterable<RemoteUploadRequest<RdfDataset>> requests) =>
-      perflog.measure(
-          'uploadManyDatasets', () => _inner.uploadManyDatasets(requests),
-          args: [
-            'count=${requests.length}',
-            if (requests.isNotEmpty)
-              'firstType=${getType(requests.first.documentIri)}/${requests.first.document.graphNames.isNotEmpty ? getType(requests.first.document.graphNames.first as IriTerm) : 'empty'}'
-          ]);
   @override
   String toString() => 'Perflog(${_inner.toString()})';
 }

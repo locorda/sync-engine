@@ -3,9 +3,8 @@
 /// Composes the 14-stage streaming pipeline from proposal 007 and runs it
 /// against a [PipelineRemoteSyncStorage]-capable backend.
 ///
-/// Replaces [RemoteSyncOrchestrator] when the backend supports streaming.
-/// Both orchestrators share the same [Storage], [CrdtDocumentManager],
-/// [IndexManager], etc. and produce identical results.
+/// This is the only orchestrator implementation and is wired for all
+/// supported backends.
 library;
 
 import 'dart:async';

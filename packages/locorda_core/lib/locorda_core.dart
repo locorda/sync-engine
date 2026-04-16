@@ -12,11 +12,10 @@ library locorda_core;
 
 // Core interfaces
 export 'src/auth/auth_interface.dart' show Auth, AuthValueListenable;
-export 'src/backend/backend.dart' show Backend, PipelineBackend, ClassicBackend;
+export 'src/backend/backend.dart' show Backend, PipelineBackend;
 export 'src/backend/in_memory_backend.dart' show InMemoryBackend;
 // TODO: do we really want to expose those? Or should we have a separate utils package or at least utils.dart toplevel export?
-export 'src/backend/perflog_backend.dart'
-    show PerflogBackend, Perflog, PerflogPipelineBackend;
+export 'src/backend/perflog_backend.dart' show Perflog, PerflogPipelineBackend;
 // Resource-focused configuration
 export 'src/config/config_base.dart' show ResourceConfigBase, ConfigBase;
 export 'src/config/config_base_validator.dart' show ConfigBaseValidator;
@@ -73,9 +72,7 @@ export 'src/storage/in_memory_storage.dart' show InMemoryStorage;
 export 'src/storage/remote_id.dart' show RemoteId;
 export 'src/storage/remote_storage.dart'
     show
-        RemoteStorage,
         RemoteSyncStorage,
-        IriTranslatingRemoteSyncStorage,
         PipelineIriTranslatingRemoteSyncStorage,
         PipelineRemoteStorage,
         RemoteUploadResult,
@@ -84,7 +81,6 @@ export 'src/storage/remote_storage.dart'
         RemoteDownloadResult,
         RemoteDownloadRequest,
         RemoteUploadRequest,
-        AuthAwareRemoteStorage,
         AuthException,
         AuthRetryConfig,
         retryOnAuthFailure;

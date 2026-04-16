@@ -1,6 +1,7 @@
 /// Shard reconciliation for merged resource documents.
 ///
-/// Extracted from [_RemoteSyncOrchestratorDocSync.reconcileDocumentShards].
+/// Extracted from the legacy orchestrator implementation and kept as a
+/// standalone service for the pipeline merge stage.
 /// Recomputes the shard assignments for a merged document and updates the
 /// document with correct [idx:belongsToIndexShard] triples.
 ///
@@ -16,7 +17,6 @@ import 'package:locorda_core/src/local_document_merger.dart';
 import 'package:locorda_core/src/mapping/merge_contract.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
-import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_rdf_core/core.dart';
 
 /// Result of document shard reconciliation.

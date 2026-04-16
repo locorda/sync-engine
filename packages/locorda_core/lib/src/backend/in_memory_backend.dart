@@ -75,7 +75,7 @@ class InMemoryBackend implements PipelineBackend {
   }
 }
 
-/// In-memory implementation of RemoteStorage for testing.
+/// In-memory implementation of PipelineRemoteStorage for testing.
 ///
 /// Provides full ETag support with correct HTTP conditional request semantics:
 /// - If-None-Match: * (create only)

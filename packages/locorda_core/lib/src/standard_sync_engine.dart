@@ -27,10 +27,8 @@ import 'package:locorda_core/src/storage/document_save_service.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart' as storage;
 import 'package:locorda_core/src/sync/pipeline/content_index_resolver.dart';
 import 'package:locorda_core/src/sync/pipeline/document_shard_reconciler.dart';
-import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_core/src/sync/pipeline/streaming_remote_sync_orchestrator.dart';
 import 'package:locorda_core/src/sync/remote_document_merger.dart';
-import 'package:locorda_core/src/sync/remote_sync_orchestrator.dart';
 import 'package:locorda_core/src/sync/shard_document_generator.dart';
 import 'package:locorda_core/src/sync/sync_function.dart';
 import 'package:locorda_core/src/util/build_effective_config.dart';
@@ -51,41 +49,28 @@ typedef HydrationBatch = ({
 
 /// Simple config service for testing that doesn't listen to remote changes.
 class SimpleConfigService extends ConfigService {
-  SimpleConfigService(super.initialConfig)
-      : super(classicBackends: [], pipelineBackends: []);
+  SimpleConfigService(super.initialConfig) : super(pipelineBackends: []);
 }
 
 class ConfigService {
   final BehaviorSubject<SyncEngineConfig> _configSubject;
-  final SyncEngineConfig _initialConfig;
-  final List<ClassicBackend> _classicBackends;
   final List<PipelineBackend> _pipelineBackends;
   final List<StreamSubscription> _remoteSubscriptions = [];
-  bool _needsPrefetchAll = false;
 
   Stream<SyncEngineConfig> get configChanges => _configSubject.stream;
   SyncEngineConfig get currentConfig => _configSubject.value;
 
   ConfigService(
     SyncEngineConfig initialConfig, {
-    required List<ClassicBackend> classicBackends,
     required List<PipelineBackend> pipelineBackends,
   })  : _configSubject =
             BehaviorSubject<SyncEngineConfig>.seeded(initialConfig),
-        _initialConfig = initialConfig,
-        _classicBackends = classicBackends,
         _pipelineBackends = pipelineBackends {
     _setupRemoteListeners();
   }
 
   /// Setup listeners for remote availability changes across all backends.
   void _setupRemoteListeners() {
-    for (final backend in _classicBackends) {
-      final subscription = backend.remotesChanged.listen((_) {
-        _onRemotesChanged();
-      });
-      _remoteSubscriptions.add(subscription);
-    }
     for (final backend in _pipelineBackends) {
       final subscription = backend.pipelineRemotesChanged.listen((_) {
         _onRemotesChanged();
@@ -99,63 +84,7 @@ class ConfigService {
 
   /// Handle remote availability changes.
   void _onRemotesChanged() {
-    // Check if any available remote uses shard datasets
-    // pipeline remotes do not communicate their storage model any more,
-    // they are expected to "push" extra data into the pipeline, so this
-    // setting is only for classic backends.
-    final anyDatasetRemote = _classicBackends.any((backend) {
-      return backend.remotes.any((remote) {
-        // Remote must be available to be considered
-        // We can't check availability synchronously here, but remotes list
-        // only contains authenticated/configured remotes, so we can assume they're potentially available
-        return remote.useShardDatasets;
-      });
-    });
-
-    if (anyDatasetRemote != _needsPrefetchAll) {
-      _needsPrefetchAll = anyDatasetRemote;
-      final SyncEngineConfig _effectiveConfig;
-      if (_needsPrefetchAll) {
-        _log.info(
-            'Dataset-based remote detected - adjusting RootResourceFetchPolicy to Prefetch() for all indices');
-        _effectiveConfig = _adjustConfigForDatasets(_initialConfig);
-      } else {
-        _log.info('No dataset-based remotes - using original configuration');
-        _effectiveConfig = _initialConfig;
-      }
-      _configSubject.add(_effectiveConfig);
-      // Note: Config change takes effect on next sync cycle
-      // Active sync operations continue with their original config
-    }
-  }
-
-  /// Adjust configuration to enforce Prefetch policy for dataset compatibility.
-  static SyncEngineConfig _adjustConfigForDatasets(SyncEngineConfig config) {
-    final adjustedResources = config.resources.map((resource) {
-      final adjustedIndices = resource.indices.map((index) {
-        // Only FullIndex has rootResourceFetchPolicy that needs adjustment
-        return switch (index) {
-          FullIndexData(rootResourceFetchPolicy: final policy)
-              when policy is! Prefetch =>
-            () {
-              _log.warning(
-                  'Overriding RootResourceFetchPolicy for index ${index.localName} to Prefetch() for dataset compatibility');
-
-              return index.copyWith(
-                rootResourceFetchPolicy: RootResourceFetchPolicy.prefetch,
-              );
-            }(),
-          _ => index, // GroupIndexData or already Prefetch - no change needed
-        };
-      }).toList();
-
-      // Create new resource config with adjusted indices
-      return resource.copyWith(indices: adjustedIndices);
-    }).toList();
-
-    return config.copyWith(
-      resources: adjustedResources,
-    );
+    // No dynamic config rewrites are required in pipeline-only mode.
   }
 
   Future<void> close() async {
@@ -554,21 +483,15 @@ the streams yourself.''');
 
     final timestampFactory =
         physicalTimestampFactory ?? defaultPhysicalTimestampFactory;
-    final (classicBackends, pipelineBackends) = backends
-        .fold((<ClassicBackend>[], <PipelineBackend>[]), (acc, backend) {
-      switch (backend) {
-        // priority to PipelineBackend
-        case PipelineBackend():
-          acc.$2.add(backend);
-        case ClassicBackend():
-          acc.$1.add(backend);
-      }
-      return acc;
-    });
+    final pipelineBackends = backends.whereType<PipelineBackend>().toList();
+    if (pipelineBackends.length != backends.length) {
+      throw ArgumentError(
+        'All backends must implement PipelineBackend. Classic backends are no longer supported.',
+      );
+    }
     // Automatically add configuration for Framework-Owned resources
     final configService = ConfigService(
       buildEffectiveConfig(config),
-      classicBackends: classicBackends,
       pipelineBackends: pipelineBackends,
     );
 
@@ -694,28 +617,6 @@ the streams yourself.''');
       documentManager: crdtDocumentManager,
       indexManager: indexManager,
     );
-    final remoteSyncOrchestratorFactory = (
-      RemoteSyncStorage remoteSyncStorage,
-      RemoteId remoteId, {
-      required bool useShardDatasets,
-    }) =>
-        RemoteSyncOrchestrator(
-          remoteSyncStorage: remoteSyncStorage,
-          remoteId: remoteId,
-          storage: storage,
-          documentSaveService: documentSaveService,
-          merger: remoteDocumentMerger,
-          indexRdfGenerator: indexRdfGenerator,
-          indexManager: indexManager,
-          shardDeterminer: shardDeterminer,
-          hlcService: hlcService,
-          mergeContractLoader: mergeContractLoader,
-          localDocumentMerger: localDocumentMerger,
-          shardDocumentGenerator: shardDocumentGenerator,
-          physicalTimestampFactory: timestampFactory,
-          useShardDatasets: useShardDatasets,
-          perflog: perflog!,
-        );
     final documentShardReconciler = DocumentShardReconciler(
       shardDeterminer: shardDeterminer,
       localDocumentMerger: localDocumentMerger,
@@ -754,10 +655,7 @@ the streams yourself.''');
     final syncFunction = SyncFunction(
       storage: storage,
       configService: configService,
-      shardDocumentGenerator: shardDocumentGenerator,
-      classicBackends: classicBackends,
       pipelineBackends: pipelineBackends,
-      remoteSyncOrchestratorFactory: remoteSyncOrchestratorFactory,
       streamingOrchestratorFactory: streamingOrchestratorFactory,
       perflog: perflog,
     );
