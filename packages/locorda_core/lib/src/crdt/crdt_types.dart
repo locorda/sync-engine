@@ -1073,8 +1073,14 @@ enum MergeObjectState {
 
   static MergeObjectState from(MetadataStatement? statement, bool exists) {
     if (exists && statement.isTombstoned()) {
-      throw StateError(
-          'Inconsistent state: exists is true but statement is tombstoned');
+      // Stale subject-level tombstone: the subject has triples (exists)
+      // but old CRDT metadata still carries a deletion marker. This can
+      // happen when a shard entry is removed and re-added before the
+      // tombstone is cleaned up. Treat as present (add-wins semantics).
+      _log.warning(
+          'Subject exists but has stale tombstone metadata '
+          '— treating as present (add-wins)');
+      return MergeObjectState.present;
     }
     if (exists) {
       return MergeObjectState.present;

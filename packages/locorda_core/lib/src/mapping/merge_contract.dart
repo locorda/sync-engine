@@ -196,7 +196,7 @@ class MergeContract {
       buffer.writeln(
           'Global Property: ${predicateRule.predicateIri}, mergeWith: ${predicateRule.mergeWith}, stopTraversal: ${predicateRule.stopTraversal}, isIdentifying: ${predicateRule.isIdentifying}, isPathIdentifying: ${predicateRule.isPathIdentifying}');
     }
-    _log.fine('MergeContract:\n$buffer');
+    _log.finest('MergeContract:\n$buffer');
   }
 
   IriTerm? getEffectiveMergeWith(IriTerm? typeIri, RdfPredicate propertyIri) {

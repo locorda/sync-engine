@@ -295,15 +295,37 @@ void main() {
       final storage = _storageWith(recording);
 
       final results = await _transform(storage.resourceFetch(), [
-        _loaded(_resIri1, direction: SyncDirection.notInRemoteShard),
+        _loaded(_resIri1,
+            direction: SyncDirection.notInRemoteShard,
+            storedRemoteEtag: 'old-etag'),
         ShardComplete(_shardIriA, null),
       ]);
 
       expect(results, hasLength(2));
       final fetched = results[0] as FetchedCandidate;
       expect(fetched.remoteSource, isNull);
-      expect(fetched.remoteEtag, isNull);
+      expect(fetched.remoteEtag, 'old-etag');
       expect(recording.requests, isEmpty);
+    });
+
+    test(
+        'notInRemoteShard without storedRemoteEtag sends request to backend',
+        () async {
+      final recording = _RecordingBackend((req) {
+        return NotFoundDownloadResult<RawContent>(
+          documentIri: req.documentIri,
+          requestETag: req.ifNoneMatch,
+        );
+      });
+      final storage = _storageWith(recording);
+
+      await _transform(storage.resourceFetch(), [
+        _loaded(_resIri1, direction: SyncDirection.notInRemoteShard),
+        ShardComplete(_shardIriA, null),
+      ]);
+
+      // Without a stored ETag, we must fetch to avoid 412 loops
+      expect(recording.requests, hasLength(1));
     });
 
     test('shardGone bypasses backend request', () async {

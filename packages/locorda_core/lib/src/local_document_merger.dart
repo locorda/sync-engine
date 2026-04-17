@@ -289,6 +289,19 @@ class LocalDocumentMerger {
           ));
         }
       }
+
+      // Clean up stale subject-level tombstones for re-added subjects.
+      // When a subject was previously deleted (tombstoned) and is now
+      // re-added, the old tombstone must be removed — otherwise the
+      // document ends up with both app data triples and a deletion
+      // marker for the same subject, which crashes the remote merger.
+      if (oldFrameworkGraph != null) {
+        triplesToRemove.addAll(_findSubjectTombstonesToRemove(
+          documentIri,
+          IdTerm.create(addedSubject.subject, appBlankNodes).localSubjectIris,
+          oldFrameworkGraph,
+        ));
+      }
     }
 
     // Process common subjects - detect changes and generate change metadata
@@ -505,6 +518,39 @@ class LocalDocumentMerger {
 }
 
 bool _isEqualSet<T>(Set<T> set, Set<T> set2) => SetEquality().equals(set, set2);
+
+/// Finds subject-level tombstone reifications to remove for re-added subjects.
+///
+/// When a subject is deleted, a statement reification with only `rdf:subject`
+/// (no `rdf:predicate`) and `crdt:deletedAt` is created. If the subject is
+/// later re-added, this stale tombstone must be removed to avoid the
+/// "exists is true but statement is tombstoned" inconsistency during merge.
+Iterable<Triple> _findSubjectTombstonesToRemove(
+  IriTerm documentIri,
+  Iterable<RdfSubject> subjects,
+  RdfGraph frameworkGraph,
+) {
+  // Find all statement reifications whose rdf:subject matches any of the
+  // re-added subject IRIs.
+  final candidateStmtNodes = frameworkGraph
+      .findTriples(predicate: RdfStatement.subject, objectIn: subjects)
+      .map((t) => t.subject)
+      .toSet();
+
+  // Keep only those that are subject-level (no rdf:predicate) and tombstoned.
+  return candidateStmtNodes
+      .where((node) =>
+          !frameworkGraph.hasTriples(
+              subject: node, predicate: RdfStatement.predicate) &&
+          frameworkGraph.hasTriples(
+              subject: node, predicate: SyncManagedDocument.crdtDeletedAt))
+      .expand((node) => [
+            // Remove the hasStatement link from the document
+            Triple(documentIri, SyncManagedDocument.hasStatement, node),
+            // Remove all triples of the tombstone reification itself
+            ...frameworkGraph.findTriples(subject: node),
+          ]);
+}
 
 /// Result of CRDT metadata generation containing metadata triples and property changes
 class CrdtMetadataResult {
