@@ -259,6 +259,33 @@ class IndexManager {
     }
   }
 
+  /// Ensures a single GroupIndex document exists using explicit template config.
+  ///
+  /// Unlike [ensureGroupIndicesExist], this path does not rely on IndexDiscovery
+  /// metadata cache state and is therefore safe to call directly from
+  /// subscription flows.
+  Future<void> ensureGroupIndexExists({
+    required GroupIndexData config,
+    required IriTerm typeIri,
+    required IriTerm templateIri,
+    required String groupKey,
+    required IriTerm groupIndexIri,
+  }) async {
+    if (await _documentManager.hasDocument(groupIndexIri.getDocumentIri())) {
+      return;
+    }
+
+    _log.info('Creating missing GroupIndex for group "$groupKey" '
+        'at $groupIndexIri');
+    await _createGroupIndex(
+      config,
+      typeIri,
+      templateIri,
+      groupKey,
+      groupIndexIri,
+    );
+  }
+
   /// Creates a GroupIndex that was resolved during shard determination but
   /// does not yet exist locally.
   ///

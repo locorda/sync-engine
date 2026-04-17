@@ -137,5 +137,72 @@ void main() {
       expect(second, hasLength(1));
       expect(second.single.$3.toMap()['type'], 'prefetch');
     });
+
+    test('ensure subscription creates local group index and shard mapping',
+        () async {
+      final storage = InMemoryStorage();
+      final testAssetsDir = Directory('test/assets/graph');
+      final allTestsJson = jsonDecode(
+        File('${testAssetsDir.path}/all_tests.json').readAsStringSync(),
+      ) as Map<String, dynamic>;
+      final configJson = jsonDecode(
+        File('${testAssetsDir.path}/shared/configs/group_index_config.json')
+            .readAsStringSync(),
+      ) as Map<String, dynamic>;
+      final config = SyncEngineConfig.fromJson(configJson);
+      final fetcher = TestFetcher.fromTestJson(allTestsJson, testAssetsDir);
+
+      final sync = await SyncEngine.create(
+        config: config,
+        engineParams: EngineParams(
+          storage: storage,
+          backends: const [],
+          fetcher: fetcher,
+        ),
+      );
+
+      final resource = config.resources.single;
+      final typeIri = resource.typeIri;
+      final indexConfig = resource.indices.whereType<GroupIndexData>().single;
+      final groupKeyGraph = RdfGraph.fromTriples([
+        Triple(
+          IriTerm('https://example.org/group-key#it'),
+          IriTerm('https://schema.org/recipeCategory'),
+          LiteralTerm('Dessert'),
+        ),
+      ]);
+
+      await sync.ensureGroupIndexSubscription(
+        indexName: indexConfig.localName,
+        groupKeyGraph: groupKeyGraph,
+        triggerSync: false,
+      );
+
+      final generator = IndexRdfGenerator(
+        resourceLocator:
+            LocalResourceLocator(iriTermFactory: IriTerm.validated),
+        shardManager: const ShardManager(),
+      );
+      final templateIri =
+          generator.generateGroupIndexTemplateIri(indexConfig, typeIri);
+      final groupKey = GroupKeyGenerator(indexConfig)
+          .generateGroupKeys(groupKeyGraph)
+          .single;
+      final groupIndexIri =
+          generator.generateGroupIndexIri(templateIri, groupKey);
+
+      final groupIndexDoc =
+          await storage.getDocument(groupIndexIri.getDocumentIri());
+      expect(groupIndexDoc, isNotNull);
+
+      final shardsByIndex = await storage.getIndexShards([groupIndexIri]);
+      final shardIris = shardsByIndex[groupIndexIri];
+      expect(shardIris, isNotNull);
+      expect(shardIris, hasLength(1));
+
+      final shardDoc =
+          await storage.getDocument(shardIris!.single.getDocumentIri());
+      expect(shardDoc, isNotNull);
+    });
   });
 }

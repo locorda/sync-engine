@@ -279,7 +279,7 @@ class StandardSyncEngine implements SyncEngine {
     required RdfGraph groupKeyGraph,
     RootResourceFetchPolicy? rootResourceFetchPolicy,
   }) async {
-    final (resourceConfig, groupIndexTemplateIri, iris, indexConfig) =
+    final (resourceConfig, groupIndexTemplateIri, groups, indexConfig) =
         await _resolveGroupIndexIris(
             groupKeyGraph: groupKeyGraph, indexName: indexName);
 
@@ -287,7 +287,7 @@ class StandardSyncEngine implements SyncEngine {
     final effectivePolicy =
         rootResourceFetchPolicy ?? indexConfig.rootResourceFetchPolicy;
 
-    for (final iri in iris) {
+    for (final (groupKey, iri) in groups) {
       await _saveGroupIndexSubscriptionIfNeeded(
         groupIndexIri: iri,
         groupIndexTemplateIri: groupIndexTemplateIri,
@@ -295,11 +295,24 @@ class StandardSyncEngine implements SyncEngine {
         rootResourceFetchPolicy: effectivePolicy,
         createdAtMs: _physicalTimestampFactory().millisecondsSinceEpoch,
       );
+
+      await _indexManager.ensureGroupIndexExists(
+        config: indexConfig,
+        typeIri: resourceConfig.typeIri,
+        templateIri: groupIndexTemplateIri,
+        groupKey: groupKey,
+        groupIndexIri: iri,
+      );
     }
   }
 
-  Future<(ResourceConfigData, IriTerm, Iterable<IriTerm>, GroupIndexData)>
-      _resolveGroupIndexIris({
+  Future<
+      (
+        ResourceConfigData,
+        IriTerm,
+        Iterable<(String, IriTerm)>,
+        GroupIndexData
+      )> _resolveGroupIndexIris({
     required String indexName,
     required RdfGraph groupKeyGraph,
   }) async {
@@ -313,22 +326,26 @@ class StandardSyncEngine implements SyncEngine {
     final groupIdentifiers =
         await _groupIndexManager.getGroupIdentifiers(indexName, groupKeyGraph);
 
-    final iris = groupIdentifiers
-        .map((g) => _indexRdfGenerator.generateGroupIndexIri(
-              groupIndexTemplateIri,
-              g,
+    final groups = groupIdentifiers
+        .map((groupKey) => (
+              groupKey,
+              _indexRdfGenerator.generateGroupIndexIri(
+                groupIndexTemplateIri,
+                groupKey,
+              ),
             ))
         .toList(growable: false);
-    return (resourceConfig, groupIndexTemplateIri, iris, indexConfig);
+    return (resourceConfig, groupIndexTemplateIri, groups, indexConfig);
   }
 
   Future<IriTerm> _resolveSingleGroupIndexIri({
     required String indexName,
     required RdfGraph groupKeyGraph,
   }) async {
-    final (_, _, iris, _) = await _resolveGroupIndexIris(
+    final (_, _, groups, _) = await _resolveGroupIndexIris(
         indexName: indexName, groupKeyGraph: groupKeyGraph);
-    final groupIdentifierList = iris.toList(growable: false);
+    final groupIdentifierList =
+        groups.map((groupEntry) => groupEntry.$2).toList(growable: false);
     if (groupIdentifierList.isEmpty) {
       throw StateError(
           'No group identifiers were generated for index "$indexName".');
