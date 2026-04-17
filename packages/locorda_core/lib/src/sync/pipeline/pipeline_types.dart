@@ -862,11 +862,16 @@ class LoadedCandidate implements LoadedCandidateEvent {
       // remote shard does not exist (gone) because then
       // we would try to download each resource on original sync.
       //
-      // If it is unchanged then we can assume that we should have downloaded
-      // its resources before and not having an etag means in this case
-      // that we do need to fetch it (for example it is a on-demand fetch shard
-      // and now we have created a resource that belongs to that shard )
+      // If the shard is unchanged and we have no stored ETag, we should have
+      // downloaded the resource before (e.g. on-demand fetch shard with a
+      // newly created resource).
       (candidate.direction == SyncDirection.remoteShardUnchanged &&
+          storedRemoteEtag == null) ||
+      // If the resource is not in the remote shard entries but we have no
+      // stored ETag, the document may still exist on the remote (uploaded by
+      // another installation after we downloaded the shard). Without a GET
+      // we would upload with If-None-Match:* and receive a 412 indefinitely.
+      (candidate.direction == SyncDirection.notInRemoteShard &&
           storedRemoteEtag == null) ||
       candidate.direction == SyncDirection.conflictCandidate ||
       candidate.direction == SyncDirection.remoteOnly;
