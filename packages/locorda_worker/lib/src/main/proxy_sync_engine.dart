@@ -56,7 +56,13 @@ class ProxySyncEngine implements SyncEngine {
         _decodeGraph = decodeGraph,
         _closeFunctions = closeFunctions {
     // Listen to worker messages and route to pending operations
-    _messageSubscription = _workerHandle.messages.listen(_handleWorkerMessage);
+    _messageSubscription = _workerHandle.messages.where((message) {
+      // Make sure that messages meant for specific channels (e.g. auth bridge) are not handled here
+      if (message is Map && message['__channel'] != null) {
+        return false;
+      }
+      return true;
+    }).listen(_handleWorkerMessage);
 
     // Create sync manager instance
     _syncManager = _ProxySyncManager(this);
