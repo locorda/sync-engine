@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:logging/logging.dart';
+
+final _log = Logger('AuthRetry');
 
 /// Result of a remote download operation with ETag support.
 ///
@@ -269,11 +272,16 @@ Future<T> retryOnAuthFailure<T>(
     required Future<void> Function() onAuthFailure,
     required Future<T> Function() operation}) async {
   int attempts = 0;
+  _log.fine('Starting auth-aware operation with maxRetries=${config.maxRetries}');
   while (true) {
     try {
+      _log.finer('Executing protected operation (attempt=${attempts + 1})');
       return await operation();
     } on AuthException catch (e) {
+      _log.warning('Auth failure on attempt=${attempts + 1}: $e');
       if (attempts >= config.maxRetries) {
+        _log.severe('Auth retry exhausted after $attempts retries '
+            '(maxRetries=${config.maxRetries})');
         if (config.rethrowOnFailure) {
           rethrow;
         } else {
@@ -283,7 +291,9 @@ Future<T> retryOnAuthFailure<T>(
       }
 
       attempts++;
+      _log.info('Triggering auth refresh callback before retry #$attempts');
       await onAuthFailure();
+      _log.info('Auth refresh callback completed for retry #$attempts');
       // Retry after token refresh
     }
   }

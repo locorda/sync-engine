@@ -9,9 +9,19 @@ import 'dart:async';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_solid_core/locorda_solid_core.dart';
 import 'package:locorda_worker/worker.dart';
+import 'package:logging/logging.dart';
 import 'package:solid_auth/worker.dart';
 
 import '../shared/solid_auth_messages.dart';
+
+final _log = Logger('SolidAuthReceiver');
+
+String _credentialsFingerprint(DpopCredentials? credentials) {
+  if (credentials == null) return 'none';
+  final json = credentials.toJson();
+  final sortedKeys = json.keys.toList()..sort();
+  return 'keys=$sortedKeys hash=${json.toString().hashCode}';
+}
 
 /// Notifier for worker authentication state changes.
 ///
@@ -124,12 +134,19 @@ class SolidAuthReceiver implements SolidAuthProvider {
   /// Updates stored credentials and notifies listeners.
   /// Also completes any pending token refresh requests.
   void _handleAuthUpdate(UpdateAuthMessage message) {
+    final before = _credentialsFingerprint(_credentials);
     _credentials = message.credentials;
     _webId = message.webId;
     _notifier.isAuthenticated = _credentials != null;
+    final after = _credentialsFingerprint(_credentials);
+    _log.info('Received UpdateAuthMessage '
+        '(webId=${message.webId}, isAuthenticated=${_credentials != null}, '
+        'credentialsChanged=${before != after}, before=$before, after=$after)');
 
     // Complete pending refresh requests with new credentials
     if (_credentials != null) {
+      _log.fine('Completing ${_pendingRefreshRequests.length} pending '
+          'refresh request(s) from UpdateAuthMessage');
       for (final completer in _pendingRefreshRequests.values) {
         if (!completer.isCompleted) {
           completer.complete(_credentials);
@@ -144,17 +161,27 @@ class SolidAuthReceiver implements SolidAuthProvider {
     final requestId = message['requestId'] as int?;
     if (requestId == null) return;
 
+    _log.info('Received TokenRefreshResponse (requestId=$requestId, '
+        'hasCredentials=${message['credentials'] != null}, '
+        'pending=${_pendingRefreshRequests.length})');
+
     final completer = _pendingRefreshRequests.remove(requestId);
     if (completer == null || completer.isCompleted) return;
 
     // Extract credentials from response
     final credentialsJson = message['credentials'] as Map<String, dynamic>?;
     if (credentialsJson != null) {
+      final before = _credentialsFingerprint(_credentials);
       final credentials = DpopCredentials.fromJson(credentialsJson);
       _credentials = credentials;
       _notifier.isAuthenticated = true;
+      final after = _credentialsFingerprint(_credentials);
+      _log.info('Applied TokenRefreshResponse credentials '
+          '(requestId=$requestId, credentialsChanged=${before != after}, '
+          'before=$before, after=$after)');
       completer.complete(credentials);
     } else {
+      _log.warning('TokenRefreshResponse has no credentials (requestId=$requestId)');
       completer.completeError(
         StateError('Token refresh failed: No credentials in response'),
       );
@@ -199,6 +226,11 @@ class SolidAuthReceiver implements SolidAuthProvider {
     final requestId = _nextRequestId++;
     final completer = Completer<DpopCredentials>();
     _pendingRefreshRequests[requestId] = completer;
+    final before = _credentialsFingerprint(_credentials);
+
+    _log.info('Requesting token refresh '
+        '(requestId=$requestId, reason=$reason, '
+        'pending=${_pendingRefreshRequests.length}, credentials=$before)');
 
     // Send refresh request to main thread
     _channel.send({
@@ -208,15 +240,23 @@ class SolidAuthReceiver implements SolidAuthProvider {
     });
 
     // Wait for response with timeout
-    await completer.future.timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        _pendingRefreshRequests.remove(requestId);
-        throw TimeoutException(
-          'Token refresh request timed out after 10 seconds',
-        );
-      },
-    );
+    try {
+      await completer.future.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          _pendingRefreshRequests.remove(requestId);
+          throw TimeoutException(
+            'Token refresh request timed out after 10 seconds',
+          );
+        },
+      );
+      _log.info('Token refresh completed '
+          '(requestId=$requestId, credentials=${_credentialsFingerprint(_credentials)})');
+    } on Object catch (error, stackTrace) {
+      _log.severe('Token refresh failed (requestId=$requestId): $error',
+          error, stackTrace);
+      rethrow;
+    }
   }
 
   /// Current authenticated user's WebID.

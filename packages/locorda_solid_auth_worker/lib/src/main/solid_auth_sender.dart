@@ -13,6 +13,13 @@ import '../shared/solid_auth_messages.dart';
 
 final _log = Logger('SolidAuthConnector');
 
+String _credentialsFingerprint(DpopCredentials? credentials) {
+  if (credentials == null) return 'none';
+  final json = credentials.toJson();
+  final sortedKeys = json.keys.toList()..sort();
+  return 'keys=$sortedKeys hash=${json.toString().hashCode}';
+}
+
 /// Worker plugin that bridges Solid authentication from main thread to worker.
 ///
 /// This connector:
@@ -133,18 +140,20 @@ class SolidAuthSender implements MainHandler {
     if (!_solidAuth.isAuthenticated) {
       _log.warning('Token refresh requested but not authenticated');
       _workerHandle.send({
-        {
-          'type': 'TokenRefreshResponse',
-          'requestId': requestId,
-          'credentials': null,
-        },
+        'type': 'TokenRefreshResponse',
+        'requestId': requestId,
+        'credentials': null,
       });
       return;
     }
 
+    final beforeCredentials = _solidAuth.exportDpopCredentials();
+    final beforeFingerprint = _credentialsFingerprint(beforeCredentials);
+
     // solid_auth handles token refresh internally when we export
     final dpopCredentials = _solidAuth.exportDpopCredentials();
     final webId = _solidAuth.currentWebId;
+    final afterFingerprint = _credentialsFingerprint(dpopCredentials);
 
     _workerHandle.send({
       'type': 'TokenRefreshResponse',
@@ -152,7 +161,10 @@ class SolidAuthSender implements MainHandler {
       'credentials': dpopCredentials.toJson(),
       'webId': webId,
     });
-    _log.info('Sent token refresh response (id=$requestId)');
+    _log.info('Sent token refresh response '
+        '(id=$requestId, webId=$webId, '
+        'credentialsChanged=${beforeFingerprint != afterFingerprint}, '
+        'before=$beforeFingerprint, after=$afterFingerprint)');
   }
 
   /// Sends current auth state to worker.
@@ -167,6 +179,9 @@ class SolidAuthSender implements MainHandler {
   Future<void> _handleAuthStateChange() async {
     // Only send credentials when authenticated
     if (!_solidAuth.isAuthenticated || _solidAuth.currentWebId == null) {
+      _log.info('Sending unauthenticated auth update to worker '
+          '(isAuthenticated=${_solidAuth.isAuthenticated}, '
+          'webId=${_solidAuth.currentWebId})');
       // Send empty credentials to clear worker auth
       _workerHandle.send(UpdateAuthMessage(credentials: null).toJson());
       return;
@@ -174,6 +189,8 @@ class SolidAuthSender implements MainHandler {
 
     final dpopCredentials = _solidAuth.exportDpopCredentials();
     final webId = _solidAuth.currentWebId;
+    _log.info('Sending authenticated auth update to worker '
+        '(webId=$webId, credentials=${_credentialsFingerprint(dpopCredentials)})');
     _workerHandle.send(UpdateAuthMessage(
       credentials: dpopCredentials,
       webId: webId,

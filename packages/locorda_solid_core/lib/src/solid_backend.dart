@@ -134,9 +134,14 @@ class SolidBackend implements PipelineBackend {
           config: _config,
           storageAccessFactory: _storageAccessFactory,
           onAuthFailure: () async {
-            _log.info('Auth failure detected, requesting token refresh');
+            _log.info('Auth failure detected, requesting token refresh '
+                '(isAuthenticated=${_authProvider.isAuthenticatedNotifier.isAuthenticated}, '
+                'webId=${_authProvider.currentWebId})');
             await _authProvider.refreshToken(
                 reason: 'Authentication failed during sync operation');
+            _log.info('Token refresh callback completed '
+                '(isAuthenticated=${_authProvider.isAuthenticatedNotifier.isAuthenticated}, '
+                'webId=${_authProvider.currentWebId})');
           },
         )
       ];
