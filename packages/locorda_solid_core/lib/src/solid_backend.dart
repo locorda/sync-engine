@@ -538,13 +538,16 @@ class SolidClient {
       throw NotFoundException('Resource not found at $url');
     }
     if (response.statusCode == 409) {
-      return RemoteUploadResult.conflict(
-        documentIri: documentIri,
-        requestETag: ifMatch,
-      );
+      // 409 Conflict is not an ETag mismatch — it signals a persistent
+      // server-side conflict (e.g. WebDAV lock, invalid resource state).
+      // Retrying will not help, so treat as an error.
+      throw SolidClientException(
+          'Failed to upload to $url: 409 Conflict');
     }
-
     if (response.statusCode == 412) {
+      // 412 Precondition Failed: If-Match ETag mismatch — optimistic locking
+      // conflict. The resource was modified concurrently; caller should
+      // re-read, re-merge and retry.
       return RemoteUploadResult.conflict(
         documentIri: documentIri,
         requestETag: ifMatch,
