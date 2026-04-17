@@ -266,10 +266,10 @@ class SolidRemoteStorage implements PipelineRemoteStorage {
         acceptContentType: 'text/turtle, application/ld+json;q=0.9, */*;q=0.8',
       ),
     );
-    if (result.graph == null) {
-      throw StateError('Profile document is empty for WebID: $webId');
+    if (result is! SuccessDownloadResult<RawContent>) {
+      throw StateError('Profile document not available for WebID: $webId');
     }
-    final content = result.graph!;
+    final content = result.graph;
     if (content is! TextContent) {
       throw StateError('Unexpected binary profile content for WebID: $webId');
     }
@@ -318,19 +318,28 @@ class SolidSyncBackend implements RemoteSyncBackend {
   Stream<RemoteDownloadResult<RawContent>> download(
       Stream<RemoteDownloadRequest> requests) async* {
     await for (final request in requests) {
-      final url = _documentUrlMapper.toDocumentUrl(request.documentIri);
-      yield await retryOnAuthFailure(
-        config: const AuthRetryConfig.retryOnce(),
-        onAuthFailure: _onAuthFailure,
-        operation: () => _client.downloadRaw(
-          url,
-          requiresAuth: true,
+      try {
+        final url = _documentUrlMapper.toDocumentUrl(request.documentIri);
+        yield await retryOnAuthFailure(
+          config: const AuthRetryConfig.retryOnce(),
+          onAuthFailure: _onAuthFailure,
+          operation: () => _client.downloadRaw(
+            url,
+            requiresAuth: true,
+            documentIri: request.documentIri,
+            ifNoneMatch: request.ifNoneMatch,
+            acceptContentType: _contentType,
+            isBinary: _isBinary,
+          ),
+        );
+      } catch (e, st) {
+        yield ErrorDownloadResult<RawContent>(
           documentIri: request.documentIri,
-          ifNoneMatch: request.ifNoneMatch,
-          acceptContentType: _contentType,
-          isBinary: _isBinary,
-        ),
-      );
+          requestETag: request.ifNoneMatch,
+          error: e,
+          stackTrace: st,
+        );
+      }
     }
   }
 
@@ -338,18 +347,27 @@ class SolidSyncBackend implements RemoteSyncBackend {
   Stream<RemoteUploadResult> upload(
       Stream<RemoteUploadRequest<RawContent>> requests) async* {
     await for (final request in requests) {
-      final url = _documentUrlMapper.toDocumentUrl(request.documentIri);
-      yield await retryOnAuthFailure(
-        config: const AuthRetryConfig.retryOnce(),
-        onAuthFailure: _onAuthFailure,
-        operation: () => _client.upload(
-          url,
-          request.document,
-          requiresAuth: true,
-          ifMatch: request.ifMatch,
+      try {
+        final url = _documentUrlMapper.toDocumentUrl(request.documentIri);
+        yield await retryOnAuthFailure(
+          config: const AuthRetryConfig.retryOnce(),
+          onAuthFailure: _onAuthFailure,
+          operation: () => _client.upload(
+            url,
+            request.document,
+            requiresAuth: true,
+            ifMatch: request.ifMatch,
+            documentIri: request.documentIri,
+          ),
+        );
+      } catch (e, st) {
+        yield ErrorUploadResult(
           documentIri: request.documentIri,
-        ),
-      );
+          requestETag: request.ifMatch,
+          error: e,
+          stackTrace: st,
+        );
+      }
     }
   }
 
@@ -442,15 +460,13 @@ class SolidClient {
       );
     }
     if (response.statusCode == 404) {
-      return RemoteDownloadResult(
+      return NotFoundDownloadResult<RawContent>(
         documentIri: documentIri,
         requestETag: ifNoneMatch,
-        graph: null,
-        etag: null,
       );
     }
     if (response.statusCode == 304) {
-      return RemoteDownloadResult.notModified(
+      return NotModifiedDownloadResult<RawContent>(
         documentIri: documentIri,
         requestETag: ifNoneMatch,
         etag: ifNoneMatch!,
@@ -469,11 +485,11 @@ class SolidClient {
         ? BinaryContent(response.bodyBytes, contentType: mimeType)
         : TextContent(response.body, contentType: mimeType);
 
-    return RemoteDownloadResult(
+    return SuccessDownloadResult<RawContent>(
       documentIri: documentIri,
       requestETag: ifNoneMatch,
       graph: content,
-      etag: response.headers['etag'],
+      etag: response.headers['etag'] ?? '',
     );
   }
 
@@ -527,12 +543,14 @@ class SolidClient {
         requestETag: ifMatch,
       );
     }
+    /*
     if (response.statusCode == 412) {
       return RemoteUploadResult.conflict(
         documentIri: documentIri,
         requestETag: ifMatch,
       );
     }
+    */
     if (response.statusCode >= 200 && response.statusCode < 300) {
       var etag = response.headers['etag'];
       if (etag == null) {

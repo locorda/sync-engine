@@ -80,7 +80,7 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
 
   @override
   Future<void> finalizeSync(SyncFinalizationState state,
-        {PipeperfCollector? perf}) =>
+          {PipeperfCollector? perf}) =>
       backend.finalize(state, perf: perf);
 
   // ---------------------------------------------------------------------------
@@ -117,51 +117,52 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
             },
             backendCall: backend.download,
             resultKey: (r) => (r.documentIri, r.requestETag),
-            toOutput: (event, result) {
-              if (result.notModified) {
-                return ShardNotModified(event.shardIri, event.shardStorageId,
-                    event.fetchPolicy, event.typeIri,
-                    storedEtag: event.storedEtag);
-              } else if (result.graph == null && event.storedEtag != null) {
-                return ShardGone(event.shardIri, event.shardStorageId,
-                    event.fetchPolicy, event.typeIri);
-              } else if (result.graph == null) {
-                return ShardNotFound(event.shardIri, event.shardStorageId,
-                    event.fetchPolicy, event.typeIri);
-              }
-              try {
-                // CPU: decode raw → dataset, then populate resource cache.
-                final sw = perf?.start('S02.ShardFetch.SD.decode');
-                final dataset = _converter.decodeDataset(result.graph!);
-                final shardDocIri = event.shardIri.getDocumentIri();
+            toOutput: (event, result) => switch (result) {
+              NotModifiedDownloadResult() => ShardNotModified(event.shardIri,
+                  event.shardStorageId, event.fetchPolicy, event.typeIri,
+                  storedEtag: event.storedEtag),
+              NotFoundDownloadResult() when event.storedEtag != null =>
+                ShardGone(event.shardIri, event.shardStorageId,
+                    event.fetchPolicy, event.typeIri),
+              NotFoundDownloadResult() => ShardNotFound(event.shardIri,
+                  event.shardStorageId, event.fetchPolicy, event.typeIri),
+              ErrorDownloadResult(:final error, :final stackTrace) =>
+                ShardError(event.shardIri, error, stackTrace),
+              SuccessDownloadResult(:final graph, :final etag) => () {
+                  try {
+                    // CPU: decode raw → dataset, then populate resource cache.
+                    final sw = perf?.start('S02.ShardFetch.SD.decode');
+                    final dataset = _converter.decodeDataset(graph);
+                    final shardDocIri = event.shardIri.getDocumentIri();
 
-                // Cache named graphs (resource documents) for Stage 6.
-                final resourceCache = <IriTerm, RdfGraph>{};
-                for (final graphName in dataset.graphNames) {
-                  if (graphName is IriTerm) {
-                    final graph = dataset.graph(graphName);
-                    if (graph != null) {
-                      resourceCache[graphName] = graph;
+                    // Cache named graphs (resource documents) for Stage 6.
+                    final resourceCache = <IriTerm, RdfGraph>{};
+                    for (final graphName in dataset.graphNames) {
+                      if (graphName is IriTerm) {
+                        final graph = dataset.graph(graphName);
+                        if (graph != null) {
+                          resourceCache[graphName] = graph;
+                        }
+                      }
                     }
-                  }
-                }
-                _downloadCache[shardDocIri.value] = resourceCache;
-                sw?.stop();
+                    _downloadCache[shardDocIri.value] = resourceCache;
+                    sw?.stop();
 
-                return ShardContent(
-                  event.shardIri,
-                  event.shardStorageId,
-                  event.fetchPolicy,
-                  event.typeIri,
-                  DecodedGraphSource(dataset.defaultGraph),
-                  result.etag!,
-                  allResourcesAvailable: true,
-                );
-              } catch (e, st) {
-                _log.warning(
-                    'Shard decode failed for ${event.shardIri}: $e', e, st);
-                return ShardError(event.shardIri, e, st);
-              }
+                    return ShardContent(
+                      event.shardIri,
+                      event.shardStorageId,
+                      event.fetchPolicy,
+                      event.typeIri,
+                      DecodedGraphSource(dataset.defaultGraph),
+                      etag,
+                      allResourcesAvailable: true,
+                    );
+                  } catch (e, st) {
+                    _log.warning(
+                        'Shard decode failed for ${event.shardIri}: $e', e, st);
+                    return ShardError(event.shardIri, e, st);
+                  }
+                }(),
             },
             onError: (event, error, stackTrace) =>
                 ShardError(event.shardIri, error, stackTrace),
@@ -457,6 +458,8 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
                     trigger: event,
                     message: 'Dataset upload conflict for ${docIri.debug}');
               }(),
+            ErrorUploadResult(:final error, :final stackTrace) =>
+              ShardError(event.shardIri, error, stackTrace),
           },
           onError: (event, error, stackTrace) =>
               ShardError(event.shardIri, error, stackTrace),

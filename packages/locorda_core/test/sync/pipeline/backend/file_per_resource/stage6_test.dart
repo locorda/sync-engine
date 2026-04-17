@@ -80,7 +80,7 @@ class _ReverseOrderBackend implements RemoteSyncBackend {
       Stream<RemoteDownloadRequest> requests) async* {
     final collected = await requests.toList();
     for (final request in collected.reversed) {
-      yield RemoteDownloadResult(
+      yield SuccessDownloadResult<RawContent>(
         documentIri: request.documentIri,
         requestETag: request.ifNoneMatch,
         graph: _emptyRawContent(),
@@ -176,7 +176,7 @@ void main() {
   group('Stage 6 — file_per_resource — successful fetch', () {
     test('200 with graph yields FetchedCandidate with remoteSource', () async {
       final storage = _storageWith(_ConfigurableBackend((req) {
-        return RemoteDownloadResult(
+        return SuccessDownloadResult<RawContent>(
           documentIri: req.documentIri,
           requestETag: req.ifNoneMatch,
           graph: _emptyRawContent(),
@@ -199,7 +199,7 @@ void main() {
     test('304 notModified yields FetchedCandidate with etag from response',
         () async {
       final storage = _storageWith(
-          _ConfigurableBackend((req) => RemoteDownloadResult.notModified(
+          _ConfigurableBackend((req) => NotModifiedDownloadResult<RawContent>(
                 documentIri: req.documentIri,
                 requestETag: req.ifNoneMatch,
                 etag: 'stored-etag',
@@ -219,11 +219,9 @@ void main() {
     test('404 yields FetchedCandidate with null remoteSource and null etag',
         () async {
       final storage = _storageWith(_ConfigurableBackend((req) {
-        return RemoteDownloadResult(
+        return NotFoundDownloadResult<RawContent>(
           documentIri: req.documentIri,
           requestETag: req.ifNoneMatch,
-          graph: null,
-          etag: null,
         );
       }));
 
@@ -244,7 +242,7 @@ void main() {
     test('remoteShardUnchanged bypasses backend, preserves storedRemoteEtag',
         () async {
       final recording = _RecordingBackend((req) {
-        return RemoteDownloadResult(
+        return SuccessDownloadResult<RawContent>(
           documentIri: req.documentIri,
           requestETag: req.ifNoneMatch,
           graph: _emptyRawContent(),
@@ -270,7 +268,7 @@ void main() {
 
     test('conflictCandidate sends request to backend', () async {
       final recording = _RecordingBackend((req) {
-        return RemoteDownloadResult(
+        return SuccessDownloadResult<RawContent>(
           documentIri: req.documentIri,
           requestETag: req.ifNoneMatch,
           graph: _emptyRawContent(),
@@ -289,11 +287,9 @@ void main() {
 
     test('notInRemoteShard bypasses backend request', () async {
       final recording = _RecordingBackend((req) {
-        return RemoteDownloadResult(
+        return NotFoundDownloadResult<RawContent>(
           documentIri: req.documentIri,
           requestETag: req.ifNoneMatch,
-          graph: null,
-          etag: null,
         );
       });
       final storage = _storageWith(recording);
@@ -312,11 +308,9 @@ void main() {
 
     test('shardGone bypasses backend request', () async {
       final recording = _RecordingBackend((req) {
-        return RemoteDownloadResult(
+        return NotFoundDownloadResult<RawContent>(
           documentIri: req.documentIri,
           requestETag: req.ifNoneMatch,
-          graph: null,
-          etag: null,
         );
       });
       final storage = _storageWith(recording);
@@ -356,7 +350,7 @@ void main() {
     test('bypass candidates emitted before backend responses', () async {
       // Mix of bypass and fetch candidates
       final storage = _storageWith(_ConfigurableBackend((req) {
-        return RemoteDownloadResult(
+        return SuccessDownloadResult<RawContent>(
           documentIri: req.documentIri,
           requestETag: req.ifNoneMatch,
           graph: _emptyRawContent(),

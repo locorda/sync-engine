@@ -45,11 +45,20 @@ class GDriveSyncBackend implements RemoteSyncBackend {
   Stream<RemoteDownloadResult<RawContent>> download(
       Stream<RemoteDownloadRequest> requests) async* {
     await for (final request in requests) {
-      yield await retryOnAuthFailure(
-        config: const AuthRetryConfig.retryOnce(),
-        onAuthFailure: _onAuthFailure,
-        operation: () => _downloadOne(request),
-      );
+      try {
+        yield await retryOnAuthFailure(
+          config: const AuthRetryConfig.retryOnce(),
+          onAuthFailure: _onAuthFailure,
+          operation: () => _downloadOne(request),
+        );
+      } catch (e, st) {
+        yield ErrorDownloadResult<RawContent>(
+          documentIri: request.documentIri,
+          requestETag: request.ifNoneMatch,
+          error: e,
+          stackTrace: st,
+        );
+      }
     }
   }
 
@@ -64,12 +73,9 @@ class GDriveSyncBackend implements RemoteSyncBackend {
       spaces: _spaces,
     );
     if (fileId == null) {
-      return RemoteDownloadResult(
+      return NotFoundDownloadResult<RawContent>(
         documentIri: request.documentIri,
         requestETag: request.ifNoneMatch,
-        graph: null,
-        etag: null,
-        notModified: false,
       );
     }
 
@@ -78,15 +84,25 @@ class GDriveSyncBackend implements RemoteSyncBackend {
         fileId,
         ifNoneMatch: request.ifNoneMatch,
       );
-      return RemoteDownloadResult(
+      if (result.notModified) {
+        return NotModifiedDownloadResult<RawContent>(
+          documentIri: request.documentIri,
+          requestETag: request.ifNoneMatch,
+          etag: result.etag ?? request.ifNoneMatch ?? '',
+        );
+      }
+      if (result.bytes == null) {
+        return NotFoundDownloadResult<RawContent>(
+          documentIri: request.documentIri,
+          requestETag: request.ifNoneMatch,
+        );
+      }
+      return SuccessDownloadResult<RawContent>(
         documentIri: request.documentIri,
         requestETag: request.ifNoneMatch,
-        graph: result.bytes == null
-            ? null
-            : BinaryContent(Uint8List.fromList(result.bytes!),
-                contentType: _contentType),
-        etag: result.etag,
-        notModified: result.notModified,
+        graph: BinaryContent(Uint8List.fromList(result.bytes!),
+            contentType: _contentType),
+        etag: result.etag ?? '',
       );
     }
 
@@ -95,14 +111,24 @@ class GDriveSyncBackend implements RemoteSyncBackend {
       ifNoneMatch: request.ifNoneMatch,
       convert: (content) => content,
     );
-    return RemoteDownloadResult(
+    if (result.notModified) {
+      return NotModifiedDownloadResult<RawContent>(
+        documentIri: request.documentIri,
+        requestETag: request.ifNoneMatch,
+        etag: result.etag ?? request.ifNoneMatch ?? '',
+      );
+    }
+    if (result.graph == null) {
+      return NotFoundDownloadResult<RawContent>(
+        documentIri: request.documentIri,
+        requestETag: request.ifNoneMatch,
+      );
+    }
+    return SuccessDownloadResult<RawContent>(
       documentIri: request.documentIri,
       requestETag: request.ifNoneMatch,
-      graph: result.graph == null
-          ? null
-          : TextContent(result.graph!, contentType: _contentType),
-      etag: result.etag,
-      notModified: result.notModified,
+      graph: TextContent(result.graph!, contentType: _contentType),
+      etag: result.etag ?? '',
     );
   }
 
@@ -110,11 +136,20 @@ class GDriveSyncBackend implements RemoteSyncBackend {
   Stream<RemoteUploadResult> upload(
       Stream<RemoteUploadRequest<RawContent>> requests) async* {
     await for (final request in requests) {
-      yield await retryOnAuthFailure(
-        config: const AuthRetryConfig.retryOnce(),
-        onAuthFailure: _onAuthFailure,
-        operation: () => _uploadOne(request),
-      );
+      try {
+        yield await retryOnAuthFailure(
+          config: const AuthRetryConfig.retryOnce(),
+          onAuthFailure: _onAuthFailure,
+          operation: () => _uploadOne(request),
+        );
+      } catch (e, st) {
+        yield ErrorUploadResult(
+          documentIri: request.documentIri,
+          requestETag: request.ifMatch,
+          error: e,
+          stackTrace: st,
+        );
+      }
     }
   }
 
@@ -191,11 +226,20 @@ class GDriveMirrorSyncBackend implements RemoteSyncBackend {
   Stream<RemoteDownloadResult<RawContent>> download(
       Stream<RemoteDownloadRequest> requests) async* {
     await for (final request in requests) {
-      yield await retryOnAuthFailure(
-        config: const AuthRetryConfig.retryOnce(),
-        onAuthFailure: _onAuthFailure,
-        operation: () => _downloadOne(request),
-      );
+      try {
+        yield await retryOnAuthFailure(
+          config: const AuthRetryConfig.retryOnce(),
+          onAuthFailure: _onAuthFailure,
+          operation: () => _downloadOne(request),
+        );
+      } catch (e, st) {
+        yield ErrorDownloadResult<RawContent>(
+          documentIri: request.documentIri,
+          requestETag: request.ifNoneMatch,
+          error: e,
+          stackTrace: st,
+        );
+      }
     }
   }
 
@@ -206,16 +250,33 @@ class GDriveMirrorSyncBackend implements RemoteSyncBackend {
         request.documentIri,
         ifNoneMatch: request.ifNoneMatch,
       );
-      return RemoteDownloadResult(
-        documentIri: result.documentIri,
-        requestETag: result.requestETag,
-        graph: result.graph == null
-            ? null
-            : BinaryContent(Uint8List.fromList(result.graph!),
+      return switch (result) {
+        SuccessDownloadResult(:final graph, :final etag) =>
+          SuccessDownloadResult<RawContent>(
+            documentIri: result.documentIri,
+            requestETag: result.requestETag,
+            graph: BinaryContent(Uint8List.fromList(graph),
                 contentType: _contentType),
-        etag: result.etag,
-        notModified: result.notModified,
-      );
+            etag: etag,
+          ),
+        NotModifiedDownloadResult(:final etag) =>
+          NotModifiedDownloadResult<RawContent>(
+            documentIri: result.documentIri,
+            requestETag: result.requestETag,
+            etag: etag,
+          ),
+        NotFoundDownloadResult() => NotFoundDownloadResult<RawContent>(
+            documentIri: result.documentIri,
+            requestETag: result.requestETag,
+          ),
+        ErrorDownloadResult(:final error, :final stackTrace) =>
+          ErrorDownloadResult<RawContent>(
+            documentIri: result.documentIri,
+            requestETag: result.requestETag,
+            error: error,
+            stackTrace: stackTrace,
+          ),
+      };
     }
 
     final result = await _localMirror.download<String>(
@@ -223,26 +284,52 @@ class GDriveMirrorSyncBackend implements RemoteSyncBackend {
       ifNoneMatch: request.ifNoneMatch,
       convert: (content) => content,
     );
-    return RemoteDownloadResult(
-      documentIri: result.documentIri,
-      requestETag: result.requestETag,
-      graph: result.graph == null
-          ? null
-          : TextContent(result.graph!, contentType: _contentType),
-      etag: result.etag,
-      notModified: result.notModified,
-    );
+    return switch (result) {
+      SuccessDownloadResult(:final graph, :final etag) =>
+        SuccessDownloadResult<RawContent>(
+          documentIri: result.documentIri,
+          requestETag: result.requestETag,
+          graph: TextContent(graph, contentType: _contentType),
+          etag: etag,
+        ),
+      NotModifiedDownloadResult(:final etag) =>
+        NotModifiedDownloadResult<RawContent>(
+          documentIri: result.documentIri,
+          requestETag: result.requestETag,
+          etag: etag,
+        ),
+      NotFoundDownloadResult() => NotFoundDownloadResult<RawContent>(
+          documentIri: result.documentIri,
+          requestETag: result.requestETag,
+        ),
+      ErrorDownloadResult(:final error, :final stackTrace) =>
+        ErrorDownloadResult<RawContent>(
+          documentIri: result.documentIri,
+          requestETag: result.requestETag,
+          error: error,
+          stackTrace: stackTrace,
+        ),
+    };
   }
 
   @override
   Stream<RemoteUploadResult> upload(
       Stream<RemoteUploadRequest<RawContent>> requests) async* {
     await for (final request in requests) {
-      yield await retryOnAuthFailure(
-        config: const AuthRetryConfig.retryOnce(),
-        onAuthFailure: _onAuthFailure,
-        operation: () => _uploadOne(request),
-      );
+      try {
+        yield await retryOnAuthFailure(
+          config: const AuthRetryConfig.retryOnce(),
+          onAuthFailure: _onAuthFailure,
+          operation: () => _uploadOne(request),
+        );
+      } catch (e, st) {
+        yield ErrorUploadResult(
+          documentIri: request.documentIri,
+          requestETag: request.ifMatch,
+          error: e,
+          stackTrace: st,
+        );
+      }
     }
   }
 

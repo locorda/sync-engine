@@ -404,6 +404,8 @@ class GDriveTypeIndexManager {
         case ConflictUploadResult():
           _log.warning('412 Conflict - Type Index was modified concurrently');
         // Fall through to conflict handling
+        case ErrorUploadResult(:final error, :final stackTrace):
+          Error.throwWithStackTrace(error, stackTrace);
       }
     } catch (e) {
       if (e is GDriveClientException && e.message.contains('412')) {

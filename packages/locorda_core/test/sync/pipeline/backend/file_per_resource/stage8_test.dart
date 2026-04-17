@@ -73,11 +73,9 @@ class _SuccessBackend implements RemoteSyncBackend {
   Stream<RemoteDownloadResult<RawContent>> download(
       Stream<RemoteDownloadRequest> requests) async* {
     await for (final request in requests) {
-      yield RemoteDownloadResult(
+      yield NotFoundDownloadResult<RawContent>(
         documentIri: request.documentIri,
         requestETag: request.ifNoneMatch,
-        graph: null,
-        etag: null,
       );
     }
   }

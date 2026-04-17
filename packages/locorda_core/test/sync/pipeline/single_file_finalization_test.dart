@@ -23,11 +23,9 @@ class _SpyBackend implements RemoteSyncBackend {
       Stream<RemoteDownloadRequest> requests) async* {
     downloadCallCount++;
     await for (final request in requests) {
-      yield RemoteDownloadResult(
+      yield NotFoundDownloadResult<RawContent>(
         documentIri: request.documentIri,
         requestETag: request.ifNoneMatch,
-        graph: null,
-        etag: null,
       );
     }
   }

@@ -9,54 +9,76 @@ import 'package:locorda_rdf_core/core.dart';
 /// [documentIri] and [requestETag] echo back the request identity so the
 /// pipeline can match results to requests when backends return them
 /// out-of-order (cross-shard batching).
-class RemoteDownloadResult<T> {
+sealed class RemoteDownloadResult<T> {
   /// The IRI of the document this result belongs to.
-  final IriTerm documentIri;
+  IriTerm get documentIri;
 
   /// The `ifNoneMatch` ETag from the originating request (if any).
+  String? get requestETag;
+
+  const RemoteDownloadResult();
+}
+
+/// Successful download with content (HTTP 200).
+final class SuccessDownloadResult<T> extends RemoteDownloadResult<T> {
+  @override
+  final IriTerm documentIri;
+  @override
   final String? requestETag;
+  final T graph;
+  final String etag;
 
-  final T? graph;
-  final String? etag;
-  final bool notModified; // true if 304 Not Modified
-
-  const RemoteDownloadResult({
+  const SuccessDownloadResult({
     required this.documentIri,
     this.requestETag,
     required this.graph,
     required this.etag,
-    this.notModified = false,
   });
+}
 
-  factory RemoteDownloadResult.notModified({
-    required IriTerm documentIri,
-    String? requestETag,
-    required String etag,
-  }) {
-    return RemoteDownloadResult<T>(
-      documentIri: documentIri,
-      requestETag: requestETag,
-      graph: null,
-      etag: etag,
-      notModified: true,
-    );
-  }
+/// Remote resource unchanged (HTTP 304 Not Modified).
+final class NotModifiedDownloadResult<T> extends RemoteDownloadResult<T> {
+  @override
+  final IriTerm documentIri;
+  @override
+  final String? requestETag;
+  final String etag;
 
-  RemoteDownloadResult<T> copyWith({
-    IriTerm? documentIri,
-    String? requestETag,
-    T? graph,
-    String? etag,
-    bool? notModified,
-  }) {
-    return RemoteDownloadResult<T>(
-      documentIri: documentIri ?? this.documentIri,
-      requestETag: requestETag ?? this.requestETag,
-      graph: graph ?? this.graph,
-      etag: etag ?? this.etag,
-      notModified: notModified ?? this.notModified,
-    );
-  }
+  const NotModifiedDownloadResult({
+    required this.documentIri,
+    this.requestETag,
+    required this.etag,
+  });
+}
+
+/// Remote resource not found (HTTP 404 or gone).
+final class NotFoundDownloadResult<T> extends RemoteDownloadResult<T> {
+  @override
+  final IriTerm documentIri;
+  @override
+  final String? requestETag;
+
+  const NotFoundDownloadResult({
+    required this.documentIri,
+    this.requestETag,
+  });
+}
+
+/// Per-request error that does not kill the backend stream.
+final class ErrorDownloadResult<T> extends RemoteDownloadResult<T> {
+  @override
+  final IriTerm documentIri;
+  @override
+  final String? requestETag;
+  final Object error;
+  final StackTrace stackTrace;
+
+  const ErrorDownloadResult({
+    required this.documentIri,
+    this.requestETag,
+    required this.error,
+    required this.stackTrace,
+  });
 }
 
 /// Request descriptor for conditional remote downloads.
@@ -104,6 +126,19 @@ sealed class RemoteUploadResult {
       requestETag: requestETag,
     );
   }
+  factory RemoteUploadResult.error({
+    required IriTerm documentIri,
+    String? requestETag,
+    required Object error,
+    required StackTrace stackTrace,
+  }) {
+    return ErrorUploadResult(
+      documentIri: documentIri,
+      requestETag: requestETag,
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
 }
 
 final class ConflictUploadResult extends RemoteUploadResult {
@@ -127,6 +162,22 @@ final class SuccessUploadResult extends RemoteUploadResult {
     this.etag, {
     required this.documentIri,
     this.requestETag,
+  });
+}
+
+/// Per-request error that does not kill the backend stream.
+final class ErrorUploadResult extends RemoteUploadResult {
+  @override
+  final IriTerm documentIri;
+  @override
+  final String? requestETag;
+  final Object error;
+  final StackTrace stackTrace;
+  const ErrorUploadResult({
+    required this.documentIri,
+    this.requestETag,
+    required this.error,
+    required this.stackTrace,
   });
 }
 

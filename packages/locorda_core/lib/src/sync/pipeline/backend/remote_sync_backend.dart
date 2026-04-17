@@ -76,7 +76,7 @@ abstract interface class RemoteSyncBackend {
   /// Results must be emitted in the same order as the input requests.
   /// For conditional downloads, [RemoteDownloadRequest.ifNoneMatch] carries
   /// the stored ETag; backends should return
-  /// [RemoteDownloadResult.notModified] when appropriate.
+  /// [NotModifiedDownloadResult] when appropriate.
   Stream<RemoteDownloadResult<RawContent>> download(
       Stream<RemoteDownloadRequest> requests);
 

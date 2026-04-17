@@ -235,8 +235,9 @@ void main() {
     );
 
     final download = await mirror.download(docIri, convert: rdfCore.decode);
-    expect(download.graph, isNotNull);
-    expect(download.etag, md5Checksum);
+    final success = download as SuccessDownloadResult<RdfGraph>;
+    expect(success.graph, isNotNull);
+    expect(success.etag, md5Checksum);
 
     final mirrorIndex = File(
       '${tempDir.path}/locorda_gdrive_cache/${base64Url.encode(utf8.encode('user-1'))}/drive/index.json',

@@ -38,7 +38,7 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
 
   @override
   Future<void> finalizeSync(SyncFinalizationState state,
-        {PipeperfCollector? perf}) =>
+          {PipeperfCollector? perf}) =>
       backend.finalize(state, perf: perf);
 
   // ---------------------------------------------------------------------------
@@ -75,27 +75,25 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
             },
             backendCall: backend.download,
             resultKey: (r) => (r.documentIri, r.requestETag),
-            toOutput: (event, result) {
-              if (result.notModified) {
-                return ShardNotModified(event.shardIri, event.shardStorageId,
-                    event.fetchPolicy, event.typeIri,
-                    storedEtag: event.storedEtag);
-              } else if (result.graph == null && event.storedEtag != null) {
-                return ShardGone(event.shardIri, event.shardStorageId,
-                    event.fetchPolicy, event.typeIri);
-              } else if (result.graph == null) {
-                return ShardNotFound(event.shardIri, event.shardStorageId,
-                    event.fetchPolicy, event.typeIri);
-              } else {
-                return ShardContent(
+            toOutput: (event, result) => switch (result) {
+              SuccessDownloadResult(:final graph, :final etag) => ShardContent(
                   event.shardIri,
                   event.shardStorageId,
                   event.fetchPolicy,
                   event.typeIri,
-                  _converter.toGraphSource(result.graph!),
-                  result.etag!,
-                );
-              }
+                  _converter.toGraphSource(graph),
+                  etag,
+                ),
+              NotModifiedDownloadResult() => ShardNotModified(event.shardIri,
+                  event.shardStorageId, event.fetchPolicy, event.typeIri,
+                  storedEtag: event.storedEtag),
+              NotFoundDownloadResult() when event.storedEtag != null =>
+                ShardGone(event.shardIri, event.shardStorageId,
+                    event.fetchPolicy, event.typeIri),
+              NotFoundDownloadResult() => ShardNotFound(event.shardIri,
+                  event.shardStorageId, event.fetchPolicy, event.typeIri),
+              ErrorDownloadResult(:final error, :final stackTrace) =>
+                ShardError(event.shardIri, error, stackTrace),
             },
             onError: (event, error, stackTrace) =>
                 ShardError(event.shardIri, error, stackTrace),
@@ -147,20 +145,21 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
             },
             backendCall: backend.download,
             resultKey: (r) => (r.documentIri, r.requestETag),
-            toOutput: (event, result) {
-              if (result.graph != null) {
-                return FetchedCandidate(
+            toOutput: (event, result) => switch (result) {
+              SuccessDownloadResult(:final graph, :final etag) =>
+                FetchedCandidate(
                   event,
-                  remoteSource: _converter.toGraphSource(result.graph!),
-                  remoteEtag: result.etag,
-                );
-              }
-              if (result.notModified) {
+                  remoteSource: _converter.toGraphSource(graph),
+                  remoteEtag: etag,
+                ),
+              NotModifiedDownloadResult(:final etag) =>
                 // 304 — remote unchanged, keep stored ETag
-                return FetchedCandidate(event, remoteEtag: result.etag);
-              }
-              // 404/gone — resource does not exist on remote
-              return FetchedCandidate(event);
+                FetchedCandidate(event, remoteEtag: etag),
+              NotFoundDownloadResult() =>
+                // 404/gone — resource does not exist on remote
+                FetchedCandidate(event),
+              ErrorDownloadResult(:final error, :final stackTrace) =>
+                ResourceError(event.candidate.resourceIri, error, stackTrace),
             },
             onError: (event, error, stackTrace) =>
                 ResourceError(event.candidate.resourceIri, error, stackTrace),
@@ -219,6 +218,8 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
                       mergeResult: event,
                       message: 'Upload conflict for ${docIri.debug}');
                 }(),
+              ErrorUploadResult(:final error, :final stackTrace) =>
+                ResourceError(event.resourceIri, error, stackTrace),
             },
             onError: (event, error, stackTrace) =>
                 ResourceError(event.resourceIri, error, stackTrace),
@@ -274,6 +275,8 @@ class FilePerResourceRemoteSyncStorage implements PipelineRemoteSyncStorage {
                       trigger: event,
                       message: 'Shard upload conflict for ${docIri.debug}');
                 }(),
+              ErrorUploadResult(:final error, :final stackTrace) =>
+                ShardError(event.shardIri, error, stackTrace),
             },
             onError: (event, error, stackTrace) =>
                 ShardError(event.shardIri, error, stackTrace),

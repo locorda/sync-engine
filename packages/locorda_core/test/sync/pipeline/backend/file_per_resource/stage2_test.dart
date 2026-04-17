@@ -81,7 +81,7 @@ class _ReverseOrderBackend implements RemoteSyncBackend {
       Stream<RemoteDownloadRequest> requests) async* {
     final collected = await requests.toList();
     for (final request in collected.reversed) {
-      yield RemoteDownloadResult(
+      yield SuccessDownloadResult<RawContent>(
         documentIri: request.documentIri,
         requestETag: request.ifNoneMatch,
         graph: _emptyRawContent(),
@@ -150,7 +150,7 @@ void main() {
   group('Stage 2 — file_per_resource — successful downloads', () {
     test('200 with content yields ShardContent with graph and etag', () async {
       final storage = _storageWith(_ConfigurableBackend((req) {
-        return RemoteDownloadResult(
+        return SuccessDownloadResult<RawContent>(
           documentIri: req.documentIri,
           requestETag: req.ifNoneMatch,
           graph: _emptyRawContent(),
@@ -173,7 +173,7 @@ void main() {
 
     test('304 notModified yields ShardNotModified', () async {
       final storage = _storageWith(
-          _ConfigurableBackend((req) => RemoteDownloadResult.notModified(
+          _ConfigurableBackend((req) => NotModifiedDownloadResult<RawContent>(
                 documentIri: req.documentIri,
                 requestETag: req.ifNoneMatch,
                 etag: 'stored-etag',
@@ -192,11 +192,9 @@ void main() {
 
     test('404 with stored etag yields ShardGone', () async {
       final storage = _storageWith(_ConfigurableBackend((req) {
-        return RemoteDownloadResult(
+        return NotFoundDownloadResult<RawContent>(
           documentIri: req.documentIri,
           requestETag: req.ifNoneMatch,
-          graph: null,
-          etag: null,
         );
       }));
 
@@ -212,11 +210,9 @@ void main() {
 
     test('404 without stored etag yields ShardNotFound', () async {
       final storage = _storageWith(_ConfigurableBackend((req) {
-        return RemoteDownloadResult(
+        return NotFoundDownloadResult<RawContent>(
           documentIri: req.documentIri,
           requestETag: req.ifNoneMatch,
-          graph: null,
-          etag: null,
         );
       }));
 
@@ -232,14 +228,14 @@ void main() {
     test('multiple shards with mixed responses', () async {
       final storage = _storageWith(_ConfigurableBackend((req) {
         if (req.documentIri.value.contains('shardA')) {
-          return RemoteDownloadResult(
+          return SuccessDownloadResult<RawContent>(
             documentIri: req.documentIri,
             requestETag: req.ifNoneMatch,
             graph: _emptyRawContent(),
             etag: 'etag-a',
           );
         }
-        return RemoteDownloadResult.notModified(
+        return NotModifiedDownloadResult<RawContent>(
           documentIri: req.documentIri,
           requestETag: req.ifNoneMatch,
           etag: 'etag-b',
@@ -344,7 +340,7 @@ void main() {
       RemoteDownloadRequest? captured;
       final storage = _storageWith(_ConfigurableBackend((req) {
         captured = req;
-        return RemoteDownloadResult(
+        return SuccessDownloadResult<RawContent>(
           documentIri: req.documentIri,
           requestETag: req.ifNoneMatch,
           graph: _emptyRawContent(),

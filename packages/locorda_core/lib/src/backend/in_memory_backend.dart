@@ -245,18 +245,15 @@ class _InMemorySyncBackend implements RemoteSyncBackend {
 
       if (stored == null) {
         _logger.fine('Document not found: ${request.documentIri.debug}');
-        return RemoteDownloadResult<RawContent>(
+        return NotFoundDownloadResult<RawContent>(
           documentIri: request.documentIri,
           requestETag: request.ifNoneMatch,
-          graph: null,
-          etag: null,
-          notModified: false,
         );
       }
 
       if (request.ifNoneMatch != null && request.ifNoneMatch == stored.etag) {
         _logger.fine('Document not modified: ${request.documentIri.debug}');
-        return RemoteDownloadResult<RawContent>.notModified(
+        return NotModifiedDownloadResult<RawContent>(
           documentIri: request.documentIri,
           requestETag: request.ifNoneMatch,
           etag: stored.etag,
@@ -294,12 +291,11 @@ class _InMemorySyncBackend implements RemoteSyncBackend {
         }
       }
 
-      return RemoteDownloadResult<RawContent>(
+      return SuccessDownloadResult<RawContent>(
         documentIri: request.documentIri,
         requestETag: request.ifNoneMatch,
         graph: content,
         etag: stored.etag,
-        notModified: false,
       );
     });
   }

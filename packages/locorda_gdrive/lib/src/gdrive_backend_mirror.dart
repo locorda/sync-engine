@@ -128,29 +128,31 @@ class GDriveLocalMirror {
     final relativePath = _relativePathForDocument(documentIri);
     final result = await _store.download(relativePath,
         ifNoneMatch: ifNoneMatch, documentIri: documentIri);
-    if (result.notModified) {
-      return RemoteDownloadResult<T>.notModified(
-        documentIri: documentIri,
-        requestETag: ifNoneMatch,
-        etag: result.etag ?? '',
-      );
-    }
-    if (result.graph == null) {
-      return RemoteDownloadResult<T>(
-        documentIri: documentIri,
-        requestETag: ifNoneMatch,
-        graph: null,
-        etag: null,
-        notModified: false,
-      );
-    }
-    final graph = convert(result.graph!);
-    return RemoteDownloadResult<T>(
-      documentIri: documentIri,
-      requestETag: ifNoneMatch,
-      graph: graph,
-      etag: result.etag,
-    );
+    return switch (result) {
+      SuccessDownloadResult(:final graph, :final etag) =>
+        SuccessDownloadResult<T>(
+          documentIri: documentIri,
+          requestETag: ifNoneMatch,
+          graph: convert(graph),
+          etag: etag,
+        ),
+      NotModifiedDownloadResult(:final etag) => NotModifiedDownloadResult<T>(
+          documentIri: documentIri,
+          requestETag: ifNoneMatch,
+          etag: etag,
+        ),
+      NotFoundDownloadResult() => NotFoundDownloadResult<T>(
+          documentIri: documentIri,
+          requestETag: ifNoneMatch,
+        ),
+      ErrorDownloadResult(:final error, :final stackTrace) =>
+        ErrorDownloadResult<T>(
+          documentIri: documentIri,
+          requestETag: ifNoneMatch,
+          error: error,
+          stackTrace: stackTrace,
+        ),
+    };
   }
 
   Future<RemoteDownloadResult<List<int>>> downloadRaw(
@@ -587,11 +589,11 @@ class GDriveMirrorTypeIndexBackend extends TypeIndexManagerBackend {
     }
 
     final existing = await _store.download(fileName, documentIri: syntheticIri);
-    if (existing.graph == null) {
+    if (existing is! SuccessDownloadResult<String>) {
       throw StateError('Failed to create or read file: $fileName');
     }
     await _onIndexChanged?.call();
-    return (fileId: fileName, etag: existing.etag ?? '');
+    return (fileId: fileName, etag: existing.etag);
   }
 
   @override
@@ -602,11 +604,25 @@ class GDriveMirrorTypeIndexBackend extends TypeIndexManagerBackend {
     final id = fileId as String;
     final result = await _store.download(id,
         documentIri: IriTerm.validated('internal:mirror:$id'));
-    return (
-      graph: result.graph == null ? null : convert(result.graph!),
-      etag: result.etag,
-      notModified: result.notModified,
-    );
+    return switch (result) {
+      SuccessDownloadResult(:final graph, :final etag) => (
+          graph: convert(graph),
+          etag: etag,
+          notModified: false,
+        ),
+      NotModifiedDownloadResult(:final etag) => (
+          graph: null,
+          etag: etag,
+          notModified: true,
+        ),
+      NotFoundDownloadResult() => (
+          graph: null,
+          etag: null,
+          notModified: false,
+        ),
+      ErrorDownloadResult(:final error, :final stackTrace) =>
+        throw Error.throwWithStackTrace(error, stackTrace),
+    };
   }
 
   @override
@@ -672,14 +688,32 @@ class _GDriveMirrorStore {
       ifNoneMatch: ifNoneMatch,
       documentIri: documentIri,
     );
-    final bytes = raw.graph;
-    return RemoteDownloadResult<String>(
-      documentIri: raw.documentIri,
-      requestETag: raw.requestETag,
-      graph: bytes == null ? null : utf8.decode(bytes),
-      etag: raw.etag,
-      notModified: raw.notModified,
-    );
+    return switch (raw) {
+      SuccessDownloadResult(:final graph, :final etag) =>
+        SuccessDownloadResult<String>(
+          documentIri: raw.documentIri,
+          requestETag: raw.requestETag,
+          graph: utf8.decode(graph),
+          etag: etag,
+        ),
+      NotModifiedDownloadResult(:final etag) =>
+        NotModifiedDownloadResult<String>(
+          documentIri: raw.documentIri,
+          requestETag: raw.requestETag,
+          etag: etag,
+        ),
+      NotFoundDownloadResult() => NotFoundDownloadResult<String>(
+          documentIri: raw.documentIri,
+          requestETag: raw.requestETag,
+        ),
+      ErrorDownloadResult(:final error, :final stackTrace) =>
+        ErrorDownloadResult<String>(
+          documentIri: raw.documentIri,
+          requestETag: raw.requestETag,
+          error: error,
+          stackTrace: stackTrace,
+        ),
+    };
   }
 
   Future<RemoteDownloadResult<List<int>>> downloadRaw(
@@ -691,18 +725,15 @@ class _GDriveMirrorStore {
     final file =
         File(GDriveLocalMirror._localFilePath(_filesDir, relativePath));
     if (!await file.exists()) {
-      return RemoteDownloadResult<List<int>>(
+      return NotFoundDownloadResult<List<int>>(
         documentIri: documentIri,
         requestETag: ifNoneMatch,
-        graph: null,
-        etag: null,
-        notModified: false,
       );
     }
 
     final currentEtag = entry?.localMd5 ?? await _computeFileMd5(file);
     if (ifNoneMatch != null && ifNoneMatch == currentEtag) {
-      return RemoteDownloadResult<List<int>>.notModified(
+      return NotModifiedDownloadResult<List<int>>(
         documentIri: documentIri,
         requestETag: ifNoneMatch,
         etag: currentEtag,
@@ -710,7 +741,7 @@ class _GDriveMirrorStore {
     }
 
     final content = await file.readAsBytes();
-    return RemoteDownloadResult<List<int>>(
+    return SuccessDownloadResult<List<int>>(
       documentIri: documentIri,
       requestETag: ifNoneMatch,
       graph: content,

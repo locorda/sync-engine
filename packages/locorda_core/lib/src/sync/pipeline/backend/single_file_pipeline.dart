@@ -144,18 +144,22 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
     swIo?.stop();
 
     final result = results.single;
-    if (result.notModified) {
-      // 304 Not Modified — remote unchanged since last sync.
-      _downloadedEtag = storedEtag;
-      _notModified = true;
-    } else if (result.graph != null) {
-      final sw = perf?.start('S02.ShardFetch.SF.decode');
-      _cachedDataset = _converter.decodeDataset(result.graph!);
-      _downloadedEtag = result.etag;
-      sw?.stop();
+    switch (result) {
+      case NotModifiedDownloadResult():
+        // 304 Not Modified — remote unchanged since last sync.
+        _downloadedEtag = storedEtag;
+        _notModified = true;
+      case SuccessDownloadResult(:final graph, :final etag):
+        final sw = perf?.start('S02.ShardFetch.SF.decode');
+        _cachedDataset = _converter.decodeDataset(graph);
+        _downloadedEtag = etag;
+        sw?.stop();
+      case NotFoundDownloadResult():
+        break; // Remote file doesn't exist yet.
+      case ErrorDownloadResult(:final error, :final stackTrace):
+        Error.throwWithStackTrace(error, stackTrace);
     }
-    // If result.graph == null && !notModified: remote file doesn't exist yet.
-    // _cachedDataset stays null, and each shard will get ShardNotFound.
+    // If NotFound: _cachedDataset stays null, and each shard will get ShardNotFound.
   }
 
   /// Whether the remote file returned 304 Not Modified.

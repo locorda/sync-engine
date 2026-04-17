@@ -1,4 +1,5 @@
 import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
+
 /// Tests for Stage 12 (Shard Upload) — single_file layout.
 ///
 /// SF defers actual I/O to finalizeSync. shardUpload only accumulates.
@@ -49,11 +50,9 @@ class _FailingUploadBackend implements RemoteSyncBackend {
   Stream<RemoteDownloadResult<RawContent>> download(
       Stream<RemoteDownloadRequest> requests) async* {
     await for (final request in requests) {
-      yield RemoteDownloadResult(
+      yield NotFoundDownloadResult<RawContent>(
         documentIri: request.documentIri,
         requestETag: request.ifNoneMatch,
-        graph: null,
-        etag: null,
       );
     }
   }
@@ -65,7 +64,8 @@ class _FailingUploadBackend implements RemoteSyncBackend {
   }
 
   @override
-  Future<void> finalize(SyncFinalizationState state, {PipeperfCollector? perf}) async {}
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 class _StubStorageAccess implements BackendStorageAccess {

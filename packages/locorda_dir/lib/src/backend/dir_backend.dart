@@ -253,7 +253,16 @@ class DirSyncStorage implements RemoteSyncBackend {
   Stream<RemoteDownloadResult<RawContent>> download(
       Stream<RemoteDownloadRequest> requests) async* {
     await for (final request in requests) {
-      yield await _downloadOne(request);
+      try {
+        yield await _downloadOne(request);
+      } catch (e, st) {
+        yield ErrorDownloadResult<RawContent>(
+          documentIri: request.documentIri,
+          requestETag: request.ifNoneMatch,
+          error: e,
+          stackTrace: st,
+        );
+      }
     }
   }
 
@@ -266,11 +275,9 @@ class DirSyncStorage implements RemoteSyncBackend {
 
     if (!await file.exists()) {
       _log.fine('File not found: $filePath');
-      return RemoteDownloadResult(
+      return NotFoundDownloadResult<RawContent>(
         documentIri: request.documentIri,
         requestETag: request.ifNoneMatch,
-        graph: null,
-        etag: null,
       );
     }
 
@@ -278,7 +285,7 @@ class DirSyncStorage implements RemoteSyncBackend {
 
     if (request.ifNoneMatch != null && request.ifNoneMatch == currentETag) {
       _log.fine('File not modified: $filePath');
-      return RemoteDownloadResult.notModified(
+      return NotModifiedDownloadResult<RawContent>(
         documentIri: request.documentIri,
         requestETag: request.ifNoneMatch,
         etag: currentETag,
@@ -295,7 +302,7 @@ class DirSyncStorage implements RemoteSyncBackend {
         content = TextContent(text, contentType: _contentType);
       }
       _log.fine('Downloaded: $filePath, etag: $currentETag');
-      return RemoteDownloadResult(
+      return SuccessDownloadResult<RawContent>(
         documentIri: request.documentIri,
         requestETag: request.ifNoneMatch,
         graph: content,
@@ -311,7 +318,16 @@ class DirSyncStorage implements RemoteSyncBackend {
   Stream<RemoteUploadResult> upload(
       Stream<RemoteUploadRequest<RawContent>> requests) async* {
     await for (final request in requests) {
-      yield await _uploadOne(request);
+      try {
+        yield await _uploadOne(request);
+      } catch (e, st) {
+        yield ErrorUploadResult(
+          documentIri: request.documentIri,
+          requestETag: request.ifMatch,
+          error: e,
+          stackTrace: st,
+        );
+      }
     }
   }
 
