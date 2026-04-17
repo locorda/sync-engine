@@ -1077,8 +1077,7 @@ enum MergeObjectState {
       // but old CRDT metadata still carries a deletion marker. This can
       // happen when a shard entry is removed and re-added before the
       // tombstone is cleaned up. Treat as present (add-wins semantics).
-      _log.warning(
-          'Subject exists but has stale tombstone metadata '
+      _log.warning('Subject exists but has stale tombstone metadata '
           '— treating as present (add-wins)');
       return MergeObjectState.present;
     }

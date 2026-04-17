@@ -19,11 +19,13 @@ void main() {
         () {
       final statement = MetadataStatement(
         MetadataStatementKey.fromSubject(IriTerm('urn:s')),
-        {SyncManagedDocument.crdtDeletedAt: [LiteralTerm.string('2024')]},
+        {
+          SyncManagedDocument.crdtDeletedAt: [LiteralTerm.string('2024')]
+        },
         {},
       );
-      expect(MergeObjectState.from(statement, false),
-          MergeObjectState.tombstoned);
+      expect(
+          MergeObjectState.from(statement, false), MergeObjectState.tombstoned);
     });
 
     test('returns unknown when exists is false and no statement', () {
@@ -39,7 +41,9 @@ void main() {
       // tombstone should be treated as present.
       final statement = MetadataStatement(
         MetadataStatementKey.fromSubject(IriTerm('urn:s')),
-        {SyncManagedDocument.crdtDeletedAt: [LiteralTerm.string('2024')]},
+        {
+          SyncManagedDocument.crdtDeletedAt: [LiteralTerm.string('2024')]
+        },
         {},
       );
       expect(MergeObjectState.from(statement, true), MergeObjectState.present);
@@ -63,8 +67,7 @@ void main() {
 
     test('removes stale subject-level tombstone when subject is re-added', () {
       final docIri = IriTerm('tag:locorda.org,2025:l:dHlwZQ:ZG9j');
-      final subjectIri =
-          IriTerm('tag:locorda.org,2025:l:dHlwZQ:ZG9j#entry1');
+      final subjectIri = IriTerm('tag:locorda.org,2025:l:dHlwZQ:ZG9j#entry1');
       final nameIri = IriTerm('https://schema.org/name');
       final typeIri = IriTerm('https://example.org/Entry');
 
@@ -105,12 +108,11 @@ void main() {
       // Build a framework graph that includes the initial metadata
       final initialFrameworkTriples = <Triple>[];
       for (final stmt in initialResult.metadata.statements) {
-        initialFrameworkTriples.add(
-            Triple(docIri, SyncManagedDocument.hasStatement, stmt.$1));
+        initialFrameworkTriples
+            .add(Triple(docIri, SyncManagedDocument.hasStatement, stmt.$1));
         initialFrameworkTriples.addAll(stmt.$2.triples);
       }
-      final initialFrameworkGraph =
-          RdfGraph(triples: initialFrameworkTriples);
+      final initialFrameworkGraph = RdfGraph(triples: initialFrameworkTriples);
 
       // Now simulate deletion: subject removed from app data
       final emptyAppData = RdfGraph(triples: []);
@@ -135,14 +137,12 @@ void main() {
       // Remove what was marked for removal
       final removeSet = deleteResult.metadata.triplesToRemove.toSet();
       afterDeleteTriples.removeWhere((t) => removeSet.contains(t));
-      final afterDeleteFrameworkGraph =
-          RdfGraph(triples: afterDeleteTriples);
+      final afterDeleteFrameworkGraph = RdfGraph(triples: afterDeleteTriples);
 
       // Verify tombstone exists: there should be a statement with
       // crdtDeletedAt and rdf:subject pointing to our subject
       final tombstoneNodes = afterDeleteFrameworkGraph
-          .findTriples(
-              predicate: RdfStatement.subject, object: subjectIri)
+          .findTriples(predicate: RdfStatement.subject, object: subjectIri)
           .map((t) => t.subject)
           .where((node) => afterDeleteFrameworkGraph.hasTriples(
               subject: node, predicate: SyncManagedDocument.crdtDeletedAt))
@@ -172,8 +172,8 @@ void main() {
       final removedTriples = reAddResult.metadata.triplesToRemove.toList();
 
       // The tombstone's crdtDeletedAt triple should be in triplesToRemove
-      final removedDeletedAtTriples = removedTriples.where((t) =>
-          t.predicate == SyncManagedDocument.crdtDeletedAt);
+      final removedDeletedAtTriples = removedTriples
+          .where((t) => t.predicate == SyncManagedDocument.crdtDeletedAt);
       expect(removedDeletedAtTriples, isNotEmpty,
           reason:
               'Re-adding a subject should remove the stale subject-level tombstone');

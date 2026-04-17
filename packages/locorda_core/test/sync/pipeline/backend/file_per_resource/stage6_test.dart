@@ -308,8 +308,7 @@ void main() {
       expect(recording.requests, isEmpty);
     });
 
-    test(
-        'notInRemoteShard without storedRemoteEtag sends request to backend',
+    test('notInRemoteShard without storedRemoteEtag sends request to backend',
         () async {
       final recording = _RecordingBackend((req) {
         return NotFoundDownloadResult<RawContent>(
