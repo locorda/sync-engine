@@ -438,7 +438,8 @@ class SolidClient {
         ? await _authProvider.getDpopToken(_prepareUrlForDpopToken(url), 'GET')
         : null;
 
-    _log.fine('GET $url auth=$requiresAuth');
+    _log.fine(
+        'GET $url auth=$requiresAuth ifNoneMatch=$ifNoneMatch accept=$acceptContentType isBinary=$isBinary');
 
     final response = await _client.get(
       Uri.parse(url),
@@ -508,7 +509,8 @@ class SolidClient {
         ? await _authProvider.getDpopToken(_prepareUrlForDpopToken(url), 'PUT')
         : null;
 
-    _log.fine('PUT $url auth=$requiresAuth');
+    _log.fine(
+        'PUT $url auth=$requiresAuth ifMatch=$ifMatch contentType=${content.contentType}');
 
     final response = await _client.put(
       Uri.parse(url),
