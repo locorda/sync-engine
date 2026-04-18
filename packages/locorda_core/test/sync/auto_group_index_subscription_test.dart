@@ -256,7 +256,8 @@ void main() {
           triggerSync: false,
         );
 
-        final appResourceIri = IriTerm('https://example.org/recipes/$resourceId#it');
+        final appResourceIri =
+            IriTerm('https://example.org/recipes/$resourceId#it');
         final appData = RdfGraph.fromTriples([
           Triple(appResourceIri, Rdf.type, typeIri),
           Triple(appResourceIri, recipeCategory, LiteralTerm(category)),
