@@ -967,14 +967,13 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
           yield* _storage
               .watchSubscribedGroupIndexIris(templateIri)
               .map((indexIris) {
-              _log.info(
+            _log.info(
                 'HydrateStream[$indexName]: subscribed group indices changed '
                 '(count=${indexIris.length}, cursor=$cursor, '
                 'cursorSetVersionId=$cursorIndexSetVersionId, '
                 'indices=${indexIris.map((iri) => iri.value).join(', ')})');
-              return indexIris;
-              })
-              .switchMap((indexIris) => _doHydrateIndexEntryStream(
+            return indexIris;
+          }).switchMap((indexIris) => _doHydrateIndexEntryStream(
                     indexName,
                     indexIris,
                     startCursor,
@@ -1033,8 +1032,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
     // Track the last cursor emitted from batch loading
     int lastEmittedCursor = startCursor;
 
-    _log.info(
-        'HydrateIndexEntries[$indexName]: start '
+    _log.info('HydrateIndexEntries[$indexName]: start '
         '(indexCount=${indexIris.length}, startCursor=$startCursor, '
         'useIndexSetVersionId=$useIndexSetVersionId, '
         'cursorIndexSetVersionId=$cursorIndexSetVersionId, '
@@ -1068,8 +1066,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
 
       final newIndexIris = indexIris.difference(cursorIndexIris);
 
-        _log.info(
-          'HydrateIndexEntries[$indexName]: resolved index set version '
+      _log.info('HydrateIndexEntries[$indexName]: resolved index set version '
           '(indexSetVersionId=$indexSetVersionId, previousIndexCount=${cursorIndexIris.length}, '
           'newIndexCount=${newIndexIris.length}, '
           'newIndices=${newIndexIris.map((iri) => iri.value).join(', ')})');
@@ -1116,15 +1113,13 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
         return _storage
             .watchIndexEntries(indexIris: indexIris, cursorTimestamp: ts)
             .where((entries) => entries.isNotEmpty)
-          .map((entries) {
-            _log.info(
-              'HydrateIndexEntries[$indexName]: reactive watch emitted '
+            .map((entries) {
+          _log.info('HydrateIndexEntries[$indexName]: reactive watch emitted '
               '(count=${entries.length}, cursorTimestamp=$ts, '
               'lastUpdatedAt=${entries.last.updatedAt}, '
               'resources=${entries.map((entry) => entry.resourceIri.value).join(', ')})');
-            return entries;
-          })
-            .map((entries) => _convertIndexEntriesToBatch(
+          return entries;
+        }).map((entries) => _convertIndexEntriesToBatch(
                 entries, entries.last.updatedAt, indexSetVersionId));
       },
       initialCursor: _formatCursor(lastEmittedCursor, indexSetVersionId),
@@ -1141,7 +1136,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
   /// necessary to correctly position the cursor for the reactive watch phase.
   ({Stream<HydrationBatch> stream, Future<int> lastCursor})
       _loadExistingEntriesAsStream(
-        String indexName, Set<IriTerm> indexIris, int? indexSetVersionId,
+          String indexName, Set<IriTerm> indexIris, int? indexSetVersionId,
           {required int fromCursor,
           int? toCursor,
           required int initialBatchSize}) {
@@ -1153,8 +1148,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
       try {
         int? cursor = fromCursor;
         while (cursor != null && (toCursor == null || cursor < toCursor)) {
-          _log.info(
-              'HydrateIndexEntries.load[$indexName]: requesting page '
+          _log.info('HydrateIndexEntries.load[$indexName]: requesting page '
               '(indexCount=${indexIris.length}, fromCursor=$cursor, '
               'toCursor=$toCursor, limit=$initialBatchSize, '
               'indexSetVersionId=$indexSetVersionId)');
@@ -1164,8 +1158,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
             limit: initialBatchSize,
           );
 
-          _log.info(
-              'HydrateIndexEntries.load[$indexName]: received page '
+          _log.info('HydrateIndexEntries.load[$indexName]: received page '
               '(entryCount=${page.entries.length}, hasMore=${page.hasMore}, '
               'lastCursor=${page.lastCursor})');
 
