@@ -996,10 +996,12 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
     final controller = StreamController<HydrationBatch>();
     StreamSubscription<Set<IriTerm>>? outerSubscription;
     StreamSubscription<HydrationBatch>? innerSubscription;
-    Future<void> pendingRestart = Future.value();
+    var restartSequence = 0;
 
-    Future<void> restartInnerStream(Set<IriTerm> indexIris) async {
-      await innerSubscription?.cancel();
+    void restartInnerStream(Set<IriTerm> indexIris, int sequence) {
+      _log.info('HydrateStream[$indexName]: restart begin '
+          '(sequence=$sequence, indexCount=${indexIris.length})');
+      final previousInner = innerSubscription;
       innerSubscription = _doHydrateIndexEntryStream(
         indexName,
         indexIris,
@@ -1011,6 +1013,19 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
         controller.add,
         onError: controller.addError,
       );
+
+      if (previousInner != null) {
+        unawaited(
+          previousInner.cancel().catchError((Object error, StackTrace _) {
+            _log.warning(
+                'HydrateStream[$indexName]: previous inner stream cancel failed '
+                '(sequence=$sequence): $error');
+          }),
+        );
+      }
+
+      _log.info('HydrateStream[$indexName]: restart complete '
+          '(sequence=$sequence, indexCount=${indexIris.length})');
     }
 
     controller.onListen = () {
@@ -1022,12 +1037,22 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
                       '(count=${indexIris.length}, cursor=$cursor, '
                       'cursorSetVersionId=$cursorIndexSetVersionId, '
                       'indices=${indexIris.map((iri) => iri.debug).join(', ')})');
-                  pendingRestart =
-                      pendingRestart.then((_) => restartInnerStream(indexIris));
+                  final sequence = ++restartSequence;
+                  try {
+                    restartInnerStream(indexIris, sequence);
+                  } catch (error, stackTrace) {
+                    _log.severe(
+                        'HydrateStream[$indexName]: restart failed '
+                        '(sequence=$sequence, indexCount=${indexIris.length})',
+                        error,
+                        stackTrace);
+                    if (!controller.isClosed) {
+                      controller.addError(error, stackTrace);
+                    }
+                  }
                 },
                 onError: controller.addError,
                 onDone: () async {
-                  await pendingRestart;
                   await innerSubscription?.cancel();
                   if (!controller.isClosed) {
                     await controller.close();
@@ -1038,7 +1063,6 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
 
     controller.onCancel = () async {
       await outerSubscription?.cancel();
-      await pendingRestart;
       await innerSubscription?.cancel();
     };
 
