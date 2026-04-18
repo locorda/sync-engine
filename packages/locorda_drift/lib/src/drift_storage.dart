@@ -730,7 +730,7 @@ class DriftStorage implements core.Storage {
 
     _log.info('DriftStorage.getIndexEntries: query '
         '(indexCount=${indexIds.length}, cursorTimestamp=$cursorTimestamp, '
-        'limit=$limit, indices=${indexIris.map((iri) => iri.value).join(', ')})');
+        'limit=$limit, indices=${indexIris.map((iri) => iri.debug).join(', ')})');
 
     // Query directly by index IDs
     final page = await indexDao.getIndexEntries(
@@ -761,7 +761,7 @@ class DriftStorage implements core.Storage {
     _log.info('DriftStorage.getIndexEntries: result '
         '(entryCount=${result.entries.length}, hasMore=${result.hasMore}, '
         'lastCursor=${result.lastCursor}, '
-        'resources=${result.entries.map((entry) => entry.resourceIri.value).join(', ')})');
+        'resources=${result.entries.map((entry) => entry.resourceIri.debug).join(', ')})');
 
     return result;
   }
@@ -776,7 +776,7 @@ class DriftStorage implements core.Storage {
 
     _log.info('DriftStorage.watchIndexEntries: subscribe '
         '(indexCount=${indexIds.length}, cursorTimestamp=$cursorTimestamp, '
-        'indices=${indexIris.map((iri) => iri.value).join(', ')})');
+        'indices=${indexIris.map((iri) => iri.debug).join(', ')})');
 
     // Watch using internal IDs
     yield* indexDao
@@ -801,7 +801,7 @@ class DriftStorage implements core.Storage {
 
       _log.info('DriftStorage.watchIndexEntries: emitted '
           '(entryCount=${converted.length}, cursorTimestamp=$cursorTimestamp, '
-          'resources=${converted.map((entry) => entry.resourceIri.value).join(', ')})');
+          'resources=${converted.map((entry) => entry.resourceIri.debug).join(', ')})');
 
       return converted;
     });
@@ -978,14 +978,14 @@ class DriftStorage implements core.Storage {
       if (indexIds.isEmpty) {
         _log.info(
             'DriftStorage.watchSubscribedGroupIndexIris: emitted empty set '
-            '(template=${templateIri.value})');
+            '(template=${templateIri.debug})');
         yield const {};
       } else {
         final idToIri = await _getIris(indexIds);
         final indexIris = idToIri.values.toSet();
         _log.info('DriftStorage.watchSubscribedGroupIndexIris: emitted set '
-            '(template=${templateIri.value}, count=${indexIris.length}, '
-            'indices=${indexIris.map((iri) => iri.value).join(', ')})');
+            '(template=${templateIri.debug}, count=${indexIris.length}, '
+            'indices=${indexIris.map((iri) => iri.debug).join(', ')})');
         yield indexIris;
       }
     }

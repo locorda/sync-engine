@@ -243,7 +243,7 @@ class IndexDiscovery {
       // Only track if this resource type is in our config
       if (!_isConfiguredResourceType(indexedClass)) {
         _log.fine(
-            'Skipping $indexTypeName for unconfigured resource type: $indexedClass');
+            'Skipping $indexTypeName for unconfigured resource type: ${indexedClass.debug}');
         continue;
       }
 
@@ -269,7 +269,7 @@ class IndexDiscovery {
       }
 
       _log.fine(
-          'Index Discovery Cache refreshed $indexTypeName metadata: indexed class $indexedClass → index Iri ${indexIri.debug} (clockHash: $clockHash)');
+          'Index Discovery Cache refreshed $indexTypeName metadata: indexed class ${indexedClass.debug} → index Iri ${indexIri.debug} (clockHash: $clockHash)');
     }
   }
 

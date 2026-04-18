@@ -276,7 +276,7 @@ class IndexManager {
     }
 
     _log.info('Creating missing GroupIndex for group "$groupKey" '
-        'at $groupIndexIri');
+        'at ${groupIndexIri.debug}');
     await _createGroupIndex(
       config,
       typeIri,
@@ -433,7 +433,7 @@ class IndexManager {
       if (existingDocs[resolved.groupIndexIri] == null) {
         _log.info(
             'Creating missing GroupIndex for group "${resolved.groupKey}" '
-            'at ${resolved.groupIndexIri}');
+            'at ${resolved.groupIndexIri.debug}');
         await _createMissingGroupIndex(resolved);
       }
     }
@@ -717,7 +717,7 @@ class IndexManager {
     }
 
     _log.info(
-        'Found ${tombstones.length} tombstoned shard references for $resourceIri');
+        'Found ${tombstones.length} tombstoned shard references for ${resourceIri.debug}');
 
     final requests = <SaveIndexEntryRequest>[];
 

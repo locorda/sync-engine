@@ -170,26 +170,6 @@ extension RdfGraphExtensions on RdfGraph {
   }
 }
 
-extension RdfSubjectExtensions on RdfSubject? {
-  String get debug {
-    if (this == null) {
-      return 'null';
-    } else if (this is IriTerm) {
-      return (this as IriTerm).debug;
-    } else {
-      return this.toString();
-    }
-  }
-
-  bool get isIri {
-    return this is IriTerm;
-  }
-
-  bool get isBlankNode {
-    return this is BlankNodeTerm;
-  }
-}
-
 extension IriTermExtensions on IriTerm {
   static final LRUCache<IriTerm, String> _debugStringCache =
       LRUCache<IriTerm, String>(maxCacheSize: 100);
@@ -259,7 +239,31 @@ extension RdfGraphIterableExtensions on Iterable<RdfGraph> {
   }
 }
 
+extension RdfNullableTermExtensions on RdfTerm? {
+  String get debug {
+    if (this == null) {
+      return 'null';
+    }
+    return this!.debug;
+  }
+}
+
 extension RdfTermExtensions on RdfTerm {
+  String get debug {
+    if (this is IriTerm) {
+      return (this as IriTerm).debug;
+    } else if (this is LiteralTerm) {
+      final lit = this as LiteralTerm;
+      return '"${lit.value}"^^<${lit.datatype.value}>';
+    } else {
+      return this.toString();
+    }
+  }
+
+  bool get isLiteral {
+    return this is LiteralTerm;
+  }
+
   bool get isIri {
     return this is IriTerm;
   }

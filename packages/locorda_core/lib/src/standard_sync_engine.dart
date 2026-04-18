@@ -971,7 +971,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
                 'HydrateStream[$indexName]: subscribed group indices changed '
                 '(count=${indexIris.length}, cursor=$cursor, '
                 'cursorSetVersionId=$cursorIndexSetVersionId, '
-                'indices=${indexIris.map((iri) => iri.value).join(', ')})');
+                'indices=${indexIris.map((iri) => iri.debug).join(', ')})');
             return indexIris;
           }).switchMap((indexIris) => _doHydrateIndexEntryStream(
                     indexName,
@@ -1036,7 +1036,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
         '(indexCount=${indexIris.length}, startCursor=$startCursor, '
         'useIndexSetVersionId=$useIndexSetVersionId, '
         'cursorIndexSetVersionId=$cursorIndexSetVersionId, '
-        'indices=${indexIris.map((iri) => iri.value).join(', ')})');
+        'indices=${indexIris.map((iri) => iri.debug).join(', ')})');
 
     // If useIndexSetVersionId is true, we need to associate the indexIris with a set version
     // to track which indices we query against. This also means that the set version
@@ -1069,7 +1069,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
       _log.info('HydrateIndexEntries[$indexName]: resolved index set version '
           '(indexSetVersionId=$indexSetVersionId, previousIndexCount=${cursorIndexIris.length}, '
           'newIndexCount=${newIndexIris.length}, '
-          'newIndices=${newIndexIris.map((iri) => iri.value).join(', ')})');
+          'newIndices=${newIndexIris.map((iri) => iri.debug).join(', ')})');
 
       final hasNewIndices = newIndexIris.isNotEmpty;
 
@@ -1117,7 +1117,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
           _log.info('HydrateIndexEntries[$indexName]: reactive watch emitted '
               '(count=${entries.length}, cursorTimestamp=$ts, '
               'lastUpdatedAt=${entries.last.updatedAt}, '
-              'resources=${entries.map((entry) => entry.resourceIri.value).join(', ')})');
+              'resources=${entries.map((entry) => entry.resourceIri.debug).join(', ')})');
           return entries;
         }).map((entries) => _convertIndexEntriesToBatch(
                 entries, entries.last.updatedAt, indexSetVersionId));
@@ -1260,7 +1260,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
             subject: externalIri, predicate: SyncManagedDocument.crdtDeletedAt);
         if (primaryTopicIri == null) {
           _log.warning(
-              'Document ${doc.documentIri} (isDeletion: $isDeletion) is missing foaf:primaryTopic, cannot determine resource IRI. Skipping.');
+              'Document ${doc.documentIri.debug} (isDeletion: $isDeletion) is missing foaf:primaryTopic, cannot determine resource IRI. Skipping.');
           return acc;
         }
         (isDeletion ? acc.$1 : acc.$2).add((primaryTopicIri, appGraph));
