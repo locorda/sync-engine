@@ -4,6 +4,7 @@ library;
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:logging/logging.dart';
 import 'package:locorda_core/locorda_core.dart' as core;
 import 'package:locorda_core/src/util/lru_cache.dart';
 import 'package:locorda_rdf_jelly/jelly.dart';
@@ -20,6 +21,8 @@ import 'sync_database_impl_flutter.dart'
 /// Provides cross-platform SQLite storage for RDF documents, CRDT metadata,
 /// and property-level change tracking using the Drift ORM.
 class DriftStorage implements core.Storage {
+  static final _log = Logger('DriftStorage');
+
   final SyncDocumentDao documentDao;
   final SyncPropertyChangeDao propertyChangeDao;
   final IndexDao indexDao;
@@ -725,6 +728,11 @@ class DriftStorage implements core.Storage {
     // Translate index IRIs to IDs internally
     final indexIds = await _getOrCreateIriIds(indexIris);
 
+    _log.info(
+        'DriftStorage.getIndexEntries: query '
+        '(indexCount=${indexIds.length}, cursorTimestamp=$cursorTimestamp, '
+        'limit=$limit, indices=${indexIris.map((iri) => iri.value).join(', ')})');
+
     // Query directly by index IDs
     final page = await indexDao.getIndexEntries(
       indexIds: indexIds,
@@ -735,7 +743,7 @@ class DriftStorage implements core.Storage {
     final idToIri =
         await _getIris(page.entries.map((e) => e.resourceIriId).toSet());
 
-    return core.IndexEntriesPage(
+    final result = core.IndexEntriesPage(
       entries: page.entries
           .map((e) => core.IndexEntryWithIri(
                 resourceIri: idToIri[e.resourceIriId]!,
@@ -750,6 +758,14 @@ class DriftStorage implements core.Storage {
       hasMore: page.hasMore,
       lastCursor: page.lastCursor,
     );
+
+    _log.info(
+        'DriftStorage.getIndexEntries: result '
+        '(entryCount=${result.entries.length}, hasMore=${result.hasMore}, '
+        'lastCursor=${result.lastCursor}, '
+        'resources=${result.entries.map((entry) => entry.resourceIri.value).join(', ')})');
+
+    return result;
   }
 
   @override
@@ -760,6 +776,11 @@ class DriftStorage implements core.Storage {
     // Translate index IRIs to IDs internally
     final indexIds = await _getOrCreateIriIds(indexIris);
 
+    _log.info(
+        'DriftStorage.watchIndexEntries: subscribe '
+        '(indexCount=${indexIds.length}, cursorTimestamp=$cursorTimestamp, '
+        'indices=${indexIris.map((iri) => iri.value).join(', ')})');
+
     // Watch using internal IDs
     yield* indexDao
         .watchIndexEntries(
@@ -769,7 +790,7 @@ class DriftStorage implements core.Storage {
         .asyncMap((entries) async {
       final idToIri =
           await _getIris(entries.map((e) => e.resourceIriId).toSet());
-      return entries
+      final converted = entries
           .map((e) => core.IndexEntryWithIri(
                 resourceIri: idToIri[e.resourceIriId]!,
                 clockHash: e.clockHash,
@@ -780,6 +801,13 @@ class DriftStorage implements core.Storage {
                 isRemoteOnly: e.isRemoteOnly,
               ))
           .toList();
+
+      _log.info(
+          'DriftStorage.watchIndexEntries: emitted '
+          '(entryCount=${converted.length}, cursorTimestamp=$cursorTimestamp, '
+          'resources=${converted.map((entry) => entry.resourceIri.value).join(', ')})');
+
+      return converted;
     });
   }
 
@@ -952,10 +980,18 @@ class DriftStorage implements core.Storage {
         in indexDao.watchSubscribedGroupIndexIds(templateId)) {
       // Translate IDs back to IRIs
       if (indexIds.isEmpty) {
+        _log.info(
+            'DriftStorage.watchSubscribedGroupIndexIris: emitted empty set '
+            '(template=${templateIri.value})');
         yield const {};
       } else {
         final idToIri = await _getIris(indexIds);
-        yield idToIri.values.toSet();
+        final indexIris = idToIri.values.toSet();
+        _log.info(
+            'DriftStorage.watchSubscribedGroupIndexIris: emitted set '
+            '(template=${templateIri.value}, count=${indexIris.length}, '
+            'indices=${indexIris.map((iri) => iri.value).join(', ')})');
+        yield indexIris;
       }
     }
   }

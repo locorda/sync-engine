@@ -966,6 +966,14 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
           // Reactive approach: Watch subscription changes and rebuild the entry stream
           yield* _storage
               .watchSubscribedGroupIndexIris(templateIri)
+              .map((indexIris) {
+              _log.info(
+                'HydrateStream[$indexName]: subscribed group indices changed '
+                '(count=${indexIris.length}, cursor=$cursor, '
+                'cursorSetVersionId=$cursorIndexSetVersionId, '
+                'indices=${indexIris.map((iri) => iri.value).join(', ')})');
+              return indexIris;
+              })
               .switchMap((indexIris) => _doHydrateIndexEntryStream(
                     indexName,
                     indexIris,
@@ -1025,6 +1033,13 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
     // Track the last cursor emitted from batch loading
     int lastEmittedCursor = startCursor;
 
+    _log.info(
+        'HydrateIndexEntries[$indexName]: start '
+        '(indexCount=${indexIris.length}, startCursor=$startCursor, '
+        'useIndexSetVersionId=$useIndexSetVersionId, '
+        'cursorIndexSetVersionId=$cursorIndexSetVersionId, '
+        'indices=${indexIris.map((iri) => iri.value).join(', ')})');
+
     // If useIndexSetVersionId is true, we need to associate the indexIris with a set version
     // to track which indices we query against. This also means that the set version
     // will be included in the actual (string) cursor we emit
@@ -1053,6 +1068,12 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
 
       final newIndexIris = indexIris.difference(cursorIndexIris);
 
+        _log.info(
+          'HydrateIndexEntries[$indexName]: resolved index set version '
+          '(indexSetVersionId=$indexSetVersionId, previousIndexCount=${cursorIndexIris.length}, '
+          'newIndexCount=${newIndexIris.length}, '
+          'newIndices=${newIndexIris.map((iri) => iri.value).join(', ')})');
+
       final hasNewIndices = newIndexIris.isNotEmpty;
 
       // Phase 1a: Load historical data for new indices (0 → startCursor)
@@ -1061,6 +1082,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
             'Loading historical data for ${newIndexIris.length} new indices up to cursor $startCursor');
 
         final result = _loadExistingEntriesAsStream(
+          indexName,
           newIndexIris,
           indexSetVersionId,
           fromCursor: 0,
@@ -1074,6 +1096,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
 
     // Phase 1b: Load current data for all subscriptions (from startCursor)
     final result = _loadExistingEntriesAsStream(
+      indexName,
       indexIris,
       indexSetVersionId,
       fromCursor: lastEmittedCursor,
@@ -1093,6 +1116,14 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
         return _storage
             .watchIndexEntries(indexIris: indexIris, cursorTimestamp: ts)
             .where((entries) => entries.isNotEmpty)
+          .map((entries) {
+            _log.info(
+              'HydrateIndexEntries[$indexName]: reactive watch emitted '
+              '(count=${entries.length}, cursorTimestamp=$ts, '
+              'lastUpdatedAt=${entries.last.updatedAt}, '
+              'resources=${entries.map((entry) => entry.resourceIri.value).join(', ')})');
+            return entries;
+          })
             .map((entries) => _convertIndexEntriesToBatch(
                 entries, entries.last.updatedAt, indexSetVersionId));
       },
@@ -1110,7 +1141,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
   /// necessary to correctly position the cursor for the reactive watch phase.
   ({Stream<HydrationBatch> stream, Future<int> lastCursor})
       _loadExistingEntriesAsStream(
-          Set<IriTerm> indexIris, int? indexSetVersionId,
+        String indexName, Set<IriTerm> indexIris, int? indexSetVersionId,
           {required int fromCursor,
           int? toCursor,
           required int initialBatchSize}) {
@@ -1122,11 +1153,21 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
       try {
         int? cursor = fromCursor;
         while (cursor != null && (toCursor == null || cursor < toCursor)) {
+          _log.info(
+              'HydrateIndexEntries.load[$indexName]: requesting page '
+              '(indexCount=${indexIris.length}, fromCursor=$cursor, '
+              'toCursor=$toCursor, limit=$initialBatchSize, '
+              'indexSetVersionId=$indexSetVersionId)');
           final page = await _storage.getIndexEntries(
             indexIris: indexIris,
             cursorTimestamp: cursor,
             limit: initialBatchSize,
           );
+
+          _log.info(
+              'HydrateIndexEntries.load[$indexName]: received page '
+              '(entryCount=${page.entries.length}, hasMore=${page.hasMore}, '
+              'lastCursor=${page.lastCursor})');
 
           if (page.entries.isNotEmpty) {
             final batch = _convertIndexEntriesToBatch(
