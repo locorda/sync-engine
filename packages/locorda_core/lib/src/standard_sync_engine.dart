@@ -963,24 +963,14 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
           // when subscriptions change.
           final templateIri = _indexRdfGenerator.generateGroupIndexTemplateIri(
               indexConfig, typeIri);
-          // Reactive approach: Watch subscription changes and rebuild the entry stream
-          yield* _storage
-              .watchSubscribedGroupIndexIris(templateIri)
-              .map((indexIris) {
-            _log.info(
-                'HydrateStream[$indexName]: subscribed group indices changed '
-                '(count=${indexIris.length}, cursor=$cursor, '
-                'cursorSetVersionId=$cursorIndexSetVersionId, '
-                'indices=${indexIris.map((iri) => iri.debug).join(', ')})');
-            return indexIris;
-          }).switchMap((indexIris) => _doHydrateIndexEntryStream(
-                    indexName,
-                    indexIris,
-                    startCursor,
-                    useIndexSetVersionId: true,
-                    cursorIndexSetVersionId: cursorIndexSetVersionId,
-                    initialBatchSize: initialBatchSize,
-                  ));
+          yield* _hydrateReactiveGroupIndexEntries(
+            indexName: indexName,
+            templateIri: templateIri,
+            cursor: cursor,
+            cursorIndexSetVersionId: cursorIndexSetVersionId,
+            startCursor: startCursor,
+            initialBatchSize: initialBatchSize,
+          );
         case FullIndexData _: // FullIndex: there is just a single index
           final indexIri =
               _indexRdfGenerator.generateFullIndexIri(indexConfig, typeIri);
@@ -993,6 +983,66 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
           );
       }
     }
+  }
+
+  Stream<HydrationBatch> _hydrateReactiveGroupIndexEntries({
+    required String indexName,
+    required IriTerm templateIri,
+    required String? cursor,
+    required int? cursorIndexSetVersionId,
+    required int startCursor,
+    required int initialBatchSize,
+  }) {
+    final controller = StreamController<HydrationBatch>();
+    StreamSubscription<Set<IriTerm>>? outerSubscription;
+    StreamSubscription<HydrationBatch>? innerSubscription;
+    Future<void> pendingRestart = Future.value();
+
+    Future<void> restartInnerStream(Set<IriTerm> indexIris) async {
+      await innerSubscription?.cancel();
+      innerSubscription = _doHydrateIndexEntryStream(
+        indexName,
+        indexIris,
+        startCursor,
+        useIndexSetVersionId: true,
+        cursorIndexSetVersionId: cursorIndexSetVersionId,
+        initialBatchSize: initialBatchSize,
+      ).listen(
+        controller.add,
+        onError: controller.addError,
+      );
+    }
+
+    controller.onListen = () {
+      outerSubscription =
+          _storage.watchSubscribedGroupIndexIris(templateIri).listen(
+                (indexIris) {
+                  _log.info(
+                      'HydrateStream[$indexName]: subscribed group indices changed '
+                      '(count=${indexIris.length}, cursor=$cursor, '
+                      'cursorSetVersionId=$cursorIndexSetVersionId, '
+                      'indices=${indexIris.map((iri) => iri.debug).join(', ')})');
+                  pendingRestart =
+                      pendingRestart.then((_) => restartInnerStream(indexIris));
+                },
+                onError: controller.addError,
+                onDone: () async {
+                  await pendingRestart;
+                  await innerSubscription?.cancel();
+                  if (!controller.isClosed) {
+                    await controller.close();
+                  }
+                },
+              );
+    };
+
+    controller.onCancel = () async {
+      await outerSubscription?.cancel();
+      await pendingRestart;
+      await innerSubscription?.cancel();
+    };
+
+    return controller.stream;
   }
 
   (int? cursorTimestamp, int? setVersionId) _parseCursor(String? cursor) {

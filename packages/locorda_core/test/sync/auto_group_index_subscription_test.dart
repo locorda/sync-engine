@@ -204,5 +204,89 @@ void main() {
           await storage.getDocument(shardIris!.single.getDocumentIri());
       expect(shardDoc, isNotNull);
     });
+
+    test('hydrates index entries after third subscription change', () async {
+      final storage = InMemoryStorage();
+      final testAssetsDir = Directory('test/assets/graph');
+      final allTestsJson = jsonDecode(
+        File('${testAssetsDir.path}/all_tests.json').readAsStringSync(),
+      ) as Map<String, dynamic>;
+      final configJson = jsonDecode(
+        File('${testAssetsDir.path}/shared/configs/group_index_config.json')
+            .readAsStringSync(),
+      ) as Map<String, dynamic>;
+      final config = SyncEngineConfig.fromJson(configJson);
+      final fetcher = TestFetcher.fromTestJson(allTestsJson, testAssetsDir);
+
+      final sync = await SyncEngine.create(
+        config: config,
+        engineParams: EngineParams(
+          storage: storage,
+          backends: const [],
+          fetcher: fetcher,
+        ),
+      );
+
+      final resource = config.resources.single;
+      final typeIri = resource.typeIri;
+      final indexConfig = resource.indices.whereType<GroupIndexData>().single;
+      final recipeCategory = IriTerm('https://schema.org/recipeCategory');
+
+      var nonEmptyBatchCount = 0;
+      final subscription = sync
+          .hydrateStream(typeIri: typeIri, indexName: indexConfig.localName)
+          .listen((batch) {
+        if (batch.updates.isNotEmpty) {
+          nonEmptyBatchCount++;
+        }
+      });
+
+      Future<void> ensureAndSave(String resourceId, String category) async {
+        final groupKeyGraph = RdfGraph.fromTriples([
+          Triple(
+            IriTerm('https://example.org/group-key/$resourceId#it'),
+            recipeCategory,
+            LiteralTerm(category),
+          ),
+        ]);
+
+        await sync.ensureGroupIndexSubscription(
+          indexName: indexConfig.localName,
+          groupKeyGraph: groupKeyGraph,
+          triggerSync: false,
+        );
+
+        final appResourceIri = IriTerm('https://example.org/recipes/$resourceId#it');
+        final appData = RdfGraph.fromTriples([
+          Triple(appResourceIri, Rdf.type, typeIri),
+          Triple(appResourceIri, recipeCategory, LiteralTerm(category)),
+        ]);
+
+        await sync.save(typeIri, appData);
+      }
+
+      Future<void> waitForAtLeast(int minimumCount) async {
+        final timeoutAt = DateTime.now().add(const Duration(seconds: 3));
+        while (nonEmptyBatchCount < minimumCount) {
+          if (DateTime.now().isAfter(timeoutAt)) {
+            fail('Expected at least $minimumCount non-empty hydration batches, '
+                'but got $nonEmptyBatchCount');
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+      }
+
+      await ensureAndSave('r-apr', 'Dessert-Apr');
+      await waitForAtLeast(1);
+
+      await ensureAndSave('r-mar', 'Dessert-Mar');
+      await waitForAtLeast(2);
+
+      await ensureAndSave('r-feb', 'Dessert-Feb');
+      await waitForAtLeast(3);
+
+      await subscription.cancel();
+      expect(nonEmptyBatchCount, greaterThanOrEqualTo(3));
+    });
   });
 }
