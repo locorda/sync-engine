@@ -482,7 +482,7 @@ class SolidClient {
       _log.warning('Failed to fetch $url: ${response.statusCode}');
       _log.warning('Response body: ${response.body}');
       throw SolidClientException(
-          'Failed to fetch $url: ${response.statusCode}');
+          'Failed with status ${response.statusCode} to fetch $url. ${response.body.isNotEmpty ? '\nResponse body: ${response.body}' : ''}');
     }
 
     final contentType = response.headers['content-type'] ?? '';

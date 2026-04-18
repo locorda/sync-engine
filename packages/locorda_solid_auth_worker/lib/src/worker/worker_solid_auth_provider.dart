@@ -181,7 +181,8 @@ class SolidAuthReceiver implements SolidAuthProvider {
           'before=$before, after=$after)');
       completer.complete(credentials);
     } else {
-      _log.warning('TokenRefreshResponse has no credentials (requestId=$requestId)');
+      _log.warning(
+          'TokenRefreshResponse has no credentials (requestId=$requestId)');
       completer.completeError(
         StateError('Token refresh failed: No credentials in response'),
       );
@@ -253,8 +254,8 @@ class SolidAuthReceiver implements SolidAuthProvider {
       _log.info('Token refresh completed '
           '(requestId=$requestId, credentials=${_credentialsFingerprint(_credentials)})');
     } on Object catch (error, stackTrace) {
-      _log.severe('Token refresh failed (requestId=$requestId): $error',
-          error, stackTrace);
+      _log.severe('Token refresh failed (requestId=$requestId): $error', error,
+          stackTrace);
       rethrow;
     }
   }

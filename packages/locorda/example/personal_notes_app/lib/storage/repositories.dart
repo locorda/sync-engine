@@ -14,6 +14,7 @@ import '../models/note_group_key.dart';
 import 'database.dart';
 
 final _log = Logger('CategoryRepository');
+final _noteLog = Logger('NoteRepository');
 
 /// Repository for Category business logic operations.
 ///
@@ -194,20 +195,43 @@ class NoteRepository {
     // Setup data hydration for full Note resources
     final dataSubscription = await syncSystem.hydrateWithCallbacks<models.Note>(
       getCurrentCursor: () => cursorDao.getCursor(_resourceType),
-      onUpdate: (note) => _handleNoteUpdate(noteDao, commentDao, note),
-      onDelete: (noteId) => _handleNoteDelete(noteDao, commentDao, noteId),
-      onCursorUpdate: (cursor) => cursorDao.storeCursor(_resourceType, cursor),
+      onUpdate: (note) async {
+        _noteLog.info('Hydration update for Note '
+            '(id=${note.id}, createdMonth=${_monthKeyFromDate(note.createdAt)}, '
+            'modifiedMonth=${_monthKeyFromDate(note.modifiedAt)}, '
+            'comments=${note.comments.length}, tags=${note.tags.length})');
+        await _handleNoteUpdate(noteDao, commentDao, note);
+      },
+      onDelete: (noteId) async {
+        _noteLog.info('Hydration delete for Note (id=$noteId)');
+        await _handleNoteDelete(noteDao, commentDao, noteId);
+      },
+      onCursorUpdate: (cursor) async {
+        _noteLog.fine('Hydration cursor update for Note (cursor=$cursor)');
+        await cursorDao.storeCursor(_resourceType, cursor);
+      },
     );
 
     // Setup index hydration for NoteIndexEntry resources
     final indexSubscription =
         await syncSystem.hydrateWithCallbacks<models.NoteIndexEntry>(
       getCurrentCursor: () => cursorDao.getCursor(_indexResourceType),
-      onUpdate: (noteEntry) =>
-          _handleNoteIndexEntryUpdate(noteIndexDao, noteEntry),
-      onDelete: (noteId) => _handleNoteIndexEntryDelete(noteIndexDao, noteId),
-      onCursorUpdate: (cursor) =>
-          cursorDao.storeCursor(_indexResourceType, cursor),
+      onUpdate: (noteEntry) async {
+        _noteLog.info('Hydration update for NoteIndexEntry '
+            '(id=${noteEntry.id}, groupMonth=${_monthKeyFromDate(noteEntry.dateCreated)}, '
+            'modifiedMonth=${_monthKeyFromDate(noteEntry.dateModified)}, '
+            'keywords=${noteEntry.keywords.length}, categoryId=${noteEntry.categoryId})');
+        await _handleNoteIndexEntryUpdate(noteIndexDao, noteEntry);
+      },
+      onDelete: (noteId) async {
+        _noteLog.info('Hydration delete for NoteIndexEntry (id=$noteId)');
+        await _handleNoteIndexEntryDelete(noteIndexDao, noteId);
+      },
+      onCursorUpdate: (cursor) async {
+        _noteLog.fine(
+            'Hydration cursor update for NoteIndexEntry (cursor=$cursor)');
+        await cursorDao.storeCursor(_indexResourceType, cursor);
+      },
     );
 
     final repository = NoteRepository._(
@@ -234,6 +258,10 @@ class NoteRepository {
       final commentCompanion = _commentToDriftCompanion(comment, note.id);
       await commentDao.insertOrUpdateComment(commentCompanion);
     }
+
+    _noteLog.info('Persisted Note in Drift '
+        '(id=${note.id}, createdMonth=${_monthKeyFromDate(note.createdAt)}, '
+        'commentCount=${note.comments.length})');
   }
 
   /// Handle note deletion from sync storage
@@ -241,6 +269,7 @@ class NoteRepository {
       NoteDao noteDao, CommentDao commentDao, String id) async {
     await commentDao.deleteCommentsForNote(id);
     await noteDao.deleteNoteById(id);
+    _noteLog.info('Deleted Note from Drift (id=$id)');
   }
 
   /// Handle note index entry update from sync storage
@@ -248,12 +277,20 @@ class NoteRepository {
       NoteIndexEntryDao noteIndexDao, models.NoteIndexEntry noteEntry) async {
     final companion = _noteIndexEntryToDriftCompanion(noteEntry);
     await noteIndexDao.insertOrUpdateNoteIndexEntry(companion);
+    _noteLog.info('Persisted NoteIndexEntry in Drift '
+        '(id=${noteEntry.id}, groupMonth=${_monthKeyFromDate(noteEntry.dateCreated)})');
   }
 
   /// Handle note index entry deletion from sync storage
   static Future<void> _handleNoteIndexEntryDelete(
       NoteIndexEntryDao noteIndexDao, String id) async {
     await noteIndexDao.deleteNoteIndexEntryById(id);
+    _noteLog.info('Deleted NoteIndexEntry from Drift (id=$id)');
+  }
+
+  static String _monthKeyFromDate(DateTime value) {
+    final month = value.month.toString().padLeft(2, '0');
+    return '${value.year}-$month';
   }
 
   /// Get a specific note by ID

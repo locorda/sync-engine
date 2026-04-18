@@ -272,7 +272,8 @@ Future<T> retryOnAuthFailure<T>(
     required Future<void> Function() onAuthFailure,
     required Future<T> Function() operation}) async {
   int attempts = 0;
-  _log.fine('Starting auth-aware operation with maxRetries=${config.maxRetries}');
+  _log.fine(
+      'Starting auth-aware operation with maxRetries=${config.maxRetries}');
   while (true) {
     try {
       _log.finer('Executing protected operation (attempt=${attempts + 1})');

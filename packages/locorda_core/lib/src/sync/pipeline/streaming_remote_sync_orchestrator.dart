@@ -198,9 +198,13 @@ class StreamingRemoteSyncOrchestrator {
     );
     if (shardErrors.isNotEmpty) {
       final first = shardErrors.first;
-      throw StateError(
-        'Sync failed: ${shardErrors.length} shard(s) encountered errors '
-        'during sync. First error: ${first.error}',
+
+      Error.throwWithStackTrace(
+        StateError(
+          'Sync failed: ${shardErrors.length} shard(s) encountered errors '
+          'during sync. First error: ${first.error}',
+        ),
+        first.stackTrace,
       );
     }
     _log.info('Streaming pipeline sync completed');
