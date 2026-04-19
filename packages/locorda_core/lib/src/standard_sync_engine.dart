@@ -1063,7 +1063,10 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
 
     controller.onCancel = () async {
       await outerSubscription?.cancel();
-      await innerSubscription?.cancel();
+      // Use unawaited: inner stream cleanup happens asynchronously.
+      // The StreamController-based inner streams handle their own cancel
+      // deterministically via onCancel callbacks.
+      unawaited(innerSubscription?.cancel());
     };
 
     return controller.stream;
@@ -1094,6 +1097,9 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
     return setVersionId != null ? '$timestamp@$setVersionId' : '$timestamp';
   }
 
+  /// Hydrates index entries through sequential phases, using [StreamController]
+  /// with [addStream] for deterministic cancel propagation (avoids Dart's
+  /// broken nested async* generator cancel).
   Stream<HydrationBatch> _doHydrateIndexEntryStream(
     String indexName,
     Set<IriTerm> indexIris,
@@ -1101,103 +1107,117 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
     bool useIndexSetVersionId = false,
     int? cursorIndexSetVersionId,
     required int initialBatchSize,
-  }) async* {
-    int? indexSetVersionId;
-    // Track the last cursor emitted from batch loading
-    int lastEmittedCursor = startCursor;
+  }) {
+    final controller = StreamController<HydrationBatch>();
 
-    _log.info('HydrateIndexEntries[$indexName]: start '
-        '(indexCount=${indexIris.length}, startCursor=$startCursor, '
-        'useIndexSetVersionId=$useIndexSetVersionId, '
-        'cursorIndexSetVersionId=$cursorIndexSetVersionId, '
-        'indices=${indexIris.map((iri) => iri.debug).join(', ')})');
+    Future<void> run() async {
+      int? indexSetVersionId;
+      int lastEmittedCursor = startCursor;
 
-    // If useIndexSetVersionId is true, we need to associate the indexIris with a set version
-    // to track which indices we query against. This also means that the set version
-    // will be included in the actual (string) cursor we emit
-    if (useIndexSetVersionId) {
-      if (indexIris.isEmpty) {
-        _log.warning(
-            'No subscriptions for GroupIndex $indexName, emitting empty stream.');
-        yield (
-          updates: <IdentifiedGraph>[],
-          deletions: <IdentifiedGraph>[],
-          cursor: startCursor.toString()
+      _log.info('HydrateIndexEntries[$indexName]: start '
+          '(indexCount=${indexIris.length}, startCursor=$startCursor, '
+          'useIndexSetVersionId=$useIndexSetVersionId, '
+          'cursorIndexSetVersionId=$cursorIndexSetVersionId, '
+          'indices=${indexIris.map((iri) => iri.debug).join(', ')})');
+
+      if (useIndexSetVersionId) {
+        if (indexIris.isEmpty) {
+          _log.warning(
+              'No subscriptions for GroupIndex $indexName, emitting empty stream.');
+          controller.add((
+            updates: <IdentifiedGraph>[],
+            deletions: <IdentifiedGraph>[],
+            cursor: startCursor.toString()
+          ));
+          return;
+        }
+        var now = _physicalTimestampFactory().millisecondsSinceEpoch;
+        indexSetVersionId = await _storage.ensureIndexSetVersion(
+          indexIris: indexIris,
+          createdAt: now,
         );
-        return;
+
+        final cursorIndexIris = cursorIndexSetVersionId == null
+            ? const <IriTerm>{}
+            : await _storage.getIndexIrisForVersion(cursorIndexSetVersionId);
+
+        final newIndexIris = indexIris.difference(cursorIndexIris);
+
+        _log.info('HydrateIndexEntries[$indexName]: resolved index set version '
+            '(indexSetVersionId=$indexSetVersionId, previousIndexCount=${cursorIndexIris.length}, '
+            'newIndexCount=${newIndexIris.length}, '
+            'newIndices=${newIndexIris.map((iri) => iri.debug).join(', ')})');
+
+        final hasNewIndices = newIndexIris.isNotEmpty;
+
+        // Phase 1a: Load historical data for new indices (0 → startCursor)
+        if (hasNewIndices && startCursor > 0) {
+          _log.info(
+              'Loading historical data for ${newIndexIris.length} new indices up to cursor $startCursor');
+
+          final result = _loadExistingEntriesAsStream(
+            indexName,
+            newIndexIris,
+            indexSetVersionId,
+            fromCursor: 0,
+            toCursor: startCursor,
+            initialBatchSize: initialBatchSize,
+          );
+          await controller.addStream(result.stream);
+          if (!controller.hasListener) return;
+          lastEmittedCursor = await result.lastCursor;
+        }
       }
-      var now = _physicalTimestampFactory().millisecondsSinceEpoch;
-      // Create/get set version for current subscriptions
-      indexSetVersionId = await _storage.ensureIndexSetVersion(
-        indexIris: indexIris,
-        createdAt: now,
+
+      // Phase 1b: Load current data for all subscriptions (from startCursor)
+      final result = _loadExistingEntriesAsStream(
+        indexName,
+        indexIris,
+        indexSetVersionId,
+        fromCursor: lastEmittedCursor,
+        initialBatchSize: initialBatchSize,
       );
+      await controller.addStream(result.stream);
+      if (!controller.hasListener) return;
+      lastEmittedCursor = await result.lastCursor;
 
-      // Determine which index IRIs are new vs. old based on cursor
-      final cursorIndexIris = cursorIndexSetVersionId == null
-          ? const <IriTerm>{}
-          : await _storage.getIndexIrisForVersion(cursorIndexSetVersionId);
-
-      final newIndexIris = indexIris.difference(cursorIndexIris);
-
-      _log.info('HydrateIndexEntries[$indexName]: resolved index set version '
-          '(indexSetVersionId=$indexSetVersionId, previousIndexCount=${cursorIndexIris.length}, '
-          'newIndexCount=${newIndexIris.length}, '
-          'newIndices=${newIndexIris.map((iri) => iri.debug).join(', ')})');
-
-      final hasNewIndices = newIndexIris.isNotEmpty;
-
-      // Phase 1a: Load historical data for new indices (0 → startCursor)
-      if (hasNewIndices && startCursor > 0) {
-        _log.info(
-            'Loading historical data for ${newIndexIris.length} new indices up to cursor $startCursor');
-
-        final result = _loadExistingEntriesAsStream(
-          indexName,
-          newIndexIris,
-          indexSetVersionId,
-          fromCursor: 0,
-          toCursor: startCursor,
-          initialBatchSize: initialBatchSize,
-        );
-        yield* result.stream;
-        lastEmittedCursor = await result.lastCursor;
-      }
+      // Phase 2: Switch to reactive watch for ongoing changes.
+      // Cursor-reset wrapper prevents the Drift bg isolate from re-scanning an
+      // ever-growing window of already-processed entries on every re-execution.
+      await controller.addStream(_withCursorReset(
+        createWatch: (watchCursor) {
+          final ts = watchCursor != null
+              ? int.tryParse(watchCursor.split('@').first) ?? lastEmittedCursor
+              : lastEmittedCursor;
+          return _storage
+              .watchIndexEntries(indexIris: indexIris, cursorTimestamp: ts)
+              .where((entries) => entries.isNotEmpty)
+              .map((entries) {
+            _log.info('HydrateIndexEntries[$indexName]: reactive watch emitted '
+                '(count=${entries.length}, cursorTimestamp=$ts, '
+                'lastUpdatedAt=${entries.last.updatedAt}, '
+                'resources=${entries.map((entry) => entry.resourceIri.debug).join(', ')})');
+            return entries;
+          }).map((entries) => _convertIndexEntriesToBatch(
+                  entries, entries.last.updatedAt, indexSetVersionId));
+        },
+        initialCursor: _formatCursor(lastEmittedCursor, indexSetVersionId),
+      ));
     }
 
-    // Phase 1b: Load current data for all subscriptions (from startCursor)
-    final result = _loadExistingEntriesAsStream(
-      indexName,
-      indexIris,
-      indexSetVersionId,
-      fromCursor: lastEmittedCursor,
-      initialBatchSize: initialBatchSize,
-    );
-    yield* result.stream;
-    lastEmittedCursor = await result.lastCursor;
+    controller.onListen = () {
+      run().catchError((Object e, StackTrace st) {
+        if (controller.hasListener && !controller.isClosed) {
+          controller.addError(e, st);
+        }
+      }).whenComplete(() {
+        if (!controller.isClosed) {
+          controller.close();
+        }
+      });
+    };
 
-    // Phase 2: Switch to reactive watch for ongoing changes.
-    // Cursor-reset wrapper prevents the Drift bg isolate from re-scanning an
-    // ever-growing window of already-processed entries on every re-execution.
-    yield* _withCursorReset(
-      createWatch: (watchCursor) {
-        final ts = watchCursor != null
-            ? int.tryParse(watchCursor.split('@').first) ?? lastEmittedCursor
-            : lastEmittedCursor;
-        return _storage
-            .watchIndexEntries(indexIris: indexIris, cursorTimestamp: ts)
-            .where((entries) => entries.isNotEmpty)
-            .map((entries) {
-          _log.info('HydrateIndexEntries[$indexName]: reactive watch emitted '
-              '(count=${entries.length}, cursorTimestamp=$ts, '
-              'lastUpdatedAt=${entries.last.updatedAt}, '
-              'resources=${entries.map((entry) => entry.resourceIri.debug).join(', ')})');
-          return entries;
-        }).map((entries) => _convertIndexEntriesToBatch(
-                entries, entries.last.updatedAt, indexSetVersionId));
-      },
-      initialCursor: _formatCursor(lastEmittedCursor, indexSetVersionId),
-    );
+    return controller.stream;
   }
 
   /// Streams index entries in batches and returns the last emitted cursor.
@@ -1311,11 +1331,15 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
     );
   }
 
+  /// Hydrates root resources through paginated loading followed by reactive
+  /// watch, using [StreamController] for deterministic cancel propagation.
   Stream<HydrationBatch> _hydrateRootResourceStream({
     required IriTerm typeIri,
     String? cursor,
     int initialBatchSize = 100,
-  }) async* {
+  }) {
+    final controller = StreamController<HydrationBatch>();
+
     HydrationBatch convertResult(
         List<StoredDocument> documents, String? cursor) {
       final (deletions, updates) = documents
@@ -1343,36 +1367,47 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
       return (updates: updates, deletions: deletions, cursor: cursor);
     }
 
-    // Phase 1: Load all existing documents in batches using pagination
-    // This ensures we don't load unbounded amounts of data into memory
-    while (true) {
-      final result = await _storage.getDocumentsModifiedSince(
-        typeIri,
-        cursor,
-        limit: initialBatchSize,
-      );
+    Future<void> run() async {
+      // Phase 1: Load all existing documents in batches using pagination
+      while (true) {
+        final result = await _storage.getDocumentsModifiedSince(
+          typeIri,
+          cursor,
+          limit: initialBatchSize,
+        );
+        if (!controller.hasListener) return;
 
-      // Process each document in the batch
-      yield convertResult(result.documents, result.currentCursor);
+        controller.add(convertResult(result.documents, result.currentCursor));
+        cursor = result.currentCursor;
 
-      cursor = result.currentCursor;
-
-      // If there are no more documents to fetch, we've loaded everything
-      if (!result.hasNext) {
-        break;
+        if (!result.hasNext) break;
       }
+
+      // Phase 2: Switch to reactive watch for ongoing changes.
+      // Cursor-reset wrapper prevents the Drift bg isolate from re-scanning an
+      // ever-growing window of already-processed documents on every re-execution.
+      await controller.addStream(_withCursorReset(
+        createWatch: (watchCursor) => _storage
+            .watchDocumentsModifiedSince(typeIri, watchCursor)
+            .map((result) =>
+                convertResult(result.documents, result.currentCursor)),
+        initialCursor: cursor,
+      ));
     }
 
-    // Phase 2: Switch to reactive watch for ongoing changes.
-    // Cursor-reset wrapper prevents the Drift bg isolate from re-scanning an
-    // ever-growing window of already-processed documents on every re-execution.
-    yield* _withCursorReset(
-      createWatch: (watchCursor) => _storage
-          .watchDocumentsModifiedSince(typeIri, watchCursor)
-          .map((result) =>
-              convertResult(result.documents, result.currentCursor)),
-      initialCursor: cursor,
-    );
+    controller.onListen = () {
+      run().catchError((Object e, StackTrace st) {
+        if (controller.hasListener && !controller.isClosed) {
+          controller.addError(e, st);
+        }
+      }).whenComplete(() {
+        if (!controller.isClosed) {
+          controller.close();
+        }
+      });
+    };
+
+    return controller.stream;
   }
 
   /// Wraps a watch stream with automatic DB-level cursor advancement.
@@ -1392,26 +1427,45 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
   /// reflected immediately. The cancel+resubscribe gap is sub-millisecond and
   /// any changes during the gap are captured by the new subscription's initial
   /// query.
+  ///
+  /// Uses [StreamController] instead of async* for deterministic cancel
+  /// propagation — avoids Dart's broken nested async* generator cancel.
   Stream<HydrationBatch> _withCursorReset({
     required Stream<HydrationBatch> Function(String? cursor) createWatch,
     required String? initialCursor,
     int resetThreshold = 1000,
-  }) async* {
+  }) {
+    final controller = StreamController<HydrationBatch>();
     var currentCursor = initialCursor;
-    while (true) {
+    StreamSubscription<HydrationBatch>? activeSub;
+
+    void startWatch() {
       var accumulated = 0;
-      var resetTriggered = false;
-      await for (final batch in createWatch(currentCursor)) {
+      final sub = createWatch(currentCursor).listen(null);
+      activeSub = sub;
+      sub.onData((batch) {
         if (batch.cursor != null) currentCursor = batch.cursor;
-        yield batch;
+        controller.add(batch);
         accumulated += batch.updates.length + batch.deletions.length;
         if (accumulated >= resetThreshold) {
-          resetTriggered = true;
-          break;
+          unawaited(sub.cancel());
+          startWatch();
         }
-      }
-      if (!resetTriggered) break;
+      });
+      sub.onError((Object e, StackTrace st) => controller.addError(e, st));
+      sub.onDone(() {
+        // Only close if this is still the active subscription
+        // (cursor-reset restarts replace activeSub before cancelling the old one)
+        if (activeSub == sub && !controller.isClosed) {
+          controller.close();
+        }
+      });
     }
+
+    controller.onListen = startWatch;
+    controller.onCancel = () => activeSub?.cancel();
+
+    return controller.stream;
   }
 
   /// Close the sync system and free resources.

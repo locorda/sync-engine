@@ -341,7 +341,15 @@ class InMemoryStorage implements Storage {
           .add(controller);
     }
     await controller.trigger();
-    yield* controller.stream;
+    try {
+      yield* controller.stream;
+    } finally {
+      _watchControllers.remove(controller);
+      for (final typeIri in controller.triggers) {
+        _watchControllersByTrigger[typeIri]?.remove(controller);
+      }
+      await controller.close();
+    }
   }
 
   @override
@@ -472,6 +480,7 @@ class InMemoryStorage implements Storage {
       rootResourceFetchPolicy: rootResourceFetchPolicy,
       createdAt: createdAt,
     );
+    unawaited(_triggerWatchers([groupIndexTemplateIri]));
   }
 
   @override
@@ -720,6 +729,7 @@ class InMemoryStorage implements Storage {
         resourceType: typeIri,
         resourceIri: entry.resourceIri,
         clockHash: entry.clockHash,
+        headerProperties: entry.headerProperties,
         isDeleted: false,
         isRemoteOnly: true,
         updatedAt: 0,

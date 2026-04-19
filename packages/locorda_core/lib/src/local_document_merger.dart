@@ -10,6 +10,7 @@ import 'package:locorda_core/src/mapping/identified_blank_node_builder.dart';
 import 'package:locorda_core/src/mapping/merge_contract.dart';
 import 'package:locorda_core/src/mapping/metadata_generator.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
+import 'package:locorda_core/src/sync/shard_entry_utils.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
@@ -254,11 +255,10 @@ class LocalDocumentMerger {
         // Get CRDT algorithm for this property - but note
         // that in index entries we always use LWW-Register for the user-defined
         // "header" properties.
-        final crdtType = isShardEntry &&
-                predicate != IdxShardEntry.resource &&
-                predicate != IdxShardEntry.crdtClockHash
-            ? _crdtTypeRegistry.getType(Algo.LWW_Register)
-            : _getCrdtAlgorithm(mergeContract, resourceType, predicate);
+        final crdtType =
+            isShardEntry && !isShardEntryStructuralPredicate(predicate)
+                ? _crdtTypeRegistry.getType(Algo.LWW_Register)
+                : _getCrdtAlgorithm(mergeContract, resourceType, predicate);
 
         // Generate initial value metadata
         final metadataGraph = crdtType.localValueChange(

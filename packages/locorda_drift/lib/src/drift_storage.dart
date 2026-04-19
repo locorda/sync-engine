@@ -1315,6 +1315,7 @@ class DriftStorage implements core.Storage {
         .map((e) => (
               resourceIriId: iriIds[e.resourceIri]!,
               clockHash: e.clockHash,
+              headerProperties: _encodeHeaderProperties(e.headerProperties),
             ))
         .toList(growable: false);
 

@@ -689,7 +689,13 @@ class ShardEntry {
   final IriTerm resourceIri;
   final String clockHash;
 
-  const ShardEntry(this.entryIri, this.resourceIri, this.clockHash);
+  /// Header properties extracted from the remote shard entry, re-keyed to
+  /// [resourceIri] as subject. Null when the shard entry carries no header
+  /// properties (e.g. a bare entry with only idx:resource + cm:clockHash).
+  final RdfGraph? headerProperties;
+
+  const ShardEntry(this.entryIri, this.resourceIri, this.clockHash,
+      {this.headerProperties});
 }
 
 /// Result of parsing a fetched shard.

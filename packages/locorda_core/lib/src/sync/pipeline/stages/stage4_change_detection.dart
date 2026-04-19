@@ -190,7 +190,7 @@ Stream<SyncCandidateEvent> _handleParsedShard(
   // Persist remote-only placeholders for entries skipped by onRequest policy.
   // Without this, shard regeneration (Stage 11a) would omit those entries and
   // Stage 11c CRDT-merge would generate tombstones for them.
-  if (!parsed.allResourcesAvailable) {
+  if (effectiveFetchPolicy is! Prefetch) {
     final indexIriMap = await storage.getIndexIrisForShards([shardIri]);
     final indexIri = indexIriMap[shardIri];
     if (indexIri != null) {
@@ -199,7 +199,11 @@ Stream<SyncCandidateEvent> _handleParsedShard(
           if (!localByResource.containsKey(entry.resourceIri) &&
               !_shouldFetchRemoteOnly(effectiveFetchPolicy,
                   remoteEntries[entry.resourceIri]?.filterValues, null))
-            (resourceIri: entry.resourceIri, clockHash: entry.clockHash),
+            (
+              resourceIri: entry.resourceIri,
+              clockHash: entry.clockHash,
+              headerProperties: entry.headerProperties,
+            ),
       ];
       await storage.syncRemoteOnlyShardEntries(
         shardIri: shardIri,

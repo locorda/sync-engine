@@ -307,10 +307,6 @@ void main() {
         await subscription.cancel();
         expect(storage.observedIndexCounts, containsAll([1, 2, 3]));
       },
-      skip:
-          'InMemoryStorage does not emit watchSubscribedGroupIndexIris updates '
-          'for every subscription mutation like DriftStorage; this scenario is '
-          'validated in web runtime logs.',
     );
   });
 }

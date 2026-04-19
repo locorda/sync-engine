@@ -686,7 +686,11 @@ abstract interface class Storage {
 
 /// Lightweight descriptor for a remote shard entry used by
 /// [Storage.syncRemoteOnlyShardEntries].
-typedef RemoteOnlyEntry = ({IriTerm resourceIri, String clockHash});
+typedef RemoteOnlyEntry = ({
+  IriTerm resourceIri,
+  String clockHash,
+  RdfGraph? headerProperties,
+});
 
 /// Sync phase for a single remote × index instance combination.
 enum RemoteSyncPhase {

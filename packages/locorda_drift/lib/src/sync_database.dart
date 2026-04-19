@@ -1257,7 +1257,7 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
     required int shardIriId,
     required int indexIriId,
     required int typeIriId,
-    required List<({int resourceIriId, String clockHash})> entriesToUpsert,
+    required List<({int resourceIriId, String clockHash, Uint8List? headerProperties})> entriesToUpsert,
     required List<int> allCurrentRemoteIriIds,
   }) async {
     await db.transaction(() async {
@@ -1270,9 +1270,10 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
           ' (shard_iri, index_iri_id, resource_iri_id, resource_type_iri_id,'
           '  clock_hash, header_properties, updated_at, our_physical_clock,'
           '  is_deleted, is_remote_only)'
-          ' VALUES (?, ?, ?, ?, ?, NULL, 0, 0, 0, 1)'
+          ' VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 1)'
           ' ON CONFLICT(shard_iri, resource_iri_id) DO UPDATE SET'
           '  clock_hash = excluded.clock_hash,'
+          '  header_properties = excluded.header_properties,'
           '  index_iri_id = excluded.index_iri_id,'
           '  resource_type_iri_id = excluded.resource_type_iri_id'
           ' WHERE is_remote_only = 1',
@@ -1282,6 +1283,7 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
             entry.resourceIriId,
             typeIriId,
             entry.clockHash,
+            entry.headerProperties,
           ],
         );
       }

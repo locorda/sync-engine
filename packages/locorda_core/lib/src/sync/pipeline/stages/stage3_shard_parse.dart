@@ -9,6 +9,7 @@ library;
 
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
+import 'package:locorda_core/src/sync/shard_entry_utils.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:logging/logging.dart';
@@ -77,7 +78,9 @@ ShardResult _parseShardContent(ShardContent content, RdfCore rdfCore) {
         ?.value;
 
     if (resourceIri != null && clockHash != null) {
-      entries.add(ShardEntry(entryIri, resourceIri, clockHash));
+      entries.add(ShardEntry(entryIri, resourceIri, clockHash,
+          headerProperties:
+              extractShardEntryHeaderProperties(graph, entryIri, resourceIri)));
     }
   }
 
