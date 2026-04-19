@@ -4,7 +4,7 @@
 /// from main thread to worker isolate via [WorkerChannel].
 library;
 
-import 'package:solid_auth/worker.dart';
+import 'package:solid_oidc_auth/worker.dart';
 
 /// Message to update authentication credentials in worker.
 ///

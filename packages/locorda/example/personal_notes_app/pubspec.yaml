@@ -18,12 +18,8 @@ dependencies:
   drift: ^2.32.1
   drift_flutter: ^0.3.0
   
-  # Solid AUTH
-  # TODO: Use published version when available
-  solid_auth:
-    git:
-      url: https://github.com/kkalass/solid_auth.git
-      ref: feat/dpop-worker-thread-support
+  # Solid authentication
+  solid_oidc_auth: ^0.2.1
       
   # Locorda Sync packages
   locorda: any

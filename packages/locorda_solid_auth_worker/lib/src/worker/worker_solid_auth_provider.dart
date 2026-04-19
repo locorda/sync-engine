@@ -10,7 +10,7 @@ import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_solid_core/locorda_solid_core.dart';
 import 'package:locorda_worker/worker.dart';
 import 'package:logging/logging.dart';
-import 'package:solid_auth/worker.dart';
+import 'package:solid_oidc_auth/worker.dart';
 
 import '../shared/solid_auth_messages.dart';
 

@@ -6,7 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:locorda_solid_auth/locorda_solid_auth.dart';
-import 'package:solid_auth/solid_auth.dart';
+import 'package:solid_oidc_auth/solid_oidc_auth.dart';
 
 /// Default implementations for [SolidStatusWidget] customization.
 ///
@@ -36,7 +36,7 @@ class SolidStatusDefaults {
   /// This is a factory function that returns a login callback configured
   /// with the provided parameters.
   static Future<bool> Function(BuildContext) modalLogin({
-    required SolidAuth solidAuth,
+    required SolidOidcAuth solidAuth,
     SolidProviderService providerService = const DefaultSolidProviderService(),
     List<String> extraOidcScopes = const [],
   }) {
@@ -65,7 +65,7 @@ class SolidStatusDefaults {
   /// Similar to [modalLogin] but uses fullscreenDialog presentation.
   /// Useful for onboarding flows where login is a primary action.
   static Future<bool> Function(BuildContext) fullscreenLogin({
-    required SolidAuth solidAuth,
+    required SolidOidcAuth solidAuth,
     SolidProviderService providerService = const DefaultSolidProviderService(),
     List<String> extraOidcScopes = const [],
   }) {

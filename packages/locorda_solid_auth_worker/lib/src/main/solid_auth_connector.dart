@@ -4,7 +4,7 @@
 library;
 
 import 'package:locorda_worker/worker_main.dart';
-import 'package:solid_auth/solid_auth.dart';
+import 'package:solid_oidc_auth/solid_oidc_auth.dart';
 
 import 'solid_auth_sender.dart';
 
@@ -54,7 +54,7 @@ class SolidAuthConnector {
   ///
   /// Pass the main thread's [solidAuth] instance. The returned factory will be
   /// called by the worker framework with the [MainHandlerContext].
-  static MainHandlerFactory sender(SolidAuth solidAuth, String id) {
+  static MainHandlerFactory sender(SolidOidcAuth solidAuth, String id) {
     return (MainHandlerContext context) {
       return SolidAuthSender(
         solidAuth: solidAuth,

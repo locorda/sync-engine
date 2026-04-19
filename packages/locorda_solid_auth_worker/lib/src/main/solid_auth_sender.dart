@@ -7,7 +7,7 @@ import 'dart:async';
 
 import 'package:locorda_worker/worker_main.dart';
 import 'package:logging/logging.dart';
-import 'package:solid_auth/solid_auth.dart';
+import 'package:solid_oidc_auth/solid_oidc_auth.dart';
 
 import '../shared/solid_auth_messages.dart';
 
@@ -62,12 +62,12 @@ String _credentialsFingerprint(DpopCredentials? credentials) {
 /// }
 /// ```
 class SolidAuthSender implements MainHandler {
-  final SolidAuth _solidAuth;
+  final SolidOidcAuth _solidAuth;
   final MainHandlerChannel _workerHandle;
   StreamSubscription? _tokenChangedSubscription;
 
   SolidAuthSender({
-    required SolidAuth solidAuth,
+    required SolidOidcAuth solidAuth,
     required MainHandlerChannel workerHandle,
   })  : _solidAuth = solidAuth,
         _workerHandle = workerHandle;
@@ -119,12 +119,9 @@ class SolidAuthSender implements MainHandler {
     _solidAuth.isAuthenticatedNotifier.addListener(_handleAuthStateChange);
     _log.info('Subscribed to auth state changes');
 
-    // TODO: Enable once solid_auth fork exposes onTokenChanged stream
-    // Event-driven proactive refresh - no timers needed
-    // _tokenChangedSubscription = _solidAuth.onTokenChanged?.listen((_) {
-    //   _log.fine('Token changed event - pushing to worker');
-    //   _sendCurrentState();
-    // });
+    // Note: solid_oidc_auth only exposes isAuthenticatedNotifier (login/logout events),
+    // not a token-rotation stream. Proactive push on token refresh is therefore not
+    // possible; the worker must request a refresh explicitly when credentials expire.
   }
 
   /// Handles token refresh request from worker.

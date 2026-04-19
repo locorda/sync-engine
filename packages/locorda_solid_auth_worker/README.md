@@ -29,7 +29,7 @@ The `WorkerSolidAuthProvider` runs in the worker and:
 ### Main Thread Setup
 
 ```dart
-import 'package:solid_auth/solid_auth.dart';
+import 'package:solid_oidc_auth/solid_oidc_auth.dart';
 import 'package:locorda/locorda.dart';
 import 'package:locorda_solid_auth_worker/locorda_solid_auth_worker.dart';
 

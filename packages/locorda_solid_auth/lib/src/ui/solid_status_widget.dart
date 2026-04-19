@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_solid_auth/src/solid_auth_bridge.dart';
 import 'package:locorda_ui/locorda_ui.dart';
-import 'package:solid_auth/solid_auth.dart';
+import 'package:solid_oidc_auth/solid_oidc_auth.dart';
 
 import 'solid_status_defaults.dart';
 
@@ -60,7 +60,7 @@ class SolidStatusState {
 class SolidStatusWidget extends LocordaStatusWidget {
   SolidStatusWidget({
     super.key,
-    required SolidAuth solidAuth,
+    required SolidOidcAuth solidAuth,
     required super.syncManager,
     Future<bool> Function(BuildContext)? onShowLogin,
     super.iconBuilder,

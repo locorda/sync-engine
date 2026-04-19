@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:solid_auth/solid_auth.dart';
+import 'package:solid_oidc_auth/solid_oidc_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/solid_auth_localizations.dart';
@@ -13,8 +13,8 @@ final _log = Logger('SolidLoginScreen');
 /// This widget provides a complete login interface for Solid authentication,
 /// including provider selection and manual WebID entry.
 class SolidLoginScreen extends StatefulWidget {
-  /// The SolidAuth instance to use for authentication.
-  final SolidAuth solidAuth;
+  /// The SolidOidcAuth instance to use for authentication.
+  final SolidOidcAuth solidAuth;
 
   /// Service for managing Solid providers and registration URLs.
   final SolidProviderService providerService;

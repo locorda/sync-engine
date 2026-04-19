@@ -265,6 +265,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.2"
+  dart_jsonwebtoken:
+    dependency: transitive
+    description:
+      name: dart_jsonwebtoken
+      sha256: cb79ed79baa02b4f59a597bf365873cbd83f9bb15273d63f7803802d21717c7d
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.4.0"
   dart_style:
     dependency: transitive
     description:
@@ -690,10 +698,10 @@ packages:
     dependency: transitive
     description:
       name: locorda_rdf_core
-      sha256: "9930658bcf5b8159f353c5b5c9d1b2c23cf7f6d755072496c3ee47751514d856"
+      sha256: ad982245a91ac96da84c1516a23fadfdd017856982bee7958f9c068f943acf90
       url: "https://pub.dev"
     source: hosted
-    version: "0.12.0"
+    version: "0.12.1"
   locorda_rdf_jelly:
     dependency: transitive
     description:
@@ -1243,15 +1251,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  solid_auth:
+  solid_oidc_auth:
     dependency: transitive
     description:
-      path: "."
-      ref: "feat/dpop-worker-thread-support"
-      resolved-ref: abf70db40ee11e44489ec049153968da90b694af
-      url: "https://github.com/kkalass/solid_auth.git"
-    source: git
-    version: "0.2.0-dev.1"
+      name: solid_oidc_auth
+      sha256: ae9557c3d77367421ece386a6a739d416342f8372b748a60c9d65ceeaae40ded
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.1"
   source_gen:
     dependency: transitive
     description:

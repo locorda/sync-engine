@@ -16,13 +16,9 @@ dependencies:
   locorda_core: any
   locorda_worker: any
   locorda_solid_core: any
-# Solid AUTH
-  # TODO: Use published version when available
-  solid_auth:
-    git:
-      url: https://github.com/kkalass/solid_auth.git
-      ref: feat/dpop-worker-thread-support
-  
+
+  # Solid authentication
+  solid_oidc_auth: ^0.2.1
   
   # RDF mapping
   locorda_rdf_core: ^0.12.0

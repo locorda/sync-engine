@@ -8,7 +8,7 @@ import 'package:locorda_solid_auth/locorda_solid_auth.dart';
 import 'package:locorda_solid_auth_worker/locorda_solid_auth_worker.dart';
 import 'package:locorda_solid_core/locorda_solid_core.dart';
 import 'package:locorda_worker/worker_main.dart';
-import 'package:solid_auth/solid_auth.dart';
+import 'package:solid_oidc_auth/solid_oidc_auth.dart';
 import 'package:oidc_core/oidc_core.dart' show OidcStore;
 
 import '../shared/consts.dart';
@@ -41,14 +41,14 @@ import 'solid_config_connector.dart';
 /// The caller is responsible for disposing [solidAuth] when done.
 /// The plugin does not take ownership of the auth instance.
 class SolidMainIntegration implements RemoteIntegration {
-  final SolidAuth _solidAuth;
+  final SolidOidcAuth _solidAuth;
   final SolidProviderService _providerService;
   final SolidConfig _config;
   late final SolidAuthBridge _authBridge;
   final String id;
 
   SolidMainIntegration._({
-    required SolidAuth solidAuth,
+    required SolidOidcAuth solidAuth,
     SolidProviderService? providerService,
     SolidConfig config = const SolidConfig(),
     this.id = solidRemoteHandlerId,
@@ -63,12 +63,12 @@ class SolidMainIntegration implements RemoteIntegration {
     required String appUrlScheme,
     required Uri frontendRedirectUrl,
     SolidConfig config = const SolidConfig(),
-    SolidAuthSettings? settings,
+    SolidOidcAuthSettings? settings,
     SolidProviderService? providerService,
     OidcStore? store,
     String id = solidRemoteHandlerId,
   }) async {
-    final solidAuth = SolidAuth(
+    final solidAuth = SolidOidcAuth(
       oidcClientId: oidcClientId,
       appUrlScheme: appUrlScheme,
       frontendRedirectUrl: frontendRedirectUrl,
@@ -94,7 +94,7 @@ class SolidMainIntegration implements RemoteIntegration {
   @override
   Auth get auth => _authBridge;
 
-  SolidAuth get solidAuth => _solidAuth;
+  SolidOidcAuth get solidAuth => _solidAuth;
 
   @override
   List<MainHandlerFactory> get workerConnectors => [

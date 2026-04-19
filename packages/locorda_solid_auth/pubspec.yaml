@@ -27,13 +27,10 @@ dependencies:
   locorda_core: any
   locorda_solid_core: any
   locorda_ui: any
-  # Solid authentication
-  # TODO: Use published version when available
-  solid_auth:
-    git:
-      url: https://github.com/kkalass/solid_auth.git
-      ref: feat/dpop-worker-thread-support
   url_launcher: ^6.3.1
+
+  # Solid authentication
+  solid_oidc_auth: ^0.2.1
 
 dev_dependencies:
   flutter_test:

@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:locorda_core/locorda_core.dart';
 
 import 'package:logging/logging.dart';
-import 'package:solid_auth/solid_auth.dart';
+import 'package:solid_oidc_auth/solid_oidc_auth.dart';
 import 'package:locorda_solid_core/locorda_solid_core.dart';
 
 final _log = Logger('SolidAuthBridge');
@@ -36,7 +36,7 @@ class AuthValueListenableImpl implements AuthValueListenable {
 /// This class bridges the abstract authentication interface from the core
 /// library with the solid-auth implementation.
 class SolidAuthBridge implements SolidAuthProvider {
-  final SolidAuth _solidAuth;
+  final SolidOidcAuth _solidAuth;
   final AuthValueListenableImpl _isAuthenticatedNotifier;
 
   SolidAuthBridge(this._solidAuth)
