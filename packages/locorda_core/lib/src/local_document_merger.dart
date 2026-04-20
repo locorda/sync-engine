@@ -252,13 +252,8 @@ class LocalDocumentMerger {
         final values =
             subjectTriples.getMultiValueObjectList(subjectTerm, predicate);
 
-        // Get CRDT algorithm for this property - but note
-        // that in index entries we always use LWW-Register for the user-defined
-        // "header" properties.
         final crdtType =
-            isShardEntry && !isShardEntryStructuralPredicate(predicate)
-                ? _crdtTypeRegistry.getType(Algo.LWW_Register)
-                : _getCrdtAlgorithm(mergeContract, resourceType, predicate);
+            _getCrdtType(isShardEntry, predicate, mergeContract, resourceType);
 
         // Generate initial value metadata
         final metadataGraph = crdtType.localValueChange(
@@ -317,6 +312,9 @@ class LocalDocumentMerger {
 
       final resourceType =
           appData.findSingleObject<IriTerm>(subjectTerm, Rdf.type);
+      final isShardEntry = isShard &&
+          newPropertiesByPredicate.contains(IdxShardEntry.resource) &&
+          newPropertiesByPredicate.contains(IdxShardEntry.crdtClockHash);
 
       // Get all predicates from both old and new
       final allPredicates = {
@@ -338,7 +336,7 @@ class LocalDocumentMerger {
 
         // Get CRDT algorithm for this property
         final crdtType =
-            _getCrdtAlgorithm(mergeContract, resourceType, predicate);
+            _getCrdtType(isShardEntry, predicate, mergeContract, resourceType);
 
         // Generate change metadata
         final metadataGraph = crdtType.localValueChange(
@@ -386,6 +384,16 @@ class LocalDocumentMerger {
       triplesToRemove: triplesToRemove,
       propertyChanges: propertyChanges,
     );
+  }
+
+  /// Get CRDT algorithm for this property - but note
+  /// that in index entries we always use LWW-Register for the user-defined
+  /// "header" properties.
+  CrdtType _getCrdtType(bool isShardEntry, RdfPredicate predicate,
+      MergeContract mergeContract, IriTerm? resourceType) {
+    return isShardEntry && !isShardEntryStructuralPredicate(predicate)
+        ? _crdtTypeRegistry.getType(Algo.LWW_Register)
+        : _getCrdtAlgorithm(mergeContract, resourceType, predicate);
   }
 
   CrdtType _getCrdtAlgorithm(MergeContract mergeContract, IriTerm? resourceType,

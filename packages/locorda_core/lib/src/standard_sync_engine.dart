@@ -634,7 +634,6 @@ the streams yourself.''');
       shardDeterminer: shardDeterminer,
       localDocumentMerger: localDocumentMerger,
       hlcService: hlcService,
-      mergeContractLoader: mergeContractLoader,
     );
     final streamingOrchestratorFactory = (
       PipelineRemoteSyncStorage pipelineSupport,
