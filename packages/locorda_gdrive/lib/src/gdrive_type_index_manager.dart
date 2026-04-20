@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:nativewrappers/_internal/vm/lib/ffi_allocation_patch.dart';
 
 import 'package:crypto/crypto.dart';
 import 'package:locorda_core/locorda_core.dart';
