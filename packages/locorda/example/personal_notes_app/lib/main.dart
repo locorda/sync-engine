@@ -76,7 +76,8 @@ Future<Locorda> initializeLocorda() async {
           config: SolidConfig()),
       await GDriveMainIntegration.create(
           config: GDriveConfig(
-              localMirrorConfig: GDriveLocalMirrorConfig(enabled: !kIsWeb))),
+              localMirrorConfig: GDriveLocalMirrorConfig(enabled: !kIsWeb),
+              layout: const SingleFile())),
     ],
 
     // Provide storage - web options are sent to worker via connector
