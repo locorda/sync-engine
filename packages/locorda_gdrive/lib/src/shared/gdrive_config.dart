@@ -21,6 +21,8 @@ enum GDriveFolderMode {
 /// during sync.
 class GDriveLocalMirrorConfig {
   /// Enable the local mirror cache.
+  ///
+  /// Note that enabling this will be ignored if the underlying platform does not support it (e.g., web).
   final bool enabled;
 
   /// Root path for the cache directory.

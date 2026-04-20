@@ -8,7 +8,7 @@
 library;
 
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:locorda/locorda.dart';
@@ -76,7 +76,7 @@ Future<Locorda> initializeLocorda() async {
           config: SolidConfig()),
       await GDriveMainIntegration.create(
           config: GDriveConfig(
-              localMirrorConfig: GDriveLocalMirrorConfig(enabled: true))),
+              localMirrorConfig: GDriveLocalMirrorConfig(enabled: !kIsWeb))),
     ],
 
     // Provide storage - web options are sent to worker via connector

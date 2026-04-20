@@ -15,6 +15,14 @@ import 'gdrive_type_index_manager.dart';
 import 'shared/gdrive_config.dart';
 
 final _log = Logger('GDriveBackend');
+const _isWeb = bool.fromEnvironment('dart.library.js_interop');
+
+bool shouldUseLocalMirror({
+  required bool mirrorEnabled,
+  required bool isWeb,
+}) {
+  return mirrorEnabled && !isWeb;
+}
 
 class GDriveSyncBackend implements RemoteSyncBackend {
   final GDriveApiClient _client;
@@ -418,8 +426,12 @@ class GDriveRemoteStorage implements PipelineRemoteStorage {
     final layout = _config.layout;
     final contentType = layout.contentType;
     final isBinary = _rdfCore.contentTypeInfo(contentType)?.isBinary ?? false;
+    final useMirror = shouldUseLocalMirror(
+      mirrorEnabled: _mirrorConfig.enabled,
+      isWeb: _isWeb,
+    );
 
-    if (_mirrorConfig.enabled) {
+    if (useMirror) {
       final mirror = await GDriveLocalMirror.initialize(
         client: _client,
         typeIndexMappingsProvider: (backend) {
@@ -449,6 +461,11 @@ class GDriveRemoteStorage implements PipelineRemoteStorage {
         rdfCore: _rdfCore,
         storageAccess: _storageAccess,
       );
+    }
+
+    if (_mirrorConfig.enabled && _isWeb) {
+      _log.info(
+          'GDrive local mirror is enabled in config but disabled at runtime on web. Falling back to direct remote sync backend.');
     }
 
     final typeIndexManager = GDriveTypeIndexManager(
