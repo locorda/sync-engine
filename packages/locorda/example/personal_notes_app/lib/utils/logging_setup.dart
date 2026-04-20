@@ -168,9 +168,9 @@ String _indentStackTrace(StackTrace? stackTrace) {
 }
 
 void setupMainLogging() {
-  _setupConsoleLogging(level: Level.ALL, threadName: 'MAIN');
+  _setupConsoleLogging(level: Level.INFO, threadName: 'MAIN');
 }
 
 void setupWorkerLogging() {
-  _setupConsoleLogging(level: Level.ALL, threadName: 'WORKER');
+  _setupConsoleLogging(level: Level.INFO, threadName: 'WORKER');
 }

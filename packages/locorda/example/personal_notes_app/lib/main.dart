@@ -86,9 +86,6 @@ Future<Locorda> initializeLocorda() async {
           sqlite3Wasm: Uri.parse('sqlite3.wasm'),
           driftWorker: Uri.parse('drift_worker.js'),
         ),
-        // Workaround: deduplicate triples on load/save to recover from stored
-        // documents that contain duplicate triples. Revert once root cause is fixed.
-        deduplicateOnLoad: true,
       ),
     ),
   );
