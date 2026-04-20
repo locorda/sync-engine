@@ -1274,7 +1274,9 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
       // updated_at must be set to a real timestamp so watchIndexEntries
       // cursors (which filter on updated_at > lastCursor) can see the entry.
       for (final entry in entriesToUpsert) {
-        await db.customStatement(
+        // Use customUpdate (not customStatement) so Drift notifies
+        // watchIndexEntries watchers when the transaction commits.
+        await db.customUpdate(
           'INSERT INTO index_entries'
           ' (shard_iri, index_iri_id, resource_iri_id, resource_type_iri_id,'
           '  clock_hash, header_properties, updated_at, our_physical_clock,'
@@ -1287,15 +1289,16 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
           '  resource_type_iri_id = excluded.resource_type_iri_id,'
           '  updated_at = excluded.updated_at'
           ' WHERE is_remote_only = 1',
-          [
-            shardIriId,
-            indexIriId,
-            entry.resourceIriId,
-            typeIriId,
-            entry.clockHash,
-            entry.headerProperties,
-            now,
+          variables: [
+            Variable.withInt(shardIriId),
+            Variable.withInt(indexIriId),
+            Variable.withInt(entry.resourceIriId),
+            Variable.withInt(typeIriId),
+            Variable.withString(entry.clockHash),
+            Variable<Uint8List>(entry.headerProperties),
+            Variable.withInt(now),
           ],
+          updates: {db.indexEntries},
         );
       }
 
