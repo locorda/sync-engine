@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:nativewrappers/_internal/vm/lib/ffi_allocation_patch.dart';
 
 import 'package:crypto/crypto.dart';
 import 'package:locorda_core/locorda_core.dart';
@@ -328,7 +329,7 @@ class GDriveTypeIndexManager {
   /// Includes:
   /// - All configured resource types from SyncEngineConfig - this includes framework types like installation and index types
   Set<IriTerm> _collectAllTypes(SyncEngineConfig engineConfig) =>
-      engineConfig.resources.map((r) => r.typeIri).toSet();
+      {...engineConfig.resources.map((r) => r.typeIri), Sync.SyncFile};
 
   /// Add missing type mappings with optimistic locking.
   ///
