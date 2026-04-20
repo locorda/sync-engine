@@ -13,6 +13,14 @@ import 'auth/gdrive_auth_provider.dart';
 
 final _log = Logger('GDriveAuth');
 
+@visibleForTesting
+bool shouldBlockScopeAuthorization({
+  required bool allowUserInteraction,
+  required bool requiresUserInteraction,
+}) {
+  return !allowUserInteraction && requiresUserInteraction;
+}
+
 /// ValueListenable implementation for authentication state.
 class AuthValueListenableImpl implements AuthValueListenable {
   final ValueNotifier<bool> _notifier;
@@ -70,7 +78,6 @@ class GDriveAuth implements GDriveAuthProvider {
 
   void _markUserInteractionRequired(String message) {
     _log.warning(message);
-    _currentUser = null;
     _isAuthenticatedNotifier.value = false;
   }
 
@@ -83,8 +90,10 @@ class GDriveAuth implements GDriveAuthProvider {
       return existing;
     }
 
-    if (_googleSignIn.authorizationRequiresUserInteraction() ||
-        !allowUserInteraction) {
+    if (shouldBlockScopeAuthorization(
+      allowUserInteraction: allowUserInteraction,
+      requiresUserInteraction: _googleSignIn.authorizationRequiresUserInteraction(),
+    )) {
       _markUserInteractionRequired(
         'Authorization required. Show the Google sign-in button.',
       );
@@ -177,7 +186,9 @@ class GDriveAuth implements GDriveAuthProvider {
     if (_currentUser == null) {
       throw StateError('Not authenticated - call authenticate() first');
     }
-    final authorization = await _authorizeScopes(allowUserInteraction: false);
+    final authorization = await _authorizeScopes(
+      allowUserInteraction: kIsWeb,
+    );
     return authorization.accessToken;
   }
 
