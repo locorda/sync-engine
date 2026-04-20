@@ -78,7 +78,8 @@ class _GDriveLoginScreenState extends State<GDriveLoginScreen> {
   }
 
   void _onAuthStateChanged() {
-    if (widget.isAuthenticatedNotifier?.isAuthenticated == true && !_isSignedIn) {
+    if (widget.isAuthenticatedNotifier?.isAuthenticated == true &&
+        !_isSignedIn) {
       setState(() => _isSignedIn = true);
     }
   }
@@ -230,8 +231,8 @@ class _GDriveLoginScreenState extends State<GDriveLoginScreen> {
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Icon(Icons.lock_open),
                         label: Text(l10n.authorizeDriveAccess),
@@ -248,8 +249,8 @@ class _GDriveLoginScreenState extends State<GDriveLoginScreen> {
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Icon(Icons.login),
                         label: Text(l10n.signInWithGoogle),
