@@ -30,13 +30,13 @@ dependencies:
   locorda_dir: any
 
   # We need RdfGraph to be passed through in our models
-  locorda_rdf_core: ^0.12.0
-  locorda_rdf_mapper: ^0.12.0
+  locorda_rdf_core: ^0.12.2
+  locorda_rdf_mapper: ^0.12.2
 
   # RDF Vocabularies we use
   locorda_rdf_terms_schema: ^0.12.0
   locorda_rdf_terms_common: ^0.12.0
-  locorda_rdf_terms_core: ^0.12.0
+  locorda_rdf_terms_core: ^0.12.2
   
   # UI
   flutter_chips_input: ^2.0.0

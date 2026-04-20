@@ -32,8 +32,8 @@ dev_dependencies:
   locorda_dev: any
   
   # Needed by tests to verify RDF output
-  locorda_rdf_core: ^0.12.0
-  locorda_rdf_mapper: ^0.12.0
+  locorda_rdf_core: ^0.12.2
+  locorda_rdf_mapper: ^0.12.2
 
 flutter:
   uses-material-design: true

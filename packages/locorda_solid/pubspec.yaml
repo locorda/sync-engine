@@ -20,7 +20,7 @@ dependencies:
   locorda_solid_auth_worker: any
 
   # RDF
-  locorda_rdf_core: ^0.12.0
+  locorda_rdf_core: ^0.12.2
   
 dev_dependencies:
   flutter_test:
