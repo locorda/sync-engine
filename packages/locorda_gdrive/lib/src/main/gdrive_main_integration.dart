@@ -94,6 +94,8 @@ class GDriveMainIntegration implements RemoteIntegration {
       MaterialPageRoute(
         builder: (_) => GDriveLoginScreen(
           onSignIn: _gdriveAuth.authenticate,
+          isAuthenticatedNotifier: _gdriveAuth.isAuthenticatedNotifier,
+          onAuthorizeScopes: _gdriveAuth.authorizeInteractively,
         ),
       ),
     );

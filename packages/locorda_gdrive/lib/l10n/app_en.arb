@@ -41,5 +41,13 @@
   "dataPrivacyNotice": "Your data will be transferred to and stored on Google servers. The data is stored unencrypted in your Google Drive. We do not have control over what Google does with your data.",
   "@dataPrivacyNotice": {
     "description": "Notice about data privacy and storage on Google servers"
+  },
+  "authorizeDriveAccess": "Authorize Drive Access",
+  "@authorizeDriveAccess": {
+    "description": "Button text for step 2 on web: authorize Google Drive scopes"
+  },
+  "authorizeDriveAccessDescription": "Your Google account is connected. Now authorize access to your Google Drive.",
+  "@authorizeDriveAccessDescription": {
+    "description": "Description shown before the authorize button in step 2 on web"
   }
 }

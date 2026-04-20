@@ -37,4 +37,11 @@ class GDriveLocalizationsDe extends GDriveLocalizations {
   @override
   String get dataPrivacyNotice =>
       'Ihre Daten werden auf Google-Server übertragen und dort gespeichert. Die Daten werden unverschlüsselt in Ihrem Google Drive gespeichert. Wir haben keine Kontrolle darüber, was Google mit Ihren Daten macht.';
+
+  @override
+  String get authorizeDriveAccess => 'Drive-Zugriff autorisieren';
+
+  @override
+  String get authorizeDriveAccessDescription =>
+      'Ihr Google-Konto ist verbunden. Autorisieren Sie jetzt den Zugriff auf Ihr Google Drive.';
 }

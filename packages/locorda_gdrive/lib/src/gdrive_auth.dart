@@ -182,13 +182,42 @@ class GDriveAuth implements GDriveAuthProvider {
   @override
   String? get userId => _currentUser?.id;
 
+  /// Authorizes Google Drive scopes interactively.
+  ///
+  /// Must be called directly from a user gesture (button tap) on web, since
+  /// the underlying GIS SDK requires user interaction to open the consent popup.
+  /// After successful authorization, notifies [isAuthenticatedNotifier] to
+  /// trigger [GDriveAuthSender] to push a fresh token to the worker.
+  ///
+  /// On native platforms, [authenticate] handles the full auth+authorization
+  /// flow, so this method is not needed.
+  Future<bool> authorizeInteractively() async {
+    if (_currentUser == null) {
+      throw StateError('Not authenticated - must sign in first');
+    }
+    try {
+      _log.info('Authorizing Drive scopes interactively');
+      await _authorizeScopes(allowUserInteraction: true);
+      // Scopes are now cached. Ensure isAuthenticatedNotifier is true so
+      // GDriveAuthSender pushes a fresh token to the worker.
+      _isAuthenticatedNotifier.value = true;
+      _log.info('Drive scopes authorized successfully');
+      return true;
+    } catch (e, stackTrace) {
+      _log.severe('Interactive scope authorization failed', e, stackTrace);
+      return false;
+    }
+  }
+
   @override
   Future<String> getAccessToken() async {
     if (_currentUser == null) {
       throw StateError('Not authenticated - call authenticate() first');
     }
+    // Never allow automatic popups: Drive scopes must be authorized explicitly
+    // via authorizeInteractively() from a user gesture on web.
     final authorization = await _authorizeScopes(
-      allowUserInteraction: kIsWeb,
+      allowUserInteraction: false,
     );
     return authorization.accessToken;
   }

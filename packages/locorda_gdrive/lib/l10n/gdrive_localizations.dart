@@ -151,6 +151,18 @@ abstract class GDriveLocalizations {
   /// In en, this message translates to:
   /// **'Your data will be transferred to and stored on Google servers. The data is stored unencrypted in your Google Drive. We do not have control over what Google does with your data.'**
   String get dataPrivacyNotice;
+
+  /// Button text for step 2 on web: authorize Google Drive scopes
+  ///
+  /// In en, this message translates to:
+  /// **'Authorize Drive Access'**
+  String get authorizeDriveAccess;
+
+  /// Description shown before the authorize button in step 2 on web
+  ///
+  /// In en, this message translates to:
+  /// **'Your Google account is connected. Now authorize access to your Google Drive.'**
+  String get authorizeDriveAccessDescription;
 }
 
 class _GDriveLocalizationsDelegate
