@@ -13,6 +13,17 @@ import '../../l10n/locorda_ui_localizations.dart';
 
 final _log = Logger('MultiBackendStatusWidget');
 
+String resolveBackendSheetTitle({
+  required String defaultTitle,
+  required String? activePluginName,
+}) {
+  final name = activePluginName?.trim();
+  if (name == null || name.isEmpty) {
+    return defaultTitle;
+  }
+  return name;
+}
+
 /// Unified status widget for multiple storage backends.
 ///
 /// Displays authentication and sync status in a single icon button suitable
@@ -334,7 +345,10 @@ class _BackendSelectionSheetState extends State<_BackendSelectionSheet> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                l10n.storageBackends,
+                resolveBackendSheetTitle(
+                  defaultTitle: l10n.storageBackends,
+                  activePluginName: activePlugin?.displayName,
+                ),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
