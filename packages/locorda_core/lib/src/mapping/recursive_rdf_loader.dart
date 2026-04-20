@@ -204,12 +204,15 @@ class RecursiveRdfLoader {
     loadedContracts[iri] = graph;
     inProgress.remove(iri);
 
-    // Extract isGovernedBy IRIs from the graph
-    final type = graph.findSingleObject<IriTerm>(iri, Rdf.type);
+    // Extract isGovernedBy IRIs from the graph.
+    // Use inputIri (potentially with fragment) for the type lookup and dependency
+    // extraction, because mapping sources may use explicit fragment subjects
+    // (e.g. <note-v1#>) rather than resolving via <> relative to a base.
+    final type = graph.findSingleObject<IriTerm>(inputIri, Rdf.type);
     final dependencies = <IriTerm>{};
     for (final extractor in extractors) {
       if (extractor.forType() == null || extractor.forType() == type) {
-        final deps = extractor.extractDependencies(iri, graph);
+        final deps = extractor.extractDependencies(inputIri, graph);
         dependencies.addAll(deps.map((iri) => iri.getDocumentIri(iriFactory)));
       }
     }

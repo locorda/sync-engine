@@ -17,6 +17,7 @@ import 'package:locorda_gdrive/locorda_gdrive.dart';
 import 'package:locorda_dir/locorda_dir.dart';
 import 'package:personal_notes_app/init_locorda.g.dart';
 import 'package:personal_notes_app/locorda_worker.manifest.dart';
+import 'package:locorda_rdf_mapper/mapper.dart';
 
 import 'screens/notes_list_screen.dart';
 import 'services/categories_service.dart';
@@ -47,6 +48,8 @@ Future<Locorda> initializeLocorda() async {
   // Setup sync system with worker
   return initLocorda(
     onWorkerSpawn: setupWorkerLogging,
+    rdfMapper:
+        RdfMapper.withDefaultRegistry(settings: RdfMapperSettings.warnOnly()),
 
     // Provide remotes - those must be configured correspondingly in setupWorkerEngine as well
     remotes: [
@@ -78,9 +81,14 @@ Future<Locorda> initializeLocorda() async {
 
     // Provide storage - web options are sent to worker via connector
     storage: DriftMainHandler(
-      web: LocordaDriftWebOptions(
-        sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-        driftWorker: Uri.parse('drift_worker.js'),
+      options: LocordaDriftOptions(
+        web: LocordaDriftWebOptions(
+          sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+          driftWorker: Uri.parse('drift_worker.js'),
+        ),
+        // Workaround: deduplicate triples on load/save to recover from stored
+        // documents that contain duplicate triples. Revert once root cause is fixed.
+        deduplicateOnLoad: true,
       ),
     ),
   );

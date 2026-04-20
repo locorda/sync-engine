@@ -87,3 +87,10 @@ melos:
     release:
       run: melos version --no-git-tag-version && melos publish --dry-run
       description: Preview a full release (version + publish preview).
+
+dependency_overrides:
+  locorda_rdf_mapper:
+    git:
+      url: https://github.com/locorda/rdf
+      ref: main
+      path: packages/locorda_rdf_mapper

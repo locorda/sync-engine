@@ -147,6 +147,7 @@ class ObjectSyncEngine {
     required MapperInitializerFunction mapperInitializer,
     IriTermFactory? iriTermFactory,
     RdfCore? rdfCore,
+    RdfMapper? rdfMapper,
   }) async {
     iriTermFactory ??= IriTerm.validated;
     rdfCore ??= RdfCore.withStandardCodecs();
@@ -158,10 +159,11 @@ class ObjectSyncEngine {
       resourceIriFactory: iriService.createResourceIriMapper,
       resourceRefFactory: iriService.createResourceRefMapper,
       indexItemIriFactory: iriService.createIndexItemIriMapper,
-      baseRdfMapper: RdfMapper(
-          registry: RdfMapperRegistry(),
-          iriTermFactory: iriTermFactory,
-          rdfCore: rdfCore),
+      baseRdfMapper: rdfMapper ??
+          RdfMapper(
+              registry: RdfMapperRegistry(),
+              iriTermFactory: iriTermFactory,
+              rdfCore: rdfCore),
     );
     final mapper = mapperInitializer(mappingContext);
 
@@ -266,6 +268,7 @@ class ObjectSyncEngine {
     required SyncEngineFactory syncEngineFactory,
     IriTermFactory? iriTermFactory,
     RdfCore? rdfCore,
+    RdfMapper? rdfMapper,
     Perflog? perflog,
   }) async {
     perflog ??= Perflog.root();
@@ -279,6 +282,7 @@ class ObjectSyncEngine {
       mapperInitializer: mapperInitializer,
       iriTermFactory: iriTermFactory,
       rdfCore: rdfCore,
+      rdfMapper: rdfMapper,
     );
 
     // Create storage plugin registry if plugins provided

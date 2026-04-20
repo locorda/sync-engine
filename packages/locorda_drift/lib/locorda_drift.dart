@@ -7,6 +7,6 @@
 library locorda_drift;
 
 export 'src/drift_options.dart'
-    show LocordaDriftNativeOptions, LocordaDriftWebOptions;
+    show LocordaDriftNativeOptions, LocordaDriftWebOptions, LocordaDriftOptions;
 export 'src/drift_storage.dart' show DriftStorage;
 export 'src/main/drift_main_handler.dart' show DriftMainHandler;

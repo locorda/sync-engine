@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_mapper/mapper.dart';
 import 'package:locorda_worker/worker_main.dart';
 import 'package:locorda_ui/locorda_ui.dart';
 import 'package:locorda_flutter_core/locorda_flutter_core.dart';
@@ -207,6 +208,7 @@ class Locorda {
     List<MainHandlerFactory> plugins = const [],
     IriTermFactory? iriTermFactory,
     RdfCore? rdfCore,
+    RdfMapper? rdfMapper,
     String? debugName,
     Perflog? perflog,
   }) async {
@@ -219,6 +221,7 @@ class Locorda {
       mapperInitializer: mapperInitializer,
       iriTermFactory: iriTermFactory,
       rdfCore: rdfCore,
+      rdfMapper: rdfMapper,
       perflog: perflog,
       syncEngineFactory: (config) => SyncEngineWithWorker.create(
         jsScript: jsScript,

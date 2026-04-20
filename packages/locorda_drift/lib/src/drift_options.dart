@@ -217,3 +217,43 @@ final class LocordaDriftNativeOptions {
     this.readPool = 0,
   });
 }
+
+/// Unified options for the Drift storage backend.
+///
+/// Use this with [DriftMainHandler] to configure all storage behaviour in one
+/// place. The individual [web] and [native] sub-options are forwarded to their
+/// respective platform code; [deduplicateOnLoad] is a storage-level setting
+/// that is also propagated to the worker isolate.
+///
+/// For convenience, [DriftMainHandler] still accepts the flat [web] and
+/// [native] parameters directly — those are mapped to a [LocordaDriftOptions]
+/// with `deduplicateOnLoad = false` under the hood.
+final class LocordaDriftOptions {
+  /// Web platform configuration. Required on web; omit on native-only apps.
+  final LocordaDriftWebOptions? web;
+
+  /// Native performance tuning. Optional — paths are resolved automatically.
+  final LocordaDriftNativeOptions? native;
+
+  /// Whether to deduplicate RDF triples on every document load and save.
+  ///
+  /// When enabled, every [RdfGraph] decoded from storage is passed through a
+  /// [Set] to remove duplicate triples before processing, and the same
+  /// deduplication is applied on encode. This adds O(n) cost per document
+  /// access but reliably prevents crashes caused by documents that contain
+  /// duplicate triples.
+  ///
+  /// **When to enable:** activate as a migration aid if existing documents in
+  /// your storage may contain duplicate triples (e.g. after a known storage
+  /// bug introduced duplicate entries). Once all affected documents have been
+  /// re-saved with deduplication active, you can set this back to `false`.
+  ///
+  /// Defaults to `false`.
+  final bool deduplicateOnLoad;
+
+  const LocordaDriftOptions({
+    this.web,
+    this.native,
+    this.deduplicateOnLoad = false,
+  });
+}

@@ -27,12 +27,11 @@ class DriftWorkerHandler extends StorageWorkerHandler {
       WorkerHandlerContext context, SyncEngineConfig config) async {
     _log.info('DriftWorkerHandler[$id]: Creating DriftStorage...');
 
-    LocordaDriftWebOptions? webOpts;
-    if (_web) {
-      _log.info('DriftWorkerHandler[$id]: Waiting for web config from main...');
-      webOpts = await DriftConfigConnector.receiveConfig(context, id);
-      _log.info('DriftWorkerHandler[$id]: Web config received: $webOpts');
-    }
+    _log.info('DriftWorkerHandler[$id]: Waiting for settings from main...');
+    final settings = await DriftConfigConnector.receiveConfig(context, id);
+    _log.info('DriftWorkerHandler[$id]: Settings received '
+        '(hasWebOptions: ${settings.webOptions != null}, '
+        'deduplicateOnLoad: ${settings.deduplicateOnLoad})');
 
     LocordaDriftNativeWorkerOptions? nativeOpts;
     if (_native) {
@@ -45,8 +44,9 @@ class DriftWorkerHandler extends StorageWorkerHandler {
     _log.info(
         'DriftWorkerHandler[$id]: All options received, creating DriftStorage...');
     final storage = await DriftStorage.create(
-      web: webOpts,
+      web: _web ? settings.webOptions : null,
       native: nativeOpts,
+      deduplicateOnLoad: settings.deduplicateOnLoad,
       perflog: context.perflog,
     );
     _log.info('DriftWorkerHandler[$id]: DriftStorage created successfully');

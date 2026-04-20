@@ -1,0 +1,42 @@
+@prefix ca: <https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#> .
+@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix mc: <https://w3id.org/solid-crdt-sync/vocab/merge-contract#> .
+@prefix pn: <https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <https://schema.org/> .
+
+<https://locorda.dev/example/personal_notes_app/mappings/note-v1#> a mc:DocumentMapping;
+    rdfs:comment "Defines how personal notes should merge when conflicts occur during sync.";
+    rdfs:label "Personal Note CRDT Document Mapping v1";
+    mc:classMapping (
+        [
+            a mc:ClassMapping ;
+            mc:appliesToClass pn:Comment ;
+            mc:rule [ mc:predicate pn:id ; ca:mergeWith ca:LWW_Register ],
+                [ mc:predicate schema:text ; ca:mergeWith ca:LWW_Register ],
+                [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ]
+        ]
+        [
+            a mc:ClassMapping ;
+            mc:appliesToClass pn:Note ;
+            mc:rule [ mc:predicate pn:id ; ca:mergeWith ca:LWW_Register ],
+                [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ],
+                [ mc:predicate schema:text ; ca:mergeWith ca:LWW_Register ],
+                [ mc:predicate schema:keywords ; ca:mergeWith ca:OR_Set ],
+                [ mc:predicate pn:belongsToCategory ; ca:mergeWith ca:LWW_Register ],
+                [ mc:predicate schema:dateCreated ; ca:mergeWith ca:Immutable ],
+                [ mc:predicate schema:dateModified ; ca:mergeWith ca:LWW_Register ],
+                [ mc:predicate schema:relatedLink ; ca:mergeWith ca:OR_Set ],
+                [ mc:predicate schema:comment ; ca:mergeWith ca:OR_Set ]
+        ]
+        [
+            a mc:ClassMapping ;
+            mc:appliesToClass pn:Weblink ;
+            mc:rule [ mc:predicate schema:url ; ca:mergeWith ca:Immutable ; mc:isIdentifying true ],
+                [ mc:predicate schema:name ; ca:mergeWith ca:LWW_Register ],
+                [ mc:predicate schema:description ; ca:mergeWith ca:LWW_Register ]
+        ]
+    );
+    mc:imports (mappings:core-v1);
+    mc:predicateMapping () .

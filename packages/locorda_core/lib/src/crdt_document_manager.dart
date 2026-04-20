@@ -108,6 +108,53 @@ final _defaultManagedDocumentLevelPredicates = <IriTerm>{
   SyncManagedDocument.hasStatement
 };
 
+/// Removes resource tombstones from [oldFrameworkGraph] for subjects that are
+/// still present in [liveAppSubjects].
+///
+/// During a local save, [appData] is authoritative. A resource tombstone for a
+/// subject that exists in the current app graph is a stale artifact — typically
+/// created by a prior traversal bug — and must be purged before CRDT comparison
+/// or document construction. Carrying it forward would cause it to propagate to
+/// remote peers or trigger spurious deletions during merge.
+///
+/// A resource tombstone is a `sync:hasStatement` node with `rdf:subject` set
+/// but no `rdf:predicate`, distinguishing it from property-level metadata.
+RdfGraph? removeStaleResourceTombstones(
+  IriTerm documentIri,
+  RdfGraph? oldFrameworkGraph,
+  Set<RdfSubject> liveAppSubjects,
+) {
+  if (oldFrameworkGraph == null || liveAppSubjects.isEmpty) {
+    return oldFrameworkGraph;
+  }
+  final staleStatementIris = <IriTerm>[];
+  for (final stmtIri in oldFrameworkGraph.getMultiValueObjects<IriTerm>(
+      documentIri, SyncManagedDocument.hasStatement)) {
+    final stmtSubject = oldFrameworkGraph.findSingleObject<RdfSubject>(
+        stmtIri, RdfStatement.subject);
+    final stmtPredicate = oldFrameworkGraph.findSingleObject<IriTerm>(
+        stmtIri, RdfStatement.predicate);
+    final isTombstone = oldFrameworkGraph
+        .findTriples(subject: stmtIri, predicate: RdfStatement.crdtDeletedAt)
+        .isNotEmpty;
+    if (stmtSubject != null &&
+        stmtPredicate == null &&
+        isTombstone &&
+        liveAppSubjects.contains(stmtSubject)) {
+      staleStatementIris.add(stmtIri);
+    }
+  }
+  if (staleStatementIris.isEmpty) return oldFrameworkGraph;
+
+  final triplesToRemove = <Triple>[];
+  for (final stmtIri in staleStatementIris) {
+    triplesToRemove
+        .add(Triple(documentIri, SyncManagedDocument.hasStatement, stmtIri));
+    triplesToRemove.addAll(oldFrameworkGraph.findTriples(subject: stmtIri));
+  }
+  return oldFrameworkGraph.without(RdfGraph.fromTriples(triplesToRemove));
+}
+
 /// Constructs a complete CRDT-managed document with framework metadata.
 ///
 /// Takes the resource graph and wraps it with all required CRDT framework metadata:
@@ -475,6 +522,7 @@ class CrdtDocumentManager {
         oldDocument == null
             ? (appGraph: null, frameworkGraph: null)
             : splitDocument(oldDocument, documentIri, mergeContract);
+
     return (
       oldAppData: oldAppData,
       oldFrameworkGraph: oldFrameworkGraph,
@@ -605,9 +653,16 @@ class CrdtDocumentManager {
               documentIri, SyncManagedDocument.crdtCreatedAt) ??
           LiteralTermExtensions.dateTime(updatedAtTimestamp);
 
+      // During a local save appData is authoritative: purge resource tombstones
+      // for subjects that are still live. Applying this before _constructCrdtDocument
+      // AND generateMetadata(isFrameworkData) ensures both consumers see a
+      // consistent view and prevents tombstone-of-tombstone artifacts.
+      final effectiveOldFrameworkGraph = removeStaleResourceTombstones(
+          documentIri, oldFrameworkGraph, appData.subjects);
+
       final documentTriples = _constructCrdtDocument(
         documentIri,
-        oldFrameworkGraph,
+        effectiveOldFrameworkGraph,
         crdtMetadata.statements,
         governedByFiles,
         resourceIri,
@@ -625,8 +680,8 @@ class CrdtDocumentManager {
       ) = _localDocumentMerger.generateMetadata(
         documentIri,
         frameworkGraph,
-        oldFrameworkGraph,
-        oldFrameworkGraph,
+        effectiveOldFrameworkGraph,
+        effectiveOldFrameworkGraph,
         mergeContract,
         clock,
         appDataTypeIri: type,
@@ -640,7 +695,27 @@ class CrdtDocumentManager {
       crdtMetadata.triplesToRemove.forEach(documentTriples.remove);
       frameworkMetadata.triplesToRemove.forEach(documentTriples.remove);
 
+      // DEBUG: assert no resourceIri-subject triples snuck in before appData
+      final _preAppDataResourceTriples =
+          documentTriples.where((t) => t.subject == resourceIri).toList();
+      assert(
+        _preAppDataResourceTriples.isEmpty,
+        'BUG: documentTriples already contains ${_preAppDataResourceTriples.length} '
+        'resourceIri-subject triples BEFORE appData.addAll: \n${turtle.encode(RdfGraph.fromTriples(documentTriples))}\n\nOld Framework Graph:\n${turtle.encode(oldFrameworkGraph ?? RdfGraph())}\n\nApp Data:\n${turtle.encode(appData)}',
+      );
+
       documentTriples.addAll(appData.triples);
+
+      // DEBUG: assert appData.triples has no duplicates for resourceIri-subject triples
+      final _appResourceTriples =
+          appData.triples.where((t) => t.subject == resourceIri).toList();
+      final _appResourceTriplesDeduped = _appResourceTriples.toSet().toList();
+      assert(
+        _appResourceTriples.length == _appResourceTriplesDeduped.length,
+        'BUG: appData.triples contains ${_appResourceTriples.length - _appResourceTriplesDeduped.length} '
+        'duplicate resourceIri-subject triples: '
+        '${_appResourceTriples.where((t) => _appResourceTriples.where((t2) => t2 == t).length > 1).toSet()}',
+      );
 
       crdtDocument = RdfGraph.fromTriples(documentTriples);
 

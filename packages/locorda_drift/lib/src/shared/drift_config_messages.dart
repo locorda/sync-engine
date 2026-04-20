@@ -3,33 +3,45 @@ library;
 
 import '../drift_options.dart';
 
-/// Message to send Drift web options from main thread to worker.
-class DriftWebOptionsMessage {
-  final LocordaDriftWebOptions? options;
+/// Message to transfer Drift storage settings from main thread to worker.
+///
+/// Carries both the web platform configuration and storage-level settings
+/// (such as [deduplicateOnLoad]) so the worker can initialise [DriftStorage]
+/// with the same parameters the app developer configured on the main thread.
+class DriftSettingsMessage {
+  final LocordaDriftWebOptions? webOptions;
+  final bool deduplicateOnLoad;
 
-  DriftWebOptionsMessage({required this.options});
+  DriftSettingsMessage({
+    required this.webOptions,
+    required this.deduplicateOnLoad,
+  });
 
   Map<String, dynamic> toJson() => {
-        'type': 'DriftWebOptionsMessage',
-        'hasOptions': options != null,
-        if (options != null) ...{
-          'sqlite3Wasm': options!.sqlite3Wasm.toString(),
-          'driftWorker': options!.driftWorker.toString(),
+        'type': 'DriftSettingsMessage',
+        'hasWebOptions': webOptions != null,
+        if (webOptions != null) ...{
+          'sqlite3Wasm': webOptions!.sqlite3Wasm.toString(),
+          'driftWorker': webOptions!.driftWorker.toString(),
         },
+        'deduplicateOnLoad': deduplicateOnLoad,
       };
 
-  static DriftWebOptionsMessage fromJson(Map<String, dynamic> json) {
-    final hasOptions = json['hasOptions'] == true;
-    if (!hasOptions) {
-      return DriftWebOptionsMessage(options: null);
+  static DriftSettingsMessage fromJson(Map<String, dynamic> json) {
+    final hasWebOptions = json['hasWebOptions'] == true;
+    final deduplicateOnLoad = json['deduplicateOnLoad'] as bool? ?? false;
+
+    LocordaDriftWebOptions? webOptions;
+    if (hasWebOptions) {
+      webOptions = LocordaDriftWebOptions(
+        sqlite3Wasm: Uri.parse(json['sqlite3Wasm'] as String),
+        driftWorker: Uri.parse(json['driftWorker'] as String),
+      );
     }
-    final sqlite3Wasm = Uri.parse(json['sqlite3Wasm'] as String);
-    final driftWorker = Uri.parse(json['driftWorker'] as String);
-    return DriftWebOptionsMessage(
-      options: LocordaDriftWebOptions(
-        sqlite3Wasm: sqlite3Wasm,
-        driftWorker: driftWorker,
-      ),
+
+    return DriftSettingsMessage(
+      webOptions: webOptions,
+      deduplicateOnLoad: deduplicateOnLoad,
     );
   }
 }

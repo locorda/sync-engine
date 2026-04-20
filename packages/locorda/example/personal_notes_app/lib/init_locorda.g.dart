@@ -19,6 +19,7 @@ import 'package:locorda_flutter/locorda_flutter.dart';
 import 'package:locorda_flutter_core/src/integration.dart' as integration;
 import 'package:locorda_rdf_core/core.dart' as core;
 import 'package:locorda_rdf_core/src/graph/rdf_term.dart' as rdf_term;
+import 'package:locorda_rdf_mapper/mapper.dart' as mapper;
 import 'package:locorda_worker/src/main/main_handler.dart' as main_handler;
 import 'package:locorda_worker/src/main/storage_main_handler.dart' as smh;
 import 'worker_generated.g.dart' as wrk;
@@ -30,6 +31,7 @@ Future<Locorda> initLocorda({
   List<main_handler.MainHandlerFactory> plugins = const [],
   rdf_term.IriTermFactory? iriTermFactory,
   core.RdfCore? rdfCore,
+  mapper.RdfMapper? rdfMapper,
   String? debugName,
   pb.Perflog? perflog,
 }) async => Locorda.create(
@@ -48,6 +50,7 @@ Future<Locorda> initLocorda({
   plugins: plugins,
   iriTermFactory: iriTermFactory,
   rdfCore: rdfCore,
+  rdfMapper: rdfMapper,
   debugName: debugName,
   perflog: perflog,
 );

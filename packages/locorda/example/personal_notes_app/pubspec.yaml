@@ -31,6 +31,7 @@ dependencies:
 
   # We need RdfGraph to be passed through in our models
   locorda_rdf_core: ^0.12.0
+  locorda_rdf_mapper: ^0.12.0
 
   # RDF Vocabularies we use
   locorda_rdf_terms_schema: ^0.12.0
@@ -59,9 +60,6 @@ dev_dependencies:
   build_runner: ^2.4.0
   drift_dev: ^2.31.0
   locorda_dev: any
-
-  # Needed by tests to verify RDF output
-  locorda_rdf_mapper: ^0.12.0
 
   # Documentation
   excerpter:

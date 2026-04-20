@@ -16,6 +16,20 @@ import 'sync_database.dart';
 import 'sync_database_impl_flutter.dart'
     if (dart.library.html) 'sync_database_impl_web.dart';
 
+class _RdfDeduplicatingCodec extends Codec<RdfGraph, RdfGraph> {
+  @override
+  final Converter<RdfGraph, RdfGraph> decoder = _RdfDeduplicatingConverter();
+
+  @override
+  final Converter<RdfGraph, RdfGraph> encoder = _RdfDeduplicatingConverter();
+}
+
+class _RdfDeduplicatingConverter extends Converter<RdfGraph, RdfGraph> {
+  @override
+  RdfGraph convert(RdfGraph graph) =>
+      RdfGraph.fromTriples(graph.triples.toSet().toList());
+}
+
 /// Drift-based implementation of the Storage interface.
 ///
 /// Provides cross-platform SQLite storage for RDF documents, CRDT metadata,
@@ -28,7 +42,7 @@ class DriftStorage implements core.Storage {
   final IndexDao indexDao;
   final RemoteSyncStateDao remoteSyncStateDao;
   final SyncDatabase _database;
-  final RdfBinaryGraphCodec _codec;
+  final Codec<RdfGraph, Uint8List> _codec;
   final IriTermFactory _iriTermFactory;
   final core.Perflog _perflog;
   final LRUCache<String, int> _iriIdCache;
@@ -49,6 +63,7 @@ class DriftStorage implements core.Storage {
     required SyncDatabase database,
     required core.Perflog perflog,
     IriTermFactory iriTermFactory = IriTerm.validated,
+    bool deduplicateOnLoad = false,
   })  : _database = database,
         _iriTermFactory = iriTermFactory,
         _perflog = perflog.create('Storage', 'DriftStorage'),
@@ -56,7 +71,10 @@ class DriftStorage implements core.Storage {
         _idIriCache = LRUCache<int, IriTerm>(maxCacheSize: _iriIdCacheSize),
         _shardIriIdCache =
             LRUCache<String, int>(maxCacheSize: _shardIriIdCacheSize),
-        _codec = JellyGraphCodec(/*iriTermFactory: iriTermFactory*/);
+        _codec = deduplicateOnLoad
+            ? _RdfDeduplicatingCodec()
+                .fuse(JellyGraphCodec(/*iriTermFactory: iriTermFactory*/))
+            : JellyGraphCodec(/*iriTermFactory: iriTermFactory*/);
 
   /// Create DriftStorage with automatic platform detection.
   ///
@@ -78,6 +96,7 @@ class DriftStorage implements core.Storage {
     LocordaDriftNativeWorkerOptions? native,
     required core.Perflog perflog,
     IriTermFactory iriTermFactory = IriTerm.validated,
+    bool deduplicateOnLoad = false,
   }) async {
     final database = await SyncDatabaseImpl.create(web: web, native: native);
 
@@ -88,7 +107,8 @@ class DriftStorage implements core.Storage {
         remoteSyncStateDao: database.remoteSyncStateDao,
         database: database,
         perflog: perflog,
-        iriTermFactory: iriTermFactory);
+        iriTermFactory: iriTermFactory,
+        deduplicateOnLoad: deduplicateOnLoad);
   }
 
   /// Create DriftStorage with custom database instance (for testing)
@@ -96,6 +116,7 @@ class DriftStorage implements core.Storage {
     SyncDatabase database, {
     core.Perflog perflog = core.Perflog.disabled,
     IriTermFactory iriTermFactory = IriTerm.validated,
+    bool deduplicateOnLoad = false,
   }) {
     return DriftStorage._(
       documentDao: database.syncDocumentDao,
@@ -105,6 +126,7 @@ class DriftStorage implements core.Storage {
       database: database,
       perflog: perflog,
       iriTermFactory: iriTermFactory,
+      deduplicateOnLoad: deduplicateOnLoad,
     );
   }
 

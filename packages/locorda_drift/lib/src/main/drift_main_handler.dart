@@ -21,14 +21,20 @@ import 'drift_native_options_connector.dart';
 /// ```dart
 /// final syncEngine = await Locorda.createWithWorker(
 ///   storageHandler: DriftMainHandler(
-///     web: LocordaDriftWebOptions(
-///       sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-///       driftWorker: Uri.parse('drift_worker.js'),
+///     options: LocordaDriftOptions(
+///       web: LocordaDriftWebOptions(
+///         sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+///         driftWorker: Uri.parse('drift_worker.js'),
+///       ),
 ///     ),
 ///   ),
 ///   // ...
 /// );
 /// ```
+///
+/// The flat [web] and [native] parameters are a convenience shorthand and
+/// are equivalent to wrapping them in a [LocordaDriftOptions] with default
+/// storage settings (`deduplicateOnLoad = false`).
 ///
 /// ## Native path resolution
 ///
@@ -38,13 +44,13 @@ import 'drift_native_options_connector.dart';
 /// majority of apps. The [native] parameter is therefore optional and only
 /// needed for performance tuning (see [LocordaDriftNativeOptions]).
 ///
-/// ## Web configuration — [web]
+/// ## Web configuration — [web] / [LocordaDriftOptions.web]
 ///
 /// Required on web platforms. Provides the URIs to the compiled
 /// `sqlite3.wasm` module and the Drift web worker script. Omit on
 /// native-only apps.
 ///
-/// ## Native performance tuning — [native]
+/// ## Native performance tuning — [native] / [LocordaDriftOptions.native]
 ///
 /// Optional. Pass a [LocordaDriftNativeOptions] to enable WAL journal mode
 /// and/or a read connection pool for large sync workloads. Both settings are
@@ -74,31 +80,36 @@ import 'drift_native_options_connector.dart';
 class DriftMainHandler extends StorageMainHandler {
   @override
   final String id;
-  final LocordaDriftWebOptions? _webOptions;
-  final LocordaDriftNativeOptions? _nativeOptions;
+  final LocordaDriftOptions _options;
 
+  /// Creates a [DriftMainHandler] with a unified [LocordaDriftOptions] object.
+  ///
+  /// The flat [web] and [native] parameters are a convenience shorthand;
+  /// they are mapped to [LocordaDriftOptions] with `deduplicateOnLoad = false`.
+  /// Use [options] directly when you need to configure [LocordaDriftOptions.deduplicateOnLoad]
+  /// or any future storage-level setting.
   DriftMainHandler({
     this.id = driftStorageHandlerId,
 
-    /// Web platform configuration. Required on web; omit on native-only apps.
+    /// Full options object. Takes precedence over the flat [web] and [native] params.
+    LocordaDriftOptions? options,
+
+    /// Web platform configuration. Convenience shorthand for [LocordaDriftOptions.web].
     LocordaDriftWebOptions? web,
 
-    /// Native performance tuning. Optional — paths are resolved automatically.
-    /// Set `readPool: 2` for large sync workloads (>50 shards); leaves
-    /// `readPool = 0` (default) for small datasets to avoid 3-isolate overhead.
+    /// Native performance tuning. Convenience shorthand for [LocordaDriftOptions.native].
     LocordaDriftNativeOptions? native,
-  })  : _webOptions = web,
-        _nativeOptions = native;
+  }) : _options = options ?? LocordaDriftOptions(web: web, native: native);
 
   @override
   List<MainHandlerFactory> create() {
     return [
       DriftNativeOptionsConnector.sender(
         id: id,
-        enableWal: _nativeOptions?.enableWal ?? false,
-        readPool: _nativeOptions?.readPool ?? 0,
+        enableWal: _options.native?.enableWal ?? false,
+        readPool: _options.native?.readPool ?? 0,
       ),
-      DriftConfigConnector.sender(_webOptions, id),
+      DriftConfigConnector.sender(_options, id),
     ];
   }
 }

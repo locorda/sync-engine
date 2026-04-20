@@ -5,7 +5,11 @@ export 'package:locorda_flutter_core/locorda_flutter_core.dart'
     show LocordaGraph;
 export 'package:locorda_flutter/locorda_flutter.dart' show Locorda;
 export 'package:locorda_drift/locorda_drift.dart'
-    show DriftMainHandler, LocordaDriftWebOptions, LocordaDriftNativeOptions;
+    show
+        DriftMainHandler,
+        LocordaDriftWebOptions,
+        LocordaDriftNativeOptions,
+        LocordaDriftOptions;
 export 'package:locorda_objects/locorda_objects.dart'
     show
         CrdtIndexConfig,

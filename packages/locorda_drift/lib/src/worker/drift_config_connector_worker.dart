@@ -1,15 +1,15 @@
-/// Worker-side API for Drift web configuration connector (Pure Dart).
+/// Worker-side API for Drift configuration connector (Pure Dart).
 library;
 
 import 'package:locorda_worker/worker.dart';
 
-import '../drift_options.dart';
+import '../shared/drift_config_messages.dart';
 import 'worker_drift_config_receiver.dart';
 
-/// Worker-side config connector for Drift web options.
+/// Worker-side config connector for Drift storage settings.
 class DriftConfigConnector {
-  /// Receives Drift web options from the main thread.
-  static Future<LocordaDriftWebOptions?> receiveConfig(
+  /// Receives Drift storage settings from the main thread.
+  static Future<DriftSettingsMessage> receiveConfig(
       WorkerHandlerContext context, String id,
       {Duration timeout = const Duration(seconds: 2)}) {
     final receiver = WorkerDriftConfigReceiver(
