@@ -1257,25 +1257,35 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
     required int shardIriId,
     required int indexIriId,
     required int typeIriId,
-    required List<({int resourceIriId, String clockHash, Uint8List? headerProperties})> entriesToUpsert,
+    required List<
+            ({
+              int resourceIriId,
+              String clockHash,
+              Uint8List? headerProperties
+            })>
+        entriesToUpsert,
     required List<int> allCurrentRemoteIriIds,
   }) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
     await db.transaction(() async {
-      // Upsert: insert new rows as remote-only, or update clock_hash for
-      // existing remote-only rows. Skip rows with is_remote_only = 0 to
-      // protect genuinely local entries.
+      // Upsert: insert new rows as remote-only, or update clock_hash and
+      // updated_at for existing remote-only rows. Skip rows with
+      // is_remote_only = 0 to protect genuinely local entries.
+      // updated_at must be set to a real timestamp so watchIndexEntries
+      // cursors (which filter on updated_at > lastCursor) can see the entry.
       for (final entry in entriesToUpsert) {
         await db.customStatement(
           'INSERT INTO index_entries'
           ' (shard_iri, index_iri_id, resource_iri_id, resource_type_iri_id,'
           '  clock_hash, header_properties, updated_at, our_physical_clock,'
           '  is_deleted, is_remote_only)'
-          ' VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 1)'
+          ' VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 1)'
           ' ON CONFLICT(shard_iri, resource_iri_id) DO UPDATE SET'
           '  clock_hash = excluded.clock_hash,'
           '  header_properties = excluded.header_properties,'
           '  index_iri_id = excluded.index_iri_id,'
-          '  resource_type_iri_id = excluded.resource_type_iri_id'
+          '  resource_type_iri_id = excluded.resource_type_iri_id,'
+          '  updated_at = excluded.updated_at'
           ' WHERE is_remote_only = 1',
           [
             shardIriId,
@@ -1284,6 +1294,7 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
             typeIriId,
             entry.clockHash,
             entry.headerProperties,
+            now,
           ],
         );
       }
