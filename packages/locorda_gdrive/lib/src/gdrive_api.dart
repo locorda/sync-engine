@@ -13,6 +13,15 @@ import 'auth/gdrive_auth_provider.dart';
 
 final _clientLog = Logger('GDriveClient');
 
+void throwAuthExceptionIfUnauthorized(Object error) {
+  if (error is drive.DetailedApiRequestError && error.status == 401) {
+    throw AuthException(
+      'Google Drive authentication failed. Please sign in again.',
+      cause: error,
+    );
+  }
+}
+
 /// In-memory mapping from Drive IDs to human-readable paths.
 ///
 /// Used to improve performance logs by showing paths instead of opaque IDs.
@@ -379,10 +388,7 @@ class GDriveClient implements GDriveApiClient {
     if (e is drive.DetailedApiRequestError && e.status == 401) {
       _clientLog.warning(
           'Authentication failed (401) - OAuth authorization may have been revoked');
-      throw AuthException(
-        'Google Drive authentication failed. Please sign in again.',
-        cause: e,
-      );
+      throwAuthExceptionIfUnauthorized(e);
     }
   }
 
@@ -929,32 +935,39 @@ class GDriveClient implements GDriveApiClient {
     final byId = <String, _DriveNode>{};
 
     String? pageToken;
-    do {
-      final fileList = await _driveApi.list(
-        spaces: spaces,
-        q: 'trashed=false',
-        pageSize: 1000,
-        pageToken: pageToken,
-        $fields:
-            'nextPageToken, files(id, name, mimeType, parents, md5Checksum, headRevisionId, version)',
-      );
-
-      for (final file in fileList.files ?? <drive.File>[]) {
-        final id = file.id ?? '';
-        final name = file.name ?? '';
-        if (id.isEmpty || name.isEmpty) continue;
-        byId[id] = _DriveNode(
-          id: id,
-          name: name,
-          parents: file.parents ?? const [],
-          isFolder: file.mimeType == 'application/vnd.google-apps.folder',
-          md5Checksum: file.md5Checksum,
-          headRevisionId: file.headRevisionId,
-          version: file.version?.toString(),
+    try {
+      do {
+        final fileList = await _driveApi.list(
+          spaces: spaces,
+          q: 'trashed=false',
+          pageSize: 1000,
+          pageToken: pageToken,
+          $fields:
+              'nextPageToken, files(id, name, mimeType, parents, md5Checksum, headRevisionId, version)',
         );
-      }
-      pageToken = fileList.nextPageToken;
-    } while (pageToken != null && pageToken.isNotEmpty);
+
+        for (final file in fileList.files ?? <drive.File>[]) {
+          final id = file.id ?? '';
+          final name = file.name ?? '';
+          if (id.isEmpty || name.isEmpty) continue;
+          byId[id] = _DriveNode(
+            id: id,
+            name: name,
+            parents: file.parents ?? const [],
+            isFolder: file.mimeType == 'application/vnd.google-apps.folder',
+            md5Checksum: file.md5Checksum,
+            headRevisionId: file.headRevisionId,
+            version: file.version?.toString(),
+          );
+        }
+        pageToken = fileList.nextPageToken;
+      } while (pageToken != null && pageToken.isNotEmpty);
+    } on drive.DetailedApiRequestError catch (e, stackTrace) {
+      handleGDriveAuthError(e);
+      _clientLog.severe('API error listing appDataFolder files', e, stackTrace);
+      throw GDriveClientException(
+          'Failed to list appDataFolder files: ${e.status} ${e.message}');
+    }
 
     String buildPath(_DriveNode node) {
       final segments = <String>[node.name];
@@ -990,33 +1003,41 @@ class GDriveClient implements GDriveApiClient {
     String? pageToken;
     final prefix = task.prefix;
 
-    do {
-      final query = "'${task.folderId}' in parents and trashed=false";
-      final fileList = await _driveApi.list(
-        q: query,
-        spaces: spaces,
-        pageSize: 1000,
-        pageToken: pageToken,
-        $fields:
-            'nextPageToken, files(id, name, mimeType, md5Checksum, headRevisionId, version)',
-      );
+    try {
+      do {
+        final query = "'${task.folderId}' in parents and trashed=false";
+        final fileList = await _driveApi.list(
+          q: query,
+          spaces: spaces,
+          pageSize: 1000,
+          pageToken: pageToken,
+          $fields:
+              'nextPageToken, files(id, name, mimeType, md5Checksum, headRevisionId, version)',
+        );
 
-      for (final file in fileList.files ?? <drive.File>[]) {
-        final name = file.name ?? '';
-        if (name.isEmpty) continue;
-        final filePath = prefix.isEmpty ? name : path.join(prefix, name);
-        final isFolder = file.mimeType == 'application/vnd.google-apps.folder';
-        entries.add(GDriveListedEntry(
-          fileId: file.id ?? '',
-          path: filePath,
-          isFolder: isFolder,
-          md5Checksum: file.md5Checksum,
-          headRevisionId: file.headRevisionId,
-          version: file.version?.toString(),
-        ));
-      }
-      pageToken = fileList.nextPageToken;
-    } while (pageToken != null && pageToken.isNotEmpty);
+        for (final file in fileList.files ?? <drive.File>[]) {
+          final name = file.name ?? '';
+          if (name.isEmpty) continue;
+          final filePath = prefix.isEmpty ? name : path.join(prefix, name);
+          final isFolder = file.mimeType == 'application/vnd.google-apps.folder';
+          entries.add(GDriveListedEntry(
+            fileId: file.id ?? '',
+            path: filePath,
+            isFolder: isFolder,
+            md5Checksum: file.md5Checksum,
+            headRevisionId: file.headRevisionId,
+            version: file.version?.toString(),
+          ));
+        }
+        pageToken = fileList.nextPageToken;
+      } while (pageToken != null && pageToken.isNotEmpty);
+    } on drive.DetailedApiRequestError catch (e, stackTrace) {
+      handleGDriveAuthError(e);
+      _clientLog.severe(
+          'API error listing folder ${task.folderId}', e, stackTrace);
+      throw GDriveClientException(
+          'Failed to list folder ${task.folderId}: ${e.status} ${e.message}');
+    }
 
     return entries;
   }

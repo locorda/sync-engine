@@ -92,7 +92,8 @@ class GDriveAuth implements GDriveAuthProvider {
 
     if (shouldBlockScopeAuthorization(
       allowUserInteraction: allowUserInteraction,
-      requiresUserInteraction: _googleSignIn.authorizationRequiresUserInteraction(),
+      requiresUserInteraction:
+          _googleSignIn.authorizationRequiresUserInteraction(),
     )) {
       _markUserInteractionRequired(
         'Authorization required. Show the Google sign-in button.',
