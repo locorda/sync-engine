@@ -392,14 +392,38 @@ class RemoteDocumentMerger {
         .map((t) => t.object)
         .whereType<RdfSubject>()
         .toSet();
-    final orphanedStatementTriples = referencedStatementIris
-        .difference(coveredStatementIris)
-        .expand((stmtIri) => <Triple>{
-              ...localGraph.findTriples(subject: stmtIri),
-              ...remoteGraph.findTriples(subject: stmtIri),
-            });
+    final uncoveredIris =
+        referencedStatementIris.difference(coveredStatementIris);
+    final orphanedStatementTriples = <Triple>[];
+    final irrecoverableStatementIris = <RdfSubject>{};
+    for (final stmtIri in uncoveredIris) {
+      final detailTriples = <Triple>{
+        ...localGraph.findTriples(subject: stmtIri),
+        ...remoteGraph.findTriples(subject: stmtIri),
+      };
+      if (detailTriples.any((t) => t.predicate == RdfStatement.subject)) {
+        // Recoverable: detail triples exist in at least one side
+        orphanedStatementTriples.addAll(detailTriples);
+      } else {
+        // Irrecoverable: neither side has the rdf:subject detail triple.
+        // Self-heal by dropping the dangling hasStatement reference.
+        irrecoverableStatementIris.add(stmtIri);
+        _log.severe('Self-healing: removing orphaned statement reference '
+            '${stmtIri.debug} from document ${documentIri.debug} '
+            '(detail triples missing on both sides)');
+      }
+    }
 
-    final mergedGraph = preliminaryGraph.withTriples([
+    // Remove dangling hasStatement references from the preliminary triples
+    // so they don't persist across sync cycles.
+    if (irrecoverableStatementIris.isNotEmpty) {
+      allTriples.removeWhere((t) =>
+          t.subject == documentIri &&
+          t.predicate == SyncManagedDocument.hasStatement &&
+          irrecoverableStatementIris.contains(t.object));
+    }
+
+    final mergedGraph = RdfGraph.fromTriples(allTriples).withTriples([
       Triple(documentIri, SyncManagedDocument.crdtClockHash,
           LiteralTerm(mergedClock.hash)),
       ...identifiedBlankNodeTriples,
