@@ -636,6 +636,131 @@ void main() {
         expect(row.createdAt, firstCreatedAt);
         expect(row.itemFetchPolicy, 'prefetch');
       });
+
+      // Regression: both local-change queries must exclude is_remote_only = 1
+      // entries. After the syncRemoteOnlyShardEntries updated_at fix (which
+      // writes updated_at = now instead of 0), remote-only rows were
+      // incorrectly returned by these queries, causing Stage7c crashes.
+      group('local change detection excludes remote-only entries', () {
+        const sinceTimestamp = 1000;
+
+        late Map<String, int> iriIds;
+
+        setUp(() async {
+          iriIds = await database.syncDocumentDao.getOrCreateIriIdsBatch({
+            'https://example.com/shard/1',
+            'https://example.com/index/1',
+            'https://example.com/Type',
+            'https://example.com/res/local',
+            'https://example.com/res/remote-only',
+          });
+        });
+
+        Future<void> insertEntry({
+          required String resourceIriKey,
+          required bool isRemoteOnly,
+        }) async {
+          await indexDao.saveIndexEntry(
+            shardIriId: iriIds['https://example.com/shard/1']!,
+            indexIriId: iriIds['https://example.com/index/1']!,
+            resourceIriId: iriIds[resourceIriKey]!,
+            resourceTypeIriId: iriIds['https://example.com/Type']!,
+            clockHash: isRemoteOnly ? 'remote-hash' : 'local-hash',
+            isDeleted: false,
+            isRemoteOnly: isRemoteOnly,
+            // Simulates syncRemoteOnlyShardEntries writing updated_at = now
+            updatedAt: sinceTimestamp + 1,
+            ourPhysicalClock: isRemoteOnly ? 0 : 42,
+          );
+        }
+
+        group('getShardsWithLocalChangesSince', () {
+          testWidgets('excludes shard when only remote-only entry changed',
+              (tester) async {
+            await insertEntry(
+                resourceIriKey: 'https://example.com/res/remote-only',
+                isRemoteOnly: true);
+
+            final shards = await indexDao
+                .getShardsWithLocalChangesSince(sinceTimestamp, limit: 20);
+
+            expect(shards, isEmpty);
+          });
+
+          testWidgets('includes shard when local entry changed',
+              (tester) async {
+            await insertEntry(
+                resourceIriKey: 'https://example.com/res/local',
+                isRemoteOnly: false);
+
+            final shards = await indexDao
+                .getShardsWithLocalChangesSince(sinceTimestamp, limit: 20);
+
+            expect(shards, contains('https://example.com/shard/1'));
+          });
+
+          testWidgets(
+              'includes shard when both local and remote-only entries changed',
+              (tester) async {
+            await insertEntry(
+                resourceIriKey: 'https://example.com/res/local',
+                isRemoteOnly: false);
+            await insertEntry(
+                resourceIriKey: 'https://example.com/res/remote-only',
+                isRemoteOnly: true);
+
+            final shards = await indexDao
+                .getShardsWithLocalChangesSince(sinceTimestamp, limit: 20);
+
+            expect(shards, contains('https://example.com/shard/1'));
+          });
+        });
+
+        group('getLocallyChangedEntriesForShard', () {
+          testWidgets('excludes remote-only entry with recent updatedAt',
+              (tester) async {
+            await insertEntry(
+                resourceIriKey: 'https://example.com/res/remote-only',
+                isRemoteOnly: true);
+
+            final entries = await indexDao.getLocallyChangedEntriesForShard(
+                iriIds['https://example.com/shard/1']!, sinceTimestamp);
+
+            expect(entries, isEmpty);
+          });
+
+          testWidgets('includes local entry with recent updatedAt',
+              (tester) async {
+            await insertEntry(
+                resourceIriKey: 'https://example.com/res/local',
+                isRemoteOnly: false);
+
+            final entries = await indexDao.getLocallyChangedEntriesForShard(
+                iriIds['https://example.com/shard/1']!, sinceTimestamp);
+
+            expect(entries, hasLength(1));
+            expect(entries.first.resourceIriId,
+                equals(iriIds['https://example.com/res/local']));
+          });
+
+          testWidgets('excludes remote-only entry when mixed with local entry',
+              (tester) async {
+            await insertEntry(
+                resourceIriKey: 'https://example.com/res/local',
+                isRemoteOnly: false);
+            await insertEntry(
+                resourceIriKey: 'https://example.com/res/remote-only',
+                isRemoteOnly: true);
+
+            final entries = await indexDao.getLocallyChangedEntriesForShard(
+                iriIds['https://example.com/shard/1']!, sinceTimestamp);
+
+            expect(entries, hasLength(1));
+            expect(entries.first.resourceIriId,
+                equals(iriIds['https://example.com/res/local']));
+          });
+        });
+      });
     });
   });
 }

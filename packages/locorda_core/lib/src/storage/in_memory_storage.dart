@@ -660,6 +660,7 @@ class InMemoryStorage implements Storage {
         .where((entry) =>
             entry.shardIri == shardIri &&
             !entry.isDeleted &&
+            !entry.isRemoteOnly &&
             entry.updatedAt > sinceTimestamp)
         .map((entry) => IndexEntryWithIri(
               resourceIri: entry.resourceIri,
@@ -679,7 +680,8 @@ class InMemoryStorage implements Storage {
     final result = <IriTerm>{};
     for (final e in _indexEntries.values) {
       // Include deleted entries: local deletions must also trigger shard reprocessing.
-      if (e.updatedAt > sinceTimestamp) {
+      // Exclude remote-only entries: they carry no local changes.
+      if (!e.isRemoteOnly && e.updatedAt > sinceTimestamp) {
         result.add(e.shardIri);
         if (result.length > limit) return null;
       }

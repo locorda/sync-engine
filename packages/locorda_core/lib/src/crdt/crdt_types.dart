@@ -156,6 +156,11 @@ class SubjectMetadataStatement extends MetadataStatementKey {
 
   @override
   int get hashCode => subject.hashCode;
+
+  @override
+  String toString() {
+    return 'SubjectMetadataStatement(subject: ${subject.debug})';
+  }
 }
 
 class SubjectPredicateMetadataStatement extends MetadataStatementKey {
@@ -174,6 +179,11 @@ class SubjectPredicateMetadataStatement extends MetadataStatementKey {
 
   @override
   int get hashCode => subject.hashCode ^ predicate.hashCode;
+
+  @override
+  String toString() {
+    return 'SubjectPredicateMetadataStatement(subject: ${subject.debug}, predicate: ${predicate.debug})';
+  }
 }
 
 class TripleMetadataStatement extends MetadataStatementKey {
@@ -195,6 +205,11 @@ class TripleMetadataStatement extends MetadataStatementKey {
 
   @override
   int get hashCode => subject.hashCode ^ predicate.hashCode ^ object.hashCode;
+
+  @override
+  String toString() {
+    return 'TripleMetadataStatement(subject: ${subject.debug}, predicate: ${predicate.debug}, object: ${object.debug})';
+  }
 }
 
 /// Results from merging all subjects and their properties.
@@ -1078,7 +1093,7 @@ enum MergeObjectState {
       // happen when a shard entry is removed and re-added before the
       // tombstone is cleaned up. Treat as present (add-wins semantics).
       _log.warning('Subject exists but has stale tombstone metadata '
-          '— treating as present (add-wins)');
+          '— treating as present (add-wins) ${statement?.key}');
       return MergeObjectState.present;
     }
     if (exists) {

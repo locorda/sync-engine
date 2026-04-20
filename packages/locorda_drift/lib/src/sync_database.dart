@@ -1353,6 +1353,7 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
           ..where((e) =>
               e.shardIri.equals(shardIriId) &
               e.isDeleted.equals(false) &
+              e.isRemoteOnly.equals(false) &
               e.updatedAt.isBiggerThanValue(sinceTimestamp)))
         .get();
   }
@@ -1369,7 +1370,8 @@ class IndexDao extends DatabaseAccessor<SyncDatabase>
       'SELECT DISTINCT s.iri FROM index_entries e '
       'INNER JOIN sync_iris s ON s.id = e.shard_iri '
       // Include deleted entries: local deletions must also trigger shard reprocessing.
-      'WHERE e.updated_at > ? '
+      // Exclude remote-only entries: they carry no local changes.
+      'WHERE e.updated_at > ? AND e.is_remote_only = 0 '
       'LIMIT ?',
       variables: [
         Variable.withInt(sinceTimestamp),

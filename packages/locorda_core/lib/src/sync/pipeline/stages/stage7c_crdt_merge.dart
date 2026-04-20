@@ -88,6 +88,14 @@ List<pipeline.MergeResult> _merge(
 
       case SyncDirection.remoteShardUnchanged:
       case SyncDirection.notInRemoteShard:
+        if (d.localGraph == null) {
+          // Actually, this should not happen because those
+          // remote resources should not be processed if we don't have
+          // them locally and don't have remote data, but lets be defensive here and log a warning instead of crashing.
+          _log.warning(
+              '${d.effectiveDirection} but no local graph for ${d.resourceIri.debug}');
+          return const [];
+        }
         mergedGraph = d.localGraph!;
 
       case SyncDirection.conflictCandidate:
@@ -102,7 +110,7 @@ List<pipeline.MergeResult> _merge(
       case SyncDirection.shardGone:
         if (d.localGraph == null) {
           _log.warning(
-              'shardGone but no local graph for ${d.resourceIri.debug}');
+              '${d.effectiveDirection} but no local graph for ${d.resourceIri.debug}');
           return const [];
         }
         mergedGraph = d.localGraph!;
