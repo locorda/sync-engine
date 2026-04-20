@@ -1019,7 +1019,8 @@ class GDriveClient implements GDriveApiClient {
           final name = file.name ?? '';
           if (name.isEmpty) continue;
           final filePath = prefix.isEmpty ? name : path.join(prefix, name);
-          final isFolder = file.mimeType == 'application/vnd.google-apps.folder';
+          final isFolder =
+              file.mimeType == 'application/vnd.google-apps.folder';
           entries.add(GDriveListedEntry(
             fileId: file.id ?? '',
             path: filePath,
