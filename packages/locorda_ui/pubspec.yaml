@@ -1,10 +1,9 @@
 name: locorda_ui
 description: Locorda UI - User interface components for locorda
 version: 0.5.0
-homepage: https://locorda.dev/
+homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/locorda
 issue_tracker: https://github.com/locorda/locorda/issues
-publisher: locorda.dev
 resolution: workspace
 
 environment:

@@ -2,10 +2,9 @@ name: locorda_gdrive
 description: Locorda Google Drive - Google Drive backend and authentication for locorda
 version: 0.5.0
 resolution: workspace
-homepage: https://locorda.dev/
+homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/locorda
 issue_tracker: https://github.com/locorda/locorda/issues
-publisher: locorda.dev
 
 topics:
   - google-drive
@@ -30,6 +29,7 @@ dependencies:
   path: ^1.9.1
   
   # Locorda dependencies
+  rxdart: ^0.28.0
   locorda_core: ^0.5.0
   locorda_ui: ^0.5.0
   locorda_worker: ^0.5.0

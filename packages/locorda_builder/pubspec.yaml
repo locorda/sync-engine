@@ -1,7 +1,9 @@
 name: locorda_builder
 description: Build-time transformations for Locorda - web worker compilation, asset copying, and future CRDT code generation
 version: 0.5.0
-publisher: locorda.dev
+homepage: https://locorda.dev/sync-engine/
+repository: https://github.com/locorda/sync-engine
+issue_tracker: https://github.com/locorda/sync-engine/issues
 resolution: workspace
 
 environment:

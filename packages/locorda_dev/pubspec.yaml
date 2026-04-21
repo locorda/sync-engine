@@ -3,8 +3,10 @@ description: >
   Unified dev_dependency for all Locorda build-time tools.
   Applies locorda builders (web worker, mapping bootstrap, RDF mapper) via build_runner.
 version: 0.5.0
+homepage: https://locorda.dev/sync-engine/
+repository: https://github.com/locorda/sync-engine
+issue_tracker: https://github.com/locorda/sync-engine/issues
 resolution: workspace
-publisher: locorda.dev
 
 environment:
   sdk: ^3.6.0

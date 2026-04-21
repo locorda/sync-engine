@@ -1,7 +1,9 @@
 name: locorda_solid
 description: Locorda Solid - Sync offline-first apps using your user's remote storage
 version: 0.5.0
-publisher: locorda.dev
+homepage: https://locorda.dev/sync-engine/
+repository: https://github.com/locorda/sync-engine
+issue_tracker: https://github.com/locorda/sync-engine/issues
 resolution: workspace
 
 environment:
@@ -17,6 +19,14 @@ dependencies:
   locorda_solid_auth: ^0.5.0
   locorda_worker: ^0.5.0
   locorda_solid_auth_worker: ^0.5.0
+
+  # Solid authentication
+  solid_oidc_auth: ^0.2.1
+  oidc_core: ^0.16.1
+
+  # HTTP
+  http: ^1.1.0
+  logging: ^1.3.0
 
   # RDF
   locorda_rdf_core: ^0.12.2
