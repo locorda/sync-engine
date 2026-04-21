@@ -1,7 +1,6 @@
 name: locorda_flutter_core
 description: Locorda Flutter Core - Sync offline-first apps using your user's remote storage
 version: 0.1.0-dev
-publish_to: none
 publisher: locorda.dev
 resolution: workspace
 

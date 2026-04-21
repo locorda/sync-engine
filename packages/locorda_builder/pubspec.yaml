@@ -2,7 +2,6 @@ name: locorda_builder
 description: Build-time transformations for Locorda - web worker compilation, asset copying, and future CRDT code generation
 version: 0.1.0-dev
 publisher: locorda.dev
-publish_to: none
 resolution: workspace
 
 environment:

@@ -1,7 +1,6 @@
 name: locorda_init_generator
 description: Code generator for Locorda convenience wrapper (initLocorda)
 version: 0.0.1
-publish_to: none
 resolution: workspace
 
 environment:

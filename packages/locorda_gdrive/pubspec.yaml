@@ -5,7 +5,6 @@ resolution: workspace
 homepage: https://locorda.dev/
 repository: https://github.com/locorda/locorda
 issue_tracker: https://github.com/locorda/locorda/issues
-publish_to: none
 publisher: locorda.dev
 
 topics:

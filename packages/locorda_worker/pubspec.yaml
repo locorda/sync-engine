@@ -2,7 +2,6 @@ name: locorda_worker
 description: Worker infrastructure for Locorda - Platform-agnostic isolate/worker architecture for offloading heavy operations (CRDT, DB, HTTP) to separate thread.
 version: 0.1.0-dev
 resolution: workspace
-publish_to: none
 publisher: locorda.dev
 homepage: https://github.com/locorda/locorda
 

@@ -4,7 +4,6 @@ version: 0.1.0-dev
 homepage: https://locorda.dev/
 repository: https://github.com/locorda/locorda
 issue_tracker: https://github.com/locorda/locorda/issues
-publish_to: none
 publisher: locorda.dev
 resolution: workspace
 

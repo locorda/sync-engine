@@ -4,7 +4,6 @@ description: >
   Applies locorda builders (web worker, mapping bootstrap, RDF mapper) via build_runner.
 version: 0.1.0-dev
 resolution: workspace
-publish_to: none
 publisher: locorda.dev
 
 environment:
