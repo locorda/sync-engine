@@ -92,6 +92,6 @@ ShardResult _parseShardContent(ShardContent content, RdfCore rdfCore) {
     entries,
     decoded,
     content.newEtag,
-    allResourcesAvailable: content.allResourcesAvailable,
+    preloadedResourceDocIris: content.preloadedResourceDocIris,
   );
 }

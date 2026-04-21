@@ -144,15 +144,13 @@ Stream<SyncCandidateEvent> _handleParsedShard(
   }
   final sw = perf?.start('S04.ChangeDetect');
 
-  // Determine effective fetch policy
-  final effectiveFetchPolicy = parsed.allResourcesAvailable
-      ? RootResourceFetchPolicy.prefetch
-      : parsed.fetchPolicy;
+  final fetchPolicy = parsed.fetchPolicy;
 
-  // Extract filter predicate if PrefetchFiltered
-  final filterPredicate = effectiveFetchPolicy is PrefetchFiltered
-      ? effectiveFetchPolicy.filterPredicate
-      : null;
+  // Extract filter predicate if PrefetchFiltered.
+  // When preloadedResourceDocIris is set, availability overrides fetch policy,
+  // but filterPredicate is still used to extract header values for the entry map.
+  final filterPredicate =
+      fetchPolicy is PrefetchFiltered ? fetchPolicy.filterPredicate : null;
 
   // Build remote entry map from parsed entries + shard graph for filter values
   final remoteEntries = _buildRemoteEntryMap(parsed, filterPredicate);
@@ -183,22 +181,31 @@ Stream<SyncCandidateEvent> _handleParsedShard(
       remoteClockHash: remote?.clockHash,
       localFilterValues: local?.filterValues,
       remoteFilterValues: remote?.filterValues,
-      fetchPolicy: effectiveFetchPolicy,
+      fetchPolicy: fetchPolicy,
+      preloadedResourceDocIris: parsed.preloadedResourceDocIris,
     ));
   }
 
-  // Persist remote-only placeholders for entries skipped by onRequest policy.
+  // Persist remote-only placeholders for entries skipped by fetch policy.
   // Without this, shard regeneration (Stage 11a) would omit those entries and
   // Stage 11c CRDT-merge would generate tombstones for them.
-  if (effectiveFetchPolicy is! Prefetch) {
+  // Skip only when everything is guaranteed to be fetched: fetchPolicy is
+  // Prefetch AND no preloaded set restricts availability.
+  final allResourcesFetched =
+      fetchPolicy is Prefetch && parsed.preloadedResourceDocIris == null;
+  if (!allResourcesFetched) {
     final indexIriMap = await storage.getIndexIrisForShards([shardIri]);
     final indexIri = indexIriMap[shardIri];
     if (indexIri != null) {
       final entriesToUpsert = [
         for (final entry in parsed.entries)
           if (!localByResource.containsKey(entry.resourceIri) &&
-              !_shouldFetchRemoteOnly(effectiveFetchPolicy,
-                  remoteEntries[entry.resourceIri]?.filterValues, null))
+              !_shouldFetchRemoteOnly(
+                  entry.resourceIri,
+                  fetchPolicy,
+                  parsed.preloadedResourceDocIris,
+                  remoteEntries[entry.resourceIri]?.filterValues,
+                  null))
             (
               resourceIri: entry.resourceIri,
               clockHash: entry.clockHash,
@@ -391,6 +398,7 @@ SyncCandidate? _classify({
   required Set<RdfObject>? localFilterValues,
   required Set<RdfObject>? remoteFilterValues,
   required RootResourceFetchPolicy? fetchPolicy,
+  required Set<IriTerm>? preloadedResourceDocIris,
 }) {
   final existsLocally = localClockHash != null;
   final existsRemotely = remoteClockHash != null;
@@ -410,9 +418,9 @@ SyncCandidate? _classify({
   }
 
   if (existsRemotely && !existsLocally) {
-    // New from remote — apply fetch policy
-    if (!_shouldFetchRemoteOnly(
-        fetchPolicy, remoteFilterValues, localFilterValues)) {
+    // New from remote — apply fetch policy (or preloaded set if available)
+    if (!_shouldFetchRemoteOnly(resourceIri, fetchPolicy,
+        preloadedResourceDocIris, remoteFilterValues, localFilterValues)) {
       _log.fine(
           'Skipping remoteOnly ${resourceIri.debug} (fetch policy: $fetchPolicy)');
       return null;
@@ -439,17 +447,27 @@ SyncCandidate? _classify({
   return null; // should not happen
 }
 
-/// Whether a remoteOnly resource should be fetched, based on fetch policy.
+/// Whether a remoteOnly resource should be fetched.
+///
+/// When [preloadedResourceDocIris] is non-null, the backend owns the decision:
+/// only resources whose document IRI is in the set were cached and will be
+/// processed — fetch policy is ignored. This replaces the former boolean
+/// `allResourcesAvailable` flag with a precise, per-resource answer.
+///
+/// When [preloadedResourceDocIris] is null, normal [fetchPolicy] semantics apply.
 bool _shouldFetchRemoteOnly(
+  IriTerm resourceIri,
   RootResourceFetchPolicy? fetchPolicy,
+  Set<IriTerm>? preloadedResourceDocIris,
   Set<RdfObject>? remoteFilterValues,
   Set<RdfObject>? localFilterValues,
 ) {
-  if (fetchPolicy == null) {
-    // Backend-injected shard with allResourcesAvailable — always fetch.
-    return true;
+  if (preloadedResourceDocIris != null) {
+    return preloadedResourceDocIris.contains(resourceIri.getDocumentIri());
   }
   return switch (fetchPolicy) {
+    null =>
+      true, // backend-injected shard — shouldn't occur without preloaded set
     Prefetch() => true,
     OnRequest() => false,
     PrefetchFiltered() => _matchesPrefetchFilter(

@@ -256,7 +256,7 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
       event.typeIri,
       DecodedGraphSource(shardGraph),
       clockHash ?? _downloadedEtag!,
-      allResourcesAvailable: true,
+      preloadedResourceDocIris: resourceCache.keys.toSet(),
     );
   }
 
@@ -342,7 +342,7 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
         typeIri,
         DecodedGraphSource(graph),
         shardClockHash ?? _downloadedEtag!,
-        allResourcesAvailable: true,
+        preloadedResourceDocIris: resourceCache.keys.toSet(),
       );
     }
   }

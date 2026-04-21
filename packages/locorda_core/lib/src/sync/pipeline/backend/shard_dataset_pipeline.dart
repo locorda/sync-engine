@@ -155,7 +155,7 @@ class ShardDatasetRemoteSyncStorage implements PipelineRemoteSyncStorage {
                       event.typeIri,
                       DecodedGraphSource(dataset.defaultGraph),
                       etag,
-                      allResourcesAvailable: true,
+                      preloadedResourceDocIris: resourceCache.keys.toSet(),
                     );
                   } catch (e, st) {
                     _log.warning(

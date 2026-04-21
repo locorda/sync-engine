@@ -585,7 +585,7 @@ class ShardContent extends FetchedShard {
   final IriStorageId? shardStorageId;
 
   /// Fetch policy for resources in this shard's index.
-  /// Null for backend-injected shards (where [allResourcesAvailable] is true).
+  /// Null for backend-injected shards that always provide [preloadedResourceDocIris].
   final RootResourceFetchPolicy? fetchPolicy;
 
   /// Resource type IRI. Null for backend-injected shards.
@@ -594,10 +594,16 @@ class ShardContent extends FetchedShard {
   final RdfGraphSource source;
   final String newEtag;
 
-  /// When `true`, the backend has pre-fetched ALL resource graphs for this
-  /// shard (e.g., from a dataset file). Core overrides fetch policy and
-  /// processes all entries.
-  final bool allResourcesAvailable;
+  /// The set of resource document IRIs that the backend has pre-fetched into
+  /// its Stage 6 cache (e.g., extracted named graphs from a TriG dataset).
+  ///
+  /// Non-null means the backend owns the availability decision: a resource
+  /// is processed iff its document IRI is in this set — the fetch policy is
+  /// irrelevant. This is more precise than the former boolean
+  /// `allResourcesAvailable`, which falsely implied every entry was cached.
+  ///
+  /// Null means normal per-resource HTTP GET semantics apply.
+  final Set<IriTerm>? preloadedResourceDocIris;
 
   const ShardContent(
     this.shardIri,
@@ -606,7 +612,7 @@ class ShardContent extends FetchedShard {
     this.typeIri,
     this.source,
     this.newEtag, {
-    this.allResourcesAvailable = false,
+    this.preloadedResourceDocIris,
   });
 
   ShardContent copyWith({
@@ -621,7 +627,7 @@ class ShardContent extends FetchedShard {
         typeIri ?? this.typeIri,
         source ?? this.source,
         newEtag,
-        allResourcesAvailable: allResourcesAvailable,
+        preloadedResourceDocIris: preloadedResourceDocIris,
       );
 }
 
@@ -709,7 +715,7 @@ class ParsedShard extends ShardResult {
   final IriStorageId shardStorageId;
 
   /// Fetch policy for resources in this shard's index.
-  /// Null for backend-injected shards (where [allResourcesAvailable] is true).
+  /// Null for backend-injected shards that always provide [preloadedResourceDocIris].
   final RootResourceFetchPolicy? fetchPolicy;
 
   /// Resource type IRI. Null for backend-injected shards.
@@ -718,7 +724,10 @@ class ParsedShard extends ShardResult {
   final List<ShardEntry> entries;
   final DecodedGraphSource decodedGraph;
   final String newEtag;
-  final bool allResourcesAvailable;
+
+  /// See [ShardContent.preloadedResourceDocIris] — propagated unchanged from
+  /// Stage 2 through Stage 3 for Stage 4 to consume.
+  final Set<IriTerm>? preloadedResourceDocIris;
 
   const ParsedShard(
     this.shardIri,
@@ -728,7 +737,7 @@ class ParsedShard extends ShardResult {
     this.entries,
     this.decodedGraph,
     this.newEtag, {
-    this.allResourcesAvailable = false,
+    this.preloadedResourceDocIris,
   });
 }
 
