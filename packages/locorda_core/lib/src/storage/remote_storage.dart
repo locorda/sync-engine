@@ -427,6 +427,8 @@ class PipelineIriTranslatingRemoteSyncStorage
               typeIri: e.typeIri != null ? _toInternal(e.typeIri!) : null,
               source: _translateSource(
                   e.source, _iriTranslator.translateGraphToInternal),
+              preloadedResourceDocIris:
+                  e.preloadedResourceDocIris?.map(_toInternal).toSet(),
             ),
           ShardNotModified() => e.copyWith(
               shardIri: _toInternal(e.shardIri),

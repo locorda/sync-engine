@@ -619,6 +619,8 @@ class ShardContent extends FetchedShard {
     IriTerm? shardIri,
     IriTerm? typeIri,
     RdfGraphSource? source,
+    Set<IriTerm>? preloadedResourceDocIris,
+    String? newEtag,
   }) =>
       ShardContent(
         shardIri ?? this.shardIri,
@@ -626,8 +628,9 @@ class ShardContent extends FetchedShard {
         fetchPolicy,
         typeIri ?? this.typeIri,
         source ?? this.source,
-        newEtag,
-        preloadedResourceDocIris: preloadedResourceDocIris,
+        newEtag ?? this.newEtag,
+        preloadedResourceDocIris:
+            preloadedResourceDocIris ?? this.preloadedResourceDocIris,
       );
 }
 
@@ -645,10 +648,11 @@ class ShardNotModified extends FetchedShard {
       this.shardIri, this.shardStorageId, this.fetchPolicy, this.typeIri,
       {this.storedEtag});
 
-  ShardNotModified copyWith({IriTerm? shardIri, IriTerm? typeIri}) =>
+  ShardNotModified copyWith(
+          {IriTerm? shardIri, IriTerm? typeIri, String? storedEtag}) =>
       ShardNotModified(shardIri ?? this.shardIri, shardStorageId, fetchPolicy,
           typeIri ?? this.typeIri,
-          storedEtag: storedEtag);
+          storedEtag: storedEtag ?? this.storedEtag);
 }
 
 /// HTTP 404/410: shard removed.
