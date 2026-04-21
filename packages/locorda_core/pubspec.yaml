@@ -3,8 +3,8 @@ description: Locorda Core - Platform-agnostic CRDT synchronization engine
 version: 0.5.0
 resolution: workspace
 homepage: https://locorda.dev/sync-engine/
-repository: https://github.com/locorda/locorda
-issue_tracker: https://github.com/locorda/locorda/issues
+repository: https://github.com/locorda/sync-engine
+issue_tracker: https://github.com/locorda/sync-engine/issues
 documentation: https://locorda.dev/
 
 topics:

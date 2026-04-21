@@ -3,8 +3,8 @@ description: Locorda Drift - SQLite storage implementation for locorda_core
 version: 0.5.0
 resolution: workspace
 homepage: https://locorda.dev/sync-engine/
-repository: https://github.com/locorda/locorda
-issue_tracker: https://github.com/locorda/locorda/issues
+repository: https://github.com/locorda/sync-engine
+issue_tracker: https://github.com/locorda/sync-engine/issues
 
 topics:
   - solid

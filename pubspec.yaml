@@ -2,8 +2,8 @@ name: locorda_workspace
 description: Workspace for the locorda monorepo
 version: 0.1.0-dev
 homepage: https://locorda.dev/sync-engine/
-repository: https://github.com/locorda/locorda
-issue_tracker: https://github.com/locorda/locorda/issues
+repository: https://github.com/locorda/sync-engine
+issue_tracker: https://github.com/locorda/sync-engine/issues
 documentation: https://locorda.dev/
 
 environment:

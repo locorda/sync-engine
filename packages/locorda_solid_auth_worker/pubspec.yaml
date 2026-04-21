@@ -1,8 +1,10 @@
 name: locorda_solid_auth_worker
 description: Solid authentication bridge for Locorda worker architecture. Synchronizes auth state from main thread to worker isolate.
 version: 0.5.0
+homepage: https://locorda.dev/sync-engine/
+repository: https://github.com/locorda/sync-engine
+issue_tracker: https://github.com/locorda/sync-engine/issues
 resolution: workspace
-homepage: https://github.com/locorda/locorda
 
 environment:
   sdk: ^3.6.0

@@ -1,8 +1,10 @@
 name: locorda_worker
 description: Worker infrastructure for Locorda - Platform-agnostic isolate/worker architecture for offloading heavy operations (CRDT, DB, HTTP) to separate thread.
 version: 0.5.0
+homepage: https://locorda.dev/sync-engine/
+repository: https://github.com/locorda/sync-engine
+issue_tracker: https://github.com/locorda/sync-engine/issues
 resolution: workspace
-homepage: https://github.com/locorda/locorda
 
 environment:
   sdk: ^3.6.0
