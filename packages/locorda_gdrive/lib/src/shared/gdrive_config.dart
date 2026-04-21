@@ -95,7 +95,7 @@ class GDriveConfig {
     this.typeFolderNames = const {},
     this.extraScopes = const [],
     this.localMirrorConfig = const GDriveLocalMirrorConfig(),
-    this.layout = const ShardDataset(),
+    this.layout = const SingleFile(),
   })  : appFolderName = null,
         folderMode = GDriveFolderMode.appDataFolder;
 
@@ -105,7 +105,7 @@ class GDriveConfig {
     this.extraScopes = const [],
     this.localMirrorConfig = const GDriveLocalMirrorConfig(),
     required this.appFolderName,
-    this.layout = const ShardDataset(),
+    this.layout = const SingleFile(),
   }) : folderMode = GDriveFolderMode.visibleFolder;
 
   /// Returns the OAuth scopes required for this configuration.

@@ -33,7 +33,6 @@ dart run melos version \
   -V locorda_solid_auth:"$VERSION" \
   -V locorda_solid_auth_worker:"$VERSION" \
   -V locorda_solid_core:"$VERSION" \
-  -V locorda_solid_ui:"$VERSION" \
   -V locorda_solid:"$VERSION" \
   -V locorda_ui:"$VERSION" \
   -V locorda_worker:"$VERSION" \
