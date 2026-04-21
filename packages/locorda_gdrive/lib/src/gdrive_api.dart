@@ -385,6 +385,9 @@ class GDriveClient implements GDriveApiClient {
   }
 
   void handleGDriveAuthError(Object e) {
+    // Re-throw already-classified AuthExceptions so they pass through method
+    // boundaries without being wrapped in GDriveClientException.
+    if (e is AuthException) throw e;
     if (e is drive.DetailedApiRequestError && e.status == 401) {
       _clientLog.warning(
           'Authentication failed (401) - OAuth authorization may have been revoked');
@@ -577,6 +580,7 @@ class GDriveClient implements GDriveApiClient {
       }
       return fileId;
     } catch (e, stackTrace) {
+      handleGDriveAuthError(e);
       _clientLog.severe('Failed to find file "$fileName"', e, stackTrace);
       throw GDriveClientException('Failed to find file "$fileName": $e');
     }
