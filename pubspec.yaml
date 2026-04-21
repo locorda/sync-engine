@@ -76,14 +76,17 @@ melos:
       run: dart pub get
       description: Clean and get dependencies for all packages.
 
-    version:
-      run: melos version
-      description: Update package versions with conventional commits and changelog generation.
+  version:
+    # Synchronized versioning for all packages in the RDF suite
+    updateGitTagRefs: true
+    includeCommitId: true
+    linkToCommits: true
+    # Changelog configuration using conventional commits
+    changelog:
+      packageFilters:
+        - dirExists: 'lib'
+      message: |
+        ## {version}
 
-    publish:
-      run: melos publish
-      description: Publish all packages to pub.dev (with confirmations).
-
-    release:
-      run: melos version --no-git-tag-version && melos publish --dry-run
-      description: Preview a full release (version + publish preview).
+        {conventional_commits}
+      linkToCommits: true
