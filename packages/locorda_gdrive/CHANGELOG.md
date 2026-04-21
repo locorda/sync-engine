@@ -1,35 +1,12 @@
-## 0.1.0-dev
+## 0.5.0
 
-Initial development version.
-
-### Features
-
-- Google Drive backend for locorda CRDT synchronization
-- OAuth2 authentication using official `google_sign_in` package
-- Worker isolate/thread support for heavy operations
-- Credential synchronization main thread ↔ worker thread
-- Flutter UI components:
-  - GDriveLoginScreen - Full-screen OAuth2 login
-  - GDriveStatusWidget - AppBar status indicator
-  - GDriveStatusDefaults - Default UI implementations
-- Localizations: English and German
-- Cross-platform: iOS, Android, Web, Desktop
-
-### Implementation Status
-
-**Completed:**
-- ✅ Package structure and dependencies
-- ✅ OAuth2 authentication with `google_sign_in`
-- ✅ Silent sign-in for returning users
-- ✅ Token refresh mechanism
-- Authentication interfaces (GDriveAuthProvider)
-- Worker protocol (messages, sender, receiver, connector)
-- Backend structure (GDriveBackend, GDriveClient, GDriveRemoteStorage)
-- UI scaffolding
-
-**TODO:**
-- Actual OAuth2 flow implementation (platform-specific)
-- Token refresh implementation
-- Drive API operations (upload, download, delete)
-- File ID mapping strategy
-- Tests and example app
+- Initial public release
+- Google Drive backend for Locorda CRDT synchronisation
+- `GDriveMainIntegration`: main-thread `RemoteIntegration` with OAuth2 via `google_sign_in`
+- `GDriveWorkerHandler`: worker-thread handler for Drive API operations
+- App Data Folder mode (default): private, high-performance storage invisible to the user
+- Visible Folder mode: optional named folder in My Drive for user-accessible files
+- Automatic silent sign-in for returning users and token refresh
+- `GDriveLoginScreen`, `GDriveStatusWidget`, `GDriveStatusDefaults` Flutter UI components
+- Localisations: English and German
+- Platform support: iOS, Android, Web, Desktop

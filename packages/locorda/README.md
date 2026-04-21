@@ -1,230 +1,200 @@
-# Personal Notes App
+# locorda
 
-**Bring your own persistence layer and make it syncable.**
+**Sync offline-first Flutter apps using your user's own storage — no backend required.**
 
-This example demonstrates how to build an offline‑first Flutter app with Locorda as a **sync layer**. Your application owns its storage. Locorda only participates when you **save** or **delete** and when you **hydrate** remote changes into that storage.
+`locorda` is the main entry point for building apps with [Locorda](https://locorda.dev/sync-engine/).
+It re-exports everything you need: the sync engine, annotations, storage handlers, UI widgets, and worker infrastructure — all from a single package.
 
----
+> **Early Access (v0.5.0)** — Core API is stable. Backend implementation details may have breaking changes before 1.0.
+> Google Drive is fully supported. Solid Pod support works but has higher latency due to a protocol-level limitation (no batch-write operation in Solid Protocol today).
 
-## 1) Architecture at a glance
+## How it works
 
-Locorda is intentionally *not* a persistence framework. This is the architecture of the example app (recommended, not enforced):
+Annotate your domain classes, run code generation, wire up a backend — that's it.
+Locorda handles CRDT conflict resolution, sync state, and worker isolation automatically.
 
-1. **Local storage** (Drift in this example)
-2. **Repository layer** (sync‑aware storage)
-3. **Service layer** (business rules)
-4. **UI layer** (pure presentation)
+```
+UI ↔ Your Repository ↔ Locorda SyncEngine ↔ Worker Thread ↔ Remote Storage
+                           (hydration callbacks)         (Google Drive / Solid Pod / ...)
+```
 
-Only the repository layer touches Locorda. UI and services remain free of sync details.
+Your app owns its local storage and queries. Locorda only participates on `save`, `deleteDocument`, and hydration callbacks.
 
-Locorda does not require this layering. It simply plays very well with it because it keeps sync concerns isolated and storage choices flexible.
+## Quick start
 
----
+### 1. Add dependencies
 
-## 2) The core contract: Locorda is a sync layer
+```sh
+flutter pub add locorda locorda_gdrive  # or locorda_solid, locorda_dir
+flutter pub add dev:build_runner dev:locorda_dev
+```
 
-### What you do
-- Save *only* through Locorda: `syncEngine.save<T>(value)`
-- Delete *only* through Locorda: `syncEngine.deleteDocument<T>(id)`
-- Hydrate remote changes into your local storage: `hydrateWithCallbacks<T>()`
+### 2. Annotate your model
 
-### What you own
-- Data storage, schema, migrations
-- Query performance and indexing strategy
-- Domain modeling and business logic
+```dart
+import 'package:locorda/annotations.dart';
 
-This separation keeps your architecture clean, testable, and storage‑agnostic.
+@RootResource(AppVocab(appBaseUri: 'https://myapp.example.com'))
+class Task {
+  @RdfIriPart()
+  final String id;
 
----
+  @CrdtLwwRegister()   // last writer wins on conflict
+  final String title;
 
-## 3) Main thread: initialize Locorda
+  @CrdtLwwRegister()
+  final bool completed;
 
-In [lib/main.dart](lib/main.dart), the app creates Locorda with:
+  @CrdtImmutable()     // set once at creation, never changed
+  final DateTime createdAt;
 
-- `workerSetup` + `onWorkerSpawn` (for isolates / web workers)
-- `remotes` (Solid, GDrive, local dir for testing/debugging only)
-- `storage` (Drift main handler)
-- `mapperInitializer` (generated RDF mapper)
-- `LocordaConfig` (resources, indices, CRDT mappings)
+  Task({required this.id, required this.title, this.completed = false, DateTime? createdAt})
+      : createdAt = createdAt ?? DateTime.now();
+}
+```
 
-Key excerpt (conceptual):
+### 3. Run code generation
 
-1. Provide remotes (must match worker setup)
-2. Provide storage (local DB integration)
-3. Provide resource config (CRDT mapping + indices)
+```bash
+dart run build_runner build
+```
 
-Locorda setup happens once; after that, your UI never calls remote APIs (Solid/GDrive) or performs CRDT merges directly.
+This generates the RDF mapper, CRDT merge contracts, worker setup, and the `initLocorda()` convenience function.
 
----
+### 4. Initialize Locorda
 
-## 4) Worker thread: isolate heavy work
+```dart
+import 'package:locorda/locorda.dart';
+import 'package:locorda_gdrive/locorda_gdrive.dart';
+import 'init_locorda.g.dart';  // generated
 
-In [lib/worker.dart](lib/worker.dart), the worker creates the runtime for sync, HTTP, and local storage.
+final locorda = await initLocorda(
+  storage: DriftMainHandler(),
+  remotes: [await GDriveMainIntegration.create()],
+);
+```
 
-The worker setup mirrors main thread choices:
+> **GDrive**: platform-specific OAuth2 credentials must be configured before sign-in works.
+> See [locorda_gdrive — OAuth2 Setup](https://pub.dev/packages/locorda_gdrive) for instructions.
 
-- Remote handlers (Solid / GDrive / local dir for testing/debugging only)
-- Storage handler (Drift worker storage, web options)
+### 5. Connect your repository
 
-This keeps the UI thread lean and avoids expensive operations on the main isolate.
+```dart
+await locorda.syncEngine.hydrateWithCallbacks<Task>(
+  getCurrentCursor: () => db.getSyncCursor(),
+  onUpdate: (task) => db.upsert(task),
+  onDelete: (id) => db.delete(id),
+  onCursorUpdate: (cursor) => db.saveCursor(cursor),
+);
+```
 
----
+### 6. Save and delete through Locorda
 
-## 5) Repository layer: the sync integration point
+```dart
+await locorda.syncEngine.save<Task>(task);
+await locorda.syncEngine.deleteDocument<Task>(taskId);
+```
 
-The repository layer is the **only** place where Locorda is used. It performs two responsibilities:
+All updates — whether from the local device or from sync — flow through the hydration callbacks. This keeps your UI consistent without double-writing.
 
-1. **Hydration**: listen to remote changes and store them locally
-2. **Write‑through**: save or delete via Locorda, not via direct DB writes
+## Storage layouts
 
-### Hydration
+| Layout | Best for |
+|--------|----------|
+| **File-per-resource** | Solid Pods, linked-data interoperability — each resource is its own file |
+| **Packed (sharded)** | Large collections — parallel uploads, smaller per-file payloads |
+| **Packed (single-file)** | Google Drive, small datasets — fewest requests (default for GDrive) |
 
-In [lib/storage/repositories.dart](lib/storage/repositories.dart), each repository calls:
+Layout is configured per backend, inside the backend config passed to the integration:
 
-- `syncEngine.hydrateWithCallbacks<T>()`
-- `getCurrentCursor()` reads the last sync cursor
-- `onUpdate()` writes to local DB
-- `onDelete()` removes from local DB
-- `onCursorUpdate()` persists the cursor
+```dart
+// Solid — default: FilePerResource (one Turtle file per resource)
+await SolidMainIntegration.create(
+  oidcClientId: '...',
+  appUrlScheme: '...',
+  frontendRedirectUrl: Uri.parse('...'),
+  config: SolidConfig(layout: FilePerResource()),  // default
+);
 
-This is how your local database is kept in sync with remote changes.
+// Google Drive — default: SingleFile (fewest requests)
+await GDriveMainIntegration.create(
+  config: GDriveConfig(layout: SingleFile()),  // default
+);
 
-### Write‑through
+// Google Drive — sharded dataset (parallel uploads)
+await GDriveMainIntegration.create(
+  config: GDriveConfig(layout: ShardDataset()),
+);
+```
 
-Every mutation goes through Locorda:
+The serialization format (Turtle, TriG, JSON-LD, Jelly) is configured independently via the `contentType` parameter on each layout class.
 
-- `syncEngine.save<Note>(note)`
-- `syncEngine.deleteDocument<Note>(id)`
+## Example apps
 
-Local DB updates are handled by hydration callbacks. You never “double‑write” manually.
+### Minimal task sync app ← start here
 
----
+The simplest possible Locorda app: a task list that syncs across devices.
+Shows all core patterns in under 150 lines: annotations, hydration callbacks, save/delete, and the built-in status widget.
 
-## 6) Service layer: business logic only
+→ [`example/minimal/`](example/minimal/) — [README](example/minimal/README.md)
 
-In [lib/services](lib/services), services handle domain rules (filtering, grouping, ID generation) but have no sync logic.
+### Personal notes app
 
-Example flow:
+A full production-grade Flutter app with:
+- **Drift** for persistent local storage
+- **Google Drive** and **Solid Pod** backends
+- **GroupIndex** for paginated sync by month
+- Production repository patterns with cursor tracking and error handling
 
-1. UI requests an update
-2. Service validates or enriches
-3. Repository saves through Locorda
+→ [`example/personal_notes_app/`](example/personal_notes_app/) — [README](example/personal_notes_app/README.md) 
+— [**Live demo**](https://locorda.dev/example/personal_notes_app/)
 
-This makes it easy to test and refactor business rules without touching sync code.
+## What's included
 
----
+`import 'package:locorda/locorda.dart'` gives you:
 
-## 7) UI layer: integration without sync coupling
+- `Locorda` — top-level façade (`syncEngine`, `syncManager`, `uiAdapterRegistry`)
+- `ObjectSyncEngine` — typed `save<T>()`, `deleteDocument<T>()`, `hydrateWithCallbacks<T>()`
+- `LocordaConfig`, `ResourceConfig`, `FullIndexConfig`, `GroupIndexConfig` — sync configuration
+- `DriftMainHandler`, `LocordaDriftOptions` — SQLite storage for the main thread
+- `InMemoryStorageMainHandler` — in-memory storage (useful for demos and testing)
+- `MultiBackendStatusWidget`, `SyncRefreshIndicator`, `UiAdapterRegistry` — ready-made sync UI widgets
+- `RemoteStorageLayout`, `FilePerResource`, `ShardDataset`, `SingleFile` — layout configuration
+- `SyncManager`, `StandardSyncManager` — manual sync control
 
-The UI receives:
+`import 'package:locorda/annotations.dart'` gives you:
 
-- repositories/services for data
-- `uiAdapterRegistry` for Locorda UI components
-- `syncManager` for sync status actions
+- `@RootResource`, `@SubResource`, `@RootResourceRef` — class-level sync annotations
+- `@CrdtLwwRegister`, `@CrdtImmutable`, `@CrdtOrSet` — field-level CRDT strategies
+- `@RdfIriPart`, `@RdfProperty`, `@RdfUnmappedTriples` — RDF mapping annotations
 
-See [lib/main.dart](lib/main.dart) where `NotesListScreen` gets those dependencies. The UI stays free of CRDT details.
+`import 'package:locorda/worker.dart'` (worker thread only):
 
----
+- `workerMain`, `WorkerParams` — worker entry point
+- `DriftWorkerHandler` — Drift storage for the worker thread
+- `RemoteWorkerHandler`, `StorageWorkerHandler` — worker handler interfaces
 
-## 8) Indices and fetch: two independent dimensions
+## Architecture
 
-Locorda fetch behavior is defined by two orthogonal choices:
+Locorda uses a **4-layer architecture**:
 
-### What to fetch (selection)
+1. **Data Resource Layer** — clean RDF resources with standard vocabularies
+2. **Merge Contract Layer** — per-field CRDT rules for conflict resolution
+3. **Indexing Layer** — efficient change detection via sharded indices
+4. **Sync Strategy Layer** — layout and fetch policy configuration
 
-- **FullIndex**: all items of a resource type
-- **GroupIndex**: a subset of items, grouped by a key (e.g. by month)
+Heavy work (CRDT merging, HTTP, database I/O) runs in a background worker isolate (native) or web worker (web), keeping the UI thread responsive.
 
-### When to fetch (timing)
+## Known limitations (Early Access)
 
-- `RootResourceFetchPolicy.prefetch`: fetch automatically
-- `RootResourceFetchPolicy.onRequest`: fetch only when requested (see section 9 for required app patterns)
+- Solid backend: each sync cycle requires many HTTP requests — Solid Protocol currently has no batch-write operation. This is a protocol-level constraint, not something fixable on our side.
+- `ensure` and `delete` operations not yet implemented
+- Delta layout not yet available — the full packed file is uploaded/downloaded each cycle
+- Limited CRDT types (LWW register, immutable, OR-Set; more planned)
 
-In this example:
+## Further reading
 
-- Notes use a `GroupIndex` grouped by month
-- Categories use a `FullIndex` with `RootResourceFetchPolicy.prefetch`
+- [Website & feature overview](https://locorda.dev/sync-engine/)
+- [Architecture overview](https://locorda.dev/sync-engine/#architecture)
+- [Package structure](../../IMPLEMENTATION.md)
 
-Repository method `ensureMonthGroupSubscription()` applies the timing policy based on UI filters.
-
----
-
-## 9) Advanced: on‑request fetch and index header data
-
-This is optional and only needed when your backend stores **each item as its own resource** (e.g. Solid). If your backend stores **whole shards as a single file** (e.g. GDrive), this is usually not necessary.
-
-### On‑request fetch requires `ensure()`
-
-If a resource (or group) is configured with `RootResourceFetchPolicy.onRequest`, you must **not** read it directly from local storage. Wrap the read in `syncEngine.ensure<T>()` so Locorda can fetch missing data on demand.
-
-Example pattern (see `NoteRepository.getNote`):
-
-1. Call `syncEngine.ensure<Note>(id, loadFromLocal: ...)`
-2. Provide a local‑DB loader for the fast path
-3. Let Locorda fetch if the item is not available locally
-
-### Index header data (why `NoteIndexEntry` exists)
-
-Group/Full indices can expose **header data**: a lightweight projection of a resource that is always available even when full items are not.
-
-In this example:
-
-- `NoteIndexEntry` duplicates selected `Note` fields
-- `watchAllNoteIndexEntries()` reads that lightweight index data
-- The UI can list notes without fetching every full `Note`
-
-Use this when listing needs to be fast and full items are expensive to load, especially with per‑item storage backends.
-
----
-
-## 10) Practical checklist for a new app
-
-1. **Choose storage** (Drift, Isar, Hive, custom)
-2. **Create repositories** that:
-   - hydrate via `hydrateWithCallbacks<T>()`
-   - save/delete via Locorda only
-3. **Create services** for business logic
-4. **Configure Locorda**:
-   - remotes and storage handlers
-   - `mapperInitializer` for RDF mapping
-   - `LocordaConfig` with CRDT mappings and indices
-5. **Inject into UI**: pass services + `syncManager`
-
----
-
-## 11) Security note
-
-This example includes secure OAuth/OIDC redirect URI configuration. See [spec/docs/SECURITY.md](../../../spec/docs/SECURITY.md) for platform‑specific guidance.
-
----
-
-## 12) Running the example
-
-Prerequisites:
-
-- Flutter 3.24.0+
-- Dart 3.6.0+
-
-Mobile/macOS:
-
-- `flutter pub get`
-- `dart run build_runner build`
-- `flutter run -d macos` (or android/ios)
-
-Web:
-
-- `flutter pub get`
-- `dart run build_runner build`
-- `./setup_web.sh`
-- `flutter run -d chrome --web-port=8080`
-
----
-
-## 13) Key takeaways
-
-1. **Locorda is a sync layer** — not a database.
-2. **Repositories are the integration point** — hydrate + write‑through.
-3. **UI stays clean** — no CRDT or remote logic in widgets.
-4. **Storage is your choice** — Locorda adapts to it.
-
-If you understand these principles, you can scale this pattern from a tiny app to a complex multi‑resource product without changing your storage stack.

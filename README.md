@@ -2,32 +2,16 @@
 
 **Locorda** — the rope that connects and weaves local data together.
 
-> **⚠️ PROJECT UNDER CRITICAL ASSESSMENT**
+> **🚧 Early Access — v0.5.0**
 >
-> **IMPORTANT:** This project is currently undergoing a fundamental reassessment of its direction and viability. Active development is paused while critical questions about the architecture and approach are being evaluated.
+> The Dart library is working and ready to explore. Core API is stable; backend implementation details may have breaking changes before 1.0.
 >
-> **Assessment Status:**
-> - 🔴 **Project continuation decision pending** - See [STATUS.md](STATUS.md) for informal assessment
-> - 🔴 **Specification outdated** - Implementation has diverged significantly from documented spec
-> - 🔴 **Not recommended for production use** - Architecture under review
->
-> **For Current Status:**
-> - **Informal assessment**: [STATUS.md](STATUS.md) - Critical reflections and analysis
-> - **Formal decision record**: [ADR-0004](packages/locorda/docs/adrs/0004-project-assessment-and-future-direction.md) - Project assessment ADR
->
-> If you're interested in this project's goals or considering similar work, please review the status documents first.
-
-> **⚠️ EARLY EXPERIMENTAL VERSION - SPECIFICATION OUTDATED**
->
-> **WARNING:** This specification represents an **early experimental design** that has been **superseded during actual implementation** of the locorda libraries. The documented architecture, algorithms, and APIs **do not reflect the current implementation** and require significant updates.
->
-> **Current Status:**
-> - ❌ Specification is **NOT implementation-ready** - contains theoretical concepts that proved impractical
-> - ❌ Examples and code patterns **do not match** the actual library implementation
-> - ❌ Architecture decisions have **evolved significantly** during development
-> - 🚧 Active implementation work is **discovering and resolving** specification gaps and inconsistencies
->
-> **If you're considering using or implementing this specification:** Please contact the project maintainers first to understand the current state and planned updates. Do not rely on the documented specification for production use.
+> - ✅ Google Drive backend — fully implemented and tested
+> - ✅ File-per-resource layout (Solid Pods, linked-data interop)
+> - ✅ Packed layouts: sharded and single-file (Google Drive)
+> - ✅ Offline-first sync with CRDT conflict resolution
+> - ⚠️ **Specification is outdated** — it was written before the implementation and has significant deviations. See the [website](https://locorda.dev/sync-engine/) for accurate feature documentation.
+> - ⚠️ Solid backend: each sync requires many HTTP requests due to a protocol-level limitation (no batch writes in Solid Protocol today).
 
 A comprehensive specification and Dart/Flutter implementation for building **offline-first applications** that sync seamlessly with **passive storage backends** like Solid Pods, Google Drive, or any file storage system. Users bring their own backend, developers get easy cross-device sync.
 
@@ -133,18 +117,15 @@ This work aligns with and wants to eventually contribute to:
 
 ## Implementation Status
 
-> **⚠️ Note:** The specification status below does **not** reflect that the documented specification is outdated. See warning at top of document.
-
 | Component | Status | Notes |
 |-----------|--------|-------|
-| **Specification** | ⚠️ Outdated | Superseded during implementation - major revision needed |
-| **Dart Library** | 🚧 In Development | Implementation revealing specification gaps |
-| **JavaScript Library** | 📋 Future | Awaiting specification stabilization |
+| **Dart Library** | ✅ Early Access (v0.5.0) | Working, core API stable |
+| **Specification** | ⚠️ Outdated | Written before implementation; major revision pending |
 
 ## Contributing
 
 ### Specification Feedback
-- **Issues & Suggestions**: [GitHub Issues](https://github.com/klaaskalass/locorda/issues)
+- **Issues & Suggestions**: [GitHub Issues](https://github.com/locorda/sync-engine/issues)
 - **Architectural Discussions**: [W3C CRDT for RDF Community Group](https://www.w3.org/community/crdt4rdf/)
 - **Pull Requests**: Documentation improvements and clarifications welcome
 
@@ -170,13 +151,13 @@ If you use this work in academic research, please cite:
   title={locorda: Passive Storage Collaborative RDF Sync System},
   author={Klas Kalaß},
   year={2025},
-  url={https://github.com/klaaskalass/locorda}
+  url={https://github.com/locorda/sync-engine}
 }
 ```
 
 ## Community
 
-- **Discussions**: [GitHub Discussions](https://github.com/klaaskalass/locorda/discussions)
+- **Discussions**: [GitHub Discussions](https://github.com/locorda/sync-engine/discussions)
 - **W3C Community Group**: [CRDT for RDF](https://www.w3.org/community/crdt4rdf/)
 - **Matrix Chat**: [#locorda:matrix.org](https://matrix.to/#/#locorda:matrix.org) *(planned)*
 

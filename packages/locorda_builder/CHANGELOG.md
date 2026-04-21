@@ -1,11 +1,7 @@
-## 0.1.0-dev
+## 0.5.0
 
-* Initial development release
-* WorkerGeneratorBuilder: Auto-generates `lib/worker_generated.g.dart` from manifest discovery
-* WebWorkerBuilder: Compiles workers to distinct JS outputs:
-  - Manual: `lib/worker.dart` → `web/worker.dart.js`
-  - Generated: `lib/worker_generated.g.dart` → `web/worker_generated.dart.js`
-* **Breaking**: Generated worker uses different output name (`worker_generated.dart.js`) to
-  allow coexistence with manual workers without build collisions
-* Convention over configuration - zero config for standard setup  
-* auto_apply: dependents - automatically runs for packages using locorda
+- Initial public release
+- `WorkerGeneratorBuilder`: auto-generates `lib/worker_generated.g.dart` by discovering all `locorda_worker.manifest.dart` files across dependencies
+- `WebWorkerBuilder`: compiles workers to JavaScript — manual `lib/worker.dart` → `web/worker.dart.js`, generated `lib/worker_generated.g.dart` → `web/worker_generated.dart.js`
+- Convention-over-configuration: zero build config required for standard setups
+- Applied automatically to packages that declare `locorda_dev` as a dev dependency

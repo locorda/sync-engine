@@ -16,10 +16,8 @@ Build-time transformations for Locorda applications - automates web worker compi
 
 **Recommended**: Add `locorda_dev` to your `dev_dependencies` - it aggregates all Locorda builders:
 
-```yaml
-dev_dependencies:
-  locorda_dev: any       # Includes locorda_builder, RDF mapper generator, etc.
-  build_runner: ^2.4.0   # Required to run the builders
+```sh
+dart pub add dev:locorda_dev dev:build_runner
 ```
 
 > **Note**: `locorda_builder` is a low-level package that provides build_runner builders.

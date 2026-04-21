@@ -1,206 +1,102 @@
 # locorda_worker
-**!!! WARNING: OUTDATED!!!**
 
-Worker infrastructure for Locorda - Platform-agnostic architecture for running heavy operations in separate isolate/worker thread.
+Worker infrastructure for Locorda — platform-agnostic architecture for running heavy operations in a separate isolate or web worker thread.
 
 ## Overview
 
-This package provides the core worker infrastructure used by Locorda to offload CPU and I/O-intensive operations (CRDT merging, database access, HTTP requests) to a separate thread, keeping the main thread responsive for UI.
+This package provides the core worker infrastructure used by Locorda to offload CPU and I/O-intensive operations (CRDT merging, database access, HTTP requests, DPoP signing) to a separate thread, keeping the main thread responsive for UI.
 
 **Key Features:**
-- **Platform-agnostic**: Automatic detection - uses Dart Isolates on native, Web Workers on web
+- **Platform-agnostic**: Dart Isolates on native, Web Workers on web — same API both ways
 - **Type-safe messaging**: Structured request/response protocol with request correlation
-- **Plugin system**: Extensible architecture for authentication bridges and custom functionality
-- **Worker channel**: Bidirectional pub/sub for app-specific cross-thread communication
+- **Plugin system**: Extensible via `WorkerChannel` for cross-thread concerns such as authentication bridges
+- **Worker manifest system**: packages expose `locorda_worker.manifest.dart`; `locorda_builder` assembles them automatically
 
 ## Architecture
 
 ### Main Thread
-- **Dart object layer** (`Locorda`) - Work with typed Dart objects (e.g., `Note`, `Category`)
-- **RDF mapping** - Bidirectional conversion between Dart objects and RDF graphs
-- Lightweight proxy (`ProxysyncEngine`)
-- Serializes RDF graphs to Turtle for transmission
-- Routes requests/responses by ID
-- Manages plugins (e.g., auth bridges)
+- Lightweight `ProxySyncEngine` — serialises calls to jelly-encoded messages and routes responses by correlation ID
+- `SyncManager` proxy — sync triggering, auto-sync scheduling and status stream forwarded from the worker
+- Plugin bridges (e.g. `SolidAuthBridge`) push updates into the worker via `WorkerChannel`
 
 ### Worker Thread
 - Full `SyncEngine` instance
-- **CRDT merge logic** - All conflict resolution happens here
-- **Database (Drift/SQLite)** - All storage I/O
-- **HTTP backends** (Solid, etc.) - All network requests
-- **DPoP token generation** - Cryptographic operations
+- **CRDT merge logic** — all conflict resolution runs here
+- **Database (Drift/SQLite)** — all storage I/O
+- **HTTP backends** (Solid, Google Drive, …) — all network requests
+- **DPoP token generation** — cryptographic operations stay off the main thread
 
 ### Communication
-- **Framework messages**: Save/delete documents, hydration streams, sync triggers
-- **Worker channel**: App-specific messages (auth updates, custom commands)
+- **Framework messages**: save/delete documents, hydration streams, sync triggers
+- **Worker channel**: app-specific bidirectional pub/sub (e.g. auth credential updates)
 
 ## Usage
 
-### Step 1: Define Your EngineParams Factory (Required)
+### Recommended: generated worker (zero boilerplate)
 
-Every application needs a **top-level** factory function that creates the dependencies needed to initialize the CRDT sync engine in the worker thread. The factory returns an `EngineParams` object containing storage, backends, and optional dependencies. The framework then creates the `SyncEngine` from these parameters.
+When `locorda_dev` is added as a dev dependency, `build_runner` generates
+`lib/worker_generated.g.dart` by discovering every `locorda_worker.manifest.dart`
+in the dependency graph. The companion `lib/init_locorda.g.dart` wires it up
+automatically:
 
-> ⚠️ **Important**: The factory function **must be a top-level function** (not a method, not a closure). This is required for cross-isolate function passing on native platforms.
+```dart
+// lib/worker_generated.g.dart  — GENERATED, do not edit
+void main() {
+  workerMain(generatedWorkerSetup, onWorkerSpawn: setupWorkerLogging);
+}
+
+Future<WorkerParams> generatedWorkerSetup() async => WorkerParams(
+  storages: [...locorda_drift.storages, ...locorda_solid.storages, ...],
+  remotes:  [...locorda_drift.remotes,  ...locorda_solid.remotes,  ...],
+  mappingBootstrapSources: bootstrapMappings,
+);
+```
+
+```dart
+// lib/init_locorda.g.dart  — GENERATED, do not edit
+Future<Locorda> initLocorda({
+  required StorageMainHandler storage,
+  List<RemoteIntegration> remotes = const [],
+  ...
+}) => Locorda.create(
+  workerSetup: generatedWorkerSetup,   // ← generated worker
+  jsScript: 'worker_generated.dart.js',
+  ...
+);
+```
+
+Your app calls `initLocorda(storage: myDriftHandler, remotes: [solidPlugin])` and is done.
+
+### Advanced: manual worker
+
+If you need fine-grained control, write a top-level factory function yourself.
+The function **must be top-level** — this is required for cross-isolate function
+passing on native platforms.
 
 ```dart
 // lib/worker.dart
-import 'package:locorda_worker/locorda_worker.dart';
-import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_worker/worker.dart';
 
-void main() {
-  workerMain(createEngineParams);
-}
+void main() => workerMain(setupWorkerEngine);
 
-// This MUST be a top-level function
-Future<EngineParams> createEngineParams(
-  SyncEngineConfig config,
-  WorkerContext context,
-) async {
-  // Set up storage (runs in worker)
-  final storage = DriftStorage(...);
-  
-  // Set up backends (HTTP happens in worker)
-  final backends = [SolidBackend(...)];
-  
-  // Return parameters - framework creates SyncEngine from these
-  return EngineParams(
-    storage: storage,
-    backends: backends,
-    // Optional: httpClient, iriFactory, rdfCore
-  );
-}
-```
-
-### Step 2: Use High-Level API (Recommended)
-
-Most users should use the high-level `Locorda` API from the `locorda` package:
-
-```dart
-import 'package:locorda/locorda.dart';
-import 'worker.dart' show createEngineParams;
-
-final sync = await Locorda.createWithWorker(
-  engineParamsFactory: createEngineParams,
-  jsScript: 'worker.dart.js',
-  plugins: [...],
-  config: LocordaConfig(...),
+Future<WorkerParams> setupWorkerEngine() async => WorkerParams(
+  storages: [DriftWorkerHandler()],
+  remotes:  [SolidWorkerHandler()],
+  mappingBootstrapSources: bootstrapMappings,
 );
 ```
 
-### Step 2 Alternative: Direct Worker Handle Usage (Advanced)
-
-Use this approach if you:
-- Want to work directly with **RDF graphs** instead of typed Dart classes (no mapping layer)
-- Need fine-grained control over worker lifecycle
-
-```dart
-import 'package:locorda_worker/locorda_worker.dart';
-import 'worker.dart' show createEngineParams;
-
-// Create worker handle
-final workerHandle = await LocordaWorker.start(
-  engineParamsFactory: createEngineParams,
-  jsScript: 'worker.dart.js', // For web: dart compile js lib/worker.dart
-  debugName: 'locorda-worker',
-);
-
-// Create proxy for main thread
-final syncEngine = await ProxysyncEngine.create(
-  workerHandle: workerHandle,
-  config: syncEngineConfig,
-);
-
-// Work directly with RDF graphs (no Dart object mapping)
-final rdfGraph = RdfGraph();
-// ... build your RDF graph manually
-await syncEngine.save(rdfGraph);
-```
-
-## Worker Plugins
-
-Plugins extend worker functionality from the main thread. Common use case: authentication bridges.
-
-```dart
-class MyAuthPlugin implements WorkerPlugin {
-  final MyAuth _auth;
-  final LocordaWorker _worker;
-  
-  MyAuthPlugin(this._auth, this._worker);
-  
-  @override
-  Future<void> initialize() async {
-    // Forward auth state changes to worker
-    _auth.onStateChange.listen((state) {
-      _worker.sendMessage({
-        '__channel': {'type': 'auth', 'credentials': state.toJson()},
-      });
-    });
-  }
-  
-  @override
-  Future<void> dispose() async {
-    // Clean up
-  }
-}
-
-// Register plugin
-final workerHandle = await LocordaWorker.start(
-  engineParamsFactory: createEngineParams,
-  jsScript: 'worker.dart.js',
-);
-
-// Initialize plugin manually (or use Locorda.createWithWorker which does this)
-final plugin = MyAuthPlugin(auth, workerHandle);
-await plugin.initialize();
-```
-
-## Worker Channel
-
-For custom app-specific communication beyond framework operations:
-
-### Main Thread
-```dart
-final channel = WorkerChannel((msg) => workerHandle.sendMessage({'__channel': msg}));
-
-// Send custom message
-channel.send({'action': 'customCommand', 'data': {...}});
-
-// Receive responses
-channel.messages.listen((msg) {
-  print('Worker says: $msg');
-});
-```
-
-### Worker Thread
-```dart
-Future<EngineParams> createEngineParams(
-  SyncEngineConfig config,
-  WorkerContext context,
-) async {
-  // Access channel from context
-  context.channel.messages.listen((msg) {
-    if (msg['action'] == 'customCommand') {
-      // Handle command
-      context.channel.send({'result': 'done'});
-    }
-  });
-  
-  // ... setup and return EngineParams
-}
-```
-
-## Web Platform Notes
-
-For web, compile your worker to JavaScript:
+For web, the generated or manual worker is compiled to JS automatically by
+`locorda_builder` when `locorda_dev` is present. To compile manually:
 
 ```bash
 dart compile js lib/worker.dart -o web/worker.dart.js
 ```
 
-Then reference it in `LocordaWorker.start(jsScript: 'worker.dart.js')`.
-
 ## See Also
 
-- `locorda` - High-level API (recommended entry point)
-- `locorda_solid_auth_worker` - Solid authentication bridge plugin
-- `locorda_core` - Core sync engine (runs in worker)
+- [`locorda`](../locorda) — high-level API (recommended entry point)
+- [`locorda_dev`](../locorda_dev) — single dev dependency that activates all builders
+- [`locorda_builder`](../locorda_builder) — worker generator and web compiler
+- [`locorda_solid_auth_worker`](../locorda_solid_auth_worker) — Solid authentication bridge plugin
+- [`locorda_core`](../locorda_core) — core sync engine (runs inside the worker)

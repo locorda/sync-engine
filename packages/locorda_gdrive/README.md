@@ -1,56 +1,59 @@
 # locorda_gdrive
 
-Google Drive backend and authentication for locorda CRDT synchronization.
+Google Drive backend for Locorda CRDT synchronization.
 
 ## Features
 
-- ✅ **Google Drive Backend**: Store RDF data in Google Drive
-- ✅ **Google Sign-In**: Uses official `google_sign_in` package
-- ✅ **OAuth2 Authentication**: Secure authentication via Google
-- ✅ **Worker Support**: Heavy operations run in isolate/web worker
-- ✅ **Flutter UI Components**: Login screen and status widget
-- ✅ **Localized**: English and German translations
-- ✅ **Cross-Platform**: iOS, Android, Web, Desktop
+- **Google Drive backend** — stores RDF sync data in the App Data Folder or a visible Drive folder
+- **Google Sign-In** — uses the official `google_sign_in` package
+- **Worker isolate support** — all Drive I/O runs in a background isolate/web worker
+- **Storage layouts** — `SingleFile` (default), `ShardDataset`, `FilePerResource`
+- **Flutter UI** — login screen and status widget included
+- **Localised** — English and German
 
 ## Installation
 
-Add to your `pubspec.yaml`:
-
-```yaml
-dependencies:
-  locorda_gdrive:
-    path: ../locorda_gdrive  # When using from monorepo
+```sh
+flutter pub add locorda locorda_gdrive
+flutter pub add dev:build_runner dev:locorda_dev
 ```
 
-## Usage
+> **OAuth2 setup required** — you must configure platform-specific OAuth2 credentials before
+> GDrive sync will work. See [OAuth2 Setup](#oauth2-setup) below.
 
-### Main Thread Setup
+## Quick start
+
+### 1. Run code generation
+
+```bash
+dart run build_runner build
+```
+
+`locorda_dev` discovers `locorda_gdrive` via its worker manifest and automatically includes
+`GDriveWorkerHandler` in the generated `worker_generated.g.dart` — no manual worker code needed.
+
+### 2. Initialize on the main thread
 
 ```dart
-import 'package:locorda_flutter/locorda_flutter.dart';
-import 'package:locorda_ui/locorda_ui.dart';
+import 'package:locorda/locorda.dart';
 import 'package:locorda_gdrive/locorda_gdrive.dart';
+import 'init_locorda.g.dart';  // generated
 
-// 1. Create GDrive handler (uses recommended defaults)
-final gdrive = await GDriveMainIntegration.create();
-// This uses:
-// - Private app data folder (invisible to user, better performance)
-// - OAuth client ID from platform config (Info.plist/google-services.json/meta tag)
-
-// 2. Create Locorda with handler
-final locorda = await Locorda.create(
-  workerSetup: createEngineParams,
-  jsScript: 'worker.dart.js',
-  remotes: [gdrive],
-  config: LocordaConfig(
-    resources: [/* your resources */],
-  ),
+final locorda = await initLocorda(
+  storage: DriftMainHandler(),
+  remotes: [await GDriveMainIntegration.create()],
 );
+```
 
-// 3. Use in UI
+`GDriveMainIntegration.create()` uses the App Data Folder by default —
+private storage that is invisible to the user in Google Drive UI.
+See [Storage Modes](#storage-modes) for alternatives.
+
+### 3. Add the status widget
+
+```dart
 AppBar(
   actions: [
-    // we can use a generic widget, or a specific or custom one of course as well
     MultiBackendStatusWidget(
       registry: locorda.uiAdapterRegistry,
       syncManager: locorda.syncManager,
@@ -59,138 +62,120 @@ AppBar(
 )
 ```
 
-### Worker Thread Setup
+## Storage Modes
+
+### App Data Folder (default, recommended)
+
+Private, isolated storage invisible to users. Uses `drive.appdata` scope automatically.
 
 ```dart
-// worker.dart
-import 'package:locorda_worker/worker.dart';
-import 'package:locorda_gdrive/worker.dart';
+// Simplest — uses all defaults
+await GDriveMainIntegration.create()
 
-void main() {
-  workerMain(setupWorkerEngine);
-}
-
-Future<WorkerParams> setupWorkerEngine() async => WorkerParams(
-      // Config is automatically received from main thread
-      remotes: [
-        GDriveWorkerHandler(),
-      ],
-
-      // ... storage needs to be configured as well
-    );
+// Equivalent explicit form
+await GDriveMainIntegration.create(config: GDriveConfig())
 ```
 
-### Storage Modes
+**Advantages over a visible folder:**
+- Invisible to the user — no folder clutter in My Drive
+- Faster search (smaller, isolated namespace)
+- Only your app can access it
 
-The default configuration (no parameters) uses the **App Data Folder** - a private, high-performance storage area that's invisible to users.
-
-#### App Data Folder (Default, Recommended)
+### Visible Folder
 
 ```dart
-// Simplest setup - uses all defaults
-final gdriveHandler = await GDriveMainIntegration.create();
-
-// Equivalent to:
-// final gdriveHandler = await GDriveMainIntegration.create(
-//   config: GDriveConfig(), 
-// );
+await GDriveMainIntegration.create(
+  config: GDriveConfig.visibleFolder(appFolderName: 'MyApp'),
+)
 ```
 
-**Advantages:**
-- ✅ **Private**: Invisible to user in Google Drive UI
-- ✅ **Performance**: Faster search in smaller, isolated space
-- ✅ **Clean**: Doesn't clutter user's My Drive
-- ✅ **Secure**: Only your app can access
-- ✅ **Automatic Scopes**: Uses `drive.appdata` automatically
+Use when users need direct access to the files (e.g. debugging, manual migration).
+Uses `drive.file` scope automatically.
 
-#### Visible Folder Mode
+## Storage Layouts
+
+Layout controls how RDF resources are packed into Drive files. Configure it inside `GDriveConfig`:
 
 ```dart
-final gdriveHandler = await GDriveMainIntegration.create(
-  config: GDriveConfig.visibleFolder(
-    appFolderName: 'MyAppFolder',
-  ),
-);
+// SingleFile — everything in one TriG file (default — fewest requests)
+GDriveConfig(layout: SingleFile())
+
+// ShardDataset — one TriG file per shard (better for large collections)
+GDriveConfig(layout: ShardDataset())
+
+// FilePerResource — one Turtle file per resource (Solid-style interop)
+GDriveConfig(layout: FilePerResource())
 ```
 
-**Use when:**
-- User needs direct access to files
-- Manual file inspection/editing required
-- Debugging or development
-
-**Automatic Scopes**: Uses `drive.file` automatically
-
-**Note**: OAuth client ID is read from platform-specific configuration files.
-See [OAuth2 Setup](#oauth2-setup) below for configuration details.
-
-### Advanced Configuration
+## Advanced Configuration
 
 ```dart
-final gdriveHandler = await GDriveMainIntegration.create(
+await GDriveMainIntegration.create(
   config: GDriveConfig(
-    // Custom folder names for specific resource types
     typeFolderNames: {
       IriTerm('https://schema.org/Note'): 'notes',
       IriTerm('https://schema.org/Person'): 'contacts',
     },
   ),
-);
+)
 
-// Or with visible folder:
-final gdriveHandler = await GDriveMainIntegration.create(
+// Combining visible folder with custom type folders
+await GDriveMainIntegration.create(
   config: GDriveConfig.visibleFolder(
     appFolderName: 'MyApp',
     typeFolderNames: {
       IriTerm('https://schema.org/Note'): 'notes',
     },
   ),
-);
+)
 ```
 
 ## OAuth2 Setup
 
-**Important**: OAuth client IDs are configured **per platform** in configuration files,
-not in code. The `GDriveMainIntegration` automatically reads these platform-specific configurations.
+> **Note**: OAuth client IDs are configured **per platform** in native config files,
+> not in Dart code. `GDriveMainIntegration` reads them automatically.
 
-### 1. Create Google Cloud Project
+### 1. Create a Google Cloud Project
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing
+2. Create or select a project
 3. Enable **Google Drive API**
 
 ### 2. Create OAuth2 Credentials
 
-1. Go to **APIs & Services** → **Credentials**
-2. Click **Create Credentials** → **OAuth 2.0 Client ID**
+Go to **APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID**.
 
-**For Web:**
+**Web:**
 ```
 Type: Web application
 Authorized JavaScript origins:
   - http://localhost
-  - http://localhost:7357 (replace with your dev port)
+  - http://localhost:7357  (replace with your dev port)
   - https://yourdomain.com
 ```
 
-**For Mobile/Desktop:**
+**Mobile/Desktop:**
 ```
 Type: iOS / Android / Desktop app
-(No redirect URI needed - uses custom URL scheme)
+(No redirect URI — uses custom URL scheme)
 ```
 
 ### 3. Configure Scopes
 
-The required scopes are **automatically set** based on your configuration:
-- `GDriveConfig()` → Uses `drive.appdata` (app data folder)
-- `GDriveConfig.visibleFolder(...)` → Uses `drive.file` (visible files)
-- Always includes `openid` for stable user identification
+Scopes are set automatically based on your config:
 
-Enable these scopes in your Google Cloud Console OAuth consent screen.
+| Config | Scope |
+|--------|-------|
+| `GDriveConfig()` (App Data Folder) | `drive.appdata` |
+| `GDriveConfig.visibleFolder(...)` | `drive.file` |
+
+Always also includes `openid` for stable user identification.
+
+Enable these scopes on the OAuth consent screen in Google Cloud Console.
 
 ### 4. Platform-Specific Setup
 
-**iOS:**
-Add to `ios/Runner/Info.plist`:
+**iOS** — `ios/Runner/Info.plist`:
 ```xml
 <key>GIDClientID</key>
 <string>YOUR-IOS-CLIENT-ID.apps.googleusercontent.com</string>
@@ -199,8 +184,7 @@ Add to `ios/Runner/Info.plist`:
 <key>CFBundleURLTypes</key>
 <array>
   <dict>
-    <key>CFBundleTypeRole</key>
-    <string>Editor</string>
+    <key>CFBundleTypeRole</key><string>Editor</string>
     <key>CFBundleURLSchemes</key>
     <array>
       <string>com.googleusercontent.apps.YOUR-CLIENT-ID</string>
@@ -209,9 +193,7 @@ Add to `ios/Runner/Info.plist`:
 </array>
 ```
 
-**macOS:**
-Use `macos/Runner/Info.plist` with the same keys as iOS and ensure the
-entitlements include keychain sharing:
+**macOS** — `macos/Runner/Info.plist` with the same keys as iOS, plus entitlements:
 ```xml
 <key>keychain-access-groups</key>
 <array>
@@ -219,34 +201,22 @@ entitlements include keychain sharing:
 </array>
 ```
 
-**Android:**
-No additional setup needed if using default configuration.
+**Android** — no additional setup needed with default configuration.
 
-**Web:**
-Add to `web/index.html` before `</head>`:
+**Web** — `web/index.html` before `</head>`:
 ```html
 <meta name="google-signin-client_id" content="YOUR-CLIENT-ID.apps.googleusercontent.com">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 ```
 
-On web, the sign-in UI must be provided by the GIS SDK. Use
-`google_sign_in_web`'s `renderButton()` and listen to `authenticationEvents`
-instead of calling `authenticate()` from a custom button.
-
-Recommended pattern (web):
+On web the sign-in button must be rendered via the GIS SDK:
 ```dart
-// Render the official GIS button and handle auth via the stream.
 if (kIsWeb) {
-  return renderButton();
+  return renderButton();  // from google_sign_in_web
 }
-
-// Use authenticationEvents to track sign-in state on all platforms.
-GoogleSignIn.instance.authenticationEvents.listen((event) {
-  // Update UI state based on sign-in/sign-out events.
-});
 ```
 
-See [google_sign_in documentation](https://pub.dev/packages/google_sign_in) for detailed platform setup.
+See [google_sign_in documentation](https://pub.dev/packages/google_sign_in) for full platform setup.
 
 ## Architecture
 
@@ -256,58 +226,18 @@ See [google_sign_in documentation](https://pub.dev/packages/google_sign_in) for 
 │  ┌──────────────┐   │
 │  │ GDriveAuth   │───┼──── OAuth2 Flow
 │  └──────┬───────┘   │
-│         │           │
-│  ┌──────▼───────┐   │
-│  │ Auth         │   │
-│  │ Sender       │   │
-│  └──────┬───────┘   │
+│         │ credentials via channel
 └─────────┼───────────┘
-          │ Credentials
-          │ via Channel
 ┌─────────▼───────────┐
 │   Worker Thread     │
 │  ┌──────────────┐   │
-│  │ Worker       │   │
-│  │ GDriveAuth   │   │
-│  │ Provider     │   │
-│  └──────┬───────┘   │
-│         │           │
-│  ┌──────▼───────┐   │
-│  │ GDrive       │───┼──── Drive API
-│  │ Backend      │   │     (RDF files)
+│  │ GDriveWorker │───┼──── Drive API
+│  │ Handler      │   │     (RDF files)
 │  └──────────────┘   │
 └─────────────────────┘
 ```
 
-## Implementation Status
-
-### ✅ Completed
-- Package structure and dependencies
-- Authentication interfaces and worker protocol
-- Backend structure (GDriveClient, GDriveBackend)
-- Worker sender/receiver/connector pattern
-- UI components (login screen, status widget)
-- Localizations (EN, DE)
-
-### 🚧 TODO
-- [x] OAuth2 authentication using `google_sign_in`
-- [x] Token refresh via `clearAuthCache()` + re-authentication
-- [x] Silent sign-in for returning users
-- [x] Drive API HTTP operations (upload/download/delete)
-- [ ] File ID mapping strategy
-- [x] App folder support
-- [ ] Tests
-- [x] Example app integration
-
-## Comparison with Solid Backend
-
-| Feature | Solid | Google Drive |
-|---------|-------|--------------|
-| Auth | DPoP tokens | OAuth2 Bearer |
-| Token generation | Per-request (worker) | Reused (refreshed) |
-| Storage model | Solid Pods | Drive files |
-| File structure | User-controlled | App folder |
-| Multi-user | Native | Future |
+All Drive I/O happens in the worker thread. The main thread only handles the OAuth2 sign-in flow and forwards credentials via a typed channel.
 
 ## License
 

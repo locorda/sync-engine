@@ -1,10 +1,7 @@
-# Changelog
+## 0.5.0
 
-## 0.1.0-dev
-
-- Initial development version
-- SolidAuthConnector for main thread authentication bridge
-- WorkerSolidAuthProvider for worker-side auth handling
-- UpdateAuthMessage for credential transmission
-- Automatic auth state synchronization via WorkerChannel
-- Support for DPoP token generation in worker
+- Initial public release
+- `SolidAuthBridge`: main-thread bridge that forwards DPoP credential updates to the worker via `WorkerChannel`
+- `WorkerSolidAuthProvider`: worker-side `SolidAuthProvider` that receives credential updates from the main thread
+- `UpdateAuthMessage`: typed message for transmitting authentication state across the isolate/worker boundary
+- Enables DPoP token signing inside the worker without main-thread round-trips

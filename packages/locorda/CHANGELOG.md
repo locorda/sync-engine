@@ -1,8 +1,8 @@
-# Changelog
+## 0.5.0
 
-## 0.1.0+1
-
-- Initial release of the main locorda package
-- Entry point with documentation and examples
-- Re-exports from core packages for convenience
-- Complete personal notes app example demonstrating offline-first principles
+- Initial public release
+- Top-level facade package: re-exports `Locorda`, `ObjectSyncEngine`, `LocordaConfig`, `ResourceConfig` and storage layouts (`FilePerResource`, `ShardDataset`, `SingleFile`) from sub-packages
+- Re-exports UI widgets `MultiBackendStatusWidget` and `SyncRefreshIndicator`
+- Re-exports Drift storage handlers and worker entry points
+- Re-exports all CRDT annotations (`@RootResource`, `@CrdtLwwRegister`, `@CrdtImmutable`, `@CrdtOrSet`)
+- Includes Personal Notes App and minimal task-sync example applications

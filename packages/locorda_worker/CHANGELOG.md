@@ -1,11 +1,11 @@
-# Changelog
+## 0.5.0
 
-## 0.1.0-dev
-
-- Initial release of the locorda_worker package
-- Worker architecture for running SyncEngine in separate isolate/web worker
-- ProxySyncEngine for transparent main thread ↔ worker communication
-- Full SyncManager support (sync triggering, auto-sync, status streaming)
-- Worker plugin system for cross-thread operations (e.g., authentication)
-- Platform support: Native (Dart isolates) and Web (Web Workers)
-- Message protocol with JSON serialization and Turtle-encoded RDF graphs
+- Initial public release
+- Platform-agnostic worker infrastructure: Dart Isolates on native, Web Workers on web
+- `workerMain()`: worker entry point; accepts a `WorkerParams` factory and routes all framework messages
+- `WorkerParams`: declares storage handlers, remote handlers and CRDT mapping bootstrap data for the worker
+- `ProxySyncEngine`: main-thread transparent proxy — all `SyncEngine` calls are forwarded to the worker
+- `SyncManager` support: sync triggering, auto-sync scheduling and status streaming work seamlessly across the thread boundary
+- Plugin system via `WorkerChannel`: bidirectional pub/sub for cross-thread concerns such as authentication bridges
+- `StorageMainHandler` / `StorageWorkerHandler`: split storage interface for main ↔ worker storage coordination
+- Worker manifest system: packages expose a `locorda_worker.manifest.dart` that is auto-discovered by `locorda_builder`

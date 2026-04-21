@@ -14,10 +14,8 @@ Generates `lib/init_locorda.g.dart` which provides a simplified initialization f
 
 This package is automatically applied when you depend on `locorda_dev`:
 
-```yaml
-dev_dependencies:
-  locorda_dev: any
-  build_runner: ^2.4.0
+```sh
+dart pub add dev:locorda_dev dev:build_runner
 ```
 
 ## Usage
@@ -41,7 +39,7 @@ The generator automatically handles:
 
 ## Requirements
 
-- Requires `analyzer >=8.1.0 <11.0.0` for code analysis
+- Requires `analyzer` for code analysis
 - Compatible with Flutter stable and latest versions
 
 ## Architecture

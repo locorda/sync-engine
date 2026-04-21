@@ -4,7 +4,7 @@ Drift (SQLite) storage implementation for locorda_core.
 
 ## Overview
 
-This package provides a concrete implementation of the `LocalStorage` interface from `locorda_core` using Drift ORM for cross-platform SQLite storage.
+This package provides a concrete implementation of the `Storage` interface from `locorda_core` using Drift ORM for cross-platform SQLite storage.
 
 ## Features
 
@@ -16,73 +16,42 @@ This package provides a concrete implementation of the `LocalStorage` interface 
 
 ## Database Schema
 
-```sql
--- Main RDF documents with sync metadata
-CREATE TABLE rdf_documents (
-  document_iri TEXT PRIMARY KEY,
-  rdf_content TEXT NOT NULL,
-  clock_hash TEXT NOT NULL,
-  last_modified DATETIME DEFAULT CURRENT_TIMESTAMP,
-  sync_status TEXT DEFAULT 'pending'
-);
-
--- Individual triples for query optimization  
-CREATE TABLE rdf_triples (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  subject TEXT NOT NULL,
-  predicate TEXT NOT NULL,
-  object TEXT NOT NULL,
-  object_type TEXT,
-  object_lang TEXT,
-  document_iri TEXT REFERENCES rdf_documents(document_iri)
-);
-
--- CRDT clocks and metadata
-CREATE TABLE crdt_metadata (
-  resource_iri TEXT NOT NULL,
-  installation_id TEXT NOT NULL,
-  wall_time DATETIME NOT NULL,
-  logical_time INTEGER NOT NULL,
-  tombstones TEXT,
-  PRIMARY KEY (resource_iri, installation_id)
-);
-
--- Performance indices
-CREATE TABLE index_entries (
-  index_iri TEXT NOT NULL,
-  resource_iri TEXT NOT NULL,
-  resource_type TEXT NOT NULL,
-  headers TEXT NOT NULL,
-  clock_hash TEXT NOT NULL,
-  PRIMARY KEY (index_iri, resource_iri)
-);
-```
+The schema is defined as Drift table classes in [`lib/src/sync_database.dart`](lib/src/sync_database.dart). Drift generates the corresponding SQL DDL at build time.
 
 ## Usage
 
+### Main thread
+
 ```dart
-import 'package:locorda_drift/locorda_drift.dart';
+import 'package:locorda/locorda.dart';
 
-// Create storage instance
-final storage = DriftStorage();
-
-// Initialize (creates database file)
-await storage.initialize();
-
-// Use with sync engine
-final syncEngine = SyncEngine(
-  authProvider: authProvider,
-  localStorage: storage,
-  strategies: strategies,
+final locorda = await initLocorda(
+  storage: DriftMainHandler(
+    options: LocordaDriftNativeOptions(
+      databaseName: 'my_app_sync',
+    ),
+  ),
+  remotes: [...],
+  config: myLocordaConfig,
 );
 ```
 
-## Implementation Status
+### Worker thread
 
-- ✅ **Database schema** - Complete with proper indices
-- ✅ **Basic CRUD operations** - Store, retrieve, delete resources
-- 🚧 **CRDT operations** - Metadata storage implemented, merge logic pending
-- 📋 **RDF parsing** - Triple extraction not yet implemented
-- 📋 **Query optimization** - SPARQL-like queries not yet implemented
+```dart
+import 'package:locorda/worker.dart';
 
-This is a foundational implementation that will be extended as the core CRDT logic is developed.
+Future<WorkerParams> createEngineParams(
+  SyncEngineConfig config,
+  WorkerContext context,
+) async {
+  return WorkerParams(
+    storage: DriftWorkerHandler(
+      options: LocordaDriftNativeOptions(databaseName: 'my_app_sync'),
+    ),
+    backends: [...],
+  );
+}
+```
+
+See the [minimal example](https://github.com/locorda/sync-engine/tree/main/packages/locorda/example/minimal) for a complete working setup.
