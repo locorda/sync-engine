@@ -1,6 +1,6 @@
 name: locorda_mapping_bootstrap_generator
 description: Build-time generator for embedding CRDT mapping documents (merge strategy definitions).
-version: 0.1.0-dev
+version: 0.5.0
 resolution: workspace
 
 environment:

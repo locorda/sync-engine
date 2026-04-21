@@ -1,6 +1,6 @@
 name: locorda_solid_core
 description: Locorda Solid - Solid Pod backend implementation for locorda CRDT synchronization
-version: 0.1.0-dev
+version: 0.5.0
 resolution: workspace
 homepage: https://locorda.dev/
 repository: https://github.com/locorda/locorda
@@ -22,7 +22,7 @@ dependencies:
   logging: ^1.2.0
 
   # Core locorda dependencies
-  locorda_core: any
+  locorda_core: ^0.5.0
   
   locorda_rdf_core: ^0.12.2
 

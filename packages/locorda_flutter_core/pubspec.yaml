@@ -1,6 +1,6 @@
 name: locorda_flutter_core
 description: Locorda Flutter Core - Sync offline-first apps using your user's remote storage
-version: 0.1.0-dev
+version: 0.5.0
 publisher: locorda.dev
 resolution: workspace
 
@@ -11,9 +11,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  locorda_core: any
-  locorda_worker: any
-  locorda_ui: any
+  locorda_core: ^0.5.0
+  locorda_worker: ^0.5.0
+  locorda_ui: ^0.5.0
   
   # RDF mapping
   locorda_rdf_core: ^0.12.2
