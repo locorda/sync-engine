@@ -1,23 +1,32 @@
 #!/usr/bin/env bash
 
 # Release script for Locorda RDF Suite
-# Usage: ./release.sh <version>
+# Usage: ./release.sh <version> [--no-changelog]
 # Example: ./release.sh 0.5.0
+#          ./release.sh 0.5.0 --no-changelog   # for initial release: skips changelog generation,
+#                                               # preserves hand-written entries, still creates tags
 
 set -e  # Exit on error
 
 if [ -z "$1" ]; then
   echo "Error: Version number required"
-  echo "Usage: ./release.sh <version>"
+  echo "Usage: ./release.sh <version> [--no-changelog]"
   echo "Example: ./release.sh 0.5.0"
   exit 1
 fi
 
 VERSION=$1
+CHANGELOG_FLAG=""
+
+if [ "$2" = "--no-changelog" ]; then
+  CHANGELOG_FLAG="--no-changelog"
+  echo "ℹ️  --no-changelog: hand-written CHANGELOG entries will be preserved"
+fi
 
 echo "🚀 Setting version to $VERSION for all packages..."
 
 dart run melos version \
+  $CHANGELOG_FLAG \
   -V locorda_core:"$VERSION" \
   -V locorda_annotations:"$VERSION" \
   -V locorda_builder:"$VERSION" \
