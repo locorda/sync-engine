@@ -74,6 +74,9 @@ final locorda = await initLocorda(
 );
 ```
 
+> **GDrive**: platform-specific OAuth2 credentials must be configured before sign-in works.
+> See [locorda_gdrive — OAuth2 Setup](https://pub.dev/packages/locorda_gdrive) for instructions.
+
 ### 5. Connect your repository
 
 ```dart
