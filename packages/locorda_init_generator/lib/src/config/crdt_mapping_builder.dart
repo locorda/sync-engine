@@ -277,7 +277,7 @@ class CrdtMappingBuilder implements Builder {
     FieldElement field,
     ClassElement classElement,
   ) {
-    if (field.isSynthetic || field.isStatic) {
+    if (!field.isOriginDeclaration || field.isStatic) {
       return null;
     }
 
