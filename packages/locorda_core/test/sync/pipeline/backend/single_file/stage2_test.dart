@@ -1,10 +1,12 @@
-import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 /// Tests for Stage 2 (Shard Fetch) — single_file layout.
 ///
 /// Verifies:
 /// - Download failure → [ShardError] per shard
 /// - Second shard after download failure → [ShardNotFound] (download flag set)
 /// - [PhaseError] passes through
+library;
+
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'dart:async';
 
 import 'package:locorda_core/src/index/index_config_base.dart';
@@ -54,7 +56,8 @@ class _FailingDownloadBackend implements RemoteSyncBackend {
       const Stream.empty();
 
   @override
-  Future<void> finalize(SyncFinalizationState state, {PipeperfCollector? perf}) async {}
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 class _StubStorageAccess implements BackendStorageAccess {

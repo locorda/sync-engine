@@ -38,7 +38,8 @@ class CategoriesService {
     final byId = <String, Category>{};
     for (final category in categories) {
       final existing = byId[category.id];
-      if (existing == null || category.modifiedAt.isAfter(existing.modifiedAt)) {
+      if (existing == null ||
+          category.modifiedAt.isAfter(existing.modifiedAt)) {
         byId[category.id] = category;
       }
     }

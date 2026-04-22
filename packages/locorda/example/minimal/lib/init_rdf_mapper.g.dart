@@ -21,7 +21,7 @@ import 'package:locorda_core/locorda_core.dart' as locorda_core;
 RdfMapper initRdfMapper({
   RdfMapper? rdfMapper,
   required IriTermMapper<(String id,)> Function<T>(locorda_core.RootIriConfig)
-  $resourceIriFactory,
+      $resourceIriFactory,
 }) {
   if (rdfMapper == null) {
     rdfMapper = RdfMapper.withDefaultRegistry();

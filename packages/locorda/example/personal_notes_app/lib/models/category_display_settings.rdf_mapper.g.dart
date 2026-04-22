@@ -27,8 +27,8 @@ class CategoryDisplaySettingsMapper
 
   @override
   IriTerm? get typeIri => const IriTerm(
-    'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#CategoryDisplaySettings',
-  );
+        'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#CategoryDisplaySettings',
+      );
 
   @override
   cds.CategoryDisplaySettings fromRdfResource(

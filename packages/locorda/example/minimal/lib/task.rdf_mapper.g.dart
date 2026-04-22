@@ -25,7 +25,7 @@ class TaskMapper implements GlobalResourceMapper<task.Task> {
 
   /// Constructor
   const TaskMapper({required IriTermMapper<(String id,)> iriMapper})
-    : _iriMapper = iriMapper;
+      : _iriMapper = iriMapper;
 
   @override
   IriTerm? get typeIri =>

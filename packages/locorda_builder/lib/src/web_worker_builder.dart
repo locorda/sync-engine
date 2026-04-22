@@ -6,7 +6,7 @@ import 'package:path/path.dart' as p;
 
 /// Compiles Dart worker entry points to JavaScript for web platform.
 ///
-/// **Convention**: 
+/// **Convention**:
 /// - Manual: `lib/worker.dart` → `web/worker.dart.js`
 /// - Generated: `lib/worker_generated.g.dart` → `web/worker_generated.dart.js`
 ///
@@ -89,7 +89,8 @@ class WebWorkerBuilder implements Builder {
         ? 'worker.dart'
         : 'worker_generated.dart';
 
-    log.info('Compiling worker for web platform: ${workerFile.path} → web/$outputBasename.js');
+    log.info(
+        'Compiling worker for web platform: ${workerFile.path} → web/$outputBasename.js');
     final stopwatch = Stopwatch()..start();
 
     // Read the worker source (validates it exists and triggers rebuild on changes)

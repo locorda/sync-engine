@@ -602,7 +602,7 @@ class ShardDeterminer {
     // Generate the GroupIndexTemplate IRI
     final templateIri =
         _rdfGenerator.generateGroupIndexTemplateIri(config, typeIri);
-        
+
     // Generate group keys from resource properties.
     // Pass resourceIri for O(1) subject-indexed lookup instead of O(n) scan.
     final groupKeyGenerator = GroupKeyGenerator(config);

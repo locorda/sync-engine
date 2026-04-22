@@ -33,13 +33,13 @@ class NoteMapper implements GlobalResourceMapper<note.Note> {
   const NoteMapper({
     required IriTermMapper<String> categoryIdMapper,
     required IriTermMapper<(String id,)> iriMapper,
-  }) : _categoryIdMapper = categoryIdMapper,
-       _iriMapper = iriMapper;
+  })  : _categoryIdMapper = categoryIdMapper,
+        _iriMapper = iriMapper;
 
   @override
   IriTerm? get typeIri => const IriTerm(
-    'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#Note',
-  );
+        'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#Note',
+      );
 
   @override
   note.Note fromRdfResource(IriTerm subject, DeserializationContext context) {
@@ -65,20 +65,20 @@ class NoteMapper implements GlobalResourceMapper<note.Note> {
     final DateTime modifiedAt = reader.require(
       SchemaNoteDigitalDocument.dateModified,
     );
-    final Set<Weblink> weblinks = reader
-        .requireCollection<Set<Weblink>, Weblink>(
-          Schema.relatedLink,
-          UnorderedItemsSetMapper.new,
-        );
-    final Set<Comment> comments = reader
-        .requireCollection<Set<Comment>, Comment>(
-          SchemaNoteDigitalDocument.comment,
-          UnorderedItemsSetMapper.new,
-          itemDeserializer: crmg.CommentMapper(
-            rootResourceIriProvider: () =>
-                throw Exception('Must not call provider for deserialization'),
-          ),
-        );
+    final Set<Weblink> weblinks =
+        reader.requireCollection<Set<Weblink>, Weblink>(
+      Schema.relatedLink,
+      UnorderedItemsSetMapper.new,
+    );
+    final Set<Comment> comments =
+        reader.requireCollection<Set<Comment>, Comment>(
+      SchemaNoteDigitalDocument.comment,
+      UnorderedItemsSetMapper.new,
+      itemDeserializer: crmg.CommentMapper(
+        rootResourceIriProvider: () =>
+            throw Exception('Must not call provider for deserialization'),
+      ),
+    );
 
     // Get unmapped triples as the last reader operation for lossless mapping
     final RdfGraph other = reader.getUnmapped<RdfGraph>(globalUnmapped: true);

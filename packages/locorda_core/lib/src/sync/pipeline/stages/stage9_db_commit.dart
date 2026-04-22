@@ -217,7 +217,6 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
     for (final resolved in mergeResult.resolvedGroupIndices) {
       pendingGroupIndices[resolved.groupIndexIri] = resolved;
     }
-
   }
 
   return (UploadedResourceEvent event) async* {

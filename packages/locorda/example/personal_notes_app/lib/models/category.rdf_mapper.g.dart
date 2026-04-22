@@ -27,12 +27,12 @@ class CategoryMapper implements GlobalResourceMapper<category.Category> {
 
   /// Constructor
   const CategoryMapper({required IriTermMapper<(String id,)> iriMapper})
-    : _iriMapper = iriMapper;
+      : _iriMapper = iriMapper;
 
   @override
   IriTerm? get typeIri => const IriTerm(
-    'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#Category',
-  );
+        'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#Category',
+      );
 
   @override
   category.Category fromRdfResource(

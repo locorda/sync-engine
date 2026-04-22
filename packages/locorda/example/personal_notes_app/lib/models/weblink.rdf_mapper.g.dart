@@ -26,8 +26,8 @@ class WeblinkMapper implements LocalResourceMapper<weblink.Weblink> {
 
   @override
   IriTerm? get typeIri => const IriTerm(
-    'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#Weblink',
-  );
+        'https://locorda.dev/example/personal_notes_app/vocabulary/personal-notes#Weblink',
+      );
 
   @override
   weblink.Weblink fromRdfResource(

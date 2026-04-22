@@ -26,5 +26,4 @@ GRAPH <mappings/task-v1#> {
       mc:predicateMapping () .
 }
 """,
-
 ];

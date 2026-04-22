@@ -30,8 +30,7 @@ abstract interface class BackendStorageAccess {
   /// Load stored remote ETags for the given document IRIs.
   ///
   /// Returns a map with null values for documents without a stored ETag.
-  Future<Map<IriTerm, String?>> getRemoteETags(
-      Iterable<IriTerm> documentIris);
+  Future<Map<IriTerm, String?>> getRemoteETags(Iterable<IriTerm> documentIris);
 
   /// Persist remote ETags after successful download or upload.
   Future<void> setRemoteETags(Map<IriTerm, String> etagsByDocument);

@@ -6,10 +6,12 @@ import 'package:locorda_drift/locorda_worker.manifest.dart' as locorda_drift;
 import 'package:locorda_gdrive/locorda_worker.manifest.dart' as locorda_gdrive;
 import 'package:locorda_solid/locorda_worker.manifest.dart' as locorda_solid;
 import 'package:locorda_worker/locorda_worker.manifest.dart' as locorda_worker;
-import 'package:personal_notes_app/locorda_worker.manifest.dart' as personal_notes_app;
+import 'package:personal_notes_app/locorda_worker.manifest.dart'
+    as personal_notes_app;
 import 'package:locorda_worker/worker.dart';
 import 'src/generated/mapping_bootstrap.g.dart';
-import 'package:personal_notes_app/utils/logging_setup.dart' show setupWorkerLogging;
+import 'package:personal_notes_app/utils/logging_setup.dart'
+    show setupWorkerLogging;
 
 /// Worker entry point for web workers.
 ///
@@ -25,21 +27,21 @@ void main() {
 /// This function is public so main-side code can import and pass it to
 /// Locorda.create(workerSetup: generatedWorkerSetup) for isolate spawning.
 Future<WorkerParams> generatedWorkerSetup() async => WorkerParams(
-  storages: [
-    ...locorda_dir.storages,
-    ...locorda_drift.storages,
-    ...locorda_gdrive.storages,
-    ...locorda_solid.storages,
-    ...locorda_worker.storages,
-    ...personal_notes_app.storages,
-  ],
-  remotes: [
-    ...locorda_dir.remotes,
-    ...locorda_drift.remotes,
-    ...locorda_gdrive.remotes,
-    ...locorda_solid.remotes,
-    ...locorda_worker.remotes,
-    ...personal_notes_app.remotes,
-  ],
-  mappingBootstrapSources: bootstrapMappings,
-);
+      storages: [
+        ...locorda_dir.storages,
+        ...locorda_drift.storages,
+        ...locorda_gdrive.storages,
+        ...locorda_solid.storages,
+        ...locorda_worker.storages,
+        ...personal_notes_app.storages,
+      ],
+      remotes: [
+        ...locorda_dir.remotes,
+        ...locorda_drift.remotes,
+        ...locorda_gdrive.remotes,
+        ...locorda_solid.remotes,
+        ...locorda_worker.remotes,
+        ...personal_notes_app.remotes,
+      ],
+      mappingBootstrapSources: bootstrapMappings,
+    );

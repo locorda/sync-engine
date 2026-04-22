@@ -31,14 +31,13 @@ SyncEngineConfig buildEffectiveConfig(SyncEngineConfig config) {
         indices: []),
   ]);
 
-  final allResourceIris = intermediateConfig.resources
-      .map((r) => r.typeIri)
-      .toSet()
-    ..addAll({
-      IdxFullIndex.classIri,
-      IdxGroupIndexTemplate.classIri,
-      IdxGroupIndex.classIri,
-    });
+  final allResourceIris =
+      intermediateConfig.resources.map((r) => r.typeIri).toSet()
+        ..addAll({
+          IdxFullIndex.classIri,
+          IdxGroupIndexTemplate.classIri,
+          IdxGroupIndex.classIri,
+        });
 
   final effectiveConfig = intermediateConfig.withResourcesAdded([
     ResourceConfigData(

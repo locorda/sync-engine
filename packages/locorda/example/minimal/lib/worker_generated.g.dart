@@ -21,15 +21,15 @@ void main() {
 /// This function is public so main-side code can import and pass it to
 /// Locorda.create(workerSetup: generatedWorkerSetup) for isolate spawning.
 Future<WorkerParams> generatedWorkerSetup() async => WorkerParams(
-  storages: [
-    ...locorda_dir.storages,
-    ...locorda_drift.storages,
-    ...locorda_worker.storages,
-  ],
-  remotes: [
-    ...locorda_dir.remotes,
-    ...locorda_drift.remotes,
-    ...locorda_worker.remotes,
-  ],
-  mappingBootstrapSources: bootstrapMappings,
-);
+      storages: [
+        ...locorda_dir.storages,
+        ...locorda_drift.storages,
+        ...locorda_worker.storages,
+      ],
+      remotes: [
+        ...locorda_dir.remotes,
+        ...locorda_drift.remotes,
+        ...locorda_worker.remotes,
+      ],
+      mappingBootstrapSources: bootstrapMappings,
+    );

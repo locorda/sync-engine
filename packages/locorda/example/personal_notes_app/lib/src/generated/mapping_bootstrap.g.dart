@@ -50,7 +50,6 @@ GRAPH <mappings/category-v1#> {
       mc:predicateMapping () .
 }
 """,
-
   r"""
 @base <https://locorda.dev/example/personal_notes_app/> .
 @prefix ca: <https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#> .
@@ -100,5 +99,4 @@ GRAPH <mappings/note-v1#> {
       mc:predicateMapping () .
 }
 """,
-
 ];

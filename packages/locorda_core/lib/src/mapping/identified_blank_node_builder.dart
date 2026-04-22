@@ -223,8 +223,8 @@ class IdentifiedBlankNodeBuilder {
     };
 
     // 2nd: find the parent path(s) - store full triples to access predicates
-    final parentTriples = graph.findTriples(
-            objectIn: blankNodeSubjects)
+    final parentTriples = graph
+        .findTriples(objectIn: blankNodeSubjects)
         .fold(<BlankNodeTerm, List<Triple>>{}, (r, t) {
       r.putIfAbsent(t.object as BlankNodeTerm, () => <Triple>[]).add(t);
       return r;

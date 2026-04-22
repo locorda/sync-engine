@@ -1,3 +1,1 @@
-class PersonalNotesAppProperties {
-  
-}
+class PersonalNotesAppProperties {}

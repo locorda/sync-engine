@@ -1,8 +1,9 @@
-import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 /// Tests for Stage 6 (Resource Fetch) — shard_dataset layout.
 ///
 /// SDS serves resource graphs from the download cache populated in S02 —
 /// no I/O. Tests verify error/boundary event pass-through and cache cleanup.
+library;
+
 import 'dart:async';
 
 import 'package:locorda_core/src/storage/remote_storage.dart';
@@ -10,6 +11,7 @@ import 'package:locorda_core/src/sync/pipeline/backend/remote_sync_backend.dart'
 import 'package:locorda_core/src/sync/pipeline/backend/shard_dataset_pipeline.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_support.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
+import 'package:locorda_core/src/sync/pipeline/pipeperf.dart';
 import 'package:locorda_rdf_core/core.dart';
 import 'package:test/test.dart';
 
@@ -41,7 +43,8 @@ class _NullBackend implements RemoteSyncBackend {
       const Stream.empty();
 
   @override
-  Future<void> finalize(SyncFinalizationState state, {PipeperfCollector? perf}) async {}
+  Future<void> finalize(SyncFinalizationState state,
+      {PipeperfCollector? perf}) async {}
 }
 
 class _StubStorageAccess implements BackendStorageAccess {

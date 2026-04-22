@@ -32,7 +32,6 @@ const List<String> bootstrapMappings = [
      [ mc:predicate crdt:maxInactivityPeriod; algo:mergeWith algo:LWW_Register;
        rdfs:comment "Convention: Only the installation itself should update its own inactivity threshold" ] .
 """,
-
   r"""
 @base <https://w3id.org/solid-crdt-sync/mappings/core-v1#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -121,7 +120,6 @@ const List<String> bootstrapMappings = [
   [ mc:predicate rdf:first; algo:mergeWith algo:LWW_Register ], 
   [ mc:predicate rdf:rest; algo:mergeWith algo:LWW_Register ] .
 """,
-
   r"""
 @base <https://w3id.org/solid-crdt-sync/mappings/index-v1#> .
 @prefix crdt: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
@@ -221,7 +219,6 @@ const List<String> bootstrapMappings = [
      [ mc:predicate idx:pattern; algo:mergeWith algo:LWW_Register ],       # Regex pattern (atomic within blank node)
      [ mc:predicate idx:replacement; algo:mergeWith algo:LWW_Register ] .  # Replacement template (atomic within blank node)
 """,
-
   r"""
 @base <https://w3id.org/solid-crdt-sync/mappings/shard-v1#> .
 @prefix crdt: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
@@ -256,5 +253,4 @@ const List<String> bootstrapMappings = [
      [ mc:predicate idx:resource; algo:mergeWith algo:Immutable ],           # Resource IRI
      [ mc:predicate crdt:clockHash; algo:mergeWith algo:LWW_Register ] .  # Clock hash for change detection
 """,
-
 ];

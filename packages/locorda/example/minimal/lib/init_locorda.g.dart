@@ -30,19 +30,20 @@ Future<Locorda> initLocorda({
   rdf_term.IriTermFactory? iriTermFactory,
   core.RdfCore? rdfCore,
   String? debugName,
-}) async => Locorda.create(
-  workerSetup: wrk.generatedWorkerSetup,
-  jsScript: 'worker_generated.dart.js',
-  mapperInitializer: (context) => mpr.initRdfMapper(
-    rdfMapper: context.baseRdfMapper,
-    $resourceIriFactory: context.resourceIriFactory,
-  ),
-  config: cfg.generateLocordaConfig(),
-  onWorkerSpawn: onWorkerSpawn,
-  storage: storage,
-  remotes: remotes,
-  plugins: plugins,
-  iriTermFactory: iriTermFactory,
-  rdfCore: rdfCore,
-  debugName: debugName,
-);
+}) async =>
+    Locorda.create(
+      workerSetup: wrk.generatedWorkerSetup,
+      jsScript: 'worker_generated.dart.js',
+      mapperInitializer: (context) => mpr.initRdfMapper(
+        rdfMapper: context.baseRdfMapper,
+        $resourceIriFactory: context.resourceIriFactory,
+      ),
+      config: cfg.generateLocordaConfig(),
+      onWorkerSpawn: onWorkerSpawn,
+      storage: storage,
+      remotes: remotes,
+      plugins: plugins,
+      iriTermFactory: iriTermFactory,
+      rdfCore: rdfCore,
+      debugName: debugName,
+    );
