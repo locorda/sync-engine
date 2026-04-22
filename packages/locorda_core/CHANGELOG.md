@@ -1,3 +1,7 @@
+## 0.5.1
+
+ - **FIX**(core): translate preloadedResourceDocIris IRIs in PipelineIriTranslatingRemoteSyncStorage. ([8ca4520b](https://github.com/locorda/sync-engine/commit/8ca4520b666c6001c04af7e0b0d58fd4c3a5d88b))
+
 ## 0.5.0
 
 - Initial public release

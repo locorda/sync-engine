@@ -1,6 +1,6 @@
 name: locorda_init_generator
 description: Code generator for Locorda convenience wrapper (initLocorda)
-version: 0.5.0
+version: 0.5.1
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues
@@ -17,7 +17,7 @@ dependencies:
   dart_style: ">=2.3.7 <4.0.0"
   glob: ^2.1.2
   logging: ^1.2.0
-  locorda_core: ^0.5.0
+  locorda_core: ^0.5.1
   locorda_rdf_core: ^0.12.2
   pub_semver: ^2.2.0
   path: ^1.9.1

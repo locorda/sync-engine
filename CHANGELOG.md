@@ -1,3 +1,84 @@
+# Change Log
+
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+## 2026-04-22
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`locorda_core` - `v0.5.1`](#locorda_core---v051)
+ - [`locorda_annotations` - `v0.5.1`](#locorda_annotations---v051)
+ - [`locorda_builder` - `v0.5.1`](#locorda_builder---v051)
+ - [`locorda_objects` - `v0.5.1`](#locorda_objects---v051)
+ - [`locorda_init_generator` - `v0.5.1`](#locorda_init_generator---v051)
+ - [`locorda_dev` - `v0.5.1`](#locorda_dev---v051)
+ - [`locorda_dir` - `v0.5.1`](#locorda_dir---v051)
+ - [`locorda_drift` - `v0.5.1`](#locorda_drift---v051)
+ - [`locorda_flutter_core` - `v0.5.1`](#locorda_flutter_core---v051)
+ - [`locorda_flutter` - `v0.5.1`](#locorda_flutter---v051)
+ - [`locorda_gdrive` - `v0.5.1`](#locorda_gdrive---v051)
+ - [`locorda_mapping_bootstrap_generator` - `v0.5.1`](#locorda_mapping_bootstrap_generator---v051)
+ - [`locorda_solid_auth` - `v0.5.1`](#locorda_solid_auth---v051)
+ - [`locorda_solid_auth_worker` - `v0.5.1`](#locorda_solid_auth_worker---v051)
+ - [`locorda_solid_core` - `v0.5.1`](#locorda_solid_core---v051)
+ - [`locorda_solid` - `v0.5.1`](#locorda_solid---v051)
+ - [`locorda_ui` - `v0.5.1`](#locorda_ui---v051)
+ - [`locorda_worker` - `v0.5.1`](#locorda_worker---v051)
+ - [`locorda` - `v0.5.1`](#locorda---v051)
+
+---
+
+#### `locorda_core` - `v0.5.1`
+
+ - **FIX**(core): translate preloadedResourceDocIris IRIs in PipelineIriTranslatingRemoteSyncStorage. ([8ca4520b](https://github.com/locorda/sync-engine/commit/8ca4520b666c6001c04af7e0b0d58fd4c3a5d88b))
+
+#### `locorda_annotations` - `v0.5.1`
+
+#### `locorda_builder` - `v0.5.1`
+
+#### `locorda_objects` - `v0.5.1`
+
+#### `locorda_init_generator` - `v0.5.1`
+
+ - **FIX**: do not use field that was deprecated in analyzer 10 and removed in analyzer 12. ([fab5758e](https://github.com/locorda/sync-engine/commit/fab5758ec2b1115b8b2875ed4aa0055e59667ba7))
+
+#### `locorda_dev` - `v0.5.1`
+
+#### `locorda_dir` - `v0.5.1`
+
+#### `locorda_drift` - `v0.5.1`
+
+#### `locorda_flutter_core` - `v0.5.1`
+
+#### `locorda_flutter` - `v0.5.1`
+
+#### `locorda_gdrive` - `v0.5.1`
+
+#### `locorda_mapping_bootstrap_generator` - `v0.5.1`
+
+#### `locorda_solid_auth` - `v0.5.1`
+
+#### `locorda_solid_auth_worker` - `v0.5.1`
+
+#### `locorda_solid_core` - `v0.5.1`
+
+#### `locorda_solid` - `v0.5.1`
+
+#### `locorda_ui` - `v0.5.1`
+
+#### `locorda_worker` - `v0.5.1`
+
+#### `locorda` - `v0.5.1`
+
 
 ## 0.5.0
 

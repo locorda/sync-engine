@@ -1,6 +1,6 @@
 name: locorda_drift
 description: Locorda Drift - SQLite storage implementation for locorda_core
-version: 0.5.0
+version: 0.5.1
 resolution: workspace
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
@@ -20,8 +20,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  locorda_core: ^0.5.0
-  locorda_worker: ^0.5.0
+  locorda_core: ^0.5.1
+  locorda_worker: ^0.5.1
   drift: ^2.32.1
   drift_flutter: ^0.3.0
   path_provider: ^2.1.0

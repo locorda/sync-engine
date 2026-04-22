@@ -1,6 +1,6 @@
 name: locorda
 description: Locorda - Sync offline-first apps using your user's remote storage
-version: 0.5.0
+version: 0.5.1
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues
@@ -13,16 +13,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  locorda_core: ^0.5.0
-  locorda_drift: ^0.5.0
-  locorda_flutter_core: ^0.5.0
-  locorda_flutter: ^0.5.0
-  locorda_objects: ^0.5.0
-  locorda_ui: ^0.5.0
-  locorda_worker: ^0.5.0
+  locorda_core: ^0.5.1
+  locorda_drift: ^0.5.1
+  locorda_flutter_core: ^0.5.1
+  locorda_flutter: ^0.5.1
+  locorda_objects: ^0.5.1
+  locorda_ui: ^0.5.1
+  locorda_worker: ^0.5.1
   
   # Annotations for model classes
-  locorda_annotations: ^0.5.0
+  locorda_annotations: ^0.5.1
   
   # RDF mapping
   locorda_rdf_core: ^0.12.2

@@ -1,6 +1,6 @@
 name: locorda_annotations
 description: Locorda Annotations - CRDT merge strategy annotations for code generation
-version: 0.5.0
+version: 0.5.1
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues
@@ -12,7 +12,7 @@ environment:
 dependencies:
   locorda_rdf_mapper_annotations: ^0.12.2
   locorda_rdf_core: ^0.12.2
-  locorda_core: ^0.5.0
+  locorda_core: ^0.5.1
 
 dev_dependencies:
   test: ^1.26.3
