@@ -1,0 +1,82 @@
+name: Auto-label issues by package
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  apply-package-label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Apply pkg: label from issue form"
+        env:
+          GH_TOKEN: "${{ github.token }}"
+          # Use env vars for untrusted content to prevent script injection
+          ISSUE_BODY: "${{ github.event.issue.body }}"
+          ISSUE_NUMBER: "${{ github.event.issue.number }}"
+          REPO: "${{ github.repository }}"
+        run: |
+          # GitHub issue forms with multiple: true serialize selections as a
+          # comma-separated list on one line, e.g. "locorda_core, locorda_drift"
+          SELECTED=$(printf '%s' "$ISSUE_BODY" | awk '/^### Affected Package/{found=1; next} found && /\S/{print; exit}')
+          echo "Selected: $SELECTED"
+
+          if [ -z "$SELECTED" ]; then
+            echo "No 'Affected Package' section found — skipping."
+            exit 0
+          fi
+
+          # Remove stale pkg: labels (handles edited issues)
+          STALE=$(gh issue view "$ISSUE_NUMBER" --repo "$REPO" --json labels \
+            --jq '[.labels[].name | select(startswith("pkg:"))] | join(",")')
+          if [ -n "$STALE" ]; then
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --remove-label "$STALE"
+            echo "Removed stale labels: $STALE"
+          fi
+
+          map_label() {
+            case "$1" in
+              "locorda (main package / general)")   echo "pkg: locorda" ;;
+              "locorda_core")                        echo "pkg: locorda_core" ;;
+              "locorda_annotations")                 echo "pkg: locorda_annotations" ;;
+              "locorda_builder")                     echo "pkg: locorda_builder" ;;
+              "locorda_dev")                         echo "pkg: locorda_dev" ;;
+              "locorda_dir")                         echo "pkg: locorda_dir" ;;
+              "locorda_drift")                       echo "pkg: locorda_drift" ;;
+              "locorda_flutter")                     echo "pkg: locorda_flutter" ;;
+              "locorda_flutter_core")                echo "pkg: locorda_flutter_core" ;;
+              "locorda_gdrive")                      echo "pkg: locorda_gdrive" ;;
+              "locorda_init_generator")              echo "pkg: locorda_init_generator" ;;
+              "locorda_mapping_bootstrap_generator") echo "pkg: locorda_mapping_bootstrap_generator" ;;
+              "locorda_objects")                     echo "pkg: locorda_objects" ;;
+              "locorda_solid")                       echo "pkg: locorda_solid" ;;
+              "locorda_solid_auth")                  echo "pkg: locorda_solid_auth" ;;
+              "locorda_solid_auth_worker")           echo "pkg: locorda_solid_auth_worker" ;;
+              "locorda_solid_core")                  echo "pkg: locorda_solid_core" ;;
+              "locorda_solid_ui")                    echo "pkg: locorda_solid_ui" ;;
+              "locorda_ui")                          echo "pkg: locorda_ui" ;;
+              "locorda_worker")                      echo "pkg: locorda_worker" ;;
+              *) echo "" ;;
+            esac
+          }
+
+          # Split comma-separated selections and collect labels to apply
+          LABELS_TO_ADD=""
+          IFS=',' read -ra PARTS <<< "$SELECTED"
+          for PART in "${PARTS[@]}"; do
+            TRIMMED=$(echo "$PART" | xargs)  # trim whitespace
+            LABEL=$(map_label "$TRIMMED")
+            if [ -n "$LABEL" ]; then
+              LABELS_TO_ADD="${LABELS_TO_ADD:+$LABELS_TO_ADD,}$LABEL"
+            else
+              echo "No pkg: label mapped for '$TRIMMED' — skipping."
+            fi
+          done
+
+          if [ -n "$LABELS_TO_ADD" ]; then
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --add-label "$LABELS_TO_ADD"
+            echo "Applied: $LABELS_TO_ADD"
+          fi
