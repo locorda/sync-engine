@@ -23,6 +23,12 @@ if [ "$2" = "--no-changelog" ]; then
   echo "ℹ️  --no-changelog: hand-written CHANGELOG entries will be preserved"
 fi
 
+echo "🚀 Check analyze & formatting ..."
+dart run melos lint
+
+echo "🚀 Running all tests ..."
+dart run melos test
+
 echo "🚀 Setting version to $VERSION for all packages..."
 
 dart run melos version \
