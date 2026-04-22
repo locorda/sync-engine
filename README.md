@@ -2,7 +2,7 @@
 
 **Locorda** is a Dart/Flutter library for building offline-first applications that sync via the user's own backend — Google Drive, Solid Pod, or any file storage — without a central server.
 
-> **Early Access — v0.5.0**
+> **Early Access — [![pub](https://img.shields.io/pub/v/locorda.svg)](https://pub.dev/packages/locorda)**
 >
 > Core API is stable; backend implementation details may have breaking changes before 1.0.
 >
