@@ -1,5 +1,8 @@
 # locorda_gdrive
 
+[![pub package](https://img.shields.io/pub/v/locorda_gdrive.svg)](https://pub.dev/packages/locorda_gdrive)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 Google Drive backend for Locorda CRDT synchronization.
 
 ## Features

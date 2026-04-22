@@ -1,5 +1,8 @@
 # locorda_core
 
+[![pub package](https://img.shields.io/pub/v/locorda_core.svg)](https://pub.dev/packages/locorda_core)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 Platform-agnostic CRDT sync engine built around a streaming multi-stage pipeline with flexible backend storage layouts — the runtime that drives offline-first sync, conflict resolution, and index management for Locorda.
 
 > This is an internal implementation package. Most applications should depend on [`locorda`](../locorda) or [`locorda_flutter`](../locorda_flutter), which re-export the public surface of this package. Add `locorda_core` directly only when building a custom integration (e.g. a new storage backend) without Flutter.

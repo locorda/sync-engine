@@ -1,5 +1,8 @@
 # locorda_dev
 
+[![pub package](https://img.shields.io/pub/v/locorda_dev.svg)](https://pub.dev/packages/locorda_dev)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 Unified development tooling for Locorda applications. Add this single package as a `dev_dependency` to activate all Locorda build-time code generators and deployment tools.
 
 ## Features

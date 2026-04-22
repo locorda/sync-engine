@@ -1,5 +1,8 @@
 # locorda_dir
 
+[![pub package](https://img.shields.io/pub/v/locorda_dir.svg)](https://pub.dev/packages/locorda_dir)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 Local directory backend for Locorda - sync your data to a local folder on disk.
 
 ## Overview

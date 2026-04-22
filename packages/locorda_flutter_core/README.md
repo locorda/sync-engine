@@ -1,5 +1,8 @@
 # locorda_flutter_core
 
+[![pub package](https://img.shields.io/pub/v/locorda_flutter_core.svg)](https://pub.dev/packages/locorda_flutter_core)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 Shared Flutter base types used by `locorda_flutter` and backend integration packages
 (`locorda_solid`, `locorda_gdrive`, …). This package defines the contracts that
 allow the main thread and backend plugins to interoperate.

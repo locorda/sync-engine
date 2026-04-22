@@ -1,5 +1,8 @@
 # locorda_mapping_bootstrap_generator
 
+[![pub package](https://img.shields.io/pub/v/locorda_mapping_bootstrap_generator.svg)](https://pub.dev/packages/locorda_mapping_bootstrap_generator)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 Build-time code generator that embeds CRDT mapping documents (merge strategy definitions) into your application's assets at compile time.
 
 > This generator is included automatically when you add [`locorda_dev`](../locorda_dev) as a dev dependency. You do not need to depend on this package directly.

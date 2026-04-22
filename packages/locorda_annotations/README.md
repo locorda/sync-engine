@@ -1,5 +1,8 @@
 # locorda_annotations
 
+[![pub package](https://img.shields.io/pub/v/locorda_annotations.svg)](https://pub.dev/packages/locorda_annotations)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 CRDT merge strategy and RDF resource annotations for Locorda — used by code generators to produce merge contracts, RDF mappers, and sync configuration.
 
 > Most Flutter applications should depend on [`locorda`](../locorda) rather than this package directly. `locorda` re-exports all annotations you need.

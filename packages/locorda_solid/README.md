@@ -1,5 +1,8 @@
 # locorda_solid
 
+[![pub package](https://img.shields.io/pub/v/locorda_solid.svg)](https://pub.dev/packages/locorda_solid)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 Solid Pod backend and authentication for locorda CRDT synchronization.
 
 ## Features

@@ -1,5 +1,8 @@
 # locorda_objects
 
+[![pub package](https://img.shields.io/pub/v/locorda_objects.svg)](https://pub.dev/packages/locorda_objects)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 Type-safe, object-oriented API layer for the locorda CRDT sync engine.
 
 This package wraps the raw `SyncEngine` (which operates on `RdfGraph`) with an

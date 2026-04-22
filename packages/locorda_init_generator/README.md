@@ -1,5 +1,8 @@
 # locorda_init_generator
 
+[![pub package](https://img.shields.io/pub/v/locorda_init_generator.svg)](https://pub.dev/packages/locorda_init_generator)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 Code generator for Locorda convenience wrapper (`initLocorda`).
 
 ## Purpose

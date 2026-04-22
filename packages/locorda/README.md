@@ -1,5 +1,8 @@
 # locorda
 
+[![pub package](https://img.shields.io/pub/v/locorda.svg)](https://pub.dev/packages/locorda)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 **Sync offline-first Flutter apps using your user's own storage — no backend required.**
 
 `locorda` is the main entry point for building apps with [Locorda](https://locorda.dev/sync-engine/).

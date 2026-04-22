@@ -1,5 +1,8 @@
 # locorda_worker
 
+[![pub package](https://img.shields.io/pub/v/locorda_worker.svg)](https://pub.dev/packages/locorda_worker)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 Worker infrastructure for Locorda — platform-agnostic architecture for running heavy operations in a separate isolate or web worker thread.
 
 ## Overview

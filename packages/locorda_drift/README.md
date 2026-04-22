@@ -1,5 +1,8 @@
 # locorda_drift
 
+[![pub package](https://img.shields.io/pub/v/locorda_drift.svg)](https://pub.dev/packages/locorda_drift)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 Drift (SQLite) storage implementation for locorda_core.
 
 ## Overview

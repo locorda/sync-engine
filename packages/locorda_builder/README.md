@@ -1,5 +1,8 @@
 # locorda_builder
 
+[![pub package](https://img.shields.io/pub/v/locorda_builder.svg)](https://pub.dev/packages/locorda_builder)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 Build-time transformations for Locorda applications - automates web worker compilation.
 
 ## Features

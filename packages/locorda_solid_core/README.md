@@ -1,5 +1,8 @@
 # locorda_solid_core
 
+[![pub package](https://img.shields.io/pub/v/locorda_solid_core.svg)](https://pub.dev/packages/locorda_solid_core)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 Shared types and backend implementation for Solid Pod synchronisation — used internally by [`locorda_solid`](../locorda_solid).
 
 > Most applications should depend on [`locorda_solid`](../locorda_solid) rather than this package directly. Add `locorda_solid_core` only when building a custom integration that needs the Solid backend types without the full `locorda_solid` setup.

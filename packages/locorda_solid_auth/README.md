@@ -1,5 +1,8 @@
 # locorda_solid_auth
 
+[![pub package](https://img.shields.io/pub/v/locorda_solid_auth.svg)](https://pub.dev/packages/locorda_solid_auth)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 Solid OIDC / DPoP authentication implementation for Locorda, used internally by [`locorda_solid`](../locorda_solid).
 
 > Most applications should depend on [`locorda_solid`](../locorda_solid) rather than this package directly. Add `locorda_solid_auth` only when you need to integrate Solid authentication into a custom UI or auth flow without the full Solid backend.

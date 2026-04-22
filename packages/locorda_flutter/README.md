@@ -1,5 +1,8 @@
 # locorda_flutter
 
+[![pub package](https://img.shields.io/pub/v/locorda_flutter.svg)](https://pub.dev/packages/locorda_flutter)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
+
 Flutter integration layer for locorda — combines `ObjectSyncEngine` with worker
 architecture and UI components to give Flutter apps a single `Locorda` entry point.
 
