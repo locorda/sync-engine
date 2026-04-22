@@ -93,18 +93,18 @@ packages:
     dependency: transitive
     description:
       name: build_runner
-      sha256: "521daf8d189deb79ba474e43a696b41c49fb3987818dbacf3308f1e03673a75e"
+      sha256: "4425a87d87d0d1303540f867994303f5b141ad2f6ecac7ac2cf8851f41c0cef1"
       url: "https://pub.dev"
     source: hosted
-    version: "2.13.1"
+    version: "2.14.0"
   build_test:
     dependency: transitive
     description:
       name: build_test
-      sha256: eebbfbb42b495e5d1618619ebea3310b3fde18ebe093285da4f4a2ce4ef8247d
+      sha256: ddd2def30c208a735b09909111a74c57cc22ba29c0f68a733ad7371f85e15c71
       url: "https://pub.dev"
     source: hosted
-    version: "3.5.12"
+    version: "3.5.13"
   built_collection:
     dependency: transitive
     description:
@@ -185,14 +185,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
-  code_builder:
-    dependency: transitive
-    description:
-      name: code_builder
-      sha256: "6a6cab2ba4680d6423f34a9b972a4c9a94ebe1b62ecec4e1a1f2cba91fd1319d"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.11.1"
   collection:
     dependency: transitive
     description:
@@ -269,10 +261,10 @@ packages:
     dependency: transitive
     description:
       name: dart_jsonwebtoken
-      sha256: cb79ed79baa02b4f59a597bf365873cbd83f9bb15273d63f7803802d21717c7d
+      sha256: ad84e60181696513d04d5f2078e0bbc20365b911f46f647797317414bdc88fbe
       url: "https://pub.dev"
     source: hosted
-    version: "3.4.0"
+    version: "3.4.1"
   dart_style:
     dependency: transitive
     description:
@@ -570,10 +562,10 @@ packages:
     dependency: transitive
     description:
       name: hooks
-      sha256: e79ed1e8e1929bc6ecb6ec85f0cb519c887aa5b423705ded0d0f2d9226def388
+      sha256: "025f060e86d2d4c3c47b56e33caf7f93bf9283340f26d23424ebcfccf34f621e"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.2"
+    version: "1.0.3"
   html:
     dependency: transitive
     description:
@@ -1142,6 +1134,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.0"
+  record_use:
+    dependency: transitive
+    description:
+      name: record_use
+      sha256: "2551bd8eecfe95d14ae75f6021ad0248be5c27f138c2ec12fcb52b500b3ba1ed"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.6.0"
   retry:
     dependency: transitive
     description:
@@ -1255,10 +1255,10 @@ packages:
     dependency: transitive
     description:
       name: solid_oidc_auth
-      sha256: ae9557c3d77367421ece386a6a739d416342f8372b748a60c9d65ceeaae40ded
+      sha256: c77ab0fca9d76e1de72d01a408e142464799cdb43c0d91746ad796ec08e7f6ed
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.1"
+    version: "0.2.2"
   source_gen:
     dependency: transitive
     description:
