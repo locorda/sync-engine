@@ -1,6 +1,6 @@
 # Locorda: Sync offline-first apps using your user's own storage
 
-**Locorda** is a Dart/Flutter library for building offline-first applications that sync via the user's own backend — Google Drive, Solid Pod, or any file storage — without a central server.
+**Locorda** is a Dart/Flutter library for building **offline-first** apps that sync via the user's own backend — Google Drive, Solid Pod, or any file storage — without a central server. This **BYOB (Bring Your Own Backend)** approach, bringing the [unhosted](https://unhosted.org) philosophy to Flutter, means your users' data lives in their own storage — not on your servers.
 
 > **Early Access — [![pub](https://img.shields.io/pub/v/locorda.svg)](https://pub.dev/packages/locorda)**
 >
