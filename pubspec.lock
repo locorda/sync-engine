@@ -93,18 +93,18 @@ packages:
     dependency: transitive
     description:
       name: build_runner
-      sha256: "4425a87d87d0d1303540f867994303f5b141ad2f6ecac7ac2cf8851f41c0cef1"
+      sha256: "1523ce62448ebac2c15a8ba5fbad8acac169788658a7dd2a1c2d9c2a9318b9a6"
       url: "https://pub.dev"
     source: hosted
-    version: "2.14.0"
+    version: "2.15.0"
   build_test:
     dependency: transitive
     description:
       name: build_test
-      sha256: ddd2def30c208a735b09909111a74c57cc22ba29c0f68a733ad7371f85e15c71
+      sha256: e69ade870705d5ad4d8b7e479d0ca71d0a9932ca04be6d278d97de45a32da07e
       url: "https://pub.dev"
     source: hosted
-    version: "3.5.13"
+    version: "3.5.15"
   built_collection:
     dependency: transitive
     description:
