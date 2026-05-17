@@ -139,7 +139,7 @@ class GDriveTypeIndexManager {
         _localResourceLocator =
             LocalResourceLocator(iriTermFactory: iriTermFactory);
 
-  /// Load or create the Type Index and ensure all resource types are mapped.
+  /// Load or create the Type Index and ensure all required types are mapped.
   ///
   /// Returns a map of resource type IRI → folder ID for efficient lookups
   /// during sync operations.
@@ -151,10 +151,9 @@ class GDriveTypeIndexManager {
   /// 4. For each missing type: Add with optimistic locking
   /// 5. Return folder ID mappings
   Future<TypeIndexMappings> loadOrCreateTypeIndex(
-    SyncEngineConfig engineConfig,
+    Set<IriTerm> requiredTypes,
   ) async {
-    _log.info(
-        'Loading Type Index for ${engineConfig.resources.length} resource types');
+    _log.info('Loading Type Index for ${requiredTypes.length} resource types');
 
     // Step 1: Get or create app root folder
     final appFolderId = await _appFolderProvider.appFolderId;
@@ -171,8 +170,7 @@ class GDriveTypeIndexManager {
     _log.fine('Found ${existingMappings.length} existing type mappings');
 
     // Step 4: Add missing types with optimistic locking
-    final allTypes = _collectAllTypes(engineConfig);
-    final missingTypes = allTypes.where(
+    final missingTypes = requiredTypes.where(
       (type) => !existingMappings.containsKey(type),
     );
 
@@ -322,13 +320,6 @@ class GDriveTypeIndexManager {
 
     return result;
   }
-
-  /// Collect all resource types that need mappings.
-  ///
-  /// Includes:
-  /// - All configured resource types from SyncEngineConfig - this includes framework types like installation and index types
-  Set<IriTerm> _collectAllTypes(SyncEngineConfig engineConfig) =>
-      {...engineConfig.resources.map((r) => r.typeIri), Sync.SyncFile};
 
   /// Add missing type mappings with optimistic locking.
   ///

@@ -10,6 +10,7 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
 import 'gdrive_api.dart';
+import 'gdrive_folder_strategy.dart';
 import 'gdrive_type_index_manager.dart';
 import 'shared/gdrive_config.dart';
 
@@ -21,7 +22,7 @@ final _mirrorLog = Logger('GDriveLocalMirror');
 /// serves all sync downloads/uploads from that local copy.
 class GDriveLocalMirror {
   final GDriveApiClient _client;
-  final TypeIndexMappings _typeIndexMappings;
+  final GDriveFolderStrategy _folderStrategy;
   final ResourceLocator _resourceLocator;
   final GDriveLocalMirrorConfig _config;
   final String _spaces;
@@ -31,11 +32,10 @@ class GDriveLocalMirror {
   final File _indexFile;
   _GDriveMirrorIndex _index;
   final _GDriveMirrorStore _store;
-  late final Map<String, IriTerm> _folderNameToType;
 
   GDriveLocalMirror._(
       {required GDriveApiClient client,
-      required TypeIndexMappings typeIndexMappings,
+      required GDriveFolderStrategy folderStrategy,
       required ResourceLocator resourceLocator,
       required GDriveLocalMirrorConfig config,
       required String spaces,
@@ -45,7 +45,7 @@ class GDriveLocalMirror {
       required _GDriveMirrorIndex index,
       required _GDriveMirrorStore store})
       : _client = client,
-        _typeIndexMappings = typeIndexMappings,
+        _folderStrategy = folderStrategy,
         _resourceLocator = resourceLocator,
         _config = config,
         _spaces = spaces,
@@ -53,20 +53,15 @@ class GDriveLocalMirror {
         _filesDir = filesDir,
         _indexFile = indexFile,
         _index = index,
-        _store = store {
-    _folderNameToType = {
-      for (final entry in _typeIndexMappings.typeMappings.entries)
-        entry.value.folderName: entry.key,
-    };
-  }
+        _store = store;
 
   static Future<GDriveLocalMirror> initialize({
     required GDriveLocalMirrorConfig config,
     required String userId,
     required String spaces,
     required GDriveApiClient client,
-    required Future<TypeIndexMappings> Function(TypeIndexManagerBackend)
-        typeIndexMappingsProvider,
+    required Future<GDriveFolderStrategy> Function(TypeIndexManagerBackend)
+        folderStrategyProvider,
     required ResourceLocator resourceLocator,
     required Future<String> Function() appFolderProvider,
     required String fileExtension,
@@ -108,12 +103,12 @@ class GDriveLocalMirror {
       ),
       onIndexChanged: () => _saveIndex(indexFile, index),
     );
-    final typeIndexMappings = await typeIndexMappingsProvider(backend);
+    final folderStrategy = await folderStrategyProvider(backend);
     await _saveIndex(indexFile, index);
 
     return GDriveLocalMirror._(
       client: client,
-      typeIndexMappings: typeIndexMappings,
+      folderStrategy: folderStrategy,
       resourceLocator: resourceLocator,
       config: config,
       spaces: spaces,
@@ -288,7 +283,7 @@ class GDriveLocalMirror {
 
   String _relativePathForDocument(IriTerm documentIri) {
     final doc = _resourceLocator.fromIri(documentIri);
-    final folderName = _typeIndexMappings.getFolderName(doc.typeIri);
+    final folderName = _folderStrategy.folderNameFor(doc.typeIri);
     return path.normalize(path.join(folderName, '${doc.id}.$_fileExtension'));
   }
 
@@ -489,13 +484,13 @@ class GDriveLocalMirror {
     final segments = path.split(relativePath);
     if (segments.isEmpty) return null;
     final folderName = segments.first;
-    final typeIri = _folderNameToType[folderName];
+    final typeIri = _folderStrategy.typeForFolderName(folderName);
     if (typeIri == null) {
       _mirrorLog.warning('Unknown type folder for path: $relativePath');
       return null;
     }
 
-    final folderId = _typeIndexMappings.getFolderId(typeIri);
+    final folderId = _folderStrategy.folderIdFor(typeIri);
     final fileName = path.joinAll(segments.skip(1));
     if (fileName.isEmpty) {
       _mirrorLog

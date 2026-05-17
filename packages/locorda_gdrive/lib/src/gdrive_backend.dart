@@ -11,6 +11,7 @@ import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart';
 
 import 'auth/gdrive_auth_provider.dart';
+import 'gdrive_folder_strategy.dart';
 import 'gdrive_type_index_manager.dart';
 import 'shared/gdrive_config.dart';
 
@@ -26,7 +27,7 @@ bool shouldUseLocalMirror({
 
 class GDriveSyncBackend implements RemoteSyncBackend {
   final GDriveApiClient _client;
-  final TypeIndexMappings _typeIndexMappings;
+  final GDriveFolderStrategy _folderStrategy;
   final ResourceLocator _resourceLocator;
   final String _spaces;
   final String _contentType;
@@ -36,7 +37,7 @@ class GDriveSyncBackend implements RemoteSyncBackend {
 
   GDriveSyncBackend({
     required GDriveApiClient client,
-    required TypeIndexMappings typeIndexMappings,
+    required GDriveFolderStrategy folderStrategy,
     required ResourceLocator resourceLocator,
     required String spaces,
     required String contentType,
@@ -44,7 +45,7 @@ class GDriveSyncBackend implements RemoteSyncBackend {
     required bool isBinary,
     required Future<void> Function() onAuthFailure,
   })  : _client = client,
-        _typeIndexMappings = typeIndexMappings,
+        _folderStrategy = folderStrategy,
         _resourceLocator = resourceLocator,
         _spaces = spaces,
         _contentType = contentType,
@@ -76,7 +77,7 @@ class GDriveSyncBackend implements RemoteSyncBackend {
   Future<RemoteDownloadResult<RawContent>> _downloadOne(
       RemoteDownloadRequest request) async {
     final docIri = _resourceLocator.fromIri(request.documentIri);
-    final folderId = _typeIndexMappings.getFolderId(docIri.typeIri);
+    final folderId = _folderStrategy.folderIdFor(docIri.typeIri);
     final fileId = await _client.findFile(
       parentId: folderId,
       fileName: '${docIri.id}.$_fileExtension',
@@ -167,7 +168,7 @@ class GDriveSyncBackend implements RemoteSyncBackend {
   Future<RemoteUploadResult> _uploadOne(
       RemoteUploadRequest<RawContent> request) async {
     final docIri = _resourceLocator.fromIri(request.documentIri);
-    final folderId = _typeIndexMappings.getFolderId(docIri.typeIri);
+    final folderId = _folderStrategy.folderIdFor(docIri.typeIri);
     final filePath = '${docIri.id}.$_fileExtension';
     final fileId = await _client.findFile(
       parentId: folderId,
@@ -429,16 +430,19 @@ class GDriveRemoteStorage implements PipelineRemoteStorage {
     final layout = _config.layout;
     final contentType = layout.contentType;
     final isBinary = _rdfCore.contentTypeInfo(contentType)?.isBinary ?? false;
+    // Mirror only makes sense for FilePerResource: it uses folder/file paths
+    // derived from the type index. SingleFile and ShardDataset put all files
+    // in the app root, which the mirror's path logic cannot handle.
     final useMirror = shouldUseLocalMirror(
           mirrorEnabled: _mirrorConfig.enabled,
           isWeb: _isWeb,
         ) &&
-        layout is! SingleFile;
+        layout is FilePerResource;
 
     if (useMirror) {
       final mirror = await GDriveLocalMirror.initialize(
         client: _client,
-        typeIndexMappingsProvider: (backend) {
+        folderStrategyProvider: (backend) async {
           final typeIndexManager = GDriveTypeIndexManager(
             backend: backend,
             iriTermFactory: _iriTermFactory,
@@ -446,7 +450,10 @@ class GDriveRemoteStorage implements PipelineRemoteStorage {
             rdfCore: _rdfCore,
             appFolderProvider: _appFolderProvider,
           );
-          return typeIndexManager.loadOrCreateTypeIndex(engineConfig);
+          final mappings = await typeIndexManager.loadOrCreateTypeIndex(
+            _collectRequiredTypes(engineConfig),
+          );
+          return TypeIndexFolderStrategy(mappings);
         },
         resourceLocator: _resourceLocator,
         config: _mirrorConfig,
@@ -468,27 +475,20 @@ class GDriveRemoteStorage implements PipelineRemoteStorage {
       );
     }
 
-    if (_mirrorConfig.enabled && (_isWeb || layout is SingleFile)) {
+    if (_mirrorConfig.enabled && !useMirror) {
       _log.info(
           'GDrive local mirror is enabled in config but disabled at runtime'
-          '${_isWeb ? ' on web' : ' for SingleFile layout'}. Falling back to direct remote sync backend.');
+          '${_isWeb ? ' on web' : ' for ${layout.runtimeType} layout'}. '
+          'Falling back to direct remote sync backend.');
     }
 
-    final typeIndexManager = GDriveTypeIndexManager(
-      backend: GDriveTypeIndexManagerBackend(client: _client),
-      iriTermFactory: _iriTermFactory,
-      config: _config,
-      rdfCore: _rdfCore,
-      appFolderProvider: _appFolderProvider,
-    );
-    final typeIndexMappings =
-        await typeIndexManager.loadOrCreateTypeIndex(engineConfig);
+    final folderStrategy = await _createFolderStrategy(engineConfig, layout);
 
     return RemoteSyncStorages.create(
       layout: layout,
       backend: GDriveSyncBackend(
         client: _client,
-        typeIndexMappings: typeIndexMappings,
+        folderStrategy: folderStrategy,
         resourceLocator: _resourceLocator,
         spaces: _spaces,
         contentType: contentType,
@@ -500,6 +500,35 @@ class GDriveRemoteStorage implements PipelineRemoteStorage {
       storageAccess: _storageAccess,
     );
   }
+
+  /// Builds the [GDriveFolderStrategy] appropriate for [layout].
+  ///
+  /// [FilePerResource] requires the type index (one Drive folder per type).
+  /// [SingleFile] and [ShardDataset] store all files directly in the app
+  /// root folder — no type index is needed or created.
+  Future<GDriveFolderStrategy> _createFolderStrategy(
+      SyncEngineConfig engineConfig, RemoteStorageLayout layout) async {
+    if (layout is FilePerResource) {
+      final typeIndexManager = GDriveTypeIndexManager(
+        backend: GDriveTypeIndexManagerBackend(client: _client),
+        iriTermFactory: _iriTermFactory,
+        config: _config,
+        rdfCore: _rdfCore,
+        appFolderProvider: _appFolderProvider,
+      );
+      final mappings = await typeIndexManager.loadOrCreateTypeIndex(
+        _collectRequiredTypes(engineConfig),
+      );
+      return TypeIndexFolderStrategy(mappings);
+    }
+    // SingleFile, ShardDataset: flat layout, all files in app root
+    final appFolderId = await _appFolderProvider.appFolderId;
+    return AppRootFolderStrategy(appFolderId: appFolderId);
+  }
+
+  /// Collects the resource type IRIs that need Drive folder mappings.
+  static Set<IriTerm> _collectRequiredTypes(SyncEngineConfig engineConfig) =>
+      engineConfig.resources.map((r) => r.typeIri).toSet();
 
   @override
   Future<bool> isAvailable() => Future.value(true);

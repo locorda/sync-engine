@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_gdrive/src/gdrive_api.dart';
 import 'package:locorda_gdrive/src/gdrive_backend_mirror.dart';
+import 'package:locorda_gdrive/src/gdrive_folder_strategy.dart';
 import 'package:locorda_gdrive/src/gdrive_type_index_manager.dart';
 import 'package:locorda_gdrive/src/shared/gdrive_config.dart';
 import 'package:locorda_rdf_core/core.dart';
@@ -221,12 +222,13 @@ void main() {
 
     final mirror = await GDriveLocalMirror.initialize(
       client: client,
-      typeIndexMappingsProvider: (_) async => TypeIndexMappings(
+      folderStrategyProvider: (_) async =>
+          TypeIndexFolderStrategy(TypeIndexMappings(
         appFolderId: 'root',
         typeMappings: {
           typeIri: const TypeMapping(folderId: 'folder-1', folderName: 'Note'),
         },
-      ),
+      )),
       resourceLocator: locator,
       config: mirrorConfig,
       spaces: 'drive',
@@ -286,12 +288,13 @@ void main() {
 
     final mirror = await GDriveLocalMirror.initialize(
       client: client,
-      typeIndexMappingsProvider: (_) async => TypeIndexMappings(
+      folderStrategyProvider: (_) async =>
+          TypeIndexFolderStrategy(TypeIndexMappings(
         appFolderId: 'root',
         typeMappings: {
           typeIri: const TypeMapping(folderId: 'folder-1', folderName: 'Note'),
         },
-      ),
+      )),
       resourceLocator: locator,
       config: mirrorConfig,
       spaces: 'drive',
@@ -360,12 +363,13 @@ void main() {
 
     final mirror = await GDriveLocalMirror.initialize(
       client: client,
-      typeIndexMappingsProvider: (_) async => TypeIndexMappings(
+      folderStrategyProvider: (_) async =>
+          TypeIndexFolderStrategy(TypeIndexMappings(
         appFolderId: 'root',
         typeMappings: {
           typeIri: const TypeMapping(folderId: 'folder-1', folderName: 'Note'),
         },
-      ),
+      )),
       resourceLocator: locator,
       config: mirrorConfig,
       spaces: 'drive',
@@ -421,7 +425,7 @@ void main() {
 
     await GDriveLocalMirror.initialize(
       client: client,
-      typeIndexMappingsProvider: (backend) async {
+      folderStrategyProvider: (backend) async {
         final created = await backend.createFile(
           'gdrive-index.ttl',
           'initial',
@@ -446,10 +450,10 @@ void main() {
           convert: (value) => value,
         );
 
-        return TypeIndexMappings(
+        return TypeIndexFolderStrategy(TypeIndexMappings(
           appFolderId: 'root',
           typeMappings: {},
-        );
+        ));
       },
       resourceLocator: LocalResourceLocator(iriTermFactory: IriTerm.validated),
       config: mirrorConfig,
@@ -518,12 +522,13 @@ void main() {
     // ignore: unused_local_variable
     final mirror = await GDriveLocalMirror.initialize(
       client: client,
-      typeIndexMappingsProvider: (_) async => TypeIndexMappings(
+      folderStrategyProvider: (_) async =>
+          TypeIndexFolderStrategy(TypeIndexMappings(
         appFolderId: 'root',
         typeMappings: {
           typeIri: const TypeMapping(folderId: 'folder-1', folderName: 'Note'),
         },
-      ),
+      )),
       resourceLocator: locator,
       config: mirrorConfig,
       spaces: 'drive',
