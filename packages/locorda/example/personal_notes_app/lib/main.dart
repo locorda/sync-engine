@@ -18,6 +18,7 @@ import 'package:locorda_dir/locorda_dir.dart';
 import 'package:personal_notes_app/init_locorda.g.dart';
 import 'package:personal_notes_app/locorda_worker.manifest.dart';
 import 'package:locorda_rdf_mapper/mapper.dart';
+import 'package:locorda_rdf_core/core.dart';
 
 import 'screens/notes_list_screen.dart';
 import 'services/categories_service.dart';
@@ -75,10 +76,16 @@ Future<Locorda> initializeLocorda() async {
               '${kDebugMode ? 'http://localhost:3815' : appVocab.appBaseUri}/redirect.html'),
           config: SolidConfig()),
       await GDriveMainIntegration.create(
-          config: GDriveConfig(
+          // Most apps will use `GDriveConfig(` default constructor which uses
+          // appDataFolder (private storage, no visible folder in user's Drive)
+          // For demonstration, we use visibleFolder mode which creates a folder in user's Drive
+          // so you can easily inspect the created files.
+          // In production, appDataFolder is recommended for better security and user experience.
+          config: GDriveConfig.visibleFolder(
+              appFolderName: 'Personal Notes App Data',
               localMirrorConfig:
                   GDriveLocalMirrorConfig(enabled: false /* !kIsWeb*/),
-              layout: const SingleFile())),
+              layout: SingleFile(contentType: trig.primaryMimeType))),
     ],
 
     // Provide storage - web options are sent to worker via connector
