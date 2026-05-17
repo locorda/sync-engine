@@ -15,7 +15,7 @@ environment:
   sdk: ^3.6.0
 
 dependencies:
-  build: ^4.0.0
+  build: ^4.0.4
   glob: ^2.1.2
 
 dev_dependencies:

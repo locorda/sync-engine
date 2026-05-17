@@ -10,7 +10,7 @@ environment:
   sdk: ^3.6.0
 
 dependencies:
-  build: ^4.0.0
+  build: ^4.0.4
   build_config: ^1.1.0
   analyzer: '>=7.4.0 <13.0.0'
   path: ^1.9.0
