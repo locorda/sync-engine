@@ -100,23 +100,19 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
   @override
   Future<void> finalizeSync(SyncFinalizationState state,
       {PipeperfCollector? perf}) async {
-    if (state is SyncFinalizationSuccess) {
-      try {
+    try {
+      if (state is SyncFinalizationSuccess) {
         await _uploadSingleFile(perf: perf);
-      } catch (e, st) {
-        _log.warning(
-            'Single-file upload during finalization failed: $e', e, st);
-        // Non-fatal: data is already committed locally, upload will retry
-        // on next sync cycle.
       }
+    } finally {
+      _mergedShardGraphs.clear();
+      _uploadAccumulator.clear();
+      _requestedShardDocIris.clear();
+      _cachedDataset = null;
+      _downloaded = false;
+      _notModified = false;
+      await backend.finalize(state, perf: perf);
     }
-    _mergedShardGraphs.clear();
-    _uploadAccumulator.clear();
-    _requestedShardDocIris.clear();
-    _cachedDataset = null;
-    _downloaded = false;
-    _notModified = false;
-    await backend.finalize(state, perf: perf);
   }
 
   // ---------------------------------------------------------------------------
@@ -708,10 +704,20 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
       _downloadedEtag = result.etag;
       // Persist the new ETag so the next sync cycle can use conditional GET.
       await _storageAccess.setRemoteETags({_fileDocumentIri: result.etag});
-    } else {
+      return;
+    }
+
+    if (result is ConflictUploadResult) {
       _log.info(
           'Single-file upload conflict (If-Match: ${result.requestETag ?? 'none'}) — will retry');
+      return;
     }
+
+    if (result is ErrorUploadResult) {
+      Error.throwWithStackTrace(result.error, result.stackTrace);
+    }
+
+    throw StateError('Unsupported upload result type: ${result.runtimeType}');
   }
 }
 

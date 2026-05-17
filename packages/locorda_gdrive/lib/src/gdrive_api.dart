@@ -503,6 +503,21 @@ class GDriveClient implements GDriveApiClient {
       );
 
       return (fileId: fileId, md5Checksum: md5Checksum);
+    } on drive.DetailedApiRequestError catch (e, stackTrace) {
+      handleGDriveAuthError(e);
+      if (e.status == 404) {
+        _clientLog.warning(
+            'Parent folder not found while creating raw file "$filename" in folder=$folderId');
+        throw GDriveClientException(
+          'Parent folder not found while creating raw file "$filename": $folderId',
+          statusCode: e.status,
+        );
+      }
+      _clientLog.severe('Failed to create raw file "$filename"', e, stackTrace);
+      throw GDriveClientException(
+        'Failed to create raw file "$filename": ${e.status} ${e.message}',
+        statusCode: e.status,
+      );
     } catch (e, stackTrace) {
       handleGDriveAuthError(e);
       _clientLog.severe('Failed to create raw file "$filename"', e, stackTrace);
@@ -1097,10 +1112,14 @@ class _GoogleAuthClient extends http.BaseClient {
 
 class GDriveClientException implements Exception {
   final String message;
-  GDriveClientException(this.message);
+  final int? statusCode;
+
+  GDriveClientException(this.message, {this.statusCode});
 
   @override
-  String toString() => 'GDriveClientException: $message';
+  String toString() => statusCode == null
+      ? 'GDriveClientException: $message'
+      : 'GDriveClientException($statusCode): $message';
 }
 
 final class _DriveFolderTask {

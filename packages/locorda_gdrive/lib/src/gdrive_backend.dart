@@ -27,13 +27,14 @@ bool shouldUseLocalMirror({
 
 class GDriveSyncBackend implements RemoteSyncBackend {
   final GDriveApiClient _client;
-  final GDriveFolderStrategy _folderStrategy;
+  GDriveFolderStrategy _folderStrategy;
   final ResourceLocator _resourceLocator;
   final String _spaces;
   final String _contentType;
   final String _fileExtension;
   final bool _isBinary;
   final Future<void> Function() _onAuthFailure;
+  final Future<GDriveFolderStrategy> Function()? _refreshFolderStrategy;
 
   GDriveSyncBackend({
     required GDriveApiClient client,
@@ -44,6 +45,7 @@ class GDriveSyncBackend implements RemoteSyncBackend {
     required String fileExtension,
     required bool isBinary,
     required Future<void> Function() onAuthFailure,
+    Future<GDriveFolderStrategy> Function()? refreshFolderStrategy,
   })  : _client = client,
         _folderStrategy = folderStrategy,
         _resourceLocator = resourceLocator,
@@ -51,7 +53,8 @@ class GDriveSyncBackend implements RemoteSyncBackend {
         _contentType = contentType,
         _fileExtension = fileExtension,
         _isBinary = isBinary,
-        _onAuthFailure = onAuthFailure;
+        _onAuthFailure = onAuthFailure,
+        _refreshFolderStrategy = refreshFolderStrategy;
 
   @override
   Stream<RemoteDownloadResult<RawContent>> download(
@@ -183,13 +186,12 @@ class GDriveSyncBackend implements RemoteSyncBackend {
     };
 
     if (fileId == null) {
-      final created = await _client.createFileRaw(
-        filePath,
-        bytes,
-        folderId: folderId,
-        fileNameMayBeRelativePath: true,
-        spaces: _spaces,
+      final created = await _createFileRawWithFolderRecovery(
+        documentIri: request.documentIri,
+        filePath: filePath,
+        bytes: bytes,
         contentType: request.document.contentType,
+        initialFolderId: folderId,
       );
       return SuccessUploadResult(
         created.md5Checksum,
@@ -212,6 +214,48 @@ class GDriveSyncBackend implements RemoteSyncBackend {
       documentIri: request.documentIri,
     );
   }
+
+  Future<({String fileId, String md5Checksum})>
+      _createFileRawWithFolderRecovery({
+    required IriTerm documentIri,
+    required String filePath,
+    required List<int> bytes,
+    required String contentType,
+    required String initialFolderId,
+  }) async {
+    try {
+      return await _client.createFileRaw(
+        filePath,
+        bytes,
+        folderId: initialFolderId,
+        fileNameMayBeRelativePath: true,
+        spaces: _spaces,
+        contentType: contentType,
+      );
+    } on GDriveClientException catch (error) {
+      if (!_isMissingParentFolderError(error) ||
+          _refreshFolderStrategy == null) {
+        rethrow;
+      }
+
+      _log.warning(
+          'Parent folder missing while creating $filePath. Refreshing folder strategy and retrying once.');
+      _folderStrategy = await _refreshFolderStrategy();
+      final docIri = _resourceLocator.fromIri(documentIri);
+      final refreshedFolderId = _folderStrategy.folderIdFor(docIri.typeIri);
+      return _client.createFileRaw(
+        filePath,
+        bytes,
+        folderId: refreshedFolderId,
+        fileNameMayBeRelativePath: true,
+        spaces: _spaces,
+        contentType: contentType,
+      );
+    }
+  }
+
+  bool _isMissingParentFolderError(GDriveClientException error) =>
+      error.statusCode == 404;
 
   @override
   Future<void> finalize(SyncFinalizationState state,
@@ -489,6 +533,8 @@ class GDriveRemoteStorage implements PipelineRemoteStorage {
       backend: GDriveSyncBackend(
         client: _client,
         folderStrategy: folderStrategy,
+        refreshFolderStrategy: () =>
+            _refreshFolderStrategy(engineConfig, layout),
         resourceLocator: _resourceLocator,
         spaces: _spaces,
         contentType: contentType,
@@ -524,6 +570,12 @@ class GDriveRemoteStorage implements PipelineRemoteStorage {
     // SingleFile, ShardDataset: flat layout, all files in app root
     final appFolderId = await _appFolderProvider.appFolderId;
     return AppRootFolderStrategy(appFolderId: appFolderId);
+  }
+
+  Future<GDriveFolderStrategy> _refreshFolderStrategy(
+      SyncEngineConfig engineConfig, RemoteStorageLayout layout) async {
+    _appFolderProvider.invalidate();
+    return _createFolderStrategy(engineConfig, layout);
   }
 
   /// Collects the resource type IRIs that need Drive folder mappings.

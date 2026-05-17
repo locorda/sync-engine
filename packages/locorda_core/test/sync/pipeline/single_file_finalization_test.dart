@@ -17,6 +17,8 @@ class _SpyBackend implements RemoteSyncBackend {
   int downloadCallCount = 0;
   int finalizeCallCount = 0;
   SyncFinalizationState? finalizedState;
+  Object? uploadError;
+  StackTrace uploadStackTrace = StackTrace.empty;
 
   @override
   Stream<RemoteDownloadResult<RawContent>> download(
@@ -35,6 +37,15 @@ class _SpyBackend implements RemoteSyncBackend {
       Stream<RemoteUploadRequest<RawContent>> requests) async* {
     uploadCallCount++;
     await for (final request in requests) {
+      if (uploadError != null) {
+        yield ErrorUploadResult(
+          documentIri: request.documentIri,
+          requestETag: request.ifMatch,
+          error: uploadError!,
+          stackTrace: uploadStackTrace,
+        );
+        continue;
+      }
       yield SuccessUploadResult(
         'new-etag',
         documentIri: request.documentIri,
@@ -156,6 +167,19 @@ void main() {
       await storage.finalizeSync(const SyncFinalizationSuccess());
       expect(spyBackend.uploadCallCount, equals(0),
           reason: 'Accumulators should be cleaned after first finalize');
+    });
+
+    test('rethrows upload errors on SyncFinalizationSuccess', () async {
+      await populateAccumulator();
+      spyBackend.uploadError = StateError('upload failed');
+
+      await expectLater(
+        storage.finalizeSync(const SyncFinalizationSuccess()),
+        throwsA(isA<StateError>()),
+      );
+      expect(spyBackend.uploadCallCount, equals(1));
+      expect(spyBackend.finalizeCallCount, equals(1),
+          reason: 'Backend finalize should still run during cleanup');
     });
   });
 }

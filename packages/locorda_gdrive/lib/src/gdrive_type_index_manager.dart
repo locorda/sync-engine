@@ -609,13 +609,19 @@ class AppFolderProvider {
   final GDriveApiClient _client;
   final GDriveConfig _config;
 
-  late final Future<String> appFolderId = _getOrCreateAppFolder();
+  Future<String>? _appFolderId;
 
   AppFolderProvider({
     required GDriveApiClient client,
     required GDriveConfig config,
   })  : _client = client,
         _config = config;
+
+  Future<String> get appFolderId => _appFolderId ??= _getOrCreateAppFolder();
+
+  void invalidate() {
+    _appFolderId = null;
+  }
 
   /// Get or create the app root folder in Google Drive.
   ///
