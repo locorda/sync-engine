@@ -25,6 +25,7 @@ class GDriveLocalMirror {
   final ResourceLocator _resourceLocator;
   final GDriveLocalMirrorConfig _config;
   final String _spaces;
+  final String _fileExtension;
 
   final Directory _filesDir;
   final File _indexFile;
@@ -32,21 +33,23 @@ class GDriveLocalMirror {
   final _GDriveMirrorStore _store;
   late final Map<String, IriTerm> _folderNameToType;
 
-  GDriveLocalMirror._({
-    required GDriveApiClient client,
-    required TypeIndexMappings typeIndexMappings,
-    required ResourceLocator resourceLocator,
-    required GDriveLocalMirrorConfig config,
-    required String spaces,
-    required Directory filesDir,
-    required File indexFile,
-    required _GDriveMirrorIndex index,
-    required _GDriveMirrorStore store,
-  })  : _client = client,
+  GDriveLocalMirror._(
+      {required GDriveApiClient client,
+      required TypeIndexMappings typeIndexMappings,
+      required ResourceLocator resourceLocator,
+      required GDriveLocalMirrorConfig config,
+      required String spaces,
+      required String fileExtension,
+      required Directory filesDir,
+      required File indexFile,
+      required _GDriveMirrorIndex index,
+      required _GDriveMirrorStore store})
+      : _client = client,
         _typeIndexMappings = typeIndexMappings,
         _resourceLocator = resourceLocator,
         _config = config,
         _spaces = spaces,
+        _fileExtension = fileExtension,
         _filesDir = filesDir,
         _indexFile = indexFile,
         _index = index,
@@ -66,6 +69,7 @@ class GDriveLocalMirror {
         typeIndexMappingsProvider,
     required ResourceLocator resourceLocator,
     required Future<String> Function() appFolderProvider,
+    required String fileExtension,
   }) async {
     final _rootDir =
         await _resolveRootDir(config: config, userId: userId, spaces: spaces);
@@ -113,6 +117,7 @@ class GDriveLocalMirror {
       resourceLocator: resourceLocator,
       config: config,
       spaces: spaces,
+      fileExtension: fileExtension,
       filesDir: filesDir,
       indexFile: indexFile,
       index: index,
@@ -284,7 +289,7 @@ class GDriveLocalMirror {
   String _relativePathForDocument(IriTerm documentIri) {
     final doc = _resourceLocator.fromIri(documentIri);
     final folderName = _typeIndexMappings.getFolderName(doc.typeIri);
-    return path.normalize(path.join(folderName, doc.id));
+    return path.normalize(path.join(folderName, '${doc.id}.$_fileExtension'));
   }
 
   static String _localFilePath(Directory filesDir, String relativePath) {

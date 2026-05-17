@@ -201,10 +201,10 @@ void main() {
 
     final fileId = 'file-1';
     client.filesById[fileId] =
-        _FakeRemoteFile(fileId: fileId, bytes: bytes, path: 'Note/note-1');
+        _FakeRemoteFile(fileId: fileId, bytes: bytes, path: 'Note/note-1.ttl');
     client.listedEntries.add(GDriveListedEntry(
       fileId: fileId,
-      path: 'Note/note-1',
+      path: 'Note/note-1.ttl',
       isFolder: false,
       md5Checksum: md5Checksum,
       headRevisionId: 'rev-1',
@@ -232,6 +232,7 @@ void main() {
       spaces: 'drive',
       userId: 'user-1',
       appFolderProvider: () => Future.value('root'),
+      fileExtension: 'ttl',
     );
 
     final download = await mirror.download(docIri, convert: rdfCore.decode);
@@ -268,10 +269,10 @@ void main() {
 
     final fileId = 'file-2';
     client.filesById[fileId] =
-        _FakeRemoteFile(fileId: fileId, bytes: bytes, path: 'Note/note-2');
+        _FakeRemoteFile(fileId: fileId, bytes: bytes, path: 'Note/note-2.ttl');
     client.listedEntries.add(GDriveListedEntry(
       fileId: fileId,
-      path: 'Note/note-2',
+      path: 'Note/note-2.ttl',
       isFolder: false,
       md5Checksum: md5Checksum,
       headRevisionId: 'rev-2',
@@ -296,6 +297,7 @@ void main() {
       spaces: 'drive',
       userId: 'user-2',
       appFolderProvider: () => Future.value('root'),
+      fileExtension: 'ttl',
     );
 
     final updatedGraph = RdfGraph(triples: {
@@ -341,10 +343,10 @@ void main() {
 
     final fileId = 'file-3';
     client.filesById[fileId] =
-        _FakeRemoteFile(fileId: fileId, bytes: bytes, path: 'Note/note-3');
+        _FakeRemoteFile(fileId: fileId, bytes: bytes, path: 'Note/note-3.ttl');
     client.listedEntries.add(GDriveListedEntry(
       fileId: fileId,
-      path: 'Note/note-3',
+      path: 'Note/note-3.ttl',
       isFolder: false,
       md5Checksum: md5Checksum,
       headRevisionId: 'rev-3',
@@ -369,6 +371,7 @@ void main() {
       spaces: 'drive',
       userId: 'user-3',
       appFolderProvider: () => Future.value('root'),
+      fileExtension: 'ttl',
     );
 
     final updatedGraph = RdfGraph(triples: {
@@ -453,6 +456,7 @@ void main() {
       spaces: 'drive',
       userId: 'user-type-index',
       appFolderProvider: () => Future.value('root'),
+      fileExtension: 'ttl',
     );
 
     final userSegment = base64Url.encode(utf8.encode('user-type-index'));
@@ -489,7 +493,7 @@ void main() {
     final filesDir = Directory('${mirrorRoot.path}/files/Note');
     await filesDir.create(recursive: true);
 
-    final staleFile = File('${filesDir.path}/note-4');
+    final staleFile = File('${filesDir.path}/note-4.ttl');
     await staleFile.writeAsString('stale');
 
     final indexFile = File('${mirrorRoot.path}/index.json');
@@ -498,7 +502,7 @@ void main() {
       'updatedAt': DateTime.now().toIso8601String(),
       'entries': [
         {
-          'path': 'Note/note-4',
+          'path': 'Note/note-4.ttl',
           'fileId': 'file-4',
           'remoteMd5': 'md5-4',
           'localMd5': 'md5-4',
@@ -525,6 +529,7 @@ void main() {
       spaces: 'drive',
       userId: 'user-4',
       appFolderProvider: () => Future.value('root'),
+      fileExtension: 'ttl',
     );
 
     expect(await staleFile.exists(), isFalse);

@@ -30,6 +30,7 @@ class GDriveSyncBackend implements RemoteSyncBackend {
   final ResourceLocator _resourceLocator;
   final String _spaces;
   final String _contentType;
+  final String _fileExtension;
   final bool _isBinary;
   final Future<void> Function() _onAuthFailure;
 
@@ -39,6 +40,7 @@ class GDriveSyncBackend implements RemoteSyncBackend {
     required ResourceLocator resourceLocator,
     required String spaces,
     required String contentType,
+    required String fileExtension,
     required bool isBinary,
     required Future<void> Function() onAuthFailure,
   })  : _client = client,
@@ -46,6 +48,7 @@ class GDriveSyncBackend implements RemoteSyncBackend {
         _resourceLocator = resourceLocator,
         _spaces = spaces,
         _contentType = contentType,
+        _fileExtension = fileExtension,
         _isBinary = isBinary,
         _onAuthFailure = onAuthFailure;
 
@@ -76,7 +79,7 @@ class GDriveSyncBackend implements RemoteSyncBackend {
     final folderId = _typeIndexMappings.getFolderId(docIri.typeIri);
     final fileId = await _client.findFile(
       parentId: folderId,
-      fileName: docIri.id,
+      fileName: '${docIri.id}.$_fileExtension',
       fileNameMayBeRelativePath: true,
       spaces: _spaces,
     );
@@ -165,7 +168,7 @@ class GDriveSyncBackend implements RemoteSyncBackend {
       RemoteUploadRequest<RawContent> request) async {
     final docIri = _resourceLocator.fromIri(request.documentIri);
     final folderId = _typeIndexMappings.getFolderId(docIri.typeIri);
-    final filePath = docIri.id;
+    final filePath = '${docIri.id}.$_fileExtension';
     final fileId = await _client.findFile(
       parentId: folderId,
       fileName: filePath,
@@ -427,9 +430,10 @@ class GDriveRemoteStorage implements PipelineRemoteStorage {
     final contentType = layout.contentType;
     final isBinary = _rdfCore.contentTypeInfo(contentType)?.isBinary ?? false;
     final useMirror = shouldUseLocalMirror(
-      mirrorEnabled: _mirrorConfig.enabled,
-      isWeb: _isWeb,
-    );
+          mirrorEnabled: _mirrorConfig.enabled,
+          isWeb: _isWeb,
+        ) &&
+        layout is! SingleFile;
 
     if (useMirror) {
       final mirror = await GDriveLocalMirror.initialize(
@@ -449,6 +453,7 @@ class GDriveRemoteStorage implements PipelineRemoteStorage {
         spaces: _spaces,
         userId: _userId,
         appFolderProvider: () => _appFolderProvider.appFolderId,
+        fileExtension: layout.fileExtension,
       );
       return RemoteSyncStorages.create(
         layout: layout,
@@ -463,9 +468,10 @@ class GDriveRemoteStorage implements PipelineRemoteStorage {
       );
     }
 
-    if (_mirrorConfig.enabled && _isWeb) {
+    if (_mirrorConfig.enabled && (_isWeb || layout is SingleFile)) {
       _log.info(
-          'GDrive local mirror is enabled in config but disabled at runtime on web. Falling back to direct remote sync backend.');
+          'GDrive local mirror is enabled in config but disabled at runtime'
+          '${_isWeb ? ' on web' : ' for SingleFile layout'}. Falling back to direct remote sync backend.');
     }
 
     final typeIndexManager = GDriveTypeIndexManager(
@@ -486,6 +492,7 @@ class GDriveRemoteStorage implements PipelineRemoteStorage {
         resourceLocator: _resourceLocator,
         spaces: _spaces,
         contentType: contentType,
+        fileExtension: layout.fileExtension,
         isBinary: isBinary,
         onAuthFailure: _onAuthFailure,
       ),
