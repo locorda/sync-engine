@@ -7,6 +7,7 @@
 
 `locorda` is the main entry point for building apps with [Locorda](https://locorda.dev/sync-engine/).
 It re-exports everything you need: the sync engine, annotations, storage handlers, UI widgets, and worker infrastructure — all from a single package.
+Use [`locorda_gdrive`](../locorda_gdrive) to sync to Google Drive (recommended), [`locorda_solid`](../locorda_solid) for Solid Pods, or [`locorda_dir`](../locorda_dir) for a local folder (useful for development and testing only, not for real usage).
 
 > **Early Access (v0.5.0)** — Core API is stable. Backend implementation details may have breaking changes before 1.0.
 > Google Drive is fully supported. Solid Pod support works but has higher latency due to a protocol-level limitation (no batch-write operation in Solid Protocol today).

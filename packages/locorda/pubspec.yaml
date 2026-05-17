@@ -1,5 +1,5 @@
 name: locorda
-description: Locorda - Sync offline-first apps using your user's remote storage
+description: Bring Your Own Backend (BYOB) offline-first sync for Flutter. Sync to your users' own Google Drive or other cloud/file storage — no server required. Annotate, generate, sync.
 version: 0.5.1
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
@@ -45,7 +45,7 @@ flutter:
 topics:
   - rdf
   - crdt
-  - solid
+  - google-drive
   - offline-first
   - sync
 

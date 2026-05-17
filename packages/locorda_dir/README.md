@@ -3,11 +3,11 @@
 [![pub package](https://img.shields.io/pub/v/locorda_dir.svg)](https://pub.dev/packages/locorda_dir)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
 
-Local directory backend for Locorda - sync your data to a local folder on disk.
+Local filesystem backend for Locorda — primarily for development and testing. Also works with mounted network/cloud drives (NAS, iCloud Drive, etc.) on macOS/Linux for simple multi-device sync; Windows untested.
 
 ## Overview
 
-`locorda_dir` provides a file-based remote storage backend that syncs your Locorda data to a local directory. This is primarily designed for **desktop platforms** (macOS, Windows, Linux) where users have direct access to the file system.
+`locorda_dir` provides a file-based remote storage backend that syncs your Locorda data to a local directory. Primarily designed for **development and testing**; also works on macOS/Linux with mounted network or cloud drives (NAS, iCloud Drive, Synology, etc.) for simple multi-device sync without a dedicated cloud backend.
 
 ## Features
 
@@ -24,7 +24,7 @@ Local directory backend for Locorda - sync your data to a local folder on disk.
 |----------|---------|--------------|
 | macOS    | ✅ Full | `~/Documents/<appName>/locorda-sync/` |
 | Linux    | ✅ Full | `~/Documents/<appName>/locorda-sync/` |
-| Windows  | ✅ Full | `%USERPROFILE%\Documents\<appName>\locorda-sync\` |
+| Windows  | ⚠️ Untested | `%USERPROFILE%\Documents\<appName>\locorda-sync\` |
 | iOS      | ⚠️ Limited | App sandbox (not user-accessible) |
 | Android  | ⚠️ Limited | App sandbox (not user-accessible) |
 | Web      | ❌ Not supported | N/A |

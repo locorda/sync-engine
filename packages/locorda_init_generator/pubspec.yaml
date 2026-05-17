@@ -1,10 +1,14 @@
 name: locorda_init_generator
-description: Code generator for Locorda convenience wrapper (initLocorda)
+description: Generates initLocorda — a zero-config init function that auto-wires the worker, RDF mapper, and storage backend from your pubspec dependencies.
 version: 0.5.1
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues
 resolution: workspace
+
+topics:
+  - build
+  - code-generation
 
 environment:
   sdk: ^3.6.0

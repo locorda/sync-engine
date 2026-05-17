@@ -3,7 +3,7 @@
 [![pub package](https://img.shields.io/pub/v/locorda_builder.svg)](https://pub.dev/packages/locorda_builder)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
 
-Build-time transformations for Locorda applications - automates web worker compilation.
+Build-time transformations for Locorda applications — assembles a generated worker entrypoint by discovering `locorda_worker.manifest.dart` files across the dependency graph, compiles Dart Isolates/Web Workers to JavaScript, and handles asset copying.
 
 ## Features
 

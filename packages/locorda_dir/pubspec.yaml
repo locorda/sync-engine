@@ -1,5 +1,5 @@
 name: locorda_dir
-description: Locorda Dir - (local) directory backend for Locorda sync engine
+description: Local filesystem backend for Locorda BYOB sync. Primarily for development and testing; also works with mounted network/cloud drives on macOS/Linux.
 version: 0.5.1
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
@@ -41,8 +41,7 @@ flutter:
   uses-material-design: true
 
 topics:
-  - rdf
   - crdt
-  - solid
   - offline-first
+  - filesystem
   - sync

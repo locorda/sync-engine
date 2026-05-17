@@ -1,5 +1,5 @@
 name: locorda_annotations
-description: Locorda Annotations - CRDT merge strategy annotations for code generation
+description: "Annotations for Locorda CRDT sync: @RootResource/@SubResource mark classes as RDF resources; @CrdtLwwRegister/@CrdtOrSet etc. declare property merge strategies for code generation."
 version: 0.5.1
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
@@ -20,6 +20,6 @@ dev_dependencies:
 topics:
   - rdf
   - crdt
-  - solid
+  - offline-first
   - annotations
   - codegen

@@ -1,5 +1,5 @@
 name: locorda_builder
-description: Build-time transformations for Locorda - web worker compilation, asset copying, and future CRDT code generation
+description: "Build-time Locorda transformations: assembles worker manifests from transitive dependencies, compiles Dart Isolates/Web Workers to JS, and automates asset handling."
 version: 0.5.1
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
@@ -23,3 +23,4 @@ topics:
   - build
   - code-generation
   - web-workers
+  - build-runner

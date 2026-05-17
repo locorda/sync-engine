@@ -1,5 +1,5 @@
 name: locorda_gdrive
-description: Locorda Google Drive - Google Drive backend and authentication for locorda
+description: Google Drive backend for Locorda BYOB sync — the recommended default backend. Stores sync data in App Data Folder or a visible Drive folder using Google Sign-In (OAuth2).
 version: 0.5.1
 resolution: workspace
 homepage: https://locorda.dev/sync-engine/
@@ -10,6 +10,8 @@ topics:
   - google-drive
   - authentication
   - oauth2
+  - offline-first
+  - crdt
 
 environment:
   sdk: ^3.6.0

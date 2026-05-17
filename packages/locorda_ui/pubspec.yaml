@@ -1,10 +1,16 @@
 name: locorda_ui
-description: Locorda UI - User interface components for locorda
+description: Flutter sync status UI for Locorda. Provides MultiBackendStatusWidget, SyncRefreshIndicator, and backend status adapters for Google Drive, Solid Pods, and more.
 version: 0.5.1
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues
 resolution: workspace
+
+topics:
+  - flutter
+  - offline-first
+  - sync
+  - widgets
 
 environment:
   sdk: ^3.6.0

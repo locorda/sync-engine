@@ -3,7 +3,7 @@
 [![pub package](https://img.shields.io/pub/v/locorda_gdrive.svg)](https://pub.dev/packages/locorda_gdrive)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
 
-Google Drive backend for Locorda CRDT synchronization.
+Google Drive backend for Locorda — the recommended default BYOB backend. Stores app sync data in the App Data Folder or a visible Drive folder using Google Sign-In (OAuth2), with all Drive I/O running in a background worker isolate.
 
 ## Features
 

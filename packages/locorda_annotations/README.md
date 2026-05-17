@@ -3,7 +3,7 @@
 [![pub package](https://img.shields.io/pub/v/locorda_annotations.svg)](https://pub.dev/packages/locorda_annotations)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
 
-CRDT merge strategy and RDF resource annotations for Locorda — used by code generators to produce merge contracts, RDF mappers, and sync configuration.
+Dart annotations for Locorda's BYOB sync engine — mark classes as RDF resources (`@RootResource`, `@SubResource`, …) and properties with CRDT merge strategies (`@CrdtLwwRegister`, `@CrdtOrSet`, `@CrdtImmutable`, …). Code generators turn these into RDF mappers and sync-ready merge contracts.
 
 > Most Flutter applications should depend on [`locorda`](../locorda) rather than this package directly. `locorda` re-exports all annotations you need.
 

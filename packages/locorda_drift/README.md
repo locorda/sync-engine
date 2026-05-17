@@ -3,7 +3,7 @@
 [![pub package](https://img.shields.io/pub/v/locorda_drift.svg)](https://pub.dev/packages/locorda_drift)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
 
-Drift (SQLite) storage implementation for locorda_core.
+Cross-platform SQLite storage for Locorda, implemented with Drift ORM. Stores RDF documents, triple indices, Hybrid Logical Clocks, and tombstone metadata — works on iOS, Android, macOS, Windows, Linux, and Web.
 
 ## Overview
 

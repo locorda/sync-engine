@@ -1,5 +1,5 @@
 name: locorda_worker
-description: Worker infrastructure for Locorda - Platform-agnostic isolate/worker architecture for offloading heavy operations (CRDT, DB, HTTP) to separate thread.
+description: Platform-agnostic isolate/web worker infrastructure for Locorda. Offloads CRDT merging, SQLite I/O, and backend HTTP (Google Drive, Solid Pods, etc.) to a background thread.
 version: 0.5.1
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
@@ -26,8 +26,8 @@ dev_dependencies:
   test: ^1.26.3
 
 topics:
-  - rdf
   - crdt
-  - solid
   - offline-first
   - sync
+  - google-drive
+  - isolate

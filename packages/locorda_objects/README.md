@@ -3,7 +3,7 @@
 [![pub package](https://img.shields.io/pub/v/locorda_objects.svg)](https://pub.dev/packages/locorda_objects)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
 
-Type-safe, object-oriented API layer for the locorda CRDT sync engine.
+Type-safe, object-oriented API layer for Locorda's BYOB sync engine — wraps `SyncEngine` with `ObjectSyncEngine` so you call `save<Note>()`, `hydrateStream<Note>()`, and `delete<Note>()` directly on your Dart domain objects, with all RDF serialisation handled transparently.
 
 This package wraps the raw `SyncEngine` (which operates on `RdfGraph`) with an
 `ObjectSyncEngine` that works directly with your Dart domain objects, handling

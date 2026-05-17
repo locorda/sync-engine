@@ -1,5 +1,5 @@
 name: locorda_flutter_core
-description: Locorda Flutter Core - Sync offline-first apps using your user's remote storage
+description: Shared contracts for Locorda Flutter backends — defines RemoteIntegration, LocordaGraph, and the interface that backend packages (Google Drive, Solid Pods, etc.) implement.
 version: 0.5.1
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
@@ -30,8 +30,8 @@ flutter:
   uses-material-design: true
 
 topics:
-  - rdf
   - crdt
-  - solid
   - offline-first
   - sync
+  - flutter
+  - rdf

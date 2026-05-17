@@ -1,5 +1,5 @@
 name: locorda_flutter
-description: Locorda Flutter - Sync offline-first apps using your user's remote storage
+description: Flutter integration for Locorda BYOB sync — combines ObjectSyncEngine, worker architecture, and UI widgets into a single Locorda facade for offline-first Flutter apps.
 version: 0.5.1
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
@@ -33,8 +33,7 @@ flutter:
   uses-material-design: true
 
 topics:
-  - rdf
   - crdt
-  - solid
   - offline-first
   - sync
+  - flutter

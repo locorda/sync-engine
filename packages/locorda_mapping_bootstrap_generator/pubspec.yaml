@@ -1,10 +1,15 @@
 name: locorda_mapping_bootstrap_generator
-description: Build-time generator for embedding CRDT mapping documents (merge strategy definitions).
+description: Build-time generator that embeds Locorda CRDT merge contracts (mapping documents) into your app bundle at compile time for offline-first cold-start.
 version: 0.5.1
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues
 resolution: workspace
+
+topics:
+  - build
+  - code-generation
+  - crdt
 
 environment:
   sdk: ^3.6.0

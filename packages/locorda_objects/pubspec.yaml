@@ -1,5 +1,5 @@
 name: locorda_objects
-description: Locorda Objects - Sync offline-first apps using your user's remote storage
+description: Type-safe Dart API for Locorda CRDT sync. Wraps SyncEngine with ObjectSyncEngine — save<T>(), hydrateStream<T>(), delete<T>() without handling RDF directly.
 version: 0.5.1
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
@@ -23,6 +23,5 @@ dev_dependencies:
 topics:
   - rdf
   - crdt
-  - solid
   - offline-first
   - sync

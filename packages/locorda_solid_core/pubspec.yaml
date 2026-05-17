@@ -1,5 +1,5 @@
 name: locorda_solid_core
-description: Locorda Solid - Solid Pod backend implementation for locorda CRDT synchronization
+description: Solid Pod backend implementation for Locorda — internal HTTP layer and types used by locorda_solid. One of multiple BYOB backends alongside Google Drive.
 version: 0.5.1
 resolution: workspace
 homepage: https://locorda.dev/sync-engine/

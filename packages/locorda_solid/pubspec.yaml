@@ -1,5 +1,5 @@
 name: locorda_solid
-description: Locorda Solid - Sync offline-first apps using your user's remote storage
+description: Solid Pod backend for Locorda BYOB sync — OIDC/DPoP authentication, login UI, and file-per-resource storage for Solid-compliant Pods. One of multiple Locorda backends.
 version: 0.5.1
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine

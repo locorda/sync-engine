@@ -30,8 +30,6 @@ dev_dependencies:
   test: ^1.26.3
 
 topics:
-  - rdf
-  - crdt
   - solid
-  - offline-first
-  - sync
+  - authentication
+  - worker

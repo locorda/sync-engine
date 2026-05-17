@@ -3,16 +3,16 @@
 [![pub package](https://img.shields.io/pub/v/locorda_worker.svg)](https://pub.dev/packages/locorda_worker)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
 
-Worker infrastructure for Locorda — platform-agnostic architecture for running heavy operations in a separate isolate or web worker thread.
+Worker infrastructure for Locorda — platform-agnostic architecture for running heavy operations in a separate Dart Isolate or Web Worker thread.
 
 ## Overview
 
-This package provides the core worker infrastructure used by Locorda to offload CPU and I/O-intensive operations (CRDT merging, database access, HTTP requests, DPoP signing) to a separate thread, keeping the main thread responsive for UI.
+This package provides the core worker infrastructure used by Locorda to offload CPU and I/O-intensive operations (CRDT merging, database access, HTTP requests) to a separate thread, keeping the main thread responsive for UI.
 
 **Key Features:**
 - **Platform-agnostic**: Dart Isolates on native, Web Workers on web — same API both ways
 - **Type-safe messaging**: Structured request/response protocol with request correlation
-- **Plugin system**: Extensible via `WorkerChannel` for cross-thread concerns such as authentication bridges
+- **Plugin system**: Extensible via `WorkerChannel` for cross-thread concerns such as authentication bridges (e.g. Google Drive token refresh, Solid DPoP signing)
 - **Worker manifest system**: packages expose `locorda_worker.manifest.dart`; `locorda_builder` assembles them automatically
 
 ## Architecture
@@ -20,14 +20,14 @@ This package provides the core worker infrastructure used by Locorda to offload 
 ### Main Thread
 - Lightweight `ProxySyncEngine` — serialises calls to jelly-encoded messages and routes responses by correlation ID
 - `SyncManager` proxy — sync triggering, auto-sync scheduling and status stream forwarded from the worker
-- Plugin bridges (e.g. `SolidAuthBridge`) push updates into the worker via `WorkerChannel`
+- Plugin bridges (e.g. `GDriveAuthBridge`, `SolidAuthBridge`) push credential updates into the worker via `WorkerChannel`
 
 ### Worker Thread
 - Full `SyncEngine` instance
 - **CRDT merge logic** — all conflict resolution runs here
 - **Database (Drift/SQLite)** — all storage I/O
-- **HTTP backends** (Solid, Google Drive, …) — all network requests
-- **DPoP token generation** — cryptographic operations stay off the main thread
+- **HTTP backends** (Google Drive, Solid Pod, …) — all network requests
+- **Auth token handling** — Google OAuth2 token refresh, Solid DPoP proof generation, and other credential operations stay off the main thread
 
 ### Communication
 - **Framework messages**: save/delete documents, hydration streams, sync triggers

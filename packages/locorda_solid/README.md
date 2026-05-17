@@ -3,7 +3,7 @@
 [![pub package](https://img.shields.io/pub/v/locorda_solid.svg)](https://pub.dev/packages/locorda_solid)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/locorda/sync-engine/blob/main/LICENSE)
 
-Solid Pod backend and authentication for locorda CRDT synchronization.
+Solid Pod backend and authentication for Locorda — OIDC/DPoP access to any Solid-compliant Pod, with login UI and file-per-resource RDF storage. For higher-throughput use cases, see [`locorda_gdrive`](../locorda_gdrive).
 
 ## Features
 
