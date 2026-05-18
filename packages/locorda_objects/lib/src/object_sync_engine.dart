@@ -386,7 +386,7 @@ class ObjectSyncEngine {
     IriTerm typeIri = _getTypeIri(T);
     final graph =
         _mapper.graph.encodeObject(object); // Validate object can be mapped;
-    _syncSystem.save(typeIri, graph);
+    await _syncSystem.save(typeIri, graph);
   }
 
   /// Save multiple objects with CRDT processing in sequence.
