@@ -2319,6 +2319,77 @@
               }
             }
           ]
+        },
+        {
+          "id": "singlefile_03",
+          "title": "Single File: Complete dataset re-upload on 304-path after local change",
+          "description": "In SingleFile mode, all remote data (including foreign GroupIndex shards and their resources) is pushed locally on every sync — no subscription required. When a local-only state change (here: subscribing to a group index) triggers a re-upload while the remote is unchanged (304-path), the uploaded dataset must contain all shard graphs, not only those that were modified in this sync cycle.",
+          "layout": "singleFile",
+          "installations": [
+            {
+              "id": "foreign-device-installation",
+              "config": "shared/configs/group_index_config.json"
+            },
+            {
+              "id": "default-installation",
+              "config": "shared/configs/group_index_config.json"
+            }
+          ],
+          "steps": [
+            {
+              "action": "save",
+              "installation_id": "foreign-device-installation",
+              "typeIri": "https://schema.org/Recipe",
+              "input_resource": "test_cases/singlefile/03_group_subscription_remote_fetch/00_foreign-device-installation_save/foreign_input_recipe.ttl",
+              "action_ts": {
+                "save": "2024-01-01T02:00:00Z"
+              }
+            },
+            {
+              "action": "sync",
+              "installation_id": "foreign-device-installation",
+              "action_ts": {
+                "sync": "2024-01-01T02:05:00Z"
+              },
+              "expected": {
+                "documents_dir": "test_cases/singlefile/03_group_subscription_remote_fetch/01_foreign-device-installation_sync/storage",
+                "remote_documents_dir": "test_cases/singlefile/03_group_subscription_remote_fetch/01_foreign-device-installation_sync/remote"
+              }
+            },
+            {
+              "action": "sync",
+              "installation_id": "default-installation",
+              "action_ts": {
+                "sync": "2024-01-01T02:10:00Z"
+              },
+              "expected": {
+                "documents_dir": "test_cases/singlefile/03_group_subscription_remote_fetch/02_default-installation_sync_without_subscription/storage",
+                "remote_documents_dir": "test_cases/singlefile/03_group_subscription_remote_fetch/02_default-installation_sync_without_subscription/remote"
+              }
+            },
+            {
+              "action": "subscribe_group_index",
+              "installation_id": "default-installation",
+              "indexName": "recipes-by-category",
+              "group_key_graph": "test_cases/singlefile/03_group_subscription_remote_fetch/03_default-installation_subscribe/group_key.ttl",
+              "triggerSync": false,
+              "expected": {
+                "documents_dir": "test_cases/singlefile/03_group_subscription_remote_fetch/03_default-installation_subscribe/storage",
+                "remote_documents_dir": "test_cases/singlefile/03_group_subscription_remote_fetch/03_default-installation_subscribe/remote"
+              }
+            },
+            {
+              "action": "sync",
+              "installation_id": "default-installation",
+              "action_ts": {
+                "sync": "2024-01-01T02:15:00Z"
+              },
+              "expected": {
+                "documents_dir": "test_cases/singlefile/03_group_subscription_remote_fetch/04_default-installation_sync_with_subscription/storage",
+                "remote_documents_dir": "test_cases/singlefile/03_group_subscription_remote_fetch/04_default-installation_sync_with_subscription/remote"
+              }
+            }
+          ]
         }
       ]
     }

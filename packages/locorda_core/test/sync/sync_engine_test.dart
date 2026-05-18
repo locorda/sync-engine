@@ -365,6 +365,48 @@ Future<void> _executeStep({
     return;
   }
 
+  if (action == 'subscribe_group_index') {
+    final sync = await installationContext.syncFuture;
+    final indexName = stepJson['indexName'] as String;
+    final groupKeyGraph = _readGraphFromPath(
+      testAssetsDir,
+      stepJson['group_key_graph'] as String,
+    )!;
+    final rootResourceFetchPolicyJson =
+        stepJson['rootResourceFetchPolicy'] as String?;
+    final rootResourceFetchPolicy = switch (rootResourceFetchPolicyJson) {
+      'prefetch' => RootResourceFetchPolicy.prefetch,
+      'onRequest' => RootResourceFetchPolicy.onRequest,
+      null => null,
+      _ => throw ArgumentError(
+          'Unknown rootResourceFetchPolicy: $rootResourceFetchPolicyJson'),
+    };
+    final triggerSync = stepJson['triggerSync'] as bool? ?? true;
+
+    await sync.ensureGroupIndexSubscription(
+      indexName: indexName,
+      groupKeyGraph: groupKeyGraph,
+      rootResourceFetchPolicy: rootResourceFetchPolicy,
+      triggerSync: triggerSync,
+    );
+
+    final expectedJson = stepJson['expected'] as Map<String, dynamic>?;
+    if (expectedJson != null) {
+      await _verifyExpectations(
+        testId: testId,
+        stepIndex: stepIndex,
+        expectedJson: expectedJson,
+        testAssetsDir: testAssetsDir,
+        storage: storage,
+        config: buildEffectiveConfig(config),
+        iriTranslator: iriTranslator,
+        backendIriTranslator: backendIriTranslator,
+        store: store,
+      );
+    }
+    return;
+  }
+
   if (action != 'save') {
     fail('Unknown action: $action');
   }

@@ -14,11 +14,6 @@
 @prefix ifbmm10v: <https://example.com/shard/index-full-bbcf09f5%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix ifd: <https://example.com/fullindex/index-full-d06ec919%2Findex#> .
 @prefix ifdmm10v: <https://example.com/shard/index-full-d06ec919%2Fshard-mod-md5-1-0-v1_0_0#> .
-@prefix ife: <https://example.com/fullindex/index-full-e679d72f%2Findex#> .
-@prefix ifemm10v: <https://example.com/shard/index-full-e679d72f%2Fshard-mod-md5-1-0-v1_0_0#> .
-@prefix ige1: <https://example.com/groupindex/index-grouped-e093655c%2Fgroups%2F20_ad221effd73057a647d96bab312c4886%2Findex#> .
-@prefix ige2: <https://example.com/groupindextemplate/index-grouped-e093655c%2Findex#> .
-@prefix igemm10v: <https://example.com/shard/index-grouped-e093655c%2Fgroups%2F20_ad221effd73057a647d96bab312c4886%2Fshard-mod-md5-1-0-v1_0_0#> .
 @prefix igf1: <https://example.com/groupindex/index-grouped-f615be90%2Fgroups%2Fdesserts%2Findex#> .
 @prefix igf2: <https://example.com/groupindextemplate/index-grouped-f615be90%2Findex#> .
 @prefix igfmm10v: <https://example.com/shard/index-grouped-f615be90%2Fgroups%2Fdesserts%2Fshard-mod-md5-1-0-v1_0_0#> .
@@ -53,24 +48,24 @@ GRAPH clientinstallation:foreign-device-installation {
   clientinstallation:foreign-device-installation a sync:ManagedDocument;
       foaf:primaryTopic fdi:installation;
       cm:clockHash "3f58569d335f669135c40722e62298c9";
-      cm:createdAt "2024-01-01T00:00:00.019Z"^^xsd:dateTime;
+      cm:createdAt "2024-01-01T00:00:00.016Z"^^xsd:dateTime;
       cm:hasClockEntry fdi:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       idx:belongsToIndexShard if3mm10v:shard;
       sync:isGovernedBy (mappings2:client-installation-v1);
       sync:managedResourceType cm:ClientInstallation .
   fdi:installation a cm:ClientInstallation;
-      cm:createdAt "2024-01-01T00:00:00.017Z"^^xsd:dateTime;
-      cm:lastActiveAt "2024-01-01T00:00:00.017Z"^^xsd:dateTime;
+      cm:createdAt "2024-01-01T00:00:00.014Z"^^xsd:dateTime;
+      cm:lastActiveAt "2024-01-01T00:00:00.014Z"^^xsd:dateTime;
       cm:maxInactivityPeriod "P6M"^^xsd:duration .
   fdi:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
-      cm:physicalTime 1704067200018 .
+      cm:physicalTime 1704067200015 .
 }
 
 GRAPH <https://example.com/fullindex/index-full-388036f3%2Findex> {
   <https://example.com/fullindex/index-full-388036f3%2Findex> a sync:ManagedDocument;
       foaf:primaryTopic if1:index;
       cm:clockHash "2f4c135454e883ad689adfee4583d3d8";
-      cm:createdAt "2024-01-01T02:10:00.010Z"^^xsd:dateTime, "2024-01-01T00:00:00.013Z"^^xsd:dateTime;
+      cm:createdAt "2024-01-01T02:10:00.010Z"^^xsd:dateTime, "2024-01-01T00:00:00.010Z"^^xsd:dateTime;
       cm:hasClockEntry if1:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, if1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       idx:belongsToIndexShard ifbmm10v:shard;
       sync:isGovernedBy (mappings2:index-v1);
@@ -88,7 +83,7 @@ GRAPH <https://example.com/fullindex/index-full-388036f3%2Findex> {
           idx:autoScaleThreshold 1000
       ] .
   if1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
-      cm:physicalTime 1704067200012 .
+      cm:physicalTime 1704067200009 .
   if1:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
       cm:physicalTime 1704075000009 .
 }
@@ -163,7 +158,7 @@ GRAPH <https://example.com/fullindex/index-full-d06ec919%2Findex> {
   <https://example.com/fullindex/index-full-d06ec919%2Findex> a sync:ManagedDocument;
       foaf:primaryTopic ifd:index;
       cm:clockHash "78cf137f3f3d5d5e608e8f9421b297ae";
-      cm:createdAt "2024-01-01T02:10:00.013Z"^^xsd:dateTime, "2024-01-01T00:00:00.016Z"^^xsd:dateTime;
+      cm:createdAt "2024-01-01T02:10:00.013Z"^^xsd:dateTime, "2024-01-01T00:00:00.013Z"^^xsd:dateTime;
       cm:hasClockEntry ifd:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, ifd:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       idx:belongsToIndexShard ifbmm10v:shard;
       sync:hasBlankNodeMapping ifd:lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6;
@@ -183,7 +178,7 @@ GRAPH <https://example.com/fullindex/index-full-d06ec919%2Findex> {
           idx:autoScaleThreshold 1000
       ] .
   ifd:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
-      cm:physicalTime 1704067200015 .
+      cm:physicalTime 1704067200012 .
   ifd:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
       cm:physicalTime 1704075000012 .
   ifd:lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6 sync:blankNode _:b12 .
@@ -192,109 +187,36 @@ GRAPH <https://example.com/fullindex/index-full-d06ec919%2Findex> {
       idx:trackedProperty idx:indexesClass .
 }
 
-GRAPH <https://example.com/fullindex/index-full-e679d72f%2Findex> {
-  <https://example.com/fullindex/index-full-e679d72f%2Findex> a sync:ManagedDocument;
-      foaf:primaryTopic ife:index;
-      cm:clockHash "ed6460df8424173ce14dde98f510b36d";
-      cm:createdAt "2024-01-01T00:00:00.010Z"^^xsd:dateTime;
-      cm:hasClockEntry ife:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-      idx:belongsToIndexShard ifbmm10v:shard;
-      sync:isGovernedBy (mappings2:index-v1);
-      sync:managedResourceType idx:FullIndex .
-  ife:index a idx:FullIndex;
-      idx:hasShard ifemm10v:shard;
-      idx:indexesClass schema:Recipe;
-      idx:populationState "active";
-      idx:readBy fdi:installation;
-      idx:shardingAlgorithm [
-          a idx:ModuloHashSharding ;
-          idx:hashAlgorithm "md5" ;
-          idx:numberOfShards 1 ;
-          idx:configVersion "1_0_0" ;
-          idx:autoScaleThreshold 1000
-      ] .
-  ife:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
-      cm:physicalTime 1704067200009 .
-}
-
-GRAPH <https://example.com/groupindex/index-grouped-e093655c%2Fgroups%2F20_ad221effd73057a647d96bab312c4886%2Findex> {
-  <https://example.com/groupindex/index-grouped-e093655c%2Fgroups%2F20_ad221effd73057a647d96bab312c4886%2Findex> a sync:ManagedDocument;
-      foaf:primaryTopic ige1:index;
-      cm:clockHash "514e4c99616741433c51bf14165f0da4";
-      cm:createdAt "2024-01-01T02:00:00.004Z"^^xsd:dateTime;
-      cm:hasClockEntry ige1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-      idx:belongsToIndexShard ifdmm10v:shard;
-      sync:isGovernedBy (mappings2:index-v1);
-      sync:managedResourceType idx:GroupIndex .
-  ige1:index a idx:GroupIndex;
-      idx:basedOn ige2:groupIndexTemplate;
-      idx:hasShard igemm10v:shard .
-  ige1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
-      cm:physicalTime 1704074400003 .
-}
-
 GRAPH <https://example.com/groupindex/index-grouped-f615be90%2Fgroups%2Fdesserts%2Findex> {
   <https://example.com/groupindex/index-grouped-f615be90%2Fgroups%2Fdesserts%2Findex> a sync:ManagedDocument;
       foaf:primaryTopic igf1:index;
-      cm:clockHash "e47da075e07a2fec7dd714916ca403ff";
-      cm:createdAt "2024-01-01T02:10:00.032Z"^^xsd:dateTime;
-      cm:hasClockEntry igf1:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+      cm:clockHash "31d193260868a24927cc52066bd0ef6d";
+      cm:createdAt "2024-01-01T02:00:00.004Z"^^xsd:dateTime;
+      cm:hasClockEntry igf1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       idx:belongsToIndexShard ifdmm10v:shard;
       sync:isGovernedBy (mappings2:index-v1);
       sync:managedResourceType idx:GroupIndex .
   igf1:index a idx:GroupIndex;
       idx:basedOn igf2:groupIndexTemplate;
       idx:hasShard igfmm10v:shard .
-  igf1:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
-      cm:physicalTime 1704075000031 .
-}
-
-GRAPH <https://example.com/groupindextemplate/index-grouped-e093655c%2Findex> {
-  <https://example.com/groupindextemplate/index-grouped-e093655c%2Findex> a sync:ManagedDocument;
-      foaf:primaryTopic ige2:groupIndexTemplate;
-      cm:clockHash "7242c129bbfa5ae58fbcc1d774a68203";
-      cm:createdAt "2024-01-01T00:00:00.007Z"^^xsd:dateTime;
-      cm:hasClockEntry ige2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-      idx:belongsToIndexShard if5mm10v:shard;
-      sync:hasBlankNodeMapping ige2:lcrd-ibn-md5-6463ec91078059cd80e9c4068b39f9ff, ige2:lcrd-ibn-md5-161bc2f9cafbc0e9308e262e23c7a0b9;
-      sync:isGovernedBy (mappings2:index-v1);
-      sync:managedResourceType idx:GroupIndexTemplate .
-  ige2:groupIndexTemplate a idx:GroupIndexTemplate;
-      idx:groupedBy _:b19;
-      idx:indexesClass schema:Recipe;
-      idx:readBy fdi:installation;
-      idx:shardingAlgorithm [
-          a idx:ModuloHashSharding ;
-          idx:hashAlgorithm "md5" ;
-          idx:numberOfShards 1 ;
-          idx:configVersion "1_0_0" ;
-          idx:autoScaleThreshold 1000
-      ] .
-  ige2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
-      cm:physicalTime 1704067200006 .
-  ige2:lcrd-ibn-md5-161bc2f9cafbc0e9308e262e23c7a0b9 sync:blankNode _:b20 .
-  ige2:lcrd-ibn-md5-6463ec91078059cd80e9c4068b39f9ff sync:blankNode _:b19 .
-  _:b19 a idx:GroupingRule;
-      idx:property _:b20 .
-  _:b20 a idx:GroupingRuleProperty;
-      idx:hierarchyLevel 1;
-      idx:sourceProperty schema:dateCreated .
+  igf1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+      cm:physicalTime 1704074400003 .
 }
 
 GRAPH <https://example.com/groupindextemplate/index-grouped-f615be90%2Findex> {
   <https://example.com/groupindextemplate/index-grouped-f615be90%2Findex> a sync:ManagedDocument;
       foaf:primaryTopic igf2:groupIndexTemplate;
-      cm:clockHash "0e2d9d080342eb7de038267d0e5383a5";
-      cm:createdAt "2024-01-01T02:10:00.007Z"^^xsd:dateTime;
-      cm:hasClockEntry igf2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+      cm:clockHash "bc4d6775b11a7c0d402a8c40ccc178ef";
+      cm:createdAt "2024-01-01T02:10:00.007Z"^^xsd:dateTime, "2024-01-01T00:00:00.007Z"^^xsd:dateTime;
+      cm:hasClockEntry igf2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, igf2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       idx:belongsToIndexShard if5mm10v:shard;
       sync:hasBlankNodeMapping igf2:lcrd-ibn-md5-0e2e62f39058d6a36c15403da8b04bf4, igf2:lcrd-ibn-md5-5d84696d93d4f139706797c44247a19d;
       sync:isGovernedBy (mappings2:index-v1);
       sync:managedResourceType idx:GroupIndexTemplate .
   igf2:groupIndexTemplate a idx:GroupIndexTemplate;
-      idx:groupedBy _:b23;
+      idx:groupedBy _:b16;
       idx:indexesClass schema:Recipe;
-      idx:readBy di:installation;
+      idx:readBy di:installation, fdi:installation;
       idx:shardingAlgorithm [
           a idx:ModuloHashSharding ;
           idx:hashAlgorithm "md5" ;
@@ -302,13 +224,15 @@ GRAPH <https://example.com/groupindextemplate/index-grouped-f615be90%2Findex> {
           idx:configVersion "1_0_0" ;
           idx:autoScaleThreshold 1000
       ] .
+  igf2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+      cm:physicalTime 1704067200006 .
   igf2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
       cm:physicalTime 1704075000006 .
-  igf2:lcrd-ibn-md5-0e2e62f39058d6a36c15403da8b04bf4 sync:blankNode _:b23 .
-  igf2:lcrd-ibn-md5-5d84696d93d4f139706797c44247a19d sync:blankNode _:b24 .
-  _:b23 a idx:GroupingRule;
-      idx:property _:b24 .
-  _:b24 a idx:GroupingRuleProperty;
+  igf2:lcrd-ibn-md5-0e2e62f39058d6a36c15403da8b04bf4 sync:blankNode _:b16 .
+  igf2:lcrd-ibn-md5-5d84696d93d4f139706797c44247a19d sync:blankNode _:b17 .
+  _:b16 a idx:GroupingRule;
+      idx:property _:b17 .
+  _:b17 a idx:GroupingRuleProperty;
       idx:hierarchyLevel 1;
       idx:sourceProperty schema:recipeCategory .
 }
@@ -316,31 +240,29 @@ GRAPH <https://example.com/groupindextemplate/index-grouped-f615be90%2Findex> {
 GRAPH recipe:chocolate-cake {
   recipe:chocolate-cake a sync:ManagedDocument;
       foaf:primaryTopic cc:it;
-      cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
+      cm:clockHash "a440f29c704d4aaec880b50db767fa0b";
       cm:createdAt "2024-01-01T02:00:00.001Z"^^xsd:dateTime;
-      cm:hasClockEntry cc:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, cc:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-      idx:belongsToIndexShard ifemm10v:shard, igfmm10v:shard, igemm10v:shard;
+      cm:hasClockEntry cc:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      idx:belongsToIndexShard igfmm10v:shard;
       sync:isGovernedBy (mappings1:recipe-v1);
       sync:managedResourceType schema:Recipe .
   cc:it a schema:Recipe;
       schema:cookTime "PT30M";
       schema:dateCreated "2024-01-01T02:00:00Z"^^xsd:dateTime;
       schema:description "A delicious chocolate cake recipe";
-      schema:name "Updated Chocolate Cake Recipe";
+      schema:name "Chocolate Cake";
       schema:prepTime "PT20M";
       schema:recipeCategory "Desserts";
       schema:recipeYield "8 servings" .
   cc:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
       cm:physicalTime 1704074400000 .
-  cc:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
-      cm:physicalTime 1704088800000 .
 }
 
 GRAPH <https://example.com/shard/index-full-388036f3%2Fshard-mod-md5-1-0-v1_0_0> {
   <https://example.com/shard/index-full-388036f3%2Fshard-mod-md5-1-0-v1_0_0> a sync:ManagedDocument;
       foaf:primaryTopic if3mm10v:shard;
       cm:clockHash "26c361e61d16d6887a2ad46d1bd97ed0";
-      cm:createdAt "2024-01-01T02:10:00.008Z"^^xsd:dateTime, "2024-01-01T00:00:00.011Z"^^xsd:dateTime;
+      cm:createdAt "2024-01-01T02:10:00.008Z"^^xsd:dateTime, "2024-01-01T00:00:00.008Z"^^xsd:dateTime;
       cm:hasClockEntry if3mm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, if3mm10v:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       sync:isGovernedBy (mappings2:shard-v1);
       sync:managedResourceType idx:Shard .
@@ -349,9 +271,9 @@ GRAPH <https://example.com/shard/index-full-388036f3%2Fshard-mod-md5-1-0-v1_0_0>
   if3mm10v:entry-dab29d46a8ad65d767b685c8ca60fbd8 cm:clockHash "3f58569d335f669135c40722e62298c9";
       idx:resource fdi:installation .
   if3mm10v:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
-      cm:physicalTime 1704074700009 .
+      cm:physicalTime 1704074700007 .
   if3mm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
-      cm:physicalTime 1704075000036 .
+      cm:physicalTime 1704075000033 .
   if3mm10v:shard a idx:Shard;
       idx:containsEntry if3mm10v:entry-ab448ead48ff8785a91ce1fe1a078e40, if3mm10v:entry-dab29d46a8ad65d767b685c8ca60fbd8;
       idx:isShardOf if1:index .
@@ -365,10 +287,7 @@ GRAPH <https://example.com/shard/index-full-5f68b5b7%2Fshard-mod-md5-1-0-v1_0_0>
       cm:hasClockEntry if5mm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, if5mm10v:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       sync:isGovernedBy (mappings2:shard-v1);
       sync:managedResourceType idx:Shard .
-  if5mm10v:entry-1e411ea3d0723c6581c8fe31e69280be cm:clockHash "7242c129bbfa5ae58fbcc1d774a68203";
-      idx:indexesClass schema:Recipe;
-      idx:resource ige2:groupIndexTemplate .
-  if5mm10v:entry-54d3e307b28129cf784975e808c31ba7 cm:clockHash "0e2d9d080342eb7de038267d0e5383a5";
+  if5mm10v:entry-54d3e307b28129cf784975e808c31ba7 cm:clockHash "bc4d6775b11a7c0d402a8c40ccc178ef";
       idx:indexesClass schema:Recipe;
       idx:resource igf2:groupIndexTemplate .
   if5mm10v:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
@@ -376,7 +295,7 @@ GRAPH <https://example.com/shard/index-full-5f68b5b7%2Fshard-mod-md5-1-0-v1_0_0>
   if5mm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
       cm:physicalTime 1704075000022 .
   if5mm10v:shard a idx:Shard;
-      idx:containsEntry if5mm10v:entry-54d3e307b28129cf784975e808c31ba7, if5mm10v:entry-1e411ea3d0723c6581c8fe31e69280be;
+      idx:containsEntry if5mm10v:entry-54d3e307b28129cf784975e808c31ba7;
       idx:isShardOf if2:index .
 }
 
@@ -397,9 +316,6 @@ GRAPH <https://example.com/shard/index-full-bbcf09f5%2Fshard-mod-md5-1-0-v1_0_0>
   ifbmm10v:entry-713129f56a309cabc970f22c7da295cf cm:clockHash "2f4c135454e883ad689adfee4583d3d8";
       idx:indexesClass cm:ClientInstallation;
       idx:resource if1:index .
-  ifbmm10v:entry-a68c1c4f5dda5dbf177113200fb133a0 cm:clockHash "ed6460df8424173ce14dde98f510b36d";
-      idx:indexesClass schema:Recipe;
-      idx:resource ife:index .
   ifbmm10v:entry-ce394f730640668924968eddf09c01bc cm:clockHash "87a91984caab67445d1f953856329532";
       idx:indexesClass idx:GroupIndexTemplate;
       idx:resource if2:index .
@@ -408,81 +324,43 @@ GRAPH <https://example.com/shard/index-full-bbcf09f5%2Fshard-mod-md5-1-0-v1_0_0>
   ifbmm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
       cm:physicalTime 1704075000018 .
   ifbmm10v:shard a idx:Shard;
-      idx:containsEntry ifbmm10v:entry-ce394f730640668924968eddf09c01bc, ifbmm10v:entry-713129f56a309cabc970f22c7da295cf, ifbmm10v:entry-6532e1cce2063165cab55f9425c47e0d, ifbmm10v:entry-2e883124d69c377d8daff7f19ee0eaa6, ifbmm10v:entry-a68c1c4f5dda5dbf177113200fb133a0;
+      idx:containsEntry ifbmm10v:entry-ce394f730640668924968eddf09c01bc, ifbmm10v:entry-713129f56a309cabc970f22c7da295cf, ifbmm10v:entry-6532e1cce2063165cab55f9425c47e0d, ifbmm10v:entry-2e883124d69c377d8daff7f19ee0eaa6;
       idx:isShardOf ifb:index .
 }
 
 GRAPH <https://example.com/shard/index-full-d06ec919%2Fshard-mod-md5-1-0-v1_0_0> {
   <https://example.com/shard/index-full-d06ec919%2Fshard-mod-md5-1-0-v1_0_0> a sync:ManagedDocument;
       foaf:primaryTopic ifdmm10v:shard;
-      cm:clockHash "75624161520a0034adee8d01eaab8a68";
-      cm:createdAt "2024-01-01T02:10:00.011Z"^^xsd:dateTime, "2024-01-01T00:00:00.014Z"^^xsd:dateTime;
+      cm:clockHash "3e3d1b17273252af06d945ffbb2a7ee6";
+      cm:createdAt "2024-01-01T02:10:00.011Z"^^xsd:dateTime, "2024-01-01T00:00:00.011Z"^^xsd:dateTime;
       cm:hasClockEntry ifdmm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, ifdmm10v:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       sync:isGovernedBy (mappings2:shard-v1);
       sync:managedResourceType idx:Shard .
-  ifdmm10v:entry-9c4afa0052fbf6bf78d6bcab30280fa8 cm:clockHash "514e4c99616741433c51bf14165f0da4";
-      idx:resource ige1:index .
-  ifdmm10v:entry-c34a65e8aaabca687ad30dc757ab9ce1 cm:clockHash "e47da075e07a2fec7dd714916ca403ff";
+  ifdmm10v:entry-c34a65e8aaabca687ad30dc757ab9ce1 cm:clockHash "31d193260868a24927cc52066bd0ef6d";
       idx:resource igf1:index .
   ifdmm10v:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
       cm:physicalTime 1704074700003 .
-  ifdmm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
-      cm:physicalTime 1704088800002 .
+  ifdmm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
+      cm:physicalTime 0 .
   ifdmm10v:shard a idx:Shard;
-      idx:containsEntry ifdmm10v:entry-9c4afa0052fbf6bf78d6bcab30280fa8, ifdmm10v:entry-c34a65e8aaabca687ad30dc757ab9ce1;
+      idx:containsEntry ifdmm10v:entry-c34a65e8aaabca687ad30dc757ab9ce1;
       idx:isShardOf ifd:index .
-}
-
-GRAPH <https://example.com/shard/index-full-e679d72f%2Fshard-mod-md5-1-0-v1_0_0> {
-  <https://example.com/shard/index-full-e679d72f%2Fshard-mod-md5-1-0-v1_0_0> a sync:ManagedDocument;
-      foaf:primaryTopic ifemm10v:shard;
-      cm:clockHash "d0086d44594e62962fd1bedb512e1bef";
-      cm:createdAt "2024-01-01T00:00:00.008Z"^^xsd:dateTime;
-      cm:hasClockEntry ifemm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, ifemm10v:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-      sync:isGovernedBy (mappings2:shard-v1);
-      sync:managedResourceType idx:Shard .
-  ifemm10v:entry-c93b50159754d7a665032fc90e56af1d cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
-      idx:resource cc:it .
-  ifemm10v:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
-      cm:physicalTime 1704074700007 .
-  ifemm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
-      cm:physicalTime 1704088800008 .
-  ifemm10v:shard a idx:Shard;
-      idx:containsEntry ifemm10v:entry-c93b50159754d7a665032fc90e56af1d;
-      idx:isShardOf ife:index .
-}
-
-GRAPH <https://example.com/shard/index-grouped-e093655c%2Fgroups%2F20_ad221effd73057a647d96bab312c4886%2Fshard-mod-md5-1-0-v1_0_0> {
-  <https://example.com/shard/index-grouped-e093655c%2Fgroups%2F20_ad221effd73057a647d96bab312c4886%2Fshard-mod-md5-1-0-v1_0_0> a sync:ManagedDocument;
-      foaf:primaryTopic igemm10v:shard;
-      cm:clockHash "95b2c6079e3e6d6d216f2ca352f19ab3";
-      cm:createdAt "2024-01-01T02:10:00.033Z"^^xsd:dateTime, "2024-01-01T02:00:00.002Z"^^xsd:dateTime;
-      cm:hasClockEntry igemm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, igemm10v:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
-      sync:isGovernedBy (mappings2:shard-v1);
-      sync:managedResourceType idx:Shard .
-  igemm10v:entry-c93b50159754d7a665032fc90e56af1d cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
-      idx:resource cc:it .
-  igemm10v:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
-      cm:physicalTime 1704074700011 .
-  igemm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
-      cm:physicalTime 1704088800006 .
-  igemm10v:shard a idx:Shard;
-      idx:containsEntry igemm10v:entry-c93b50159754d7a665032fc90e56af1d;
-      idx:isShardOf ige1:index .
 }
 
 GRAPH <https://example.com/shard/index-grouped-f615be90%2Fgroups%2Fdesserts%2Fshard-mod-md5-1-0-v1_0_0> {
   <https://example.com/shard/index-grouped-f615be90%2Fgroups%2Fdesserts%2Fshard-mod-md5-1-0-v1_0_0> a sync:ManagedDocument;
       foaf:primaryTopic igfmm10v:shard;
-      cm:clockHash "3d1289d0668e56649d6cbc5345b95a6f";
-      cm:createdAt "2024-01-01T02:10:00.030Z"^^xsd:dateTime;
-      cm:hasClockEntry igfmm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+      cm:clockHash "c13cf831cd17d27cef41d0a4393de767";
+      cm:createdAt "2024-01-01T02:10:00.030Z"^^xsd:dateTime, "2024-01-01T02:00:00.002Z"^^xsd:dateTime;
+      cm:hasClockEntry igfmm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, igfmm10v:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       sync:isGovernedBy (mappings2:shard-v1);
       sync:managedResourceType idx:Shard .
-  igfmm10v:entry-c93b50159754d7a665032fc90e56af1d cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
+  igfmm10v:entry-c93b50159754d7a665032fc90e56af1d cm:clockHash "a440f29c704d4aaec880b50db767fa0b";
       idx:resource cc:it .
-  igfmm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
-      cm:physicalTime 1704088800004 .
+  igfmm10v:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
+      cm:physicalTime 1704074700009 .
+  igfmm10v:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
+      cm:physicalTime 0 .
   igfmm10v:shard a idx:Shard;
       idx:containsEntry igfmm10v:entry-c93b50159754d7a665032fc90e56af1d;
       idx:isShardOf igf1:index .

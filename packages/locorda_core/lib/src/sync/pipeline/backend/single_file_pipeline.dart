@@ -82,6 +82,15 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
   /// Used by [_emitExtraShards] to skip already-processed shards.
   final Set<String> _requestedShardDocIris = {};
 
+  /// Shard document IRIs that arrived as [ShardSkipped] in Stage 12.
+  /// Their graphs must be loaded from DB when assembling the upload dataset.
+  final Set<IriTerm> _skippedShardDocIris = {};
+
+  /// Number of shards with [MergedShard.needsUpload] == true this sync cycle.
+  /// Guards the early-return in [_uploadSingleFile]: no upload is needed when
+  /// no shard changed AND no resource was accumulated.
+  int _shardsNeedingUpload = 0;
+
   /// Storage access for loading resource graphs and managing ETags.
   final BackendStorageAccess _storageAccess;
 
@@ -108,6 +117,8 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
       _mergedShardGraphs.clear();
       _uploadAccumulator.clear();
       _requestedShardDocIris.clear();
+      _skippedShardDocIris.clear();
+      _shardsNeedingUpload = 0;
       _cachedDataset = null;
       _downloaded = false;
       _notModified = false;
@@ -541,10 +552,11 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
           switch (event) {
             // --- Shard Events ---
             case MergedShard():
-              if (event.needsUpload) {
-                _mergedShardGraphs[event.shardIri.getDocumentIri()] =
-                    event.mergedGraph;
-              }
+              // Always store — single-file assembly needs every shard graph to
+              // reconstruct the complete dataset, regardless of needsUpload.
+              _mergedShardGraphs[event.shardIri.getDocumentIri()] =
+                  event.mergedGraph;
+              if (event.needsUpload) _shardsNeedingUpload++;
               // Extract clockHash from merged shard graph as synthetic ETag.
               // S13 persists this so S02 can detect unchanged shards on retry.
               final newClockHash = event.mergedGraph.graph
@@ -553,6 +565,7 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
                   newRemoteEtag: newClockHash);
 
             case ShardSkipped():
+              _skippedShardDocIris.add(event.shardIri.getDocumentIri());
               yield event;
 
             case ConflictedShard():
@@ -568,6 +581,8 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
 
             case PhaseError():
               _mergedShardGraphs.clear();
+              _skippedShardDocIris.clear();
+              _shardsNeedingUpload = 0;
               yield event;
           }
         }
@@ -576,15 +591,29 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
   /// Assemble the complete dataset and upload as one PUT.
   Future<void> _uploadSingleFile({PipeperfCollector? perf}) async {
     // Nothing changed — no upload needed.
-    if (_mergedShardGraphs.isEmpty && _uploadAccumulator.isEmpty) return;
+    if (_shardsNeedingUpload == 0 && _uploadAccumulator.isEmpty) return;
 
     final swAssemble = perf?.start('S12.ShardUpload.SF.assemble');
 
     final namedGraphs = <RdfGraphName, RdfGraph>{};
 
-    // 1. Add merged shard graphs.
+    // 1. Add merged shard graphs (all, including needsUpload: false).
     for (final entry in _mergedShardGraphs.entries) {
       namedGraphs[entry.key] = entry.value.graph;
+    }
+
+    // 1b. Load skipped shard graphs from the local DB.
+    //     ShardSkipped events carry no graph — the current state lives in DB.
+    if (_skippedShardDocIris.isNotEmpty) {
+      final missing = _skippedShardDocIris
+          .where((iri) => !namedGraphs.containsKey(iri))
+          .toList();
+      if (missing.isNotEmpty) {
+        final dbShardGraphs = await _storageAccess.loadResourceGraphs(missing);
+        for (final entry in dbShardGraphs.entries) {
+          if (entry.value != null) namedGraphs[entry.key] = entry.value!;
+        }
+      }
     }
 
     // 2. Collect all resource document IRIs and expected clock hashes from
@@ -613,6 +642,25 @@ class SingleFileRemoteSyncStorage implements PipelineRemoteSyncStorage {
           if (clockHash != null) {
             expectedClockHashes[docIri] = clockHash;
           }
+        }
+      }
+    }
+
+    // 2b. Collect resource IRIs from skipped shards (loaded in step 1b).
+    //     No clockHash expectation — their resources were not through Stage 11.
+    for (final shardDocIri in _skippedShardDocIris) {
+      final shardGraph = namedGraphs[shardDocIri];
+      if (shardGraph == null) continue;
+      final shardIri = shardGraph.expectSingleObject<IriTerm>(
+          shardDocIri, Foaf.primaryTopic);
+      if (shardIri == null) continue;
+      final entryIris = shardGraph.getMultiValueObjects<IriTerm>(
+          shardIri, IdxShard.containsEntry);
+      for (final entryIri in entryIris) {
+        final resourceIri = shardGraph.expectSingleObject<IriTerm>(
+            entryIri, IdxShardEntry.resource);
+        if (resourceIri != null) {
+          allResourceDocIris.add(resourceIri.getDocumentIri());
         }
       }
     }
