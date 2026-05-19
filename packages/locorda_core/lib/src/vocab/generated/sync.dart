@@ -54,9 +54,7 @@ class Sync {
 
   /// IRI for sync:SyncFile
   ///
-  /// A single-file container that holds all shard and resource documents as
-  /// named graphs within one RDF dataset. The default graph identifies the
-  /// file and carries file-level metadata.
+  /// A single-file container that holds all shard and resource documents as named graphs within one RDF dataset. The default graph of the dataset identifies the file and carries file-level metadata. Used in single-file storage mode where all sync data is aggregated into one remote file.
   ///
   static const SyncFile = IriTerm(
     'https://w3id.org/solid-crdt-sync/vocab/sync#SyncFile',

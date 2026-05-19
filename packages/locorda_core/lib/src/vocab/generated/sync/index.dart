@@ -9,4 +9,5 @@ export 'classes/blanknodemapping.dart';
 export 'classes/identificationgraph.dart';
 export 'classes/manageddocument.dart';
 export 'classes/resourcestatement.dart';
+export 'classes/syncfile.dart';
 export 'sync_universal.dart';

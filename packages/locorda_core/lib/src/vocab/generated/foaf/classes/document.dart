@@ -934,7 +934,7 @@ class FoafDocument {
 
   /// accessMode from schema-http vocabulary [Expects: http://schema.org/Text]
   ///
-  /// The human sensory perceptual system or cognitive faculty through which a person may process or perceive information. Values should be drawn from the [approved vocabulary](https://www.w3.org/2021/a11y-discov-vocab/latest/#accessMode-vocabulary).
+  /// The human sensory perceptual system or cognitive faculty through which a person may process or perceive the intellectual content of a resource, not including any adaptations of the content (e.g., text alternatives for images). Values should be drawn from the [approved vocabulary](https://www.w3.org/2021/a11y-discov-vocab/latest/#accessMode-vocabulary).
   ///
   /// Can be used on: http://schema.org/CreativeWork
   ///
@@ -942,7 +942,7 @@ class FoafDocument {
 
   /// accessModeSufficient from schema-http vocabulary [Expects: http://schema.org/ItemList]
   ///
-  /// A list of single or combined accessModes that are sufficient to understand all the intellectual content of a resource. Values should be drawn from the [approved vocabulary](https://www.w3.org/2021/a11y-discov-vocab/latest/#accessModeSufficient-vocabulary).
+  /// A list of single or combined access modes that are sufficient to understand all the intellectual content of a resource, including any adaptations. Values should be drawn from the [approved vocabulary](https://www.w3.org/2021/a11y-discov-vocab/latest/#accessModeSufficient-vocabulary).
   ///
   /// Can be used on: http://schema.org/CreativeWork
   ///

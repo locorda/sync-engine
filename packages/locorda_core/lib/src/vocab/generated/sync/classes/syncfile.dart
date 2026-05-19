@@ -7,26 +7,45 @@
 
 import 'package:locorda_rdf_core/core.dart';
 
-/// OR_Set class from Algo vocabulary
+/// SyncFile class from Sync vocabulary
 ///
-/// An Observed-Remove Set CRDT, for multi-value properties that allows items to be re-added after deletion.
+/// A single-file container that holds all shard and resource documents as named graphs within one RDF dataset. The default graph of the dataset identifies the file and carries file-level metadata. Used in single-file storage mode where all sync data is aggregated into one remote file.
 ///
 /// Inherits from:
-/// - Algorithm (https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#Algorithm)
 /// - Resource (http://www.w3.org/2000/01/rdf-schema#Resource)
 ///
-/// This class provides access to all properties that can be used with OR_Set.
-/// [Class Reference](https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#OR_Set)
+/// This class provides access to all properties that can be used with SyncFile.
+/// [Class Reference](https://w3id.org/solid-crdt-sync/vocab/sync#SyncFile)
 ///
-/// [Vocabulary Reference](https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#)
-class AlgoOR_Set {
+/// [Vocabulary Reference](https://w3id.org/solid-crdt-sync/vocab/sync#)
+class SyncSyncFile {
   // Private constructor prevents instantiation
-  const AlgoOR_Set._();
+  const SyncSyncFile._();
 
-  /// IRI term for the OR_Set class
+  /// IRI term for the SyncFile class
   /// Use this to specify that a resource is of this type.
   static const classIri = IriTerm(
-    'https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#OR_Set',
+    'https://w3id.org/solid-crdt-sync/vocab/sync#SyncFile',
+  );
+
+  /// isGovernedBy [Expects: http://www.w3.org/1999/02/22-rdf-syntax-ns#List]
+  ///
+  /// Links a data or index resource to an ordered list (rdf:List) of public mapping files that define its merge behavior. Documents are merged in list order with 'first wins' semantics - implementations should append only, not prepend, to avoid overriding existing definitions.
+  ///
+  /// Can be used on: http://www.w3.org/2000/01/rdf-schema#Resource
+  ///
+  static const isGovernedBy = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/sync#isGovernedBy',
+  );
+
+  /// managedResourceType [Expects: http://www.w3.org/2000/01/rdf-schema#Class]
+  ///
+  /// Identifies the semantic RDF class of the resources being managed (e.g., schema:Recipe). Used in two contexts: (1) Within solid:TypeRegistration entries where solid:forClass is sync:ManagedDocument, enabling framework-aware applications to discover containers holding specific semantic types. (2) Directly on sync:ManagedDocument instances to enable efficient garbage collection and retention policies without requiring document content fetching.
+  ///
+  /// Can be used on all classes in this vocabulary
+  ///
+  static const managedResourceType = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/sync#managedResourceType',
   );
 
   /// type from rdf vocabulary [Expects: http://www.w3.org/2000/01/rdf-schema#Class]
@@ -265,15 +284,5 @@ class AlgoOR_Set {
   ///
   static const idxIsShardOf = IriTerm(
     'https://w3id.org/solid-crdt-sync/vocab/idx#isShardOf',
-  );
-
-  /// isGovernedBy from sync vocabulary [Expects: http://www.w3.org/1999/02/22-rdf-syntax-ns#List]
-  ///
-  /// Links a data or index resource to an ordered list (rdf:List) of public mapping files that define its merge behavior. Documents are merged in list order with 'first wins' semantics - implementations should append only, not prepend, to avoid overriding existing definitions.
-  ///
-  /// Can be used on: http://www.w3.org/2000/01/rdf-schema#Resource
-  ///
-  static const syncIsGovernedBy = IriTerm(
-    'https://w3id.org/solid-crdt-sync/vocab/sync#isGovernedBy',
   );
 }

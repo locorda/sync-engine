@@ -1202,14 +1202,81 @@ class FoafPerson {
     'https://ref.gs1.org/voc/whatsInTheBox',
   );
 
+  /// lat from geo vocabulary
+  ///
+  /// The WGS84 latitude of a SpatialThing (decimal degrees).
+  ///
+  /// Can be used on: http://www.w3.org/2003/01/geo/wgs84_pos#SpatialThing
+  ///
+  static const geoLat = IriTerm('http://www.w3.org/2003/01/geo/wgs84_pos#lat');
+
+  /// long from geo vocabulary
+  ///
+  /// The WGS84 longitude of a SpatialThing (decimal degrees).
+  ///
+  /// Can be used on: http://www.w3.org/2003/01/geo/wgs84_pos#SpatialThing
+  ///
+  static const geoLong = IriTerm(
+    'http://www.w3.org/2003/01/geo/wgs84_pos#long',
+  );
+
+  /// alt from geo vocabulary
+  ///
+  /// The WGS84 altitude of a SpatialThing (decimal meters
+  /// above the local reference ellipsoid).
+  ///
+  /// Can be used on: http://www.w3.org/2003/01/geo/wgs84_pos#SpatialThing
+  ///
+  static const geoAlt = IriTerm('http://www.w3.org/2003/01/geo/wgs84_pos#alt');
+
+  /// assistant from contact vocabulary
+  ///
+  /// A person (or other agent) who is an assistant to the subject.
+  ///
+  /// Can be used on: http://xmlns.com/foaf/0.1/Agent
+  ///
+  static const contactAssistant = IriTerm(
+    'http://www.w3.org/2000/10/swap/pim/contact#assistant',
+  );
+
+  /// birthday from contact vocabulary [Expects: http://www.w3.org/2000/10/swap/pim/contact#Date]
+  ///
+  ///
+  ///
+  /// Can be used on: http://www.w3.org/2000/10/swap/pim/contact#SocialEntity
+  ///
+  static const contactBirthday = IriTerm(
+    'http://www.w3.org/2000/10/swap/pim/contact#birthday',
+  );
+
   /// emailAddress from contact vocabulary [Expects: http://www.w3.org/2000/10/swap/pim/contact#_EmailAddress]
   ///
-  /// emailAddress is a string. Use of this is discouraged. Use :mailbox instead
+  /// emailAddress is a string.  Use of this is discouraged. Use :mailbox instead
   ///
   /// Can be used on: http://www.w3.org/2000/10/swap/pim/contact#SocialEntity
   ///
   static const contactEmailAddress = IriTerm(
     'http://www.w3.org/2000/10/swap/pim/contact#emailAddress',
+  );
+
+  /// emergency from contact vocabulary [Expects: http://www.w3.org/2000/10/swap/pim/contact#ContactLocation]
+  ///
+  ///
+  ///
+  /// Can be used on: http://www.w3.org/2000/10/swap/pim/contact#Person
+  ///
+  static const contactEmergency = IriTerm(
+    'http://www.w3.org/2000/10/swap/pim/contact#emergency',
+  );
+
+  /// home from contact vocabulary [Expects: http://www.w3.org/2000/10/swap/pim/contact#ContactLocation]
+  ///
+  ///
+  ///
+  /// Can be used on: http://www.w3.org/2000/10/swap/pim/contact#Person
+  ///
+  static const contactHome = IriTerm(
+    'http://www.w3.org/2000/10/swap/pim/contact#home',
   );
 
   /// mailbox from contact vocabulary [Expects: http://www.w3.org/2000/10/swap/pim/contact#Mailbox]
@@ -1224,12 +1291,62 @@ class FoafPerson {
 
   /// mailboxURI from contact vocabulary [Expects: http://www.w3.org/2000/10/swap/pim/contact#_URI]
   ///
-  /// mailboxURI is a string. Use of this is discouraged. Use :mailbox instead
+  /// mailboxURI is a string.  Use of this is discouraged. Use :mailbox instead
   ///
   /// Can be used on: http://www.w3.org/2000/10/swap/pim/contact#SocialEntity
   ///
   static const contactMailboxURI = IriTerm(
     'http://www.w3.org/2000/10/swap/pim/contact#mailboxURI',
+  );
+
+  /// mobile from contact vocabulary [Expects: http://www.w3.org/2000/10/swap/pim/contact#ContactLocation]
+  ///
+  ///
+  ///
+  /// Can be used on: http://www.w3.org/2000/10/swap/pim/contact#Person
+  ///
+  static const contactMobile = IriTerm(
+    'http://www.w3.org/2000/10/swap/pim/contact#mobile',
+  );
+
+  /// motherTongue from contact vocabulary [Expects: http://www.w3.org/2000/10/swap/pim/contact#LanguageCode]
+  ///
+  ///
+  ///
+  /// Can be used on: http://www.w3.org/2000/10/swap/pim/contact#Person
+  ///
+  static const contactMotherTongue = IriTerm(
+    'http://www.w3.org/2000/10/swap/pim/contact#motherTongue',
+  );
+
+  /// office from contact vocabulary [Expects: http://www.w3.org/2000/10/swap/pim/contact#ContactLocation]
+  ///
+  ///
+  ///
+  /// Can be used on: http://www.w3.org/2000/10/swap/pim/contact#Person
+  ///
+  static const contactOffice = IriTerm(
+    'http://www.w3.org/2000/10/swap/pim/contact#office',
+  );
+
+  /// partner from contact vocabulary [Expects: http://www.w3.org/2000/10/swap/pim/contact#Person]
+  ///
+  ///
+  ///
+  /// Can be used on: http://www.w3.org/2000/10/swap/pim/contact#Person
+  ///
+  static const contactPartner = IriTerm(
+    'http://www.w3.org/2000/10/swap/pim/contact#partner',
+  );
+
+  /// vacationHome from contact vocabulary [Expects: http://www.w3.org/2000/10/swap/pim/contact#ContactLocation]
+  ///
+  ///
+  ///
+  /// Can be used on: http://www.w3.org/2000/10/swap/pim/contact#Person
+  ///
+  static const contactVacationHome = IriTerm(
+    'http://www.w3.org/2000/10/swap/pim/contact#vacationHome',
   );
 
   /// masterWorkspace from pim vocabulary [Expects: http://www.w3.org/ns/pim/space#MasterWorkspace]
@@ -1475,7 +1592,7 @@ class FoafPerson {
     'http://schema.org/hasCertification',
   );
 
-  /// hasCredential from schema-http vocabulary [Expects: http://schema.org/EducationalOccupationalCredential]
+  /// hasCredential from schema-http vocabulary [Expects: http://schema.org/Credential]
   ///
   /// A credential awarded to the Person or Organization.
   ///
@@ -1744,7 +1861,7 @@ class FoafPerson {
 
   /// vatID from schema-http vocabulary [Expects: http://schema.org/Text]
   ///
-  /// The Value-added Tax ID of the organization or person.
+  /// The value-added Tax ID of the organization or person with national prefix (for example IT123456789). Can also be described as {[iso6523Code]} with proper prefix.
   ///
   /// Can be used on: http://schema.org/Organization, http://schema.org/Person
   ///
