@@ -61,6 +61,9 @@ dev_dependencies:
   drift_dev: ^2.31.0
   locorda_dev: ^0.5.1
 
+  # Needed by tests 
+  locorda_core: ^0.5.1
+
   # Documentation
   excerpter:
     git:

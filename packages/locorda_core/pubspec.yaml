@@ -37,5 +37,3 @@ dev_dependencies:
   build_runner: ^2.8.0
   locorda_rdf_terms_generator: ^0.12.2
   locorda_mapping_bootstrap_generator: ^0.5.1  
-  locorda_objects: any
-  personal_notes_app: any
