@@ -1,6 +1,6 @@
 name: locorda_core
 description: Platform-agnostic CRDT sync engine for Locorda. Runtime for offline-first conflict resolution, sharded index management, and BYOB backend sync (Google Drive, Solid Pods, and more).
-version: 0.5.1
+version: 0.5.2
 resolution: workspace
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
@@ -36,4 +36,4 @@ dev_dependencies:
   lints: ">=5.1.1 <7.0.0"
   build_runner: ^2.8.0
   locorda_rdf_terms_generator: ^0.12.2
-  locorda_mapping_bootstrap_generator: ^0.5.1  
+  locorda_mapping_bootstrap_generator: ^0.5.2  

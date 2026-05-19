@@ -15,8 +15,8 @@ dependencies:
     sdk: flutter
     
   # Core Locorda packages
-  locorda: ^0.5.1                # Main package (includes annotations)
-  locorda_dir: ^0.5.1            # Testing remote (use Solid/GDrive in production)
+  locorda: ^0.5.2                # Main package (includes annotations)
+  locorda_dir: ^0.5.2            # Testing remote (use Solid/GDrive in production)
   
   # Utilities
   logging: ^1.3.0
@@ -29,7 +29,7 @@ dev_dependencies:
   
   # Code generation
   build_runner: ^2.4.0
-  locorda_dev: ^0.5.1
+  locorda_dev: ^0.5.2
   
   # Needed by tests to verify RDF output
   locorda_rdf_core: ^0.12.2

@@ -1,3 +1,8 @@
+## 0.5.2
+
+ - **FIX**(dependencies): update analyzer version constraint to support Dart SDK range. ([f738f93b](https://github.com/locorda/sync-engine/commit/f738f93b94560dd96b94d86238ae2603f0437a41))
+ - **DOCS**: reposition packages as BYOB offline-first sync. ([9a03fd0a](https://github.com/locorda/sync-engine/commit/9a03fd0a170ace56bc9a372aae2effea1949aa19))
+
 ## 0.5.1
 
 ## 0.5.0

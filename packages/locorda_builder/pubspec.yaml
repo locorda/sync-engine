@@ -1,6 +1,6 @@
 name: locorda_builder
 description: "Build-time Locorda transformations: assembles worker manifests from transitive dependencies, compiles Dart Isolates/Web Workers to JS, and automates asset handling."
-version: 0.5.1
+version: 0.5.2
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues

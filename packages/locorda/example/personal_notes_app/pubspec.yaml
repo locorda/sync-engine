@@ -22,12 +22,12 @@ dependencies:
   solid_oidc_auth: ^0.2.1
       
   # Locorda Sync packages
-  locorda: ^0.5.1
+  locorda: ^0.5.2
 
   # Remote storage implementations - dir is used for testing, Solid/GDrive are used in production
-  locorda_solid: ^0.5.1
-  locorda_gdrive: ^0.5.1
-  locorda_dir: ^0.5.1
+  locorda_solid: ^0.5.2
+  locorda_gdrive: ^0.5.2
+  locorda_dir: ^0.5.2
 
   # We need RdfGraph to be passed through in our models
   locorda_rdf_core: ^0.12.2
@@ -59,10 +59,10 @@ dev_dependencies:
   # Code generation
   build_runner: ^2.4.0
   drift_dev: ^2.31.0
-  locorda_dev: ^0.5.1
+  locorda_dev: ^0.5.2
 
   # Needed by tests 
-  locorda_core: ^0.5.1
+  locorda_core: ^0.5.2
 
   # Documentation
   excerpter:

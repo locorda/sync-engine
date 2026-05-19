@@ -1,6 +1,6 @@
 name: locorda_drift
 description: SQLite storage backend for Locorda using Drift ORM. Cross-platform offline storage (iOS, Android, macOS, Windows, Linux, Web) for BYOB sync engines.
-version: 0.5.1
+version: 0.5.2
 resolution: workspace
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
@@ -20,8 +20,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  locorda_core: ^0.5.1
-  locorda_worker: ^0.5.1
+  locorda_core: ^0.5.2
+  locorda_worker: ^0.5.2
   drift: ^2.32.1
   drift_flutter: ^0.3.0
   path_provider: ^2.1.0

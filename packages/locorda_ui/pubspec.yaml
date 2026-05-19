@@ -1,6 +1,6 @@
 name: locorda_ui
 description: Flutter sync status UI for Locorda. Provides MultiBackendStatusWidget, SyncRefreshIndicator, and backend status adapters for Google Drive, Solid Pods, and more.
-version: 0.5.1
+version: 0.5.2
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues
@@ -23,7 +23,7 @@ dependencies:
     sdk: flutter
   intl: ^0.20.2
   logging: ^1.3.0
-  locorda_core: ^0.5.1
+  locorda_core: ^0.5.2
 
 dev_dependencies:
   flutter_test:

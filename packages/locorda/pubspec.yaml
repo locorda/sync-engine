@@ -1,6 +1,6 @@
 name: locorda
 description: Bring Your Own Backend (BYOB) offline-first sync for Flutter. Sync to your users' own Google Drive or other cloud/file storage — no server required. Annotate, generate, sync.
-version: 0.5.1
+version: 0.5.2
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues
@@ -13,16 +13,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  locorda_core: ^0.5.1
-  locorda_drift: ^0.5.1
-  locorda_flutter_core: ^0.5.1
-  locorda_flutter: ^0.5.1
-  locorda_objects: ^0.5.1
-  locorda_ui: ^0.5.1
-  locorda_worker: ^0.5.1
+  locorda_core: ^0.5.2
+  locorda_drift: ^0.5.2
+  locorda_flutter_core: ^0.5.2
+  locorda_flutter: ^0.5.2
+  locorda_objects: ^0.5.2
+  locorda_ui: ^0.5.2
+  locorda_worker: ^0.5.2
   
   # Annotations for model classes
-  locorda_annotations: ^0.5.1
+  locorda_annotations: ^0.5.2
   
   # RDF mapping
   locorda_rdf_core: ^0.12.2

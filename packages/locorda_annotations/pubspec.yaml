@@ -1,6 +1,6 @@
 name: locorda_annotations
 description: "Annotations for Locorda CRDT sync: @RootResource/@SubResource mark classes as RDF resources; @CrdtLwwRegister/@CrdtOrSet etc. declare property merge strategies for code generation."
-version: 0.5.1
+version: 0.5.2
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues
@@ -12,7 +12,7 @@ environment:
 dependencies:
   locorda_rdf_mapper_annotations: ^0.12.2
   locorda_rdf_core: ^0.12.2
-  locorda_core: ^0.5.1
+  locorda_core: ^0.5.2
 
 dev_dependencies:
   test: ^1.26.3

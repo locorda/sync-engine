@@ -1,6 +1,6 @@
 name: locorda_worker
 description: Platform-agnostic isolate/web worker infrastructure for Locorda. Offloads CRDT merging, SQLite I/O, and backend HTTP (Google Drive, Solid Pods, etc.) to a background thread.
-version: 0.5.1
+version: 0.5.2
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues
@@ -12,7 +12,7 @@ environment:
 dependencies:
   logging: ^1.3.0
   http: ^1.1.0
-  locorda_core: ^0.5.1
+  locorda_core: ^0.5.2
   
   # RDF mapping
   locorda_rdf_core: ^0.12.2

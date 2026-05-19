@@ -1,6 +1,6 @@
 name: locorda_objects
 description: Type-safe Dart API for Locorda CRDT sync. Wraps SyncEngine with ObjectSyncEngine — save<T>(), hydrateStream<T>(), delete<T>() without handling RDF directly.
-version: 0.5.1
+version: 0.5.2
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues
@@ -10,7 +10,7 @@ environment:
   sdk: ^3.6.0
 
 dependencies:
-  locorda_core: ^0.5.1
+  locorda_core: ^0.5.2
   logging: ^1.3.0
   
   # RDF mapping

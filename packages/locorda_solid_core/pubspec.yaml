@@ -1,6 +1,6 @@
 name: locorda_solid_core
 description: Solid Pod backend implementation for Locorda — internal HTTP layer and types used by locorda_solid. One of multiple BYOB backends alongside Google Drive.
-version: 0.5.1
+version: 0.5.2
 resolution: workspace
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
@@ -22,7 +22,7 @@ dependencies:
   rxdart: ^0.28.0
 
   # Core locorda dependencies
-  locorda_core: ^0.5.1
+  locorda_core: ^0.5.2
   
   locorda_rdf_core: ^0.12.2
 

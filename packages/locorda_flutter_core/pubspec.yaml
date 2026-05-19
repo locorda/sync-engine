@@ -1,6 +1,6 @@
 name: locorda_flutter_core
 description: Shared contracts for Locorda Flutter backends — defines RemoteIntegration, LocordaGraph, and the interface that backend packages (Google Drive, Solid Pods, etc.) implement.
-version: 0.5.1
+version: 0.5.2
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues
@@ -13,9 +13,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  locorda_core: ^0.5.1
-  locorda_worker: ^0.5.1
-  locorda_ui: ^0.5.1
+  locorda_core: ^0.5.2
+  locorda_worker: ^0.5.2
+  locorda_ui: ^0.5.2
   
   # RDF mapping
   locorda_rdf_core: ^0.12.2

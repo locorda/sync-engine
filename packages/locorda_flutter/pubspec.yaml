@@ -1,6 +1,6 @@
 name: locorda_flutter
 description: Flutter integration for Locorda BYOB sync — combines ObjectSyncEngine, worker architecture, and UI widgets into a single Locorda facade for offline-first Flutter apps.
-version: 0.5.1
+version: 0.5.2
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues
@@ -13,11 +13,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  locorda_core: ^0.5.1
-  locorda_flutter_core: ^0.5.1
-  locorda_objects: ^0.5.1
-  locorda_worker: ^0.5.1
-  locorda_ui: ^0.5.1
+  locorda_core: ^0.5.2
+  locorda_flutter_core: ^0.5.2
+  locorda_objects: ^0.5.2
+  locorda_worker: ^0.5.2
+  locorda_ui: ^0.5.2
   locorda_rdf_core: ^0.12.2
   locorda_rdf_mapper: ^0.12.2
 

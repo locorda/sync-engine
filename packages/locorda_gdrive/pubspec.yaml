@@ -1,6 +1,6 @@
 name: locorda_gdrive
 description: Google Drive backend for Locorda BYOB sync — the recommended default backend. Stores sync data in App Data Folder or a visible Drive folder using Google Sign-In (OAuth2).
-version: 0.5.1
+version: 0.5.2
 resolution: workspace
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
@@ -32,10 +32,10 @@ dependencies:
   
   # Locorda dependencies
   rxdart: ^0.28.0
-  locorda_core: ^0.5.1
-  locorda_ui: ^0.5.1
-  locorda_worker: ^0.5.1
-  locorda_flutter_core: ^0.5.1
+  locorda_core: ^0.5.2
+  locorda_ui: ^0.5.2
+  locorda_worker: ^0.5.2
+  locorda_flutter_core: ^0.5.2
   
   # RDF dependencies
   locorda_rdf_core: ^0.12.2

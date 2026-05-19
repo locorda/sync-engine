@@ -1,6 +1,6 @@
 name: locorda_init_generator
 description: Generates initLocorda — a zero-config init function that auto-wires the worker, RDF mapper, and storage backend from your pubspec dependencies.
-version: 0.5.1
+version: 0.5.2
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues
@@ -21,7 +21,7 @@ dependencies:
   dart_style: ">=2.3.7 <4.0.0"
   glob: ^2.1.2
   logging: ^1.2.0
-  locorda_core: ^0.5.1
+  locorda_core: ^0.5.2
   locorda_rdf_core: ^0.12.2
   pub_semver: ^2.2.0
   path: ^1.9.1

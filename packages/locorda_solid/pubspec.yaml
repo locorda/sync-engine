@@ -1,6 +1,6 @@
 name: locorda_solid
 description: Solid Pod backend for Locorda BYOB sync — OIDC/DPoP authentication, login UI, and file-per-resource storage for Solid-compliant Pods. One of multiple Locorda backends.
-version: 0.5.1
+version: 0.5.2
 homepage: https://locorda.dev/sync-engine/
 repository: https://github.com/locorda/sync-engine
 issue_tracker: https://github.com/locorda/sync-engine/issues
@@ -13,12 +13,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  locorda_core: ^0.5.1
-  locorda_flutter_core: ^0.5.1
-  locorda_solid_core: ^0.5.1
-  locorda_solid_auth: ^0.5.1
-  locorda_worker: ^0.5.1
-  locorda_solid_auth_worker: ^0.5.1
+  locorda_core: ^0.5.2
+  locorda_flutter_core: ^0.5.2
+  locorda_solid_core: ^0.5.2
+  locorda_solid_auth: ^0.5.2
+  locorda_worker: ^0.5.2
+  locorda_solid_auth_worker: ^0.5.2
 
   # Solid authentication
   solid_oidc_auth: ^0.2.1
