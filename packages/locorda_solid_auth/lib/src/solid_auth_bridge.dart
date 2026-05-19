@@ -63,7 +63,7 @@ class SolidAuthBridge implements SolidAuthProvider {
   @override
   Future<({String accessToken, String dPoP})> getDpopToken(
       String url, String method) async {
-    final dpop = await _solidAuth.genDpopToken(url, method);
+    final dpop = _solidAuth.genDpopToken(url, method);
     return (accessToken: dpop.accessToken, dPoP: dpop.dpopToken);
   }
 
