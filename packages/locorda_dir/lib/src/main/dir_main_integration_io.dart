@@ -45,9 +45,9 @@ class DirMainIntegration implements RemoteIntegration {
   /// Creates integration with automatic directory path detection.
   ///
   /// Uses platform-appropriate document directory:
-  /// - macOS: ~/Documents/<appName>/locorda-sync/
-  /// - Linux: ~/Documents/<appName>/locorda-sync/
-  /// - Windows: %USERPROFILE%\Documents\<appName>\locorda-sync\
+  /// - macOS: `~/Documents/<appName>/locorda-sync/`
+  /// - Linux: `~/Documents/<appName>/locorda-sync/`
+  /// - Windows: `%USERPROFILE%\Documents\<appName>\locorda-sync\`
   ///
   /// [appName] is used for the subdirectory (defaults to 'locorda').
   /// [initiallyEnabled] determines if sync is enabled on startup (default: false).
