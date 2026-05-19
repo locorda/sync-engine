@@ -14,9 +14,9 @@ environment:
   sdk: ^3.6.0
 
 dependencies:
-  # CRITICAL: Must support range from stable Flutter (8.4.x) to latest (10.x)
+  # CRITICAL: Must support range from stable Flutter to latest
   # See: https://github.com/flutter/flutter/blob/stable/packages/flutter_tools/lib/src/web/compile.dart
-  analyzer: '>=8.1.0 <13.0.0'
+  analyzer: '>=10.0.0 <14.0.0'
   build: ^4.0.4
   dart_style: ">=2.3.7 <4.0.0"
   glob: ^2.1.2
