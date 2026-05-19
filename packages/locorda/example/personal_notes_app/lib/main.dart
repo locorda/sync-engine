@@ -48,9 +48,9 @@ void main() async {
 /// - Returns a fully configured sync system
 Future<Locorda> initializeLocorda() async {
   final bool isGDriveSupportedPlatform =
-      defaultTargetPlatform != TargetPlatform.linux && defaultTargetPlatform != TargetPlatform.windows;
+      kIsWeb || (defaultTargetPlatform != TargetPlatform.linux && defaultTargetPlatform != TargetPlatform.windows);
   final bool isSolidAuthSupportedPlatform =
-      defaultTargetPlatform != TargetPlatform.linux && defaultTargetPlatform != TargetPlatform.windows;
+      kIsWeb || (defaultTargetPlatform != TargetPlatform.linux && defaultTargetPlatform != TargetPlatform.windows);
 
   // Setup sync system with worker
   return initLocorda(
