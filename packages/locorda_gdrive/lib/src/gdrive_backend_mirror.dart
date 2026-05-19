@@ -598,10 +598,10 @@ class GDriveMirrorTypeIndexBackend extends TypeIndexManagerBackend {
 
   @override
   Future<({T? graph, String? etag, bool notModified})> download<T>(
-    fileId, {
+    String fileId, {
     required T Function(String) convert,
   }) async {
-    final id = fileId as String;
+    final id = fileId;
     final result = await _store.download(id,
         documentIri: IriTerm.validated('internal:mirror:$id'));
     return switch (result) {
@@ -637,12 +637,12 @@ class GDriveMirrorTypeIndexBackend extends TypeIndexManagerBackend {
 
   @override
   Future<RemoteUploadResult> upload<T>(
-    fileId,
+    String fileId,
     T updatedGraph, {
     required String ifMatch,
     required String Function(T) convert,
   }) async {
-    final id = fileId as String;
+    final id = fileId;
     final bytes = utf8.encode(convert(updatedGraph));
     final result = await _store.upload(
       id,

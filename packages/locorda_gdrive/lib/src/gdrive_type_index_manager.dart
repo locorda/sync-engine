@@ -18,7 +18,8 @@ abstract class TypeIndexManagerBackend {
       required String contentType,
       required String Function(T) convert});
 
-  Future<({T? graph, String? etag, bool notModified})> download<T>(fileId,
+  Future<({T? graph, String? etag, bool notModified})> download<T>(
+      String fileId,
       {required T Function(String) convert});
 
   Future<String?> findFile(
@@ -26,7 +27,7 @@ abstract class TypeIndexManagerBackend {
       required String parentId,
       required String spaces});
 
-  Future<RemoteUploadResult> upload<T>(fileId, T updatedGraph,
+  Future<RemoteUploadResult> upload<T>(String fileId, T updatedGraph,
       {required String ifMatch, required String Function(T) convert});
 
   Future<String> getOrCreateFolder(
@@ -55,7 +56,8 @@ class GDriveTypeIndexManagerBackend extends TypeIndexManagerBackend {
         convert: convert,
       );
 
-  Future<({T? graph, String? etag, bool notModified})> download<T>(fileId,
+  Future<({T? graph, String? etag, bool notModified})> download<T>(
+          String fileId,
           {required T Function(String) convert}) =>
       _client.download(fileId, convert: convert);
 
@@ -69,7 +71,7 @@ class GDriveTypeIndexManagerBackend extends TypeIndexManagerBackend {
         spaces: spaces,
       );
 
-  Future<RemoteUploadResult> upload<T>(fileId, T updatedGraph,
+  Future<RemoteUploadResult> upload<T>(String fileId, T updatedGraph,
           {required String ifMatch, required String Function(T) convert}) =>
       _client.upload(
         fileId,

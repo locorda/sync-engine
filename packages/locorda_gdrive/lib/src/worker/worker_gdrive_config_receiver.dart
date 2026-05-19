@@ -20,7 +20,7 @@ final _log = Logger('WorkerGDriveConfigReceiver');
 class WorkerGDriveConfigReceiver {
   final WorkerHandlerChannel _channel;
   final Completer<GDriveConfig> _configCompleter = Completer();
-  late final StreamSubscription _subscription;
+  late final StreamSubscription<dynamic> _subscription;
 
   WorkerGDriveConfigReceiver(this._channel) {
     // Start listening IMMEDIATELY in constructor to catch early messages

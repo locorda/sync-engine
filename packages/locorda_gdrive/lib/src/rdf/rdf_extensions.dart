@@ -91,8 +91,8 @@ extension RdfTermExtensions on RdfTerm {
       };
 
   String get stringValue => switch (this) {
-        LiteralTerm lt => lt.stringValue,
-        IriTerm it => it.value,
+        final LiteralTerm lt => lt.stringValue,
+        final IriTerm it => it.value,
         BlankNodeTerm _ => throw StateError('Blank nodes have no string value'),
       };
 }
