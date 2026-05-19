@@ -8,7 +8,8 @@
 library;
 
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:locorda/locorda.dart';
@@ -46,6 +47,9 @@ void main() async {
 /// - Auth bridge to sync credentials from main thread to worker
 /// - Returns a fully configured sync system
 Future<Locorda> initializeLocorda() async {
+  final bool isGDriveSupportedPlatform = 
+      defaultTargetPlatform != TargetPlatform.linux;
+
   // Setup sync system with worker
   return initLocorda(
     onWorkerSpawn: setupWorkerLogging,
@@ -75,17 +79,18 @@ Future<Locorda> initializeLocorda() async {
           frontendRedirectUrl: Uri.parse(
               '${kDebugMode ? 'http://localhost:3815' : appVocab.appBaseUri}/redirect.html'),
           config: SolidConfig()),
-      await GDriveMainIntegration.create(
-          // Most apps will use `GDriveConfig(` default constructor which uses
-          // appDataFolder (private storage, no visible folder in user's Drive)
-          // For demonstration, we use visibleFolder mode which creates a folder in user's Drive
-          // so you can easily inspect the created files.
-          // In production, appDataFolder is recommended for better security and user experience.
-          config: GDriveConfig.visibleFolder(
-              appFolderName: 'Personal Notes App Data',
-              localMirrorConfig:
-                  GDriveLocalMirrorConfig(enabled: false /* !kIsWeb*/),
-              layout: SingleFile(contentType: trig.primaryMimeType))),
+      if (isGDriveSupportedPlatform)
+        await GDriveMainIntegration.create(
+            // Most apps will use `GDriveConfig(` default constructor which uses
+            // appDataFolder (private storage, no visible folder in user's Drive)
+            // For demonstration, we use visibleFolder mode which creates a folder in user's Drive
+            // so you can easily inspect the created files.
+            // In production, appDataFolder is recommended for better security and user experience.
+            config: GDriveConfig.visibleFolder(
+                appFolderName: 'Personal Notes App Data',
+                localMirrorConfig:
+                    GDriveLocalMirrorConfig(enabled: false /* !kIsWeb*/),
+                layout: SingleFile(contentType: trig.primaryMimeType))),
     ],
 
     // Provide storage - web options are sent to worker via connector
