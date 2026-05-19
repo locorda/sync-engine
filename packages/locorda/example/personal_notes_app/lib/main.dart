@@ -47,7 +47,7 @@ void main() async {
 /// - Auth bridge to sync credentials from main thread to worker
 /// - Returns a fully configured sync system
 Future<Locorda> initializeLocorda() async {
-  final bool isGDriveSupportedPlatform = 
+  final bool isGDriveSupportedPlatform =
       defaultTargetPlatform != TargetPlatform.linux;
 
   // Setup sync system with worker
