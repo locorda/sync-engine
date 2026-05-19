@@ -48,7 +48,9 @@ void main() async {
 /// - Returns a fully configured sync system
 Future<Locorda> initializeLocorda() async {
   final bool isGDriveSupportedPlatform =
-      defaultTargetPlatform != TargetPlatform.linux;
+      defaultTargetPlatform != TargetPlatform.linux && defaultTargetPlatform != TargetPlatform.windows;
+  final bool isSolidAuthSupportedPlatform =
+      defaultTargetPlatform != TargetPlatform.linux && defaultTargetPlatform != TargetPlatform.windows;
 
   // Setup sync system with worker
   return initLocorda(
@@ -69,7 +71,8 @@ Future<Locorda> initializeLocorda() async {
             displayName: 'Local Directory (Single File)',
             config: DirConfig(layout: SingleFile())),
       ],
-      await SolidMainIntegration.create(
+      if (isSolidAuthSupportedPlatform)
+        await SolidMainIntegration.create(
           // SECURITY: This example demonstrates secure redirect URI configuration.
           // - appUrlScheme provides secure custom URI scheme for mobile/macOS
           // - frontendRedirectUrl provides secure HTTPS redirect for web
