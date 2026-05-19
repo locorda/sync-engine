@@ -5,6 +5,7 @@
 /// - Exception during index query → PhaseError
 /// - Exception during ETag query → PhaseError
 library;
+
 import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/storage/remote_id.dart';
 import 'package:locorda_core/src/storage/storage_interface.dart';

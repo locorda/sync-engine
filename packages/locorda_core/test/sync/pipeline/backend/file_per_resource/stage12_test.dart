@@ -9,6 +9,7 @@
 /// - [PhaseError] clears buffer and passes through
 /// - Input-order: results emitted in input order (isBoundary=true)
 library;
+
 import 'dart:async';
 import 'dart:typed_data';
 

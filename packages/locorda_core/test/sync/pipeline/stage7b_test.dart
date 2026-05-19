@@ -8,6 +8,7 @@
 /// - PhaseComplete flushes buffer then passes through
 /// - PhaseError flushes buffer then passes through
 library;
+
 import 'dart:async';
 
 import 'package:locorda_core/src/index/index_discovery.dart';

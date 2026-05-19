@@ -6,6 +6,7 @@
 /// - [PhaseError] passes through unchanged
 /// - Prepare failure → [ShardError]
 library;
+
 import 'package:locorda_core/src/config/sync_engine_config.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage11a_prepare.dart';

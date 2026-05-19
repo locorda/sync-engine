@@ -171,7 +171,8 @@ class IndexPropertyResolver {
 
   /// Resolves indexed properties by loading documents from storage.
   Future<IndexProperties> _resolveFromStorage(IriTerm shardDocumentIri) async {
-    final IriTerm? indexIri = await _getIndexIriForShardDocumentIri(shardDocumentIri);
+    final IriTerm? indexIri =
+        await _getIndexIriForShardDocumentIri(shardDocumentIri);
 
     // 2. Check if we have an indexIri
 

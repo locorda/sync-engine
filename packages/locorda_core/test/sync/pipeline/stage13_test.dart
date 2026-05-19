@@ -7,6 +7,7 @@
 /// - [ShardError] and [ConflictedShard] pass through
 /// - [PhaseError] clears pending and passes through
 library;
+
 import 'dart:async';
 import 'dart:typed_data';
 

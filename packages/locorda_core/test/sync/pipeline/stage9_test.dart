@@ -9,6 +9,7 @@
 /// - Error flags reset between shards
 /// - PhaseError clears pending and passes through
 library;
+
 import 'dart:typed_data';
 
 import 'package:locorda_core/src/index/index_manager.dart';

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:locorda/locorda.dart';
-import 'package:locorda_core/locorda_core.dart' show InMemoryStorage, EngineParams;
+import 'package:locorda_core/locorda_core.dart'
+    show InMemoryStorage, EngineParams;
 
 import 'package:personal_notes_app/init_rdf_mapper.g.dart'
     as personal_notes_mapper;
