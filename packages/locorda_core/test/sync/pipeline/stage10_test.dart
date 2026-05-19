@@ -7,6 +7,7 @@
 /// - [ConflictedShard], [ShardError] pass through unchanged
 /// - [PhaseComplete] flushes pending batch then passes through
 /// - [PhaseError] clears pending and passes through
+library;
 import 'package:locorda_core/src/storage/storage_interface.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage10_shard_entry_load.dart';

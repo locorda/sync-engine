@@ -108,7 +108,7 @@ void main() {
 
         // Access key1 multiple times
         final _ = cache['key1']; // [key2, key3, key1]
-        final __ = cache['key1']; // [key2, key3, key1]
+        cache['key1']; // [key2, key3, key1]
 
         // Add new entry, should evict key2
         cache['key4'] = 4; // [key3, key1, key4]
@@ -155,7 +155,7 @@ void main() {
         expect(cache.containsKey('d'), isTrue);
 
         // Access 'c'
-        final __ = cache['c']; // [b, d, c]
+        cache['c']; // [b, d, c]
 
         // Add new entry, should evict 'b'
         cache['e'] = 5; // [d, c, e]
@@ -175,7 +175,7 @@ void main() {
         // Alternating access keeps both in cache
         for (var i = 0; i < 10; i++) {
           final _ = cache['key1']; // [key2, key1]
-          final __ = cache['key2']; // [key1, key2]
+          cache['key2']; // [key1, key2]
         }
 
         expect(cache.containsKey('key1'), isTrue);

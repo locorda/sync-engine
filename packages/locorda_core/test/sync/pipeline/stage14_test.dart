@@ -8,6 +8,8 @@
 /// - Content phase complete → inputSink.close()
 /// - [ShardCommitResult] and [ShardComplete] pass through
 /// - [PhaseError] passes through unchanged
+library;
+
 import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
@@ -55,15 +57,15 @@ class _RecordingSink implements StreamSink<SyncInput> {
   void addError(Object error, [StackTrace? stackTrace]) {}
 
   @override
-  Future addStream(Stream<SyncInput> stream) => stream.forEach(add);
+  Future<void> addStream(Stream<SyncInput> stream) => stream.forEach(add);
 
   @override
-  Future close() async {
+  Future<void> close() async {
     closed = true;
   }
 
   @override
-  Future get done => Future.value();
+  Future<void> get done => Future.value();
 }
 
 /// Storage that returns clock hashes matching the snapshot (stable).

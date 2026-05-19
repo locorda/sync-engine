@@ -319,7 +319,7 @@ IriTerm? _extractDocumentIri(RdfGraph graph) {
 
 String? _stringLiteralValue(CollectionElement element) {
   final expression = switch (element) {
-    Expression expression => expression,
+    final Expression expression => expression,
     _ => null,
   };
   if (expression == null) {

@@ -6,6 +6,7 @@
 /// - ShardError passes through unchanged
 /// - PhaseError passes through unchanged
 /// - PhaseComplete passes through unchanged
+library;
 import 'dart:async';
 
 import 'package:locorda_core/src/storage/remote_id.dart';

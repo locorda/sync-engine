@@ -408,7 +408,7 @@ class CrdtDocumentManager {
   Future<DocumentSaveResult?> modify(IriTerm type, IriTerm primaryResourceIri,
       RdfGraph Function(RdfGraph oldAppData) modifier,
       {int? physicalTime, bool acceptMissing = false}) async {
-    IriTerm documentIri = primaryResourceIri.getDocumentIri();
+    final IriTerm documentIri = primaryResourceIri.getDocumentIri();
     // 1. Extract resource and document IRIs (with validation)
 
     final (

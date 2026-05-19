@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'dart:io';
 
 import 'package:locorda_core/locorda_core.dart';
@@ -162,7 +163,7 @@ ResourceIdentifier extractTypeIdFromStoredPath(
   final primaryTopic = graph.expectSingleObject<IriTerm>(
       documentIri, SyncManagedDocument.foafPrimaryTopic)!;
   final typeIris = graph.getMultiValueObjects<IriTerm>(primaryTopic, Rdf.type);
-  LocalResourceLocator locator =
+  final LocalResourceLocator locator =
       LocalResourceLocator(iriTermFactory: IriTerm.validated);
   return locator.fromIri(documentIri, expectedTypeIri: typeIris.single);
 }

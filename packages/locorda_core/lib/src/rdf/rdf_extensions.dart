@@ -256,7 +256,7 @@ extension RdfTermExtensions on RdfTerm {
       final lit = this as LiteralTerm;
       return '"${lit.value}"^^<${lit.datatype.value}>';
     } else {
-      return this.toString();
+      return toString();
     }
   }
 
@@ -301,8 +301,8 @@ extension RdfTermExtensions on RdfTerm {
       };
 
   String get stringValue => switch (this) {
-        LiteralTerm lt => lt.stringValue,
-        IriTerm it => it.value,
+        final LiteralTerm lt => lt.stringValue,
+        final IriTerm it => it.value,
         BlankNodeTerm _ => throw StateError('Blank nodes have no string value'),
       };
 }

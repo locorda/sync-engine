@@ -47,9 +47,9 @@ class MetadataGenerator {
   }) {
     final expandedSubject = subject.localSubjectIris;
     final List<RdfObject>? expandedObject = switch (value?.value) {
-      LiteralTerm lt => [lt],
-      IriTerm iri => [iri],
-      BlankNodeTerm ibn =>
+      final LiteralTerm lt => [lt],
+      final IriTerm iri => [iri],
+      final BlankNodeTerm ibn =>
         value!.identifiers ?? (throw UnidentifiedBlankNodeException(ibn)),
       null => null
     };
@@ -99,7 +99,7 @@ class MetadataGenerator {
       Triple(idSubject, RdfStatement.subject, subj),
       if (predicate != null)
         Triple(idSubject, RdfStatement.predicate,
-            switch (predicate) { IriTerm iri => iri }),
+            switch (predicate) { final IriTerm iri => iri }),
       if (obj != null) Triple(idSubject, RdfStatement.object, obj),
     ];
   }
@@ -108,8 +108,8 @@ class MetadataGenerator {
 extension IdTermSubjectExtension on IdTerm<RdfSubject> {
   List<IriTerm> get subjectIris {
     return switch (value) {
-      IriTerm iri => [iri],
-      BlankNodeTerm bn =>
+      final IriTerm iri => [iri],
+      final BlankNodeTerm bn =>
         identifiers ?? (throw UnidentifiedBlankNodeException(bn)),
     };
   }
@@ -133,7 +133,7 @@ class IdTerm<T extends RdfTerm> {
   factory IdTerm.create(
       T value, IdentifiedBlankNodes<IriTerm> identifiedBlankNodes) {
     return switch (value) {
-      BlankNodeTerm ibn => identifiedBlankNodes.hasIdentifiedNodes(ibn)
+      final BlankNodeTerm ibn => identifiedBlankNodes.hasIdentifiedNodes(ibn)
           ? IdTerm._(ibn as T, identifiedBlankNodes.getIdentifiedNodes(ibn))
           : IdTerm._(value, null),
       _ => IdTerm._(value, null)

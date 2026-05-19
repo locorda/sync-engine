@@ -44,7 +44,7 @@ class SyncFunction {
   }
 
   Future<void> _syncRemotePipeline(DateTime syncTime) async {
-    final config = await _configService.currentConfig;
+    final config = _configService.currentConfig;
     for (final backend in _pipelineBackends) {
       _log.fine('Using backend: ${backend.name}');
       for (final remote in backend.pipelineRemotes) {

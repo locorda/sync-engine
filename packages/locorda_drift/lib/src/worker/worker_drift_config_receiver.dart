@@ -14,7 +14,7 @@ final _log = Logger('WorkerDriftConfigReceiver');
 class WorkerDriftConfigReceiver {
   final WorkerHandlerChannel _channel;
   final Completer<DriftSettingsMessage> _configCompleter = Completer();
-  late final StreamSubscription _subscription;
+  late final StreamSubscription<Object?> _subscription;
 
   WorkerDriftConfigReceiver(this._channel) {
     _subscription = _channel.messages

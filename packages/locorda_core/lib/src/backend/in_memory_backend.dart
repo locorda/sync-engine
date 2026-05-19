@@ -79,8 +79,8 @@ class InMemoryBackend implements PipelineBackend {
 ///
 /// Provides full ETag support with correct HTTP conditional request semantics:
 /// - If-None-Match: * (create only)
-/// - If-Match: <etag> (update only if unchanged)
-/// - If-None-Match: <etag> (download only if changed)
+/// - If-Match: `<etag>` (update only if unchanged)
+/// - If-None-Match: `<etag>` (download only if changed)
 class InMemoryRemoteStorage implements PipelineRemoteStorage {
   @override
   final RemoteId remoteId;
@@ -146,7 +146,7 @@ class InMemoryBackendStore {
   int _etagCounter = 0;
 
   /// Storage: documentIri -> (graph, etag)
-  final Map<String, StoredDocument> _documents = {};
+  final Map<String, StoredDocument<Object>> _documents = {};
 
   InMemoryBackendStore();
 
@@ -160,7 +160,7 @@ class InMemoryBackendStore {
   String _generateETag() => '"etag-${++_etagCounter}"';
 
   /// Returns a snapshot of all documents for testing purposes.
-  Map<IriTerm, StoredDocument> getAllDocuments() {
+  Map<IriTerm, StoredDocument<Object>> getAllDocuments() {
     return _documents.map(
       (key, value) => MapEntry(IriTerm(key), value),
     );
@@ -186,7 +186,7 @@ class InMemoryBackendStore {
   String storeDocument<T>(IriTerm documentIri, T data) {
     final newEtag = _generateETag();
     _documents[documentIri.value] =
-        StoredDocument<T>(data: data, etag: newEtag);
+        StoredDocument<T>(data: data, etag: newEtag) as StoredDocument<Object>;
     return newEtag;
   }
 
@@ -241,7 +241,7 @@ class _InMemorySyncBackend implements RemoteSyncBackend {
       _logger.fine(
           'Downloading document: ${request.documentIri.debug}, ifNoneMatch:${request.ifNoneMatch}');
 
-      final stored = _storage.getDocument(request.documentIri);
+      final stored = _storage.getDocument<Object>(request.documentIri);
 
       if (stored == null) {
         _logger.fine('Document not found: ${request.documentIri.debug}');
@@ -336,7 +336,7 @@ class _InMemorySyncBackend implements RemoteSyncBackend {
 
   RemoteUploadResult _uploadData(IriTerm documentIri, Object data,
       {String? ifMatch}) {
-    final stored = _storage.getDocument(documentIri);
+    final stored = _storage.getDocument<Object>(documentIri);
 
     if (ifMatch == null) {
       if (stored != null) {
@@ -383,7 +383,7 @@ class _InMemorySyncBackend implements RemoteSyncBackend {
   }
 
   Future<void> delete(IriTerm documentIri, {String? ifMatch}) async {
-    final stored = _storage.getDocument(documentIri);
+    final stored = _storage.getDocument<Object>(documentIri);
     if (stored == null) return;
     if (ifMatch != null && stored.etag != ifMatch) {
       throw Exception('412 Precondition Failed - ETag mismatch on delete');

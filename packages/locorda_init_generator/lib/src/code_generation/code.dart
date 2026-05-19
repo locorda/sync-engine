@@ -78,7 +78,7 @@ class Code {
     final combinedImports = codes.expand((c) => c._imports).toSet();
 
     // Build the combined code by joining each code's internal representation
-    String combinedCode =
+    final String combinedCode =
         '${pre ?? ''}${codes.map((c) => c._code).join(separator)}${post ?? ''}';
 
     return Code._(combinedCode, combinedImports);
@@ -100,9 +100,8 @@ class Code {
   // you are just interested in the name of a type for example.
   // To get the pure class name without imports, we resolve aliases
   // and use the class name without any import prefixes.
-  String get codeWithoutAlias => resolveAliases(
-      knownImports:
-          Map.fromIterable(imports, key: (v) => v, value: (v) => '')).$1;
+  String get codeWithoutAlias =>
+      resolveAliases(knownImports: {for (final v in imports) v: ''}).$1;
 
   /// Resolves alias markers in code to actual aliases
   /// Returns a record with the resolved code and a map of import URIs to aliases
@@ -219,21 +218,21 @@ class Code {
   }
 
   Code _toCode(Object args) => switch (args) {
-        Code c => c,
-        String s => Code.literal(s),
-        Map m => Code.combine(
+        final Code c => c,
+        final String s => Code.literal(s),
+        final Map<Object, Object> m => Code.combine(
             m.entries.map((entry) => _namedParam(entry.key, entry.value)),
             separator: ', ',
             pre: '{',
             post: '}',
           ),
-        Set s => Code.combine(
+        final Set<Object> s => Code.combine(
             s.map((item) => _toCode(item)),
             separator: ', ',
             pre: '{',
             post: '}',
           ),
-        Iterable i => Code.combine(
+        final Iterable<Object> i => Code.combine(
             i.map((item) => _toCode(item)),
             separator: ', ',
             pre: '[',
@@ -246,12 +245,12 @@ class Code {
     if (args is Map) {
       // For top-level params, we want to yield each entry as a separate param (e.g. for named function arguments)
       for (final entry in args.entries) {
-        yield _namedParam(entry.key, entry.value);
+        yield _namedParam(entry.key as Object, entry.value as Object);
       }
     } else if (args is Iterable) {
       // For top-level params, we want to yield each item directly (e.g. for function arguments)
       for (final item in args) {
-        yield _toCode(item);
+        yield _toCode(item as Object);
       }
     } else {
       throw ArgumentError(
@@ -285,7 +284,9 @@ class Code {
   /// // Positional only: IndexItemConfig(NoteIndexEntry, {propertySet})
   /// Code.type('IndexItemConfig', importUri: pkg).newInstance([itemClass, propSet])
   /// ```
-  Code newInstance([Object args = const [], Map namedArgs = const {}]) {
+  Code newInstance(
+      [Object args = const [],
+      Map<Object, Object> namedArgs = const <Object, Object>{}]) {
     if (namedArgs.isEmpty) {
       return this + Code.paramsList(_toToplevelParams(args));
     }
@@ -378,9 +379,9 @@ class CodeResolver {
   static String toDartFileContent(
       String header, Map<String, String> importAliases, Code body,
       {Map<String, String> broaderImports = const {}}) {
-    CodeResolver codeResolver = CodeResolver._(
+    final CodeResolver codeResolver = CodeResolver._(
         broaderImports: broaderImports, knownImports: importAliases);
-    StringBuffer buffer = StringBuffer(header);
+    final StringBuffer buffer = StringBuffer(header);
     buffer.writeln();
     final codeBody = codeResolver._writeCode(body);
     codeResolver._writeImports(buffer);

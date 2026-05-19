@@ -198,7 +198,7 @@ class HlcService {
     physicalTime ??= _physicalTimestampFactory().millisecondsSinceEpoch;
     logicalTime ??= 1;
 
-    var fullClock = [
+    final fullClock = [
       _buildClockEntryNode(documentIri, physicalTime, logicalTime)
     ];
     return (
@@ -226,7 +226,7 @@ class HlcService {
     });
     final Node entry;
     final int logicalTime;
-    if (ours.length > 0) {
+    if (ours.isNotEmpty) {
       final ourClockEntry = ours.single;
       final oldLogicalTime = ourClockEntry.$2.findSingleObject<LiteralTerm>(
           ourClockEntry.$1, CrdtClockEntry.logicalTime)!;
@@ -242,7 +242,7 @@ class HlcService {
       entry = _buildClockEntryNode(documentIri, physicalTime, logicalTime);
     }
 
-    var fullClock = [entry, ...theirs];
+    final fullClock = [entry, ...theirs];
 
     return (
       logicalTime: logicalTime,

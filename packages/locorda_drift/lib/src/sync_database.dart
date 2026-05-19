@@ -906,7 +906,7 @@ class SyncPropertyChangeDao extends DatabaseAccessor<SyncDatabase>
   }
 
   String predicateValue(RdfPredicate predicate) =>
-      switch (predicate) { IriTerm iri => iri.value };
+      switch (predicate) { final IriTerm iri => iri.value };
 
   /// Get property changes for a document, optionally filtered by logical clock
   Future<List<PropertyChangeInfo>> getPropertyChanges(int documentId,

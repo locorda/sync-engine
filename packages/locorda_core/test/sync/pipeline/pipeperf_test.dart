@@ -54,7 +54,7 @@ void main() {
     group('timedAsyncMap', () {
       test('wraps async function and records timing', () async {
         final fn = perf.timedAsyncMap<int, String>('S11b', (x) async {
-          await Future.delayed(Duration(milliseconds: 1));
+          await Future<void>.delayed(Duration(milliseconds: 1));
           return 'async$x';
         });
 

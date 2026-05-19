@@ -341,7 +341,7 @@ class IndexRdfGenerator {
     required IriTerm indexResourceIri,
     required IriTerm indexTypeIri,
   }) {
-    IriTerm resourceIri = generateShardIri(totalShards, shardNumber,
+    final IriTerm resourceIri = generateShardIri(totalShards, shardNumber,
         configVersion, indexResourceIri, indexTypeIri);
 
     return (

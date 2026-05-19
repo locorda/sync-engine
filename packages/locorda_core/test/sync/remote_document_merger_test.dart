@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'dart:convert';
 import 'dart:io';
 
@@ -13,7 +14,7 @@ import 'package:test/test.dart';
 
 import '../util/rdf_test_utils.dart';
 import '../util/setup_logging.dart';
-import '../../lib/src/storage/in_memory_storage.dart';
+import 'package:locorda_core/src/storage/in_memory_storage.dart';
 import 'test_fetcher.dart';
 import 'test_physical_timestamp_factory.dart';
 
@@ -60,7 +61,7 @@ void main() {
     final tests = suiteJson['tests'] as List<dynamic>;
 
     group('$suiteName - $suiteDescription', () {
-      for (final testJson in tests) {
+      for (final testJson in tests.cast<Map<String, dynamic>>()) {
         final testId = testJson['id'] as String;
         final testDescription = testJson['description'] as String;
         final shouldSkip = testJson['skip'] as bool? ?? false;
@@ -115,7 +116,7 @@ Future<void> _executeMergeTest(Map<String, dynamic> testJson,
       TestPhysicalTimestampFactory(baseTimestamp: baseTimestamp);
   final hlcService = HlcService(
     installationLocalId: 'test-installation',
-    physicalTimestampFactory: timestampFactory,
+    physicalTimestampFactory: timestampFactory.call,
   );
   final crdtTypeRegistry = CrdtTypeRegistry.forStandardTypes();
   final frameworkIriGenerator = FrameworkIriGenerator();

@@ -29,10 +29,10 @@ class PredicateRule {
     bool? isIdentifying,
     bool? disableBlankNodePathIdentification,
   }) {
-    var newMergeWith = mergeWith ?? this.mergeWith;
-    var newStopTraversal = stopTraversal ?? this.stopTraversal;
-    var newIsIdentifying = isIdentifying ?? this.isIdentifying;
-    var newDisableBlankNodePathIdentification =
+    final newMergeWith = mergeWith ?? this.mergeWith;
+    final newStopTraversal = stopTraversal ?? this.stopTraversal;
+    final newIsIdentifying = isIdentifying ?? this.isIdentifying;
+    final newDisableBlankNodePathIdentification =
         disableBlankNodePathIdentification ??
             this.disableBlankNodePathIdentification;
     if (newStopTraversal == this.stopTraversal &&

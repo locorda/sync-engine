@@ -18,7 +18,7 @@ Future<T> retryOnConflict<T>(Future<T> Function() operation,
       if (attempt < maxRetries - 1) {
         log.warning(
             'Retrying $debugOperationName (attempt ${attempt + 1}/$maxRetries)...');
-        await Future.delayed(Duration(milliseconds: 10 * (attempt + 1)));
+        await Future<void>.delayed(Duration(milliseconds: 10 * (attempt + 1)));
         continue;
       } else {
         log.severe(

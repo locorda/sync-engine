@@ -134,11 +134,11 @@ class OrganizedStatements {
     };
     return _statementsByKey.entries
         .where((entry) => switch (entry.key) {
-              TripleMetadataStatement(subject: var subj) =>
+              TripleMetadataStatement(subject: final subj) =>
                 subjectEquivalents.contains(subj),
-              SubjectPredicateMetadataStatement(subject: var subj) =>
+              SubjectPredicateMetadataStatement(subject: final subj) =>
                 subjectEquivalents.contains(subj),
-              SubjectMetadataStatement(subject: var subj) =>
+              SubjectMetadataStatement(subject: final subj) =>
                 subjectEquivalents.contains(subj),
             })
         .map((entry) => entry.value)
@@ -209,17 +209,17 @@ class MergeObject {
     OrganizedGraph remote,
     Iterable<RdfObject> remoteObjects,
   ) {
-    var localKeys = localObjects
+    final localKeys = localObjects
         .map((obj) => RdfObjectKey.fromObject(obj, local.blankNodeMappings))
         .toSet();
-    var remoteKeys = remoteObjects
+    final remoteKeys = remoteObjects
         .map((obj) => RdfObjectKey.fromObject(obj, remote.blankNodeMappings))
         .toSet();
     final allKeys = {...localKeys, ...remoteKeys};
 
     return allKeys.map((key) {
-      var localKey = localKeys.lookup(key);
-      var remoteKey = remoteKeys.lookup(key);
+      final localKey = localKeys.lookup(key);
+      final remoteKey = remoteKeys.lookup(key);
       return MergeObject._(
         local: localKey?.value,
         localKey: localKey,
@@ -279,8 +279,8 @@ class MergeSubject {
 
   static Iterable<MergeSubject> createMergeSubjects(
       OrganizedGraph local, OrganizedGraph remote) {
-    var localSubjectKeys = local.allSubjectKeys.toSet();
-    var remoteSubjectKeys = remote.allSubjectKeys.toSet();
+    final localSubjectKeys = local.allSubjectKeys.toSet();
+    final remoteSubjectKeys = remote.allSubjectKeys.toSet();
     final allKeys = {...localSubjectKeys, ...remoteSubjectKeys};
     final allStatementIdentifiers = {
       ...local.statements.statementIdentifiers,
@@ -291,8 +291,8 @@ class MergeSubject {
       ...remote.blankNodeMappings.blankNodeIdentifiers
     };
     return allKeys.map((key) {
-      var localKey = localSubjectKeys.lookup(key);
-      var remoteKey = remoteSubjectKeys.lookup(key);
+      final localKey = localSubjectKeys.lookup(key);
+      final remoteKey = remoteSubjectKeys.lookup(key);
       return MergeSubject._(
         local: localKey?.value as RdfSubject?,
         localKey: localKey,
@@ -392,15 +392,15 @@ sealed class RdfObjectKey {
   static RdfObjectKey fromObject(
       RdfObject object, OrganizedBlankNodeMappings mappings) {
     switch (object) {
-      case IriTerm iri:
+      case final IriTerm iri:
         return IriSubjectKey(iri);
-      case BlankNodeTerm bnode:
+      case final BlankNodeTerm bnode:
         final identifiers = mappings.getCanonicalIrisForBlankNode(bnode);
         if (identifiers == null || identifiers.isEmpty) {
           return UnIdentifiedBlankNodeKey(bnode);
         }
         return IdentifiedBlankNodeKey(bnode, identifiers.toList());
-      case LiteralTerm literal:
+      case final LiteralTerm literal:
         return LiteralKey(literal);
     }
   }

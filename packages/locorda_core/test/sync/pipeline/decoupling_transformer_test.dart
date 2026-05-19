@@ -331,6 +331,6 @@ StreamTransformer<int, int> _transformFkt() {
   });
 }
 
-Stream<int>? _asyncExpandFkt(n) async* {
+Stream<int>? _asyncExpandFkt(int n) async* {
   yield n;
 }

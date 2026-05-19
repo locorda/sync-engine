@@ -108,7 +108,7 @@ class DriftNativeOptionsSender implements MainHandler {
         // Send response back to worker
         final response = ResponseDriftOptionsMessage(
           databaseDirectory: switch (databaseDir) {
-            String s => s,
+            final String s => s,
             _ => databaseDir?.toString(),
           },
           tempDirectoryPath: tempDir,

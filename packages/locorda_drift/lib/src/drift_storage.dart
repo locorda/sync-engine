@@ -949,7 +949,8 @@ class DriftStorage implements core.Storage {
       final groupIndexIri = idToIri[subscription.groupIndexIriId]!;
       final indexedTypeIri = idToIri[subscription.indexedTypeIriId]!;
       final fetchPolicy = core.RootResourceFetchPolicy.fromMap(
-        json.decode(subscription.rootResourceFetchPolicy),
+        json.decode(subscription.rootResourceFetchPolicy)
+            as Map<String, dynamic>,
       );
       return (groupIndexIri, indexedTypeIri, fetchPolicy);
     }).toList();
@@ -979,7 +980,7 @@ class DriftStorage implements core.Storage {
       final groupIndexIri = idToIri[sub.groupIndexIriId]!;
       final indexedTypeIri = idToIri[sub.indexedTypeIriId]!;
       final fetchPolicy = core.RootResourceFetchPolicy.fromMap(
-          json.decode(sub.rootResourceFetchPolicy));
+          json.decode(sub.rootResourceFetchPolicy) as Map<String, dynamic>);
       result
           .putIfAbsent(indexedTypeIri, () => [])
           .add((groupIndexIri, indexedTypeIri, fetchPolicy));

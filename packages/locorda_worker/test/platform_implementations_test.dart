@@ -1,4 +1,6 @@
 @TestOn('vm') // Test the conditional import mechanism on VM
+library;
+
 import 'package:test/test.dart';
 
 // Import native implementation (web would require dart:html and fail on VM)

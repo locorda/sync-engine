@@ -8,6 +8,8 @@
 /// - shard_documents[].expected_graph
 ///
 /// To unified documents list with type_iri, id, and path.
+library;
+// ignore_for_file: avoid_print
 
 import 'dart:convert';
 import 'dart:io';
@@ -163,8 +165,9 @@ void main() async {
         if (expectedJson.remove('stored_graph') != null) removedCount++;
         if (expectedJson.remove('installation') != null) removedCount++;
         if (expectedJson.remove('index_documents') != null) removedCount++;
-        if (expectedJson.remove('group_index_documents') != null)
+        if (expectedJson.remove('group_index_documents') != null) {
           removedCount++;
+        }
         if (expectedJson.remove('shard_documents') != null) removedCount++;
 
         if (removedCount > 0) {

@@ -1,4 +1,6 @@
 @TestOn('vm') // Only run on native platforms
+library;
+
 import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
@@ -69,7 +71,7 @@ void main() {
       pluginHandle.send('test-message-3');
 
       // Give isolate time to process
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
 
       await worker.dispose();
     });

@@ -41,7 +41,7 @@ class SaveRequest extends WorkerRequest {
     return SaveRequest(
       json['requestId'] as String,
       json['typeIri'] as String,
-      json['encodedGraph'],
+      json['encodedGraph'] as Object,
     );
   }
 }
@@ -309,7 +309,7 @@ class EnsureGroupIndexSubscriptionRequest extends WorkerRequest {
     return EnsureGroupIndexSubscriptionRequest(
       json['requestId'] as String,
       json['indexName'] as String,
-      json['encodedGroupKeyGraph'],
+      json['encodedGroupKeyGraph'] as Object,
       policyMap != null ? (policyMap as Map).cast<String, dynamic>() : null,
       json['triggerSync'] as bool? ?? true,
     );

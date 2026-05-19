@@ -82,7 +82,7 @@ class CachingMergeContractLoader extends MergeContractLoader {
 
   Future<MergeContract> _loadAndCache(
       String key, Future<MergeContract> Function() loader) {
-    final future = loader().catchError((error) {
+    final future = loader().catchError((Object error) {
       // Remove from cache on error to allow retry
       _cache.remove(key);
       return Future<MergeContract>.error(error);
@@ -104,7 +104,7 @@ class CachingMergeContractLoader extends MergeContractLoader {
     final refresh = _inner.load(isGovernedBy).then((result) {
       _cache[key] = Future.value(result);
       _lastRefresh[key] = DateTime.now();
-    }).catchError((error, stackTrace) {
+    }).catchError((Object error, StackTrace? stackTrace) {
       _log.fine(
           'Online loader refresh failed for $key, keeping cached value. Will ignore because this is a non-critical refresh and the file is probably unchanged anyways. \nError: $error');
       // Keep cached value on refresh failure.
@@ -177,10 +177,10 @@ class StandardMergeContractLoader extends MergeContractLoader {
   (DocumentMapping, ValidationResult) _parseDocumentMapping(
       RdfGraph all, RdfSubject subject,
       [Set<RdfSubject>? visited]) {
-    ValidationResult validation = ValidationResult(
+    final ValidationResult validation = ValidationResult(
         switch (subject) {
-          IriTerm iri => iri.value,
-          BlankNodeTerm bnode => "Blank Node $bnode"
+          final IriTerm iri => iri.value,
+          final BlankNodeTerm bnode => "Blank Node $bnode"
         },
         {'document': subject});
     final seen = visited ?? <RdfSubject>{};
@@ -305,8 +305,8 @@ class StandardMergeContractLoader extends MergeContractLoader {
       for (var v in parsedRules.map((r) => r.$2).where((v) => v.hasIssues)) {
         validation.addSubvalidationResult(v,
             context: switch (ref) {
-              IriTerm iri => '#${iri.fragment}',
-              BlankNodeTerm bnode => "Blank Node $bnode"
+              final IriTerm iri => '#${iri.fragment}',
+              final BlankNodeTerm bnode => "Blank Node $bnode"
             },
             details: {'ref': ref});
       }
@@ -331,8 +331,8 @@ class StandardMergeContractLoader extends MergeContractLoader {
     if (type != null && type != McPredicateMapping.classIri) {
       validation.addWarning(
           'Predicate mapping subject ${switch (ref) {
-            IriTerm iri => iri.value,
-            BlankNodeTerm bnode => "Blank Node $bnode"
+            final IriTerm iri => iri.value,
+            final BlankNodeTerm bnode => "Blank Node $bnode"
           }} is not of type mc:PredicateMapping, but of type $type',
           details: {'ref': ref});
     }

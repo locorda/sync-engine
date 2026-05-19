@@ -131,12 +131,14 @@ class LoggingPerflog implements Perflog {
       {bool preferEnd = false, String borderEllipis = '...'}) {
     if (text.length <= maxLength) return text;
     if (maxLength < 3) return text.substring(0, maxLength);
-    if (maxLength < 10)
+    if (maxLength < 10) {
       return text.substring(0, maxLength - borderEllipis.length) +
           borderEllipis;
-    if (maxLength < 10 && preferEnd)
+    }
+    if (maxLength < 10 && preferEnd) {
       return borderEllipis +
           text.substring(text.length - (maxLength - borderEllipis.length));
+    }
     final leftLen = (maxLength - 3) ~/ 2;
     final rightLen = maxLength - 3 - leftLen;
     return '${text.substring(0, leftLen)}...${text.substring(text.length - rightLen)}';
@@ -180,7 +182,7 @@ class LoggingPerflog implements Perflog {
             .padRight(operationWidth);
         final resultArgs = resultArgsBuilder != null && result != null
             ? resultArgsBuilder(result)
-            : [];
+            : <String>[];
         final argsStr = _includeArgs
             ? _formatAndPadList(
                 resultArgs.isEmpty
@@ -209,7 +211,8 @@ class PerflogPipelineBackend implements PipelineBackend {
   final PipelineBackend _inner;
   final Perflog _perflog;
   late final BehaviorSubject<List<PipelineRemoteStorage>> _remotesSubject;
-  late final StreamSubscription _remotesSubscription;
+  late final StreamSubscription<List<PipelineRemoteStorage>>
+      _remotesSubscription;
 
   PerflogPipelineBackend(
     this._inner, {

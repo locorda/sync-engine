@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'dart:convert';
 import 'dart:io';
 
@@ -76,7 +77,7 @@ void main() {
     final tests = suiteJson['tests'] as List<dynamic>;
 
     group('$suiteName - $suiteDescription', () {
-      for (final testJson in tests) {
+      for (final testJson in tests.cast<Map<String, dynamic>>()) {
         final testId = testJson['id'] as String;
         final testTitle = testJson['title'] as String;
         //final testDescription = testJson['description'] as String;
@@ -167,8 +168,8 @@ Future<void> _executeSaveTestWithSteps(
   final layoutJson = testJson['layout'];
   final RemoteStorageLayout layout =
       RemoteStorageLayout.fromJson(switch (layoutJson) {
-    Map<String, dynamic> json => json,
-    String layoutType => {'type': layoutType},
+    final Map<String, dynamic> json => json,
+    final String layoutType => {'type': layoutType},
     null => const {'type': 'filePerResource'},
     _ => throw ArgumentError('Invalid layout format: $layoutJson'),
   });
@@ -235,7 +236,7 @@ Future<void> _executeSaveTestWithSteps(
             backends: [sharedBackend],
             storage: storage,
             fetcher: fetcher,
-            physicalTimestampFactory: timestampFactory,
+            physicalTimestampFactory: timestampFactory.call,
             installationIdFactory: () => stepInstallationId,
             rdfCore: rdfCore,
           ),
@@ -305,7 +306,7 @@ Future<void> _executeStep({
     final documents = stepJson['documents'] as List<dynamic>;
 
     // Set timestamp for prepare.save if specified
-    setTime(actionTs?['save'], timestampFactory);
+    setTime(actionTs?['save'] as String?, timestampFactory);
     final now = timestampFactory();
 
     for (final docJson in documents) {
@@ -339,7 +340,7 @@ Future<void> _executeStep({
     // Sync action: Trigger sync for all shards that need updates
 
     // Set timestamp for sync action if specified
-    setTime(actionTs?['sync'], timestampFactory);
+    setTime(actionTs?['sync'] as String?, timestampFactory);
 
     final sync = await installationContext.syncFuture;
 
@@ -431,7 +432,7 @@ Future<void> _executeStep({
 
   if (storedGraphBefore != null) {
     // Legacy support: Set timestamp for prepare.save if specified
-    setTime(actionTs?['prepare']?['save'], timestampFactory);
+    setTime(actionTs?['prepare']?['save'] as String?, timestampFactory);
     final now = timestampFactory();
 
     storage.saveDocument(
@@ -448,7 +449,7 @@ Future<void> _executeStep({
   final sync = await installationContext.syncFuture;
 
   // Set timestamp for save action if specified
-  setTime(actionTs?['save'], timestampFactory);
+  setTime(actionTs?['save'] as String?, timestampFactory);
 
   await sync.save(typeIri, inputResource);
 
@@ -1122,14 +1123,14 @@ Future<void> _executeSaveErrorTest(
         ],
         storage: storage,
         fetcher: fetcher,
-        physicalTimestampFactory: timestampFactory,
+        physicalTimestampFactory: timestampFactory.call,
         installationIdFactory: installationIdFactory,
         rdfCore: rdfCore,
       ),
     );
 
     // Set timestamp for save action if specified
-    setTime(actionTs?['save'], timestampFactory);
+    setTime(actionTs?['save'] as String?, timestampFactory);
 
     await sync.save(typeIri, inputResource);
 

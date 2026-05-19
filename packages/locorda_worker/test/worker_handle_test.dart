@@ -76,7 +76,7 @@ void main() {
       pluginHandle.send('test-message-2');
       pluginHandle.send('test-message-3');
 
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
       await worker.dispose();
     });
 

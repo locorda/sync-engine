@@ -76,7 +76,7 @@ Code typeToCode(DartType type,
     final baseCode = Code.type(baseName, importUri: baseImportUri);
     final genericParams = Code.genericParamsList(typeArgCodes);
 
-    var result = Code.combine([baseCode, genericParams]);
+    final result = Code.combine([baseCode, genericParams]);
 
     return _applyNullability(
       result,
@@ -163,7 +163,7 @@ Code _functionTypeToCode(FunctionType type, {required bool enforceNonNull}) {
           }),
         );
 
-  var result = Code.combine([
+  final result = Code.combine([
     returnTypeCode,
     Code.literal(' Function'),
     typeFormalCode,
@@ -192,7 +192,7 @@ Code _recordTypeToCode(RecordType type, {required bool enforceNonNull}) {
     );
   }
 
-  var result = Code.combine(bodyParts, separator: ', ', pre: '(', post: ')');
+  final result = Code.combine(bodyParts, separator: ', ', pre: '(', post: ')');
 
   return _applyNullability(
     result,
@@ -314,7 +314,7 @@ Code dartObjectToCode(DartObject? value) {
   }
 
   // Handle const constructors
-  var typeElement = value.type?.element;
+  final typeElement = value.type?.element;
   if (typeElement is ClassElement) {
     for (final constructor in typeElement.constructors) {
       final fields = constructor.formalParameters;

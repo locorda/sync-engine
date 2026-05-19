@@ -115,7 +115,7 @@ class _MultiBackendStatusWidgetState extends State<MultiBackendStatusWidget> {
   }
 
   Future<void> _showBackendSelectionMenu() async {
-    await showModalBottomSheet(
+    await showModalBottomSheet<void>(
       context: context,
       builder: (context) => _BackendSelectionSheet(
         registry: widget.registry,

@@ -86,8 +86,9 @@ class InMemoryStorage implements Storage {
   int _nextVersionId = 1;
 
   // Reactive streams for watch operations
-  final Map<IriTerm, Set<_WatchController>> _watchControllersByTrigger = {};
-  final List<_WatchController> _watchControllers = [];
+  final Map<IriTerm, Set<_WatchController<Object?>>>
+      _watchControllersByTrigger = {};
+  final List<_WatchController<Object?>> _watchControllers = [];
 
   /// Returns a snapshot of all stored documents for testing purposes.
   ///
@@ -832,7 +833,9 @@ class InMemoryStorage implements Storage {
     for (final entry in _indexEntries.values) {
       // Skip excluded (configured) indices
       if (excludeIndexIris.contains(entry.indexIri) ||
-          entry.resourceType != resourceType) continue;
+          entry.resourceType != resourceType) {
+        continue;
+      }
 
       // Check if entry is dirty (modified since timestamp)
       final isDirty = entry.ourPhysicalClock > sinceTimestamp;

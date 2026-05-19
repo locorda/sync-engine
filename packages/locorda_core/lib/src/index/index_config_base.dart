@@ -170,7 +170,7 @@ abstract class CrdtIndexConfigBase {
   /// Must be unique per index item type
   /// across all resources (e.g., if multiple resources use NoteIndexEntry,
   /// they must have different local names).
-  /// Used for referencing in indexUpdatesStream<T>(localName) calls.
+  /// Used for referencing in `indexUpdatesStream<T>(localName)` calls.
   String get localName;
 
   /// Configuration for index items (type and properties) - if null then we

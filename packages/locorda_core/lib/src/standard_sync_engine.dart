@@ -55,7 +55,7 @@ class SimpleConfigService extends ConfigService {
 class ConfigService {
   final BehaviorSubject<SyncEngineConfig> _configSubject;
   final List<PipelineBackend> _pipelineBackends;
-  final List<StreamSubscription> _remoteSubscriptions = [];
+  final List<StreamSubscription<Object?>> _remoteSubscriptions = [];
 
   Stream<SyncEngineConfig> get configChanges => _configSubject.stream;
   SyncEngineConfig get currentConfig => _configSubject.value;
@@ -1130,7 +1130,7 @@ Check with https://g.co/gemini/share/60e9b2d3036e for the details
           ));
           return;
         }
-        var now = _physicalTimestampFactory().millisecondsSinceEpoch;
+        final now = _physicalTimestampFactory().millisecondsSinceEpoch;
         indexSetVersionId = await _storage.ensureIndexSetVersion(
           indexIris: indexIris,
           createdAt: now,

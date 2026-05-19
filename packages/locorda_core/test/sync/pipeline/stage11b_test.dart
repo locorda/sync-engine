@@ -5,6 +5,7 @@
 ///   pass through unchanged
 /// - [PhaseError] passes through unchanged
 /// - Contract load failure → [ShardError]
+library;
 import 'dart:async';
 
 import 'package:locorda_core/src/mapping/merge_contract.dart';

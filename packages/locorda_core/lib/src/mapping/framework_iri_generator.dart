@@ -125,7 +125,7 @@ _GraphWithLabels _buildIdentificationGraphWithLabels(IdentifiedBlankNode ibn) {
           subject,
           Sync.parentProperty,
           switch (current.parentPredicate!) {
-            IriTerm iri => iri,
+            final IriTerm iri => iri,
           });
     }
     // Add identifying properties

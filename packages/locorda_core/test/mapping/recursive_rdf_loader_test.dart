@@ -401,7 +401,7 @@ void main() {
         );
 
         // Give time for dependencies to be discovered and start loading
-        await Future.delayed(Duration(milliseconds: 50));
+        await Future<void>.delayed(Duration(milliseconds: 50));
 
         // Complete the shared dependency
         sharedCompleter.complete(sharedGraph);

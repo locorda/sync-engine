@@ -150,7 +150,7 @@ class LocordaStatusDefaults {
         ),
       ];
 
-      showModalBottomSheet(
+      showModalBottomSheet<void>(
         context: context,
         builder: (context) => Container(
           padding: const EdgeInsets.all(16),

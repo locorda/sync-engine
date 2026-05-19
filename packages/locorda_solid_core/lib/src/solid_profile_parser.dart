@@ -42,11 +42,11 @@ class SolidProfileParser {
 
   void _addIri(Triple triple, List<String> urls, RdfGraph graph) {
     switch (triple.object) {
-      case IriTerm iriTerm:
+      case final IriTerm iriTerm:
         // If the storage points to an IRI, add it directly
         urls.add(iriTerm.value);
         break;
-      case BlankNodeTerm blankNodeTerm:
+      case final BlankNodeTerm blankNodeTerm:
         // If the storage points to a blank node, look for location triples
         final locationTriples = graph.findTriples(
           subject: blankNodeTerm,

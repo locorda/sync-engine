@@ -26,7 +26,7 @@ class WorkerHandlerChannel {
   final WorkerChannel _workerChannel;
   final List<Object?> _buffer = [];
   StreamController<Object?>? _controller;
-  late final StreamSubscription _subscription;
+  late final StreamSubscription<Object?> _subscription;
   bool _hasListener = false;
 
   WorkerHandlerChannel._(this.channel, this._workerChannel) {

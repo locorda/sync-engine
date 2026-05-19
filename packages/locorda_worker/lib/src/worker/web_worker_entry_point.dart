@@ -120,7 +120,7 @@ void startWebWorkerLoop(WorkerSetup workerSetup) {
         markAsInitializing,
         resetInitializing,
         perflog: perflog,
-      ).catchError((e, st) {
+      ).catchError((Object e, StackTrace? st) {
         // Log error and attempt to send error message to main thread
         _log.severe('Web worker error: $e\n$st');
         try {

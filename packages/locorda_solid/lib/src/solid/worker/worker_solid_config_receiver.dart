@@ -17,7 +17,7 @@ final _log = Logger('WorkerSolidConfigReceiver');
 class WorkerSolidConfigReceiver {
   final WorkerHandlerChannel _channel;
   final Completer<SolidConfig> _configCompleter = Completer();
-  late final StreamSubscription _subscription;
+  late final StreamSubscription<Object?> _subscription;
 
   WorkerSolidConfigReceiver(this._channel) {
     _subscription = _channel.messages

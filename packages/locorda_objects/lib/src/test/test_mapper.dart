@@ -39,7 +39,7 @@ RdfMapper createTestMapper(
     ),
   );
 
-  RdfMapper mapper = initRdfMapper(
+  final RdfMapper mapper = initRdfMapper(
     context.baseRdfMapper,
     context.indexItemIriFactory,
     context.resourceIriFactory,

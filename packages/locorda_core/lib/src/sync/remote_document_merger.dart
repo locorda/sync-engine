@@ -330,15 +330,15 @@ class RemoteDocumentMerger {
     // Add statement reification triples
     final statementTriples = mergeResults.mergedStatements.values
         .map((stmt) => switch (stmt.key) {
-              SubjectMetadataStatement(subject: var subject) =>
+              SubjectMetadataStatement(subject: final subject) =>
                 _metadataGenerator.createResourceMetadata(
                     documentIri,
                     IdTerm.create(subject, identifiedBlankNodes),
                     (subject) =>
                         _convertToTriples(stmt, identifiedBlankNodes, subject)),
               SubjectPredicateMetadataStatement(
-                subject: var subject,
-                predicate: var predicate
+                subject: final subject,
+                predicate: final predicate
               ) =>
                 _metadataGenerator.createPropertyMetadata(
                     documentIri,
@@ -347,9 +347,9 @@ class RemoteDocumentMerger {
                     (subject) =>
                         _convertToTriples(stmt, identifiedBlankNodes, subject)),
               TripleMetadataStatement(
-                subject: var subject,
-                predicate: var predicate,
-                object: var object
+                subject: final subject,
+                predicate: final predicate,
+                object: final object
               ) =>
                 _metadataGenerator.createPropertyValueMetadata(
                   documentIri,
@@ -444,7 +444,7 @@ class RemoteDocumentMerger {
     return stmt.predicateObjectMap.entries.expand((e) => e.value
         .expand<RdfObject>((v) => switch (v) {
               IriTerm() || LiteralTerm() => [v],
-              BlankNodeTerm bnode =>
+              final BlankNodeTerm bnode =>
                 identifiedBlankNodes.getCanonicalIris(bnode)
             })
         .map((v) => Triple(

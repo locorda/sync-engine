@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'package:locorda_core/src/mapping/identified_blank_node_builder.dart';
 import 'package:locorda_rdf_core/core.dart';
 

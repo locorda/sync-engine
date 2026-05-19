@@ -5,6 +5,7 @@
 /// - Exception in reconciler → [ResourceError]
 /// - Pass-through: ShardError, ResourceError, ShardComplete, PhaseComplete,
 ///   PhaseError forwarded unchanged
+library;
 import 'package:locorda_core/src/mapping/merge_contract.dart';
 import 'package:locorda_core/src/sync/pipeline/document_shard_reconciler.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';

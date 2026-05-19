@@ -383,7 +383,7 @@ class ObjectSyncEngine {
   /// 3. Hydration stream automatically emits update
   /// 4. Schedule async Pod sync
   Future<void> save<T>(T object) async {
-    IriTerm typeIri = _getTypeIri(T);
+    final IriTerm typeIri = _getTypeIri(T);
     final graph =
         _mapper.graph.encodeObject(object); // Validate object can be mapped;
     await _syncSystem.save(typeIri, graph);
@@ -395,7 +395,7 @@ class ObjectSyncEngine {
   /// as individual save() calls.
   Future<void> saveAll<T>(List<T> objects) async {
     return _perflog.measure('ObjectSyncEngine.saveAll', () async {
-      IriTerm typeIri = _getTypeIri(T);
+      final IriTerm typeIri = _getTypeIri(T);
 
       // Convert objects to graphs and delegate to underlying sync system
       final items = objects.map((object) {
@@ -473,7 +473,7 @@ class ObjectSyncEngine {
       return r;
     }
 
-    IriTerm typeIri = _getTypeIri(T);
+    final IriTerm typeIri = _getTypeIri(T);
 
     // If not found locally, ensure it from the sync system
     final localIri =
@@ -514,7 +514,7 @@ class ObjectSyncEngine {
   /// await objectSyncEngine.delete<Note>('note-123');
   /// ```
   Future<void> delete<T>(String id) async {
-    IriTerm typeIri = _getTypeIri(T);
+    final IriTerm typeIri = _getTypeIri(T);
     final localIri =
         _localResourceLocator.toIri(ResourceIdentifier.document(typeIri, id));
     return _syncSystem.deleteDocument(typeIri, localIri);
@@ -545,7 +545,7 @@ class ObjectSyncEngine {
   /// await objectSyncEngine.deleteAll<Note>(['note-1', 'note-2']);
   /// ```
   Future<void> deleteAll<T>(Iterable<String> ids) async {
-    IriTerm typeIri = _getTypeIri(T);
+    final IriTerm typeIri = _getTypeIri(T);
     final localIris = ids.map(
       (id) =>
           _localResourceLocator.toIri(ResourceIdentifier.document(typeIri, id)),
@@ -740,7 +740,7 @@ class ObjectSyncEngine {
         }
       },
       onError: onError ??
-          (error, stackTrace) {
+          (Object error, StackTrace? stackTrace) {
             logger.severe('Hydration stream error', error, stackTrace);
           },
       cancelOnError: false, // Keep stream alive despite errors
@@ -843,7 +843,7 @@ class ObjectSyncEngine {
         }
       },
       onError: onError ??
-          (error, stackTrace) {
+          (Object error, StackTrace? stackTrace) {
             logger.severe('Hydration stream error', error, stackTrace);
           },
       cancelOnError: false, // Keep stream alive despite errors

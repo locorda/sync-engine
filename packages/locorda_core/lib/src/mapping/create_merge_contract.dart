@@ -15,7 +15,7 @@ import 'merge_contract.dart';
 (MergeContract, ValidationResult) createMergeContractFrom(
     List<DocumentMapping> documents,
     {required CrdtTypeRegistry crdtRegistry}) {
-  ValidationResult validation = ValidationResult();
+  final ValidationResult validation = ValidationResult();
   final mergedClassMappings = collectClassMappings(documents);
   final predicateMappings = collectPredicateMappings(documents);
 

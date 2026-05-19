@@ -28,7 +28,9 @@ class LocordaConfigValidator {
   static IriTerm? _getTypeIri(RdfMapper mapper, ResourceConfig resource) {
     final registry = mapper.registry;
     try {
-      return registry.getResourceSerializerByType(resource.type).typeIri;
+      return registry
+          .getResourceSerializerByType<Object>(resource.type)
+          .typeIri;
     } on SerializerNotFoundException {
       return null;
     }
@@ -87,7 +89,7 @@ class LocordaConfigValidator {
       final needsSerializer = !deserializerOnly.contains(type);
       final hasSerializer = needsSerializer &&
           mapper.registry.hasResourceSerializerForDartType(type);
-      var hasDeserializer =
+      final hasDeserializer =
           mapper.registry.hasGlobalResourceDeserializerForDartType(type) ||
               mapper.registry.hasLocalResourceDeserializerForDartType(type);
       if (!hasSerializer && !hasDeserializer) {

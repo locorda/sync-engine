@@ -45,7 +45,7 @@ void main() {
     final tests = suiteJson['tests'] as List<dynamic>;
 
     group('$suiteName - $suiteDescription', () {
-      for (final testJson in tests) {
+      for (final testJson in tests.cast<Map<String, dynamic>>()) {
         final testId = testJson['id'] as String;
         final testTitle = testJson['title'] as String;
 

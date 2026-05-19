@@ -1,4 +1,5 @@
 import 'package:locorda_core/src/crdt/crdt_types.dart';
+import 'package:locorda_core/src/mapping/merge_contract.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/mapping/recursive_rdf_loader.dart';
 import 'package:locorda_core/src/split_document.dart';
@@ -76,7 +77,7 @@ void main() {
 
     /// Builds the merge contract for [noteV1GovernanceIri] through the full
     /// bootstrap / loader stack.
-    Future<dynamic> buildContract() async {
+    Future<MergeContract> buildContract() async {
       final fetcher = BootstrapRdfGraphFetcher(
         rdfCore: rdfCore,
         iriFactory: IriTerm.validated,

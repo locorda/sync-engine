@@ -10,6 +10,7 @@
 /// For individual package coverage, run:
 ///   cd packages/PACKAGE_NAME && dart test --coverage=coverage
 library;
+// ignore_for_file: avoid_print
 
 import 'dart:io';
 

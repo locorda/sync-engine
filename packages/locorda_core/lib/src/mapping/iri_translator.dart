@@ -177,8 +177,8 @@ class BaseIriTranslator implements IriTranslator {
     final namedGraphs = <RdfGraphName, RdfGraph>{};
     for (final namedGraph in dataset.namedGraphs) {
       namedGraphs[switch (namedGraph.name) {
-        IriTerm iri => iriConverter(iri),
-        BlankNodeTerm b => b
+        final IriTerm iri => iriConverter(iri),
+        final BlankNodeTerm b => b
       }] = graphConverter(namedGraph.graph);
     }
     return RdfDataset(
@@ -206,7 +206,7 @@ class BaseIriTranslator implements IriTranslator {
     }
     final triples = externalGraph.triples.map((triple) {
       final subject = switch (triple.subject) {
-        IriTerm iri => externalToInternal(iri),
+        final IriTerm iri => externalToInternal(iri),
         _ => triple.subject,
       };
 
@@ -215,7 +215,7 @@ class BaseIriTranslator implements IriTranslator {
           externalToInternal(triple.predicate as IriTerm) as RdfPredicate;
 
       final object = switch (triple.object) {
-        IriTerm iri => externalToInternal(iri),
+        final IriTerm iri => externalToInternal(iri),
         _ => triple.object,
       };
 
@@ -234,7 +234,7 @@ class BaseIriTranslator implements IriTranslator {
     }
     final triples = internalGraph.triples.map((triple) {
       final subject = switch (triple.subject) {
-        IriTerm iri => internalToExternal(iri),
+        final IriTerm iri => internalToExternal(iri),
         _ => triple.subject,
       };
 
@@ -243,7 +243,7 @@ class BaseIriTranslator implements IriTranslator {
           internalToExternal(triple.predicate as IriTerm) as RdfPredicate;
 
       final object = switch (triple.object) {
-        IriTerm iri => internalToExternal(iri),
+        final IriTerm iri => internalToExternal(iri),
         _ => triple.object,
       };
 

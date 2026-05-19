@@ -90,7 +90,7 @@ class RdfExpectations {
     final details = [
       if (subject != null)
         'Subject: ${switch (subject) {
-          IriTerm iri => iri.debug,
+          final IriTerm iri => iri.debug,
           _ => subject.toString(),
         }}',
       if (predicate != null) 'Predicate: $predicate',

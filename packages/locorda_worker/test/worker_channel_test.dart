@@ -34,7 +34,7 @@ void main() {
       channel.deliver('test', null);
 
       // Wait for stream to process
-      await Future.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
 
       expect(receivedMessages, [
         'message 1',
@@ -57,7 +57,7 @@ void main() {
           channel.messages.map((msg) => msg.data).listen(listener2Messages.add);
 
       channel.deliver('test', 'broadcast message');
-      await Future.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
 
       expect(listener1Messages, ['broadcast message']);
       expect(listener2Messages, ['broadcast message']);
@@ -85,12 +85,12 @@ void main() {
 
       // A sends to B
       channelA.send('test', 'hello from A');
-      await Future.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
       expect(messagesFromB, ['hello from A']);
 
       // B sends to A
       channelB.send('test', 'reply from B');
-      await Future.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
       expect(messagesFromA, ['reply from B']);
     });
 
@@ -105,10 +105,10 @@ void main() {
           );
 
       channel.deliver('test', 'before close');
-      await Future.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
 
       await channel.close();
-      await Future.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
 
       // After close, stream should be done
       expect(streamDone, isTrue);
@@ -158,7 +158,7 @@ void main() {
       channel.send('test', 'send 2');
       channel.deliver('test', 'receive 2');
 
-      await Future.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
 
       expect(sentMessages, ['send 1', 'send 2']);
       expect(receivedMessages, ['receive 1', 'receive 2']);

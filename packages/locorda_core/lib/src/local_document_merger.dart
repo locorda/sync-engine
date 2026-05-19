@@ -113,7 +113,7 @@ class LocalDocumentMerger {
 
       // If shards haven't changed, return original document
       final oldObjects = oldPredicateTriples.map((t) => t.object).toSet();
-      if (SetEquality().equals(oldObjects, newObjects)) {
+      if (SetEquality<RdfTerm>().equals(oldObjects, newObjects)) {
         break;
       }
 
@@ -240,7 +240,7 @@ class LocalDocumentMerger {
     // Process added subjects - generate initial value metadata
     for (final addedSubject in addedSubjects) {
       final subjectTerm = addedSubject.subject;
-      var subjectTriples = appData.matching(subject: subjectTerm);
+      final subjectTriples = appData.matching(subject: subjectTerm);
       final predicates = subjectTriples.predicates;
       final isShardEntry = isShard &&
           predicates.contains(IdxShardEntry.resource) &&
@@ -410,8 +410,8 @@ class LocalDocumentMerger {
       List<RdfTerm> newValues,
       RdfGraph oldGraph,
       RdfGraph newGraph,
-      IdentifiedBlankNodes oldBlankNodes,
-      IdentifiedBlankNodes newBlankNodes) {
+      IdentifiedBlankNodes<IriTerm> oldBlankNodes,
+      IdentifiedBlankNodes<IriTerm> newBlankNodes) {
     if (oldValues.length != newValues.length) {
       return false;
     }
@@ -449,8 +449,8 @@ class LocalDocumentMerger {
       RdfTerm newValue,
       RdfGraph oldGraph,
       RdfGraph newGraph,
-      IdentifiedBlankNodes oldBlankNodes,
-      IdentifiedBlankNodes newBlankNodes) {
+      IdentifiedBlankNodes<IriTerm> oldBlankNodes,
+      IdentifiedBlankNodes<IriTerm> newBlankNodes) {
     // Simple case: same term
     if (oldValue == newValue) {
       return true;
@@ -486,8 +486,8 @@ class LocalDocumentMerger {
       BlankNodeTerm newBlankNode,
       RdfGraph oldGraph,
       RdfGraph newGraph,
-      IdentifiedBlankNodes oldBlankNodes,
-      IdentifiedBlankNodes newBlankNodes,
+      IdentifiedBlankNodes<IriTerm> oldBlankNodes,
+      IdentifiedBlankNodes<IriTerm> newBlankNodes,
       [Set<BlankNodeTerm>? visited]) {
     visited ??= {};
 
@@ -525,7 +525,8 @@ class LocalDocumentMerger {
   }
 }
 
-bool _isEqualSet<T>(Set<T> set, Set<T> set2) => SetEquality().equals(set, set2);
+bool _isEqualSet<T>(Set<T> set, Set<T> set2) =>
+    SetEquality<T>().equals(set, set2);
 
 /// Finds subject-level tombstone reifications to remove for re-added subjects.
 ///

@@ -7,6 +7,7 @@
 /// - ShardComplete passes through unchanged
 /// - PhaseComplete passes through unchanged
 /// - PhaseError passes through unchanged
+library;
 import 'package:locorda_core/src/mapping/merge_contract.dart';
 import 'package:locorda_core/src/mapping/merge_contract_loader.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';

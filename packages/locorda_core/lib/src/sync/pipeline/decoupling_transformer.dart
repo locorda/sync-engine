@@ -77,7 +77,7 @@ StreamTransformer<T, T> decouplingTransformer<T>(String afterStage,
             upstreamPauses++;
           }
         },
-        onError: (error, stackTrace) {
+        onError: (Object error, StackTrace? stackTrace) {
           if (!controller.isClosed) {
             controller.addError(error, stackTrace);
           } else {
@@ -180,7 +180,7 @@ StreamTransformer<S, T> deferredExpandTransformer<S, T>(
 
           Timer.run(cb);
         },
-        onError: (error, stackTrace) {
+        onError: (Object error, StackTrace? stackTrace) {
           // Upstream error: forward, cancel, close — same pattern.
           if (!controller.isClosed) {
             controller.addError(error, stackTrace);

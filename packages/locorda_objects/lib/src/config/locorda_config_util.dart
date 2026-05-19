@@ -39,7 +39,7 @@ ResourceTypeCache buildResourceTypeCache(
 IriTerm? _getTypeIri(RdfMapper mapper, ResourceConfig resource) {
   final registry = mapper.registry;
   try {
-    return registry.getResourceSerializerByType(resource.type).typeIri;
+    return registry.getResourceSerializerByType<Object>(resource.type).typeIri;
   } on SerializerNotFoundException {
     return null;
   }

@@ -19,6 +19,7 @@ import 'package:locorda_rdf_core/core.dart';
 /// [Class Reference](https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#G_Register)
 ///
 /// [Vocabulary Reference](https://w3id.org/solid-crdt-sync/vocab/crdt-algorithms#)
+// ignore: camel_case_types
 class AlgoG_Register {
   // Private constructor prevents instantiation
   const AlgoG_Register._();

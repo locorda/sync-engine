@@ -20,7 +20,7 @@ final _log = Logger('WorkerDirConfigReceiver');
 class WorkerDirConfigReceiver {
   final WorkerHandlerChannel _channel;
   final Completer<DirConfig> _configCompleter = Completer();
-  late final StreamSubscription _subscription;
+  late final StreamSubscription<Object?> _subscription;
 
   WorkerDirConfigReceiver(this._channel) {
     // Start listening IMMEDIATELY in constructor to catch early messages

@@ -127,7 +127,7 @@ class ConfigCodeGenerator {
       groupKey.className
     ], {
       if (groupKey.localName != null && groupKey.localName != 'default')
-        "localName": groupKey.localName,
+        "localName": groupKey.localName!,
       if (groupKey.groupingProperties.isNotEmpty)
         'groupingProperties': groupKey.groupingProperties.map((prop) {
           return locordaCore('GroupingPropertyData').newInstance([

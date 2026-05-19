@@ -55,7 +55,7 @@ class DriftNativeOptionsReceiver {
     _log.info('Worker: Starting provider...');
 
     final completer = Completer<LocordaDriftNativeWorkerOptions>();
-    late final StreamSubscription subscription;
+    late final StreamSubscription<Object?> subscription;
 
     // Listen for response from main thread via __channel
     subscription = channel.messages.listen((message) {

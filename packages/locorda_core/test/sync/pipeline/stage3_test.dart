@@ -7,6 +7,7 @@
 /// - PhaseComplete passes through unchanged
 /// - ShardNotModified → ShardResultNotModified
 /// - ShardNotFound → ShardResultNotFound
+library;
 import 'package:locorda_core/src/index/index_config_base.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';
 import 'package:locorda_core/src/sync/pipeline/stages/stage3_shard_parse.dart';

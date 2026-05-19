@@ -698,7 +698,7 @@ class OrSet implements CrdtType {
     final deletionDate = physicalClock;
     final deletionDateTerm =
         LiteralTermExtensions.dateTimeFromMillisecondsSinceEpoch(deletionDate);
-    var newSubject =
+    final newSubject =
         IdTerm.create(newPropertyValue.subject, newPropertyValue.blankNodes);
 
     final statements =
@@ -861,7 +861,7 @@ Iterable<Triple> _findStatementTriplesToRemove(
       .findTriples(
           subjectIn: statementSubjectsForSubject,
           predicate: RdfStatement.predicate,
-          object: switch (predicate) { IriTerm iri => iri })
+          object: switch (predicate) { final IriTerm iri => iri })
       .map((t) => t.subject)
       .toSet();
   final statementSubjects = frameworkGraph
@@ -907,9 +907,9 @@ void _validateBlankNodeValues(Iterable<RdfObject> values,
   }
 }
 
-List<RdfObject> _expandIdentifiedValues(identifiedValue) =>
+List<RdfObject> _expandIdentifiedValues(Object identifiedValue) =>
     switch (identifiedValue) {
-      IdentifiedBlankNodeSubject ibn => ibn.identifiers,
+      final IdentifiedBlankNodeSubject ibn => ibn.identifiers,
       _ => [identifiedValue as RdfObject],
     };
 

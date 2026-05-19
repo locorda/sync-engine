@@ -257,7 +257,7 @@ class IdentifiedBlankNodeBuilder {
       }
     }
     if (duplicateBlankNodes.isNotEmpty) {
-      ValidationResult result = ValidationResult();
+      final ValidationResult result = ValidationResult();
       for (final entry in duplicateBlankNodes.entries) {
         final context = entry.key
             .blankNodeChain()
@@ -406,12 +406,12 @@ List<IdentifiedBlankNode> _addIdentifiedBlankNodes(
     final effectiveParentPredicate = isPathIdentifying ? parentPredicate : null;
 
     switch (parentSubject) {
-      case IriTerm iriTerm:
+      case final IriTerm iriTerm:
         return [
           IdentifiedBlankNode(IdentifiedBlankNodeParent.forIri(iriTerm),
               identifyingProps, effectiveParentPredicate)
         ];
-      case BlankNodeTerm blankNodeParent:
+      case final BlankNodeTerm blankNodeParent:
         if (circuitCheck.contains(blankNodeParent)) {
           _log.warning(
               "Detected circular reference while identifying Blank node ${blankNode}. Skipping further processing of this branch.");

@@ -103,7 +103,7 @@ class IndexDiscovery {
       LRUCache(maxCacheSize: 100);
 
   /// Subscriptions to storage watches for automatic cache updates
-  late final List<StreamSubscription> _watchSubscriptions;
+  late final List<StreamSubscription<Object?>> _watchSubscriptions;
 
   IndexDiscovery({
     required Storage storage,
@@ -134,7 +134,7 @@ class IndexDiscovery {
   /// Only tracks resource types configured in effectiveConfig to minimize memory.
   ///
   /// Throws [StateError] if index-of-indices IRIs cannot be found in config.
-  List<StreamSubscription> _initializeWatches() {
+  List<StreamSubscription<Object?>> _initializeWatches() {
     // Get the IRIs of the index-of-indices themselves
     final fullIndicesIndexIri = _getIndexIriByLocalName(IndexNames.fullIndices);
     final groupIndexTemplatesIndexIri =
@@ -146,7 +146,7 @@ class IndexDiscovery {
           '${groupIndexTemplatesIndexIri == null ? IndexNames.groupIndexTemplates : ''}. '
           'Ensure buildEffectiveConfig() is used to add framework-owned resources.');
     }
-    final watchSubscriptions = <StreamSubscription>[];
+    final watchSubscriptions = <StreamSubscription<Object?>>[];
 
     // Watch fullIndices index-of-indices
     final fullIndicesSubscription = _storage.watchIndexEntries(
@@ -158,7 +158,7 @@ class IndexDiscovery {
         _indexedClassToFullIndexMetadata,
         'FullIndex',
       ),
-      onError: (error, stackTrace) {
+      onError: (Object error, StackTrace? stackTrace) {
         _log.severe(
             'Error watching fullIndices index-of-indices', error, stackTrace);
       },
@@ -175,7 +175,7 @@ class IndexDiscovery {
         _indexedClassToTemplateMetadata,
         'GroupIndexTemplate',
       ),
-      onError: (error, stackTrace) {
+      onError: (Object error, StackTrace? stackTrace) {
         _log.severe('Error watching groupIndexTemplates index-of-indices',
             error, stackTrace);
       },

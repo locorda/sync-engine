@@ -5,6 +5,7 @@
 /// - Exception during remote structural merge → [ShardError]
 /// - Pass-through: ConflictedShard, ShardError,
 ///   PhaseComplete, PhaseError forwarded unchanged
+library;
 import 'package:locorda_core/src/crdt_document_manager.dart';
 import 'package:locorda_core/src/mapping/merge_contract.dart';
 import 'package:locorda_core/src/sync/pipeline/pipeline_types.dart';

@@ -94,7 +94,9 @@ Stream<CommittedResourceEvent> Function(UploadedResourceEvent) dbCommit(
         pendingEtags.isEmpty &&
         pendingEtagClears.isEmpty &&
         pendingGroupIndices.isEmpty &&
-        pendingTombstones.isEmpty) return;
+        pendingTombstones.isEmpty) {
+      return;
+    }
 
     final sw = perf?.start(perfStage);
 

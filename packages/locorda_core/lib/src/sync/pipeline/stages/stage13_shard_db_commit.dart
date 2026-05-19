@@ -73,7 +73,9 @@ Stream<CommittedShardEvent> Function(UploadedShardEvent) shardDbCommit(
   Stream<CommittedShardEvent> _flush() async* {
     if (pendingSaves.isEmpty &&
         pendingEtags.isEmpty &&
-        pendingEtagClears.isEmpty) return;
+        pendingEtagClears.isEmpty) {
+      return;
+    }
 
     final sw = perf?.start(perfStage);
 

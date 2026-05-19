@@ -64,7 +64,7 @@ String _credentialsFingerprint(DpopCredentials? credentials) {
 class SolidAuthSender implements MainHandler {
   final SolidOidcAuth _solidAuth;
   final MainHandlerChannel _workerHandle;
-  StreamSubscription? _tokenChangedSubscription;
+  StreamSubscription<Object?>? _tokenChangedSubscription;
 
   SolidAuthSender({
     required SolidOidcAuth solidAuth,
