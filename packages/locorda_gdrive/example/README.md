@@ -43,7 +43,15 @@ void main() async {
     storage: DriftMainHandler(),
     remotes: [
       // App Data Folder (private, recommended)
-      await GDriveMainIntegration.create(),
+      await GDriveMainIntegration.create(
+        // Required ONLY when targeting Windows/Linux (otherwise completely optional):
+        clientId: const String.fromEnvironment('GDRIVE_CLIENT_ID').isNotEmpty
+            ? const String.fromEnvironment('GDRIVE_CLIENT_ID')
+            : null,
+        clientKey: const String.fromEnvironment('GDRIVE_CLIENT_KEY').isNotEmpty
+            ? const String.fromEnvironment('GDRIVE_CLIENT_KEY')
+            : null,
+      ),
 
       // Or: visible folder in user's My Drive
       // await GDriveMainIntegration.create(

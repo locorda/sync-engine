@@ -13,21 +13,21 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:locorda/locorda.dart';
-import 'package:locorda_solid/locorda_solid.dart';
-import 'package:locorda_gdrive/locorda_gdrive.dart';
 import 'package:locorda_dir/locorda_dir.dart';
+import 'package:locorda_gdrive/locorda_gdrive.dart';
+import 'package:locorda_rdf_core/core.dart';
+import 'package:locorda_rdf_mapper/mapper.dart';
+import 'package:locorda_solid/locorda_solid.dart';
 import 'package:personal_notes_app/init_locorda.g.dart';
 import 'package:personal_notes_app/locorda_worker.manifest.dart';
-import 'package:locorda_rdf_mapper/mapper.dart';
-import 'package:locorda_rdf_core/core.dart';
 
+import 'consts.dart' show appVocab;
 import 'screens/notes_list_screen.dart';
 import 'services/categories_service.dart';
 import 'services/notes_service.dart';
 import 'storage/database.dart' show AppDatabase;
 import 'storage/repositories.dart' show CategoryRepository, NoteRepository;
 import 'utils/logging_setup.dart';
-import 'consts.dart' show appVocab;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,10 +47,11 @@ void main() async {
 /// - Auth bridge to sync credentials from main thread to worker
 /// - Returns a fully configured sync system
 Future<Locorda> initializeLocorda() async {
-  final bool isGDriveSupportedPlatform =
-      kIsWeb || (defaultTargetPlatform != TargetPlatform.linux && defaultTargetPlatform != TargetPlatform.windows);
   final bool isSolidAuthSupportedPlatform =
       kIsWeb || (defaultTargetPlatform != TargetPlatform.linux && defaultTargetPlatform != TargetPlatform.windows);
+
+  const gdriveClientId = String.fromEnvironment('GDRIVE_CLIENT_ID');
+  const gdriveClientKey = String.fromEnvironment('GDRIVE_CLIENT_KEY');
 
   // Setup sync system with worker
   return initLocorda(
@@ -82,8 +83,10 @@ Future<Locorda> initializeLocorda() async {
           frontendRedirectUrl: Uri.parse(
               '${kDebugMode ? 'http://localhost:3815' : appVocab.appBaseUri}/redirect.html'),
           config: SolidConfig()),
-      if (isGDriveSupportedPlatform)
+      
         await GDriveMainIntegration.create(
+            clientId: gdriveClientId.isNotEmpty ? gdriveClientId : null,
+            clientKey: gdriveClientKey.isNotEmpty ? gdriveClientKey : null,
             // Most apps will use `GDriveConfig(` default constructor which uses
             // appDataFolder (private storage, no visible folder in user's Drive)
             // For demonstration, we use visibleFolder mode which creates a folder in user's Drive

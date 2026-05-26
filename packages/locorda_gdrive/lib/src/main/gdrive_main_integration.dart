@@ -60,11 +60,13 @@ class GDriveMainIntegration implements RemoteIntegration {
   static Future<GDriveMainIntegration> create({
     GDriveConfig config = const GDriveConfig(),
     String? clientId,
+    String? clientKey,
     String id = gDriveRemoteHandlerId,
     String displayName = 'Google Drive',
   }) async {
     final auth = await GDriveAuth.create(
       clientId: clientId,
+      clientKey: clientKey,
       scopes: config.requiredScopes,
     );
 

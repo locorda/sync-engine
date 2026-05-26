@@ -78,7 +78,8 @@ final locorda = await initLocorda(
 );
 ```
 
-> **GDrive**: platform-specific OAuth2 credentials must be configured before sign-in works.
+> **GDrive**: Platform-specific OAuth2 credentials must be configured before sign-in works.
+> Note that `clientId` and `clientKey` are required ONLY when targeting Windows and Linux platforms.
 > See [locorda_gdrive — OAuth2 Setup](https://pub.dev/packages/locorda_gdrive) for instructions.
 
 ### 5. Connect your repository

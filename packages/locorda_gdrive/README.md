@@ -7,12 +7,11 @@ Google Drive backend for Locorda — the recommended default BYOB backend. Store
 
 ## Features
 
-- **Google Drive backend** — stores RDF sync data in the App Data Folder or a visible Drive folder
-- **Google Sign-In** — uses the official `google_sign_in` package
-- **Worker isolate support** — all Drive I/O runs in a background isolate/web worker
-- **Storage layouts** — `SingleFile` (default), `ShardDataset`, `FilePerResource`
-- **Flutter UI** — login screen and status widget included
-- **Localised** — English and German
+- **Flexible Storage Location** — Stores RDF sync data in the Google Drive App Data Folder or a visible Drive folder.
+- **Full Platform Support** — Supports Android, iOS, macOS, Web, Windows, and Linux.
+- **Worker Isolate Ready** — Drive I/O runs in a background isolate when used with `locorda_worker`; `locorda_dev` wires this up automatically.
+- **Storage Layouts** — Configurable layouts: `SingleFile` (default), `ShardDataset`, `FilePerResource`.
+- **Flutter UI Components** — Includes a login screen and sync status widgets, localised in English and German.
 
 ## Installation
 
@@ -135,33 +134,44 @@ await GDriveMainIntegration.create(
 
 ## OAuth2 Setup
 
-> **Note**: OAuth client IDs are configured **per platform** in native config files,
-> not in Dart code. `GDriveMainIntegration` reads them automatically.
+> [!NOTE]
+> **Platform Requirements**
+> * **Windows & Linux**: You **must** provide a `clientId` and `clientKey` using secure environment defines.
+> * **Android, iOS, macOS, Web**: Credentials come from platform-specific native configuration files (see below). Passing `clientId` is optional and only useful if you want to override the native config — but it must be a credential of the correct platform type, **not** a Desktop-type client ID. `clientKey` is only used on Windows & Linux and is ignored on all other platforms.
 
 ### 1. Create a Google Cloud Project
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create or select a project
-3. Enable **Google Drive API**
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2. Create or select a project.
+3. Enable the **Google Drive API**.
+
+---
 
 ### 2. Create OAuth2 Credentials
 
-Go to **APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID**.
+Go to **APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID** and create separate credentials for each platform you support:
 
-**Web:**
-```
-Type: Web application
-Authorized JavaScript origins:
-  - http://localhost
-  - http://localhost:7357  (replace with your dev port)
-  - https://yourdomain.com
-```
+#### Android
+- **Application type**: Android
+- **Package name**: Your app's package name (e.g., `dev.locorda.example.personalNotesApp`)
+- **SHA-1 certificate fingerprint**: Your development/production signing key fingerprint (obtain via `keytool -list -v -keystore ~/.android/debug.keystore`)
 
-**Mobile/Desktop:**
-```
-Type: iOS / Android / Desktop app
-(No redirect URI — uses custom URL scheme)
-```
+#### iOS / macOS
+- **Application type**: iOS
+- **Bundle ID**: Your app's bundle identifier (e.g., `dev.locorda.example.personalNotesApp`)
+
+#### Web
+- **Application type**: Web application
+- **Authorized JavaScript origins**:
+  - `http://localhost`
+  - `http://localhost:3815` (or whichever port you use for development)
+  - `https://your-production-domain.com`
+
+#### Windows / Linux
+- **Application type**: Desktop application
+- *Note*: Google automatically configures standard local loopback redirect (`http://localhost`) for desktop clients.
+
+---
 
 ### 3. Configure Scopes
 
@@ -172,13 +182,14 @@ Scopes are set automatically based on your config:
 | `GDriveConfig()` (App Data Folder) | `drive.appdata` |
 | `GDriveConfig.visibleFolder(...)` | `drive.file` |
 
-Always also includes `openid` for stable user identification.
+Always also includes `openid` for stable user identification. Add the relevant scope (`drive.appdata` or `drive.file`) and `openid` to the **OAuth consent screen** in Google Cloud Console.
 
-Enable these scopes on the OAuth consent screen in Google Cloud Console.
+---
 
 ### 4. Platform-Specific Setup
 
-**iOS** — `ios/Runner/Info.plist`:
+#### iOS
+Add the following to `ios/Runner/Info.plist`:
 ```xml
 <key>GIDClientID</key>
 <string>YOUR-IOS-CLIENT-ID.apps.googleusercontent.com</string>
@@ -196,7 +207,8 @@ Enable these scopes on the OAuth consent screen in Google Cloud Console.
 </array>
 ```
 
-**macOS** — `macos/Runner/Info.plist` with the same keys as iOS, plus entitlements:
+#### macOS
+Add the same keys as iOS to `macos/Runner/Info.plist`, plus add the following keychain access entitlement:
 ```xml
 <key>keychain-access-groups</key>
 <array>
@@ -204,22 +216,92 @@ Enable these scopes on the OAuth consent screen in Google Cloud Console.
 </array>
 ```
 
-**Android** — no additional setup needed with default configuration.
+#### Android
+No additional setup is needed with the default configuration. Android utilizes the client ID automatically verified by your SHA-1 signing key configured in Google Cloud Console.
 
-**Web** — `web/index.html` before `</head>`:
+#### Web
+Add the Google Identity Services SDK to `web/index.html` before `</head>`:
 ```html
-<meta name="google-signin-client_id" content="YOUR-CLIENT-ID.apps.googleusercontent.com">
+<meta name="google-signin-client_id" content="YOUR-WEB-CLIENT-ID.apps.googleusercontent.com">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 ```
 
-On web the sign-in button must be rendered via the GIS SDK:
+On web, the sign-in button must be rendered via the GIS SDK:
 ```dart
 if (kIsWeb) {
   return renderButton();  // from google_sign_in_web
 }
 ```
 
-See [google_sign_in documentation](https://pub.dev/packages/google_sign_in) for full platform setup.
+See the [google_sign_in documentation](https://pub.dev/packages/google_sign_in) for full platform setup details.
+
+#### Windows & Linux (Desktop)
+On Windows and Linux, native SDKs are not supported. Authentication is handled via a secure local loopback redirect server.
+
+To prevent checking your private client credentials into a Git repository, use Dart compile-time environment defines:
+
+1. Create a `secrets.json` file in your project root (and add it to your `.gitignore`):
+   ```json
+   {
+     "GDRIVE_CLIENT_ID": "YOUR-DESKTOP-CLIENT-ID.apps.googleusercontent.com",
+     "GDRIVE_CLIENT_KEY": "YOUR-DESKTOP-CLIENT-KEY"
+   }
+   ```
+
+2. Initialize the remote in your Dart code reading the constants:
+   ```dart
+   const clientId = String.fromEnvironment('GDRIVE_CLIENT_ID');
+   const clientKey = String.fromEnvironment('GDRIVE_CLIENT_KEY');
+
+   final locorda = await initLocorda(
+     storage: DriftMainHandler(),
+     remotes: [
+       await GDriveMainIntegration.create(
+         clientId: clientId.isNotEmpty ? clientId : null,
+         clientKey: clientKey.isNotEmpty ? clientKey : null,
+       ),
+     ],
+   );
+   ```
+
+3. Run or compile your app using the secrets file:
+   ```bash
+   flutter run -d linux --dart-define-from-file=secrets.json
+   ```
+
+On first run, the app will automatically launch the user's default browser to request consent and spin up a temporary local loopback server to receive the authorization code. Subsequent runs will use secure local credentials persisted via `shared_preferences`.
+
+## Binary Size Optimization
+
+By default, both the loopback OAuth2 backend (Windows/Linux) and the native
+Google Sign-In backend (Android/iOS/macOS/Web) are compiled into every build.
+The correct backend is selected at runtime. This is safe for all targets but
+prevents dead-code elimination of the unused backend.
+
+If you target only one class of platform you can opt in to tree shaking by
+setting `LOCORDA_GDRIVE_LOOPBACK_AUTH` at build time:
+
+| Build flag | Effect |
+|---|---|
+| *(not set)* | Runtime detection — both backends included (default) |
+| `--dart-define=LOCORDA_GDRIVE_LOOPBACK_AUTH=true` | Loopback only — Google Sign-In backend tree-shaken |
+| `--dart-define=LOCORDA_GDRIVE_LOOPBACK_AUTH=false` | Google Sign-In only — loopback backend tree-shaken |
+
+Example for a mobile-only build:
+```bash
+flutter build apk --dart-define=LOCORDA_GDRIVE_LOOPBACK_AUTH=false
+```
+
+Example for a Windows/Linux-only build:
+```bash
+flutter build windows --dart-define=LOCORDA_GDRIVE_LOOPBACK_AUTH=true
+```
+
+> [!NOTE]
+> The loopback backend depends on `googleapis_auth/auth_io.dart` for the local
+> redirect server. Setting `=false` removes this and its transitive dependencies
+> from mobile/web builds. The size saving is modest but the option exists for
+> teams with strict binary size budgets.
 
 ## Architecture
 

@@ -205,13 +205,41 @@ Prerequisites:
 - Flutter 3.24.0+
 - Dart 3.6.0+
 
-Mobile/macOS:
+### Google Drive Setup (Optional)
+
+Google Drive credentials are configured differently per platform.
+
+#### Windows & Linux
+
+1. Copy the template secrets file:
+   ```bash
+   cp secrets.json.example secrets.json
+   ```
+2. Populate `secrets.json` with your Google Cloud Console credentials (type **Desktop application**).
+3. `secrets.json` is in `.gitignore` so your keys will never be committed.
+
+#### Android, iOS, macOS, Web
+
+Credentials come from platform-native config files — do **not** use `--dart-define-from-file=secrets.json` on these platforms. That would inject a Desktop-type client ID which the native auth flow doesn't use and could interfere with.
+
+See the [locorda_gdrive OAuth2 Setup](https://pub.dev/packages/locorda_gdrive) guide for platform-specific instructions (bundle ID / package name / SHA-1 fingerprint / web meta tag).
+
+### Run on Native Desktop/Mobile:
 
 - `flutter pub get`
 - `dart run build_runner build`
-- `flutter run -d macos` (or android/ios)
+- Linux/Windows (Google Drive requires `secrets.json`):
+  ```bash
+  flutter run -d linux --dart-define-from-file=secrets.json
+  ```
+  *(replace `linux` with `windows` as needed)*
+- macOS/mobile (Google Drive uses native credentials):
+  ```bash
+  flutter run -d macos
+  ```
+  *(replace `macos` with `android` or `ios` as needed)*
 
-Web:
+### Web:
 
 - `flutter pub get`
 - `dart run build_runner build`
