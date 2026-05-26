@@ -1,0 +1,39 @@
+@base <https://example.com/fullindex/index-full-388036f3%2Findex> .
+@prefix : <#> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix if3mm10v: <https://example.com/shard/index-full-388036f3%2Fshard-mod-md5-1-0-v1_0_0#> .
+@prefix ifbmm10v: <https://example.com/shard/index-full-bbcf09f5%2Fshard-mod-md5-1-0-v1_0_0#> .
+@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<> a sync:ManagedDocument;
+    foaf:primaryTopic :index;
+    cm:clockHash "2f4c135454e883ad689adfee4583d3d8";
+    cm:createdAt "2024-01-01T00:00:00.011Z"^^xsd:dateTime, "2024-01-01T01:01:00.011Z"^^xsd:dateTime;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f, :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    idx:belongsToIndexShard ifbmm10v:shard;
+    sync:isGovernedBy (mappings:index-v1);
+    sync:managedResourceType idx:FullIndex .
+
+:index a idx:FullIndex;
+    idx:hasShard if3mm10v:shard;
+    idx:indexesClass cm:ClientInstallation;
+    idx:populationState "active";
+    idx:readBy </clientinstallation/foreign-device-installation#installation>, </clientinstallation/default-installation#installation>;
+    idx:shardingAlgorithm [
+        a idx:ModuloHashSharding ;
+        idx:hashAlgorithm "md5" ;
+        idx:numberOfShards 1 ;
+        idx:configVersion "1_0_0" ;
+        idx:autoScaleThreshold 1000
+    ] .
+
+:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+    cm:physicalTime 1704067200010 .
+
+:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
+    cm:physicalTime 1704070860010 .

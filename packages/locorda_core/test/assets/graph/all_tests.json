@@ -2041,6 +2041,83 @@
               }
             }
           ]
+        },
+        {
+          "id": "save_43",
+          "title": "Concurrent LWW merge - per-property change tracking",
+          "description": "Two installations concurrently modify the same document. Installation A changes both schema:name AND schema:description at physical time T1. Installation B changes only schema:name at a LATER physical time T2 > T1. Their clocks become concurrent (each at logicalTime=2 for itself, unaware of the other). On merge, the LWW algorithm must resolve per-property: schema:name is genuinely contested (both sides changed it) and B wins by physical time, but schema:description was only changed by A, so A must win unconditionally. The previous implementation used document-level maxPhysicalTime as the tie-break, causing description to silently revert to the pre-divergence value.",
+          "config": "shared/configs/basic_config.json",
+          "installations": [
+            {
+              "id": "foreign-device-installation",
+              "config": "shared/configs/basic_config.json"
+            },
+            {
+              "id": "default-installation",
+              "config": "shared/configs/basic_config.json"
+            }
+          ],
+          "steps": [
+            {
+              "action": "save",
+              "installation_id": "foreign-device-installation",
+              "typeIri": "https://schema.org/Recipe",
+              "input_resource": "test_cases/save/38_concurrent_lww_per_property/baseline_input.ttl",
+              "action_ts": {
+                "save": "2024-01-01T01:00:00Z"
+              }
+            },
+            {
+              "action": "sync",
+              "installation_id": "foreign-device-installation",
+              "action_ts": {
+                "sync": "2024-01-01T01:00:30Z"
+              }
+            },
+            {
+              "action": "sync",
+              "installation_id": "default-installation",
+              "action_ts": {
+                "sync": "2024-01-01T01:01:00Z"
+              }
+            },
+            {
+              "action": "save",
+              "installation_id": "foreign-device-installation",
+              "typeIri": "https://schema.org/Recipe",
+              "input_resource": "test_cases/save/38_concurrent_lww_per_property/a_changes_input.ttl",
+              "action_ts": {
+                "save": "2024-01-01T02:00:00Z"
+              }
+            },
+            {
+              "action": "sync",
+              "installation_id": "foreign-device-installation",
+              "action_ts": {
+                "sync": "2024-01-01T02:00:30Z"
+              }
+            },
+            {
+              "action": "save",
+              "installation_id": "default-installation",
+              "typeIri": "https://schema.org/Recipe",
+              "input_resource": "test_cases/save/38_concurrent_lww_per_property/b_changes_input.ttl",
+              "action_ts": {
+                "save": "2024-01-01T03:00:00Z"
+              }
+            },
+            {
+              "action": "sync",
+              "installation_id": "default-installation",
+              "action_ts": {
+                "sync": "2024-01-01T03:00:30Z"
+              },
+              "expected": {
+                "documents_dir": "test_cases/save/38_concurrent_lww_per_property/final_storage",
+                "remote_documents_dir": "test_cases/save/38_concurrent_lww_per_property/final_remote"
+              }
+            }
+          ]
         }
       ]
     },

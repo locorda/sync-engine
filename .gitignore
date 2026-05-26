@@ -24,3 +24,5 @@ dart-sdk/
 flutter/
 *.tar.xz
 worker_generated.dart.js
+# pub-related (added during agent work)
+packages/locorda_core/pubspec.lock
