@@ -17,6 +17,7 @@
     cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
     idx:belongsToIndexShard ns1:shard;
     sync:hasBlankNodeMapping ns2:lcrd-ibn-md5-74f4d0cc07fa8ce00b8856defa9a0e31, ns2:lcrd-ibn-md5-9110880a000d224b944a75c68db15db9;
+    sync:hasPropertyClock ns2:lcrd-pc-md5-0a4dc0289aaea98c28a987d9788ef967;
     sync:isGovernedBy (mappings:recipe-v1);
     sync:managedResourceType schema:Recipe .
 
@@ -31,6 +32,13 @@ ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 1;
 ns2:lcrd-ibn-md5-74f4d0cc07fa8ce00b8856defa9a0e31 sync:blankNode _:b1 .
 
 ns2:lcrd-ibn-md5-9110880a000d224b944a75c68db15db9 sync:blankNode _:b2 .
+
+ns2:lcrd-pc-md5-0a4dc0289aaea98c28a987d9788ef967 a sync:PropertyClock;
+    cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
+    cm:logicalTime 1;
+    cm:physicalTime 1704074400000;
+    sync:changedProperty rdf:type, schema:name;
+    sync:resource ns2:it .
 
 _:b1 a schema:Ingredient;
     schema:amount "2";

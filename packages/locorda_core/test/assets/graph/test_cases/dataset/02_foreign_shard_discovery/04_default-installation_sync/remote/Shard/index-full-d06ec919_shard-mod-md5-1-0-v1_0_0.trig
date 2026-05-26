@@ -20,6 +20,7 @@
     cm:clockHash "75624161520a0034adee8d01eaab8a68";
     cm:createdAt "2024-01-01T02:10:00.011Z"^^xsd:dateTime, "2024-01-01T00:00:00.014Z"^^xsd:dateTime;
     cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    sync:hasPropertyClock :lcrd-pc-md5-3b9ae05b91f030e3967f607638e24382, :lcrd-pc-md5-85ddb031a778cd41d731cd45fd6f4d4e, :lcrd-pc-md5-af992a69dbbe5c4db90b6e1db6387bab, :lcrd-pc-md5-59e2a486c471f8ad7fcb417331914bc1;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
@@ -35,6 +36,34 @@
 :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
     cm:physicalTime 1704088800002 .
 
+:lcrd-pc-md5-3b9ae05b91f030e3967f607638e24382 a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:logicalTime 1;
+    cm:physicalTime 0;
+    sync:changedProperty rdf:type;
+    sync:resource :shard .
+
+:lcrd-pc-md5-59e2a486c471f8ad7fcb417331914bc1 a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:logicalTime 2;
+    cm:physicalTime 1704088800002;
+    sync:changedProperty cm:clockHash;
+    sync:resource :entry-c34a65e8aaabca687ad30dc757ab9ce1 .
+
+:lcrd-pc-md5-85ddb031a778cd41d731cd45fd6f4d4e a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 1;
+    cm:physicalTime 0;
+    sync:changedProperty rdf:type;
+    sync:resource :shard .
+
+:lcrd-pc-md5-af992a69dbbe5c4db90b6e1db6387bab a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 2;
+    cm:physicalTime 1704074700003;
+    sync:changedProperty cm:clockHash;
+    sync:resource :entry-9c4afa0052fbf6bf78d6bcab30280fa8 .
+
 :shard a idx:Shard;
     idx:containsEntry :entry-9c4afa0052fbf6bf78d6bcab30280fa8, :entry-c34a65e8aaabca687ad30dc757ab9ce1;
     idx:isShardOf ifd:index .
@@ -46,6 +75,7 @@ GRAPH <https://example.com/groupindex/index-grouped-e093655c%2Fgroups%2F20_ad221
       cm:createdAt "2024-01-01T02:00:00.004Z"^^xsd:dateTime;
       cm:hasClockEntry ige1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       idx:belongsToIndexShard :shard;
+      sync:hasPropertyClock ige1:lcrd-pc-md5-31e9ec6cda25eef585c0efaa5935059d;
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:GroupIndex .
   ige1:index a idx:GroupIndex;
@@ -53,6 +83,12 @@ GRAPH <https://example.com/groupindex/index-grouped-e093655c%2Fgroups%2F20_ad221
       idx:hasShard igemm10v:shard .
   ige1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
       cm:physicalTime 1704074400003 .
+  ige1:lcrd-pc-md5-31e9ec6cda25eef585c0efaa5935059d a sync:PropertyClock;
+      cm:hasClockEntry ige1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      cm:logicalTime 1;
+      cm:physicalTime 1704074400003;
+      sync:changedProperty rdf:type;
+      sync:resource ige1:index .
 }
 
 GRAPH <https://example.com/groupindex/index-grouped-f615be90%2Fgroups%2Fdesserts%2Findex> {
@@ -62,6 +98,7 @@ GRAPH <https://example.com/groupindex/index-grouped-f615be90%2Fgroups%2Fdesserts
       cm:createdAt "2024-01-01T06:00:00.004Z"^^xsd:dateTime;
       cm:hasClockEntry igf1:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
       idx:belongsToIndexShard :shard;
+      sync:hasPropertyClock igf1:lcrd-pc-md5-fed9fedb4e5fb9475c7c97e383e296ae;
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:GroupIndex .
   igf1:index a idx:GroupIndex;
@@ -69,4 +106,10 @@ GRAPH <https://example.com/groupindex/index-grouped-f615be90%2Fgroups%2Fdesserts
       idx:hasShard igfmm10v:shard .
   igf1:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
       cm:physicalTime 1704088800003 .
+  igf1:lcrd-pc-md5-fed9fedb4e5fb9475c7c97e383e296ae a sync:PropertyClock;
+      cm:hasClockEntry igf1:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+      cm:logicalTime 1;
+      cm:physicalTime 1704088800003;
+      sync:changedProperty rdf:type;
+      sync:resource igf1:index .
 }

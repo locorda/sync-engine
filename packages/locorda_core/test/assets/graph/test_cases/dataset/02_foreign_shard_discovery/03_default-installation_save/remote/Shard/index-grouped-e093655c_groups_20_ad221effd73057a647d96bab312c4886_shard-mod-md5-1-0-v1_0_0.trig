@@ -18,6 +18,7 @@
     cm:clockHash "6ca9c3b2cf4965c09045f3f776387d0b";
     cm:createdAt "2024-01-01T02:00:00.002Z"^^xsd:dateTime;
     cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    sync:hasPropertyClock :lcrd-pc-md5-1effa9e3410913721d8d41baeeacc046, :lcrd-pc-md5-16d2794feb1cec053d7d6275ef4b824e;
     sync:isGovernedBy (mappings2:shard-v1);
     sync:managedResourceType idx:Shard .
 
@@ -26,6 +27,20 @@
 
 :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
     cm:physicalTime 1704074700011 .
+
+:lcrd-pc-md5-16d2794feb1cec053d7d6275ef4b824e a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 2;
+    cm:physicalTime 1704074700011;
+    sync:changedProperty cm:clockHash;
+    sync:resource :entry-c93b50159754d7a665032fc90e56af1d .
+
+:lcrd-pc-md5-1effa9e3410913721d8d41baeeacc046 a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 1;
+    cm:physicalTime 0;
+    sync:changedProperty rdf:type;
+    sync:resource :shard .
 
 :shard a idx:Shard;
     idx:containsEntry :entry-c93b50159754d7a665032fc90e56af1d;
@@ -38,6 +53,7 @@ GRAPH </recipe/chocolate-cake> {
       cm:createdAt "2024-01-01T02:00:00.001Z"^^xsd:dateTime;
       cm:hasClockEntry </recipe/chocolate-cake#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f>;
       idx:belongsToIndexShard ifemm10v:shard, :shard;
+      sync:hasPropertyClock </recipe/chocolate-cake#lcrd-pc-md5-aafd3a39457107293aaf6925aabd9e8c>;
       sync:isGovernedBy (mappings1:recipe-v1);
       sync:managedResourceType schema:Recipe .
   </recipe/chocolate-cake#it> a schema:Recipe;
@@ -50,4 +66,10 @@ GRAPH </recipe/chocolate-cake> {
       schema:recipeYield "8 servings" .
   </recipe/chocolate-cake#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f> cm:logicalTime 1;
       cm:physicalTime 1704074400000 .
+  </recipe/chocolate-cake#lcrd-pc-md5-aafd3a39457107293aaf6925aabd9e8c> a sync:PropertyClock;
+      cm:hasClockEntry </recipe/chocolate-cake#lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f>;
+      cm:logicalTime 1;
+      cm:physicalTime 1704074400000;
+      sync:changedProperty rdf:type, schema:name, schema:dateCreated, schema:description, schema:prepTime, schema:cookTime, schema:recipeYield;
+      sync:resource </recipe/chocolate-cake#it> .
 }

@@ -1,4 +1,5 @@
 import 'package:locorda_core/src/crdt/crdt_types.dart';
+import 'package:locorda_core/src/crdt/property_clock.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/hlc_service.dart';
 import 'package:locorda_core/src/rdf/rdf_extensions.dart';
@@ -172,6 +173,12 @@ enum MergeSubjectType {
   identifiedBlankNode,
   unidentifiedBlankNode,
   iri,
+
+  /// A `sync:PropertyClock` framework metadata node — these record per-property
+  /// HLC snapshots used by LWW concurrent merges. They are merged separately
+  /// from app data (see [OrganizedGraph.propertyClocks]) and must be skipped
+  /// during the normal subject-merge iteration.
+  propertyClock,
 }
 
 class MergeObject {
@@ -260,10 +267,16 @@ class MergeSubject {
     subject = local ?? remote!;
   }
 
-  static MergeSubjectType _determineType(RdfObjectKey key,
-      Set<RdfSubject> statementIdentifiers, Set<IriTerm> blankNodeIdentifiers) {
+  static MergeSubjectType _determineType(
+      RdfObjectKey key,
+      Set<RdfSubject> statementIdentifiers,
+      Set<IriTerm> blankNodeIdentifiers,
+      Set<IriTerm> propertyClockIdentifiers) {
     if (statementIdentifiers.contains(key.value)) {
       return MergeSubjectType.statement;
+    }
+    if (propertyClockIdentifiers.contains(key.value)) {
+      return MergeSubjectType.propertyClock;
     }
     if (blankNodeIdentifiers.contains(key.value)) {
       return MergeSubjectType.blankNodeIdentifier;
@@ -290,6 +303,10 @@ class MergeSubject {
       ...local.blankNodeMappings.blankNodeIdentifiers,
       ...remote.blankNodeMappings.blankNodeIdentifiers
     };
+    final allPropertyClockIdentifiers = {
+      ...local.propertyClockSubjectIris,
+      ...remote.propertyClockSubjectIris,
+    };
     return allKeys.map((key) {
       final localKey = localSubjectKeys.lookup(key);
       final remoteKey = remoteSubjectKeys.lookup(key);
@@ -298,8 +315,8 @@ class MergeSubject {
         localKey: localKey,
         remote: remoteKey?.value as RdfSubject?,
         remoteKey: remoteKey,
-        type: _determineType(
-            key, allStatementIdentifiers, allBlankNodeIdentifiers),
+        type: _determineType(key, allStatementIdentifiers,
+            allBlankNodeIdentifiers, allPropertyClockIdentifiers),
       );
     });
   }
@@ -500,6 +517,18 @@ final class OrganizedGraph {
   final Set<RdfSubject> _allSubjects;
   final Map<IriTerm, (int logical, int physical)> clockTimes;
 
+  /// Per-property change clock records (sync:PropertyClock) parsed from
+  /// the document. Used during LWW concurrent merges to resolve each
+  /// property independently instead of falling back to a single
+  /// document-level physical-time tie-break.
+  final List<PropertyClock> propertyClocks;
+
+  /// IRIs of all sync:PropertyClock framework metadata nodes in the
+  /// document, so they can be excluded from the normal subject-merge
+  /// iteration (they are merged separately, like clock entries are
+  /// merged separately from app data).
+  final Set<IriTerm> propertyClockSubjectIris;
+
   late final int maxPhysicalTime = clockTimes.values
       .map((times) => times.$2)
       .fold<int>(0, (prev, element) => element > prev ? element : prev);
@@ -513,6 +542,8 @@ final class OrganizedGraph {
     required this.fullGraph,
     required this.clock,
     required this.clockTimes,
+    required this.propertyClocks,
+    required this.propertyClockSubjectIris,
   }) : _allSubjects =
             // Relying on RdfGraph being immutable, so we do not need to copy the subjects set
             fullGraph.subjects;
@@ -587,6 +618,9 @@ final class OrganizedGraph {
       fullGraph: document,
       clock: clock,
       clockTimes: Map.unmodifiable(clockTimes),
+      propertyClocks: parsePropertyClocks(documentIri, document),
+      propertyClockSubjectIris:
+          collectPropertyClockSubjectIris(documentIri, document),
     );
   }
 }

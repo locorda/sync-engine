@@ -12,10 +12,11 @@
 
 <> a sync:ManagedDocument;
     foaf:primaryTopic :it;
-    cm:clockHash "945f4354c075d333d5d3407fbe1e2fb1";
+    cm:clockHash "def3925e294943b3392afd0119950d08";
     cm:createdAt "2024-01-01T01:00:00.001Z"^^xsd:dateTime;
     cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
     idx:belongsToIndexShard ifemm10v:shard;
+    sync:hasPropertyClock :lcrd-pc-md5-acc60efd2673984121245c316eab6f0a, :lcrd-pc-md5-0cb2af10af0738d95d3479e04e6233a0, :lcrd-pc-md5-1717f63900217c6af84595e69d9414b1;
     sync:isGovernedBy (mappings:recipe-v1);
     sync:managedResourceType schema:Recipe .
 
@@ -23,8 +24,29 @@
     schema:description "A's Desc";
     schema:name "B's Name" .
 
-:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
-    cm:physicalTime 1704074400000 .
+:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+    cm:physicalTime 1704070800000 .
 
 :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
     cm:physicalTime 1704078000000 .
+
+:lcrd-pc-md5-0cb2af10af0738d95d3479e04e6233a0 a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:logicalTime 1;
+    cm:physicalTime 1704078000000;
+    sync:changedProperty schema:name;
+    sync:resource :it .
+
+:lcrd-pc-md5-1717f63900217c6af84595e69d9414b1 a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 2;
+    cm:physicalTime 1704074400000;
+    sync:changedProperty schema:name, schema:description;
+    sync:resource :it .
+
+:lcrd-pc-md5-acc60efd2673984121245c316eab6f0a a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 1;
+    cm:physicalTime 1704070800000;
+    sync:changedProperty rdf:type, schema:name, schema:description;
+    sync:resource :it .

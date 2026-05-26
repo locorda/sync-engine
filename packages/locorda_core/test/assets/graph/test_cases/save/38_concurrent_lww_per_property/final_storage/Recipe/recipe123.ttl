@@ -12,19 +12,34 @@
 
 <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:cmVjaXBlMTIz> a sync:ManagedDocument;
     foaf:primaryTopic ns2:it;
-    cm:clockHash "945f4354c075d333d5d3407fbe1e2fb1";
+    cm:clockHash "def3925e294943b3392afd0119950d08";
     cm:createdAt "2024-01-01T01:00:00.001Z"^^xsd:dateTime;
     cm:hasClockEntry ns2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, ns2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
     idx:belongsToIndexShard ns1:shard;
+    sync:hasPropertyClock ns2:lcrd-pc-md5-acc60efd2673984121245c316eab6f0a, ns2:lcrd-pc-md5-0cb2af10af0738d95d3479e04e6233a0;
     sync:isGovernedBy (mappings:recipe-v1);
     sync:managedResourceType schema:Recipe .
 
 ns2:it a schema:Recipe;
-    schema:description "A's Desc";
+    schema:description "Original Desc";
     schema:name "B's Name" .
 
-ns2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
-    cm:physicalTime 1704074400000 .
+ns2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
+    cm:physicalTime 1704070800000 .
 
 ns2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
     cm:physicalTime 1704078000000 .
+
+ns2:lcrd-pc-md5-0cb2af10af0738d95d3479e04e6233a0 a sync:PropertyClock;
+    cm:hasClockEntry ns2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:logicalTime 1;
+    cm:physicalTime 1704078000000;
+    sync:changedProperty schema:name;
+    sync:resource ns2:it .
+
+ns2:lcrd-pc-md5-acc60efd2673984121245c316eab6f0a a sync:PropertyClock;
+    cm:hasClockEntry ns2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 1;
+    cm:physicalTime 1704070800000;
+    sync:changedProperty rdf:type, schema:name, schema:description;
+    sync:resource ns2:it .

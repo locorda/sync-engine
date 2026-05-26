@@ -42,6 +42,13 @@ class HlcService {
     return documentIri.withFragment('lcrd-clk-md5-$hash');
   }
 
+  /// Returns the document-scoped clock entry IRI for the current
+  /// installation. Used by the local merger to attribute per-property
+  /// change clocks (`sync:PropertyClock`) to this installation in a way
+  /// that is deterministic across installations (same hash → same IRI).
+  IriTerm getOwnClockEntryIri(IriTerm documentIri) =>
+      _generateClockEntryIri(documentIri);
+
   /// Builds a clock entry node as an IRI resource (not blank node)
   /// Note: installationIri property is NOT added here - it's added during sync
   Node _buildClockEntryNode(

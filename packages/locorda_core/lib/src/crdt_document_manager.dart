@@ -4,6 +4,7 @@ library;
 import 'dart:async';
 
 import 'package:locorda_core/locorda_core.dart';
+import 'package:locorda_core/src/crdt/property_clock.dart';
 import 'package:locorda_core/src/hlc_service.dart';
 import 'package:locorda_core/src/index/shard_determiner.dart';
 import 'package:locorda_core/src/local_document_merger.dart';
@@ -105,7 +106,12 @@ final _defaultManagedDocumentLevelPredicates = <IriTerm>{
   // naturally covers them — no copy-through needed and no tombstones generated.
   SyncManagedDocument.crdtDeletedAt,
   SyncManagedDocument.hasBlankNodeMapping,
-  SyncManagedDocument.hasStatement
+  SyncManagedDocument.hasStatement,
+  // sync:hasPropertyClock pointers are emitted via a dedicated channel in
+  // step 11 (below) — the local merger explicitly removes overridden
+  // pointers via triplesToRemove. Listing the predicate here prevents
+  // step 10 from re-copying them and creating duplicates.
+  SyncPropertyClock.hasPropertyClock,
 };
 
 /// Removes resource tombstones from [oldFrameworkGraph] for subjects that are
@@ -171,6 +177,7 @@ List<Triple> _constructCrdtDocument(
   IriTerm documentIri,
   RdfGraph? oldFrameworkGraph,
   List<Node> crdtMetadata,
+  List<Node> propertyClocks,
   List<RdfObject> governedByFiles,
   IriTerm primaryResourceIri,
   IriTerm resourceType,
@@ -265,6 +272,31 @@ List<Triple> _constructCrdtDocument(
   // 11. Add CRDT metadata (tombstones, counters, etc.)
   allTriples.addNodes(
       documentIri, SyncManagedDocument.hasStatement, crdtMetadata);
+
+  // 11b. Add per-property change clocks (sync:PropertyClock). These are
+  // emitted on a dedicated predicate so they can be merged independently
+  // of rdf:Statement-based property metadata. Pre-existing PropertyClock
+  // pointers from the old framework graph are NOT in the skip-list at
+  // step 10 (sync:hasPropertyClock is in
+  // _defaultManagedDocumentLevelPredicates), so we explicitly re-copy
+  // surviving (non-overridden) records here.
+  if (oldFrameworkGraph != null) {
+    final newClockIris = propertyClocks.map((n) => n.$1).toSet();
+    for (final t in oldFrameworkGraph.findTriples(
+        subject: documentIri,
+        predicate: SyncPropertyClock.hasPropertyClock)) {
+      final clockIri = t.object;
+      if (clockIri is! IriTerm) continue;
+      if (newClockIris.contains(clockIri)) continue;
+      allTriples.add(t);
+      // Copy the clock subgraph (resource, hasClockEntry, changedProperty
+      // etc.) — triplesToRemove on the merger output already prunes
+      // overridden changedProperty triples.
+      allTriples.addAll(oldFrameworkGraph.findTriples(subject: clockIri));
+    }
+  }
+  allTriples.addNodes(
+      documentIri, SyncPropertyClock.hasPropertyClock, propertyClocks);
 
   return allTriples;
 }
@@ -638,6 +670,7 @@ class CrdtDocumentManager {
         mergeContract,
         clock,
         appDataTypeIri: type,
+        ownClockEntryIri: _hlcService.getOwnClockEntryIri(documentIri),
       );
 
       sw?.stopSection('appMeta');
@@ -664,6 +697,7 @@ class CrdtDocumentManager {
         documentIri,
         effectiveOldFrameworkGraph,
         crdtMetadata.statements,
+        crdtMetadata.propertyClocks,
         governedByFiles,
         resourceIri,
         type,

@@ -17,6 +17,7 @@
     cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
     idx:belongsToIndexShard ifbmm10v:shard;
     sync:hasBlankNodeMapping :lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6;
+    sync:hasPropertyClock :lcrd-pc-md5-b42fea11844a7a124d41e153f31d5931, :lcrd-pc-md5-3ed30a48961d4b5201f7a35cac763fd8;
     sync:isGovernedBy (mappings:index-v1);
     sync:managedResourceType idx:FullIndex .
 
@@ -41,6 +42,20 @@
     cm:physicalTime 1704075000012 .
 
 :lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6 sync:blankNode _:b1 .
+
+:lcrd-pc-md5-3ed30a48961d4b5201f7a35cac763fd8 a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 1;
+    cm:physicalTime 1704067200015;
+    sync:changedProperty rdf:type, idx:populationState;
+    sync:resource :index .
+
+:lcrd-pc-md5-b42fea11844a7a124d41e153f31d5931 a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:logicalTime 1;
+    cm:physicalTime 1704075000012;
+    sync:changedProperty rdf:type, idx:populationState;
+    sync:resource :index .
 
 _:b1 a idx:IndexedProperty;
     idx:readBy </clientinstallation/default-installation#installation>, </clientinstallation/foreign-device-installation#installation>;

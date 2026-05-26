@@ -19,6 +19,7 @@
     cm:createdAt "2024-01-01T01:01:00.008Z"^^xsd:dateTime, "2024-01-01T00:00:00.008Z"^^xsd:dateTime;
     cm:hasClockEntry ns3:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, ns3:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
     idx:belongsToIndexShard ns4:shard;
+    sync:hasPropertyClock ns3:lcrd-pc-md5-83bb1b4f68c7a679fbc8b85025234b45, ns3:lcrd-pc-md5-8925b97beefe2986be92e5723ff85c80;
     sync:isGovernedBy (mappings:index-v1);
     sync:managedResourceType idx:FullIndex .
 
@@ -40,3 +41,17 @@ ns3:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
 
 ns3:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
     cm:physicalTime 1704070860007 .
+
+ns3:lcrd-pc-md5-83bb1b4f68c7a679fbc8b85025234b45 a sync:PropertyClock;
+    cm:hasClockEntry ns3:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:logicalTime 1;
+    cm:physicalTime 1704070860007;
+    sync:changedProperty rdf:type, idx:populationState;
+    sync:resource ns3:index .
+
+ns3:lcrd-pc-md5-8925b97beefe2986be92e5723ff85c80 a sync:PropertyClock;
+    cm:hasClockEntry ns3:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 1;
+    cm:physicalTime 1704067200007;
+    sync:changedProperty rdf:type, idx:populationState;
+    sync:resource ns3:index .

@@ -55,8 +55,8 @@ sync:hasStatement a rdf:Property;
 
 sync:resource a rdf:Property;
     rdfs:label "resource";
-    rdfs:comment "Points to the resource that this framework statement is about. Used in resource statements to identify which resource the metadata applies to.";
-    rdfs:domain sync:ResourceStatement;
+    rdfs:comment "Points to the resource that this framework statement is about. Used in resource statements to identify which resource the metadata applies to, and on sync:PropertyClock records to identify which application subject the recorded changes apply to.";
+    rdfs:domain [ a owl:Class; owl:unionOf ( sync:ResourceStatement sync:PropertyClock ) ];
     rdfs:range rdfs:Resource .
 
 sync:hasBlankNodeMapping a rdf:Property;
@@ -64,6 +64,22 @@ sync:hasBlankNodeMapping a rdf:Property;
     rdfs:comment "Links the managed document to framework-reserved fragment identifiers for identified blank nodes.";
     rdfs:domain sync:ManagedDocument;
     rdfs:range sync:BlankNodeMapping .
+
+sync:PropertyClock a rdfs:Class;
+    rdfs:label "Property Clock";
+    rdfs:comment "Records the (resource, properties[]) set that an installation modified together at a specific HLC. Used by the LWW-Register merge to scope concurrent tie-breaks to actually-contested properties: a property that only one side touched after divergence wins unconditionally, eliminating silent reverts of uncontested values. Identity is derived from (clockEntry, resource, changedProperties), so distinct PCs are immutable. Successive saves by the same installation overwrite earlier `sync:changedProperty` entries so each (resource, property, installation) collapses to exactly one PC." .
+
+sync:hasPropertyClock a rdf:Property;
+    rdfs:label "has property clock";
+    rdfs:comment "Links a managed document to the sync:PropertyClock records that describe which LWW properties were touched by which installations and when. The remote merger has a dedicated channel (mergePropertyClocks) for these records — the document-level CRDT rule (OR_Set in core-v1.ttl) only matters for the merge-contract loader and is not used in the actual merge.";
+    rdfs:domain sync:ManagedDocument;
+    rdfs:range sync:PropertyClock .
+
+sync:changedProperty a rdf:Property;
+    rdfs:label "changed property";
+    rdfs:comment "On a sync:PropertyClock, the property IRI(s) whose values were modified by the linked installation at the linked HLC. Multi-valued: all LWW properties touched in a single local save share one PropertyClock node to keep the per-save overhead bounded.";
+    rdfs:domain sync:PropertyClock;
+    rdfs:range rdf:Property .
 
 sync:blankNode a rdf:Property;
     rdfs:label "blank node";

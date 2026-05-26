@@ -4,6 +4,7 @@ library;
 import 'package:collection/collection.dart';
 import 'package:locorda_core/locorda_core.dart';
 import 'package:locorda_core/src/crdt/crdt_types.dart';
+import 'package:locorda_core/src/crdt/property_clock.dart';
 import 'package:locorda_core/src/hlc_service.dart';
 import 'package:locorda_core/src/mapping/framework_iri_generator.dart';
 import 'package:locorda_core/src/mapping/identified_blank_node_builder.dart';
@@ -50,6 +51,7 @@ class LocalDocumentMerger {
     required IriTerm appDataTypeIri,
     bool isFrameworkData = false,
     bool computeCanonicalBlankNodes = true,
+    IriTerm? ownClockEntryIri,
   }) {
     // 4. Detect property changes between old and new app graphs and generate CRDT metadata
     final appBlankNodes = computeCanonicalBlankNodes
@@ -70,7 +72,8 @@ class LocalDocumentMerger {
         mergeContract,
         clock,
         appDataTypeIri: appDataTypeIri,
-        isFrameworkData: isFrameworkData);
+        isFrameworkData: isFrameworkData,
+        ownClockEntryIri: ownClockEntryIri);
     return (
       oldBlankNodes: oldAppBlankNodes,
       newBlankNodes: appBlankNodes,
@@ -197,11 +200,20 @@ class LocalDocumentMerger {
       MergeContract mergeContract,
       CurrentCrdtClock clock,
       {bool isFrameworkData = false,
-      required IriTerm appDataTypeIri}) {
+      required IriTerm appDataTypeIri,
+      IriTerm? ownClockEntryIri}) {
     final isShard = appDataTypeIri == IdxShard.classIri;
     final statements = <Node>[];
     final triplesToRemove = <Triple>{};
     final propertyChanges = <PropertyChange>[];
+
+    // Tracks (resource, property) pairs that were modified locally and use
+    // the LWW-Register CRDT, so we can emit a single consolidated
+    // sync:PropertyClock per (resource, this-installation, save) instead
+    // of one record per property. Only IRI subjects/predicates are
+    // recorded — per-property tracking on blank-node subjects falls back
+    // to the document-level concurrent tie-break.
+    final lwwChangesByResource = <IriTerm, Set<IriTerm>>{};
 
     // Get all identifiable subjects from both graphs
     final identifiedSubjects =
@@ -272,6 +284,10 @@ class LocalDocumentMerger {
 
         statements.addAll(metadataGraph.statementsToAdd);
         triplesToRemove.addAll(metadataGraph.triplesToRemove);
+
+        // Track LWW changes for per-property change clock emission.
+        _recordLwwChange(lwwChangesByResource, crdtType, subjectTerm, predicate,
+            ownClockEntryIri);
 
         // Record property change using canonical IRI (for identified blank nodes) or IRI
         for (final propertyChangeIri in addedSubject.propertyChangeIris) {
@@ -364,6 +380,10 @@ class LocalDocumentMerger {
         statements.addAll(metadataGraph.statementsToAdd);
         triplesToRemove.addAll(metadataGraph.triplesToRemove);
 
+        // Track LWW changes for per-property change clock emission.
+        _recordLwwChange(lwwChangesByResource, crdtType, subjectTerm, predicate,
+            ownClockEntryIri);
+
         // Record property change using canonical IRI (for identified blank nodes) or IRI
         for (final propertyChangeIri in entry.key.propertyChangeIris) {
           propertyChanges.add(PropertyChange(
@@ -379,11 +399,137 @@ class LocalDocumentMerger {
       }
     }
 
+    // After all property changes are processed: emit per-property change
+    // clocks (sync:PropertyClock) for this save. One record per (resource,
+    // this-installation, this-save) consolidates all LWW properties changed
+    // together. Also clean up overridden entries in pre-existing records
+    // by this installation so the (resource, property, installation)
+    // mapping remains 1:1.
+    final propertyClockNodes = <Node>[];
+    if (ownClockEntryIri != null && lwwChangesByResource.isNotEmpty) {
+      _emitPropertyClocks(
+        documentIri: documentIri,
+        ownClockEntryIri: ownClockEntryIri,
+        clock: clock,
+        lwwChangesByResource: lwwChangesByResource,
+        oldFrameworkGraph: oldFrameworkGraph,
+        triplesToRemove: triplesToRemove,
+        propertyClockNodes: propertyClockNodes,
+      );
+    }
+
     return CrdtMetadataResult(
       statements: statements,
       triplesToRemove: triplesToRemove,
       propertyChanges: propertyChanges,
+      propertyClocks: propertyClockNodes,
     );
+  }
+
+  /// Records a (resource, predicate) pair when the change uses the
+  /// LWW-Register CRDT. Per-property change clocks are only emitted for
+  /// LWW properties — other CRDT types resolve concurrency via their own
+  /// semantics (OR-Set additions, FWW first-write, etc.) and do not need
+  /// the per-property HLC.
+  void _recordLwwChange(
+    Map<IriTerm, Set<IriTerm>> lwwChangesByResource,
+    CrdtType crdtType,
+    RdfSubject subjectTerm,
+    RdfPredicate predicate,
+    IriTerm? ownClockEntryIri,
+  ) {
+    if (ownClockEntryIri == null) return;
+    if (crdtType.iri != Algo.LWW_Register) return;
+    if (subjectTerm is! IriTerm || predicate is! IriTerm) return;
+    lwwChangesByResource
+        .putIfAbsent(subjectTerm, () => <IriTerm>{})
+        .add(predicate);
+  }
+
+  /// Emits `sync:PropertyClock` records for the current save and removes
+  /// overridden entries from pre-existing records by this installation.
+  ///
+  /// Per-(resource, this-installation) invariant: across all PropertyClock
+  /// records on this document, each property appears under this
+  /// installation in exactly one record (the most recent save that
+  /// touched it). When a previous record is left with no properties for
+  /// this installation, the entire record is removed.
+  void _emitPropertyClocks({
+    required IriTerm documentIri,
+    required IriTerm ownClockEntryIri,
+    required CurrentCrdtClock clock,
+    required Map<IriTerm, Set<IriTerm>> lwwChangesByResource,
+    required RdfGraph? oldFrameworkGraph,
+    required Set<Triple> triplesToRemove,
+    required List<Node> propertyClockNodes,
+  }) {
+    // Clean up overridden properties in existing PropertyClock records by
+    // this installation. An "override" is a property already present in
+    // changedProperty for (resource, ownClockEntryIri) that this save is
+    // now changing again — its entry must move to the new record.
+    if (oldFrameworkGraph != null) {
+      final existing = parsePropertyClocks(documentIri, oldFrameworkGraph);
+      for (final pc in existing) {
+        if (pc.clockEntryIri != ownClockEntryIri) continue;
+        final overridingProps = lwwChangesByResource[pc.resource];
+        if (overridingProps == null) continue;
+        final removed = pc.changedProperties.intersection(overridingProps);
+        if (removed.isEmpty) continue;
+        final remaining = pc.changedProperties.difference(overridingProps);
+        if (remaining.isEmpty) {
+          // No properties left → drop the entire record (and the doc-level
+          // sync:hasPropertyClock pointer).
+          triplesToRemove
+              .addAll(oldFrameworkGraph.findTriples(subject: pc.clockIri));
+          triplesToRemove.add(Triple(documentIri,
+              SyncPropertyClock.hasPropertyClock, pc.clockIri));
+        } else {
+          // Remove only the overridden changedProperty triples.
+          for (final p in removed) {
+            triplesToRemove
+                .add(Triple(pc.clockIri, SyncPropertyClock.changedProperty, p));
+          }
+        }
+      }
+    }
+
+    // Emit one new PropertyClock per resource for this save.
+    for (final entry in lwwChangesByResource.entries) {
+      final resource = entry.key;
+      final props = entry.value;
+      if (props.isEmpty) continue;
+      // Deterministic IRI: hash of (resource, installation clock entry,
+      // logical time) using a stable blank-node label. Different
+      // installations / different saves yield different IRIs. Same data →
+      // same IRI on every node, so the remote merger naturally dedupes.
+      final self = BlankNodeTerm();
+      final clockIri = _iriGenerator.generateSimpleCanonicalIri(
+        documentIri,
+        'pc',
+        [
+          Triple(self, SyncPropertyClock.resource, resource),
+          Triple(self, CrdtClockEntry.hasClockEntry, ownClockEntryIri),
+          Triple(self, CrdtClockEntry.logicalTime,
+              LiteralTerm.integer(clock.logicalTime)),
+        ],
+        labels: {self: 'self'},
+      );
+      final pc = PropertyClock(
+        clockIri: clockIri,
+        resource: resource,
+        clockEntryIri: ownClockEntryIri,
+        logicalTime: clock.logicalTime,
+        physicalTime: clock.physicalTime,
+        changedProperties: props,
+      );
+      // Build the Node: subject = clockIri, graph = pc triples (excluding
+      // the document-level `<doc> sync:hasPropertyClock <pc>` pointer,
+      // which the caller adds via addNodes()).
+      final pcGraphTriples =
+          pc.toTriples(documentIri).where((t) => t.subject == clockIri);
+      propertyClockNodes
+          .add((clockIri, RdfGraph.fromTriples(pcGraphTriples.toList())));
+    }
   }
 
   /// Get CRDT algorithm for this property - but note
@@ -564,6 +710,12 @@ Iterable<Triple> _findSubjectTombstonesToRemove(
 /// Result of CRDT metadata generation containing metadata triples and property changes
 class CrdtMetadataResult {
   final List<Node> statements;
+
+  /// Per-property change clock records (`sync:PropertyClock`) generated
+  /// for LWW-Register properties touched during this save. Linked to the
+  /// document via `sync:hasPropertyClock`.
+  final List<Node> propertyClocks;
+
   final Set<Triple> triplesToRemove;
   final List<PropertyChange> propertyChanges;
 
@@ -571,5 +723,6 @@ class CrdtMetadataResult {
     required this.statements,
     required this.triplesToRemove,
     required this.propertyChanges,
+    this.propertyClocks = const [],
   });
 }

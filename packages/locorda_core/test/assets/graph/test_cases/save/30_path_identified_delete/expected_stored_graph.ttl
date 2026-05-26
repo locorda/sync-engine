@@ -17,6 +17,7 @@
     cm:createdAt "2024-01-15T10:00:00.000Z"^^xsd:dateTime;
     cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
     idx:belongsToIndexShard ns1:shard;
+    sync:hasPropertyClock ns2:lcrd-pc-md5-6b22778a751b7c45b18133ab9a5e0140;
     sync:hasStatement ns2:lcrd-stmt-md5-51c0aaf901155741b2ced37f43344f1d, ns2:lcrd-stmt-md5-3a9a8156aeb17b893d5b245115a50844;
     sync:isGovernedBy (mappings:category-v1);
     sync:managedResourceType pn:NotesCategory .
@@ -26,6 +27,13 @@ ns2:it a pn:NotesCategory;
 
 ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 2;
     cm:physicalTime 1705327200000 .
+
+ns2:lcrd-pc-md5-6b22778a751b7c45b18133ab9a5e0140 a sync:PropertyClock;
+    cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
+    cm:logicalTime 2;
+    cm:physicalTime 1705327200000;
+    sync:changedProperty pn:displaySettings;
+    sync:resource ns2:it .
 
 ns2:lcrd-stmt-md5-3a9a8156aeb17b893d5b245115a50844 rdf:object ns2:lcrd-ibn-md5-b0f8d3e19516fa4e6e86d0f500bf3066;
     rdf:predicate sync:hasBlankNodeMapping;

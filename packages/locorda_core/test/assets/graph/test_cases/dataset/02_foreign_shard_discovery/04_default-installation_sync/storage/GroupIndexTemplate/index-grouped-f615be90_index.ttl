@@ -18,6 +18,7 @@
     cm:hasClockEntry ns2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
     idx:belongsToIndexShard ns3:shard;
     sync:hasBlankNodeMapping ns2:lcrd-ibn-md5-0e2e62f39058d6a36c15403da8b04bf4, ns2:lcrd-ibn-md5-5d84696d93d4f139706797c44247a19d;
+    sync:hasPropertyClock ns2:lcrd-pc-md5-e08b92ce529125e33c1251ecf21c569b;
     sync:isGovernedBy (mappings:index-v1);
     sync:managedResourceType idx:GroupIndexTemplate .
 
@@ -39,6 +40,13 @@ ns2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
 ns2:lcrd-ibn-md5-0e2e62f39058d6a36c15403da8b04bf4 sync:blankNode _:b1 .
 
 ns2:lcrd-ibn-md5-5d84696d93d4f139706797c44247a19d sync:blankNode _:b2 .
+
+ns2:lcrd-pc-md5-e08b92ce529125e33c1251ecf21c569b a sync:PropertyClock;
+    cm:hasClockEntry ns2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:logicalTime 1;
+    cm:physicalTime 1704075000006;
+    sync:changedProperty rdf:type;
+    sync:resource ns2:groupIndexTemplate .
 
 _:b1 a idx:GroupingRule;
     idx:property _:b2 .

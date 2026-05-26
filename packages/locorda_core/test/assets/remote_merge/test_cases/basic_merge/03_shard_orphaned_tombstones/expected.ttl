@@ -10,7 +10,7 @@
 
 <> a sync:ManagedDocument;
     foaf:primaryTopic :shard;
-    cm:clockHash "30cc1e606db3527b04647588052c382e";
+    cm:clockHash "22e53c5cecf4bd71e34c25da7ea98491";
     cm:createdAt "2024-01-01T00:00:00.001Z"^^xsd:dateTime;
     cm:hasClockEntry :lcrd-clk-md5-inst-a, :lcrd-clk-md5-inst-b;
     sync:hasStatement :lcrd-stmt-md5-triple-tombstone, :lcrd-stmt-md5-resource-tombstone;
@@ -20,7 +20,7 @@
 :lcrd-clk-md5-inst-a cm:logicalTime 2;
     cm:physicalTime 1704067200001 .
 
-:lcrd-clk-md5-inst-b cm:logicalTime 2;
+:lcrd-clk-md5-inst-b cm:logicalTime 1;
     cm:physicalTime 1704070800001 .
 
 :lcrd-stmt-md5-resource-tombstone rdf:subject :entry-dead;

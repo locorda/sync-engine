@@ -17,6 +17,7 @@
     cm:clockHash "a8fac811c794c1a869170b71f18c2871";
     cm:createdAt "2024-01-01T00:00:00.014Z"^^xsd:dateTime;
     cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    sync:hasPropertyClock :lcrd-pc-md5-85ddb031a778cd41d731cd45fd6f4d4e, :lcrd-pc-md5-af992a69dbbe5c4db90b6e1db6387bab;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
@@ -25,6 +26,20 @@
 
 :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
     cm:physicalTime 1704074700003 .
+
+:lcrd-pc-md5-85ddb031a778cd41d731cd45fd6f4d4e a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 1;
+    cm:physicalTime 0;
+    sync:changedProperty rdf:type;
+    sync:resource :shard .
+
+:lcrd-pc-md5-af992a69dbbe5c4db90b6e1db6387bab a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 2;
+    cm:physicalTime 1704074700003;
+    sync:changedProperty cm:clockHash;
+    sync:resource :entry-9c4afa0052fbf6bf78d6bcab30280fa8 .
 
 :shard a idx:Shard;
     idx:containsEntry :entry-9c4afa0052fbf6bf78d6bcab30280fa8;
@@ -37,6 +52,7 @@ GRAPH <https://example.com/groupindex/index-grouped-e093655c%2Fgroups%2F20_ad221
       cm:createdAt "2024-01-01T02:00:00.004Z"^^xsd:dateTime;
       cm:hasClockEntry ige1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       idx:belongsToIndexShard :shard;
+      sync:hasPropertyClock ige1:lcrd-pc-md5-31e9ec6cda25eef585c0efaa5935059d;
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:GroupIndex .
   ige1:index a idx:GroupIndex;
@@ -44,4 +60,10 @@ GRAPH <https://example.com/groupindex/index-grouped-e093655c%2Fgroups%2F20_ad221
       idx:hasShard igemm10v:shard .
   ige1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
       cm:physicalTime 1704074400003 .
+  ige1:lcrd-pc-md5-31e9ec6cda25eef585c0efaa5935059d a sync:PropertyClock;
+      cm:hasClockEntry ige1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      cm:logicalTime 1;
+      cm:physicalTime 1704074400003;
+      sync:changedProperty rdf:type;
+      sync:resource ige1:index .
 }

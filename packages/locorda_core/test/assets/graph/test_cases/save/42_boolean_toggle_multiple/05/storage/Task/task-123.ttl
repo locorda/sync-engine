@@ -17,6 +17,7 @@
     cm:createdAt "2024-01-01T01:00:00.001Z"^^xsd:dateTime;
     cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
     idx:belongsToIndexShard ns1:shard;
+    sync:hasPropertyClock ns2:lcrd-pc-md5-8c027ad0b7dc82ab59de6da5dc2abfc5, ns2:lcrd-pc-md5-886e49f56a96b55718a8772c47895125;
     sync:isGovernedBy (mappings:task-v1);
     sync:managedResourceType task:Task .
 
@@ -27,3 +28,17 @@ ns2:it a task:Task;
 
 ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 5;
     cm:physicalTime 1704085200000 .
+
+ns2:lcrd-pc-md5-886e49f56a96b55718a8772c47895125 a sync:PropertyClock;
+    cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
+    cm:logicalTime 5;
+    cm:physicalTime 1704085200000;
+    sync:changedProperty task:completed;
+    sync:resource ns2:it .
+
+ns2:lcrd-pc-md5-8c027ad0b7dc82ab59de6da5dc2abfc5 a sync:PropertyClock;
+    cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
+    cm:logicalTime 1;
+    cm:physicalTime 1704070800000;
+    sync:changedProperty rdf:type, schema:name;
+    sync:resource ns2:it .

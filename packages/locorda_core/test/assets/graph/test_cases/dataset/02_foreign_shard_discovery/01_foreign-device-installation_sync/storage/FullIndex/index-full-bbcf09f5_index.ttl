@@ -17,6 +17,7 @@
     cm:hasClockEntry ns2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
     idx:belongsToIndexShard ns3:shard;
     sync:hasBlankNodeMapping ns2:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b;
+    sync:hasPropertyClock ns2:lcrd-pc-md5-e17648f5fe49e49d44b30c950c9536e9;
     sync:isGovernedBy (mappings:index-v1);
     sync:managedResourceType idx:FullIndex .
 
@@ -38,6 +39,13 @@ ns2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
     cm:physicalTime 1704067200001 .
 
 ns2:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b sync:blankNode _:b1 .
+
+ns2:lcrd-pc-md5-e17648f5fe49e49d44b30c950c9536e9 a sync:PropertyClock;
+    cm:hasClockEntry ns2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 1;
+    cm:physicalTime 1704067200001;
+    sync:changedProperty rdf:type, idx:populationState;
+    sync:resource ns2:index .
 
 _:b1 a idx:IndexedProperty;
     idx:readBy ns1:installation;

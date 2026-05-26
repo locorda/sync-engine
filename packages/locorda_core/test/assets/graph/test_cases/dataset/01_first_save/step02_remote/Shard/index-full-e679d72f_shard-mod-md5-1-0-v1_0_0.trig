@@ -17,6 +17,7 @@
     cm:clockHash "c5eb9ab43c2a165bcae70146dde8ad69";
     cm:createdAt "2024-01-01T00:00:00.006Z"^^xsd:dateTime;
     cm:hasClockEntry :lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
+    sync:hasPropertyClock :lcrd-pc-md5-c6fd4e16470aefc064fd9e7da41c824d, :lcrd-pc-md5-6998187b7c767b0cff34dda5ea8d38b6;
     sync:isGovernedBy (mappings2:shard-v1);
     sync:managedResourceType idx:Shard .
 
@@ -25,6 +26,20 @@
 
 :lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 2;
     cm:physicalTime 1704074400004 .
+
+:lcrd-pc-md5-6998187b7c767b0cff34dda5ea8d38b6 a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
+    cm:logicalTime 2;
+    cm:physicalTime 1704074400004;
+    sync:changedProperty cm:clockHash;
+    sync:resource :entry-fae00fbce5441feea6c3fa52203ccb88 .
+
+:lcrd-pc-md5-c6fd4e16470aefc064fd9e7da41c824d a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
+    cm:logicalTime 1;
+    cm:physicalTime 0;
+    sync:changedProperty rdf:type;
+    sync:resource :shard .
 
 :shard a idx:Shard;
     idx:containsEntry :entry-fae00fbce5441feea6c3fa52203ccb88;
@@ -37,6 +52,7 @@ GRAPH </recipe/recipe123> {
       cm:createdAt "2024-01-01T02:00:00.001Z"^^xsd:dateTime;
       cm:hasClockEntry </recipe/recipe123#lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54>;
       idx:belongsToIndexShard :shard;
+      sync:hasPropertyClock </recipe/recipe123#lcrd-pc-md5-0a4dc0289aaea98c28a987d9788ef967>;
       sync:isGovernedBy (mappings1:recipe-v1);
       sync:managedResourceType schema:Recipe .
   </recipe/recipe123#it> a schema:Recipe;
@@ -44,4 +60,10 @@ GRAPH </recipe/recipe123> {
       schema:recipeIngredient "flour", "sugar", "cocoa" .
   </recipe/recipe123#lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54> cm:logicalTime 1;
       cm:physicalTime 1704074400000 .
+  </recipe/recipe123#lcrd-pc-md5-0a4dc0289aaea98c28a987d9788ef967> a sync:PropertyClock;
+      cm:hasClockEntry </recipe/recipe123#lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54>;
+      cm:logicalTime 1;
+      cm:physicalTime 1704074400000;
+      sync:changedProperty rdf:type, schema:name;
+      sync:resource </recipe/recipe123#it> .
 }

@@ -16,6 +16,7 @@
     cm:clockHash "75624161520a0034adee8d01eaab8a68";
     cm:createdAt "2024-01-01T02:10:00.011Z"^^xsd:dateTime, "2024-01-01T00:00:00.014Z"^^xsd:dateTime;
     cm:hasClockEntry ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    sync:hasPropertyClock ns4:lcrd-pc-md5-3b9ae05b91f030e3967f607638e24382, ns4:lcrd-pc-md5-85ddb031a778cd41d731cd45fd6f4d4e, ns4:lcrd-pc-md5-af992a69dbbe5c4db90b6e1db6387bab, ns4:lcrd-pc-md5-59e2a486c471f8ad7fcb417331914bc1;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
@@ -30,6 +31,34 @@ ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
 
 ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
     cm:physicalTime 1704088800002 .
+
+ns4:lcrd-pc-md5-3b9ae05b91f030e3967f607638e24382 a sync:PropertyClock;
+    cm:hasClockEntry ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:logicalTime 1;
+    cm:physicalTime 0;
+    sync:changedProperty rdf:type;
+    sync:resource ns4:shard .
+
+ns4:lcrd-pc-md5-59e2a486c471f8ad7fcb417331914bc1 a sync:PropertyClock;
+    cm:hasClockEntry ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:logicalTime 2;
+    cm:physicalTime 1704088800002;
+    sync:changedProperty cm:clockHash;
+    sync:resource ns4:entry-c34a65e8aaabca687ad30dc757ab9ce1 .
+
+ns4:lcrd-pc-md5-85ddb031a778cd41d731cd45fd6f4d4e a sync:PropertyClock;
+    cm:hasClockEntry ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 1;
+    cm:physicalTime 0;
+    sync:changedProperty rdf:type;
+    sync:resource ns4:shard .
+
+ns4:lcrd-pc-md5-af992a69dbbe5c4db90b6e1db6387bab a sync:PropertyClock;
+    cm:hasClockEntry ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 2;
+    cm:physicalTime 1704074700003;
+    sync:changedProperty cm:clockHash;
+    sync:resource ns4:entry-9c4afa0052fbf6bf78d6bcab30280fa8 .
 
 ns4:shard a idx:Shard;
     idx:containsEntry ns4:entry-9c4afa0052fbf6bf78d6bcab30280fa8, ns4:entry-c34a65e8aaabca687ad30dc757ab9ce1;

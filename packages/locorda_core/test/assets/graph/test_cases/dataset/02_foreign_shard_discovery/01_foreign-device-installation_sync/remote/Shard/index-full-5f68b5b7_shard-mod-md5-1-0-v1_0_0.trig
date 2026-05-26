@@ -16,6 +16,7 @@
     cm:clockHash "5014032b826ee0c07d3eec38a25b24bd";
     cm:createdAt "2024-01-01T00:00:00.003Z"^^xsd:dateTime;
     cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    sync:hasPropertyClock :lcrd-pc-md5-0dfb68e601d3a4e3130be608ad12fbc1, :lcrd-pc-md5-95a0a9df5676125afdc75b203268d527;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
@@ -25,6 +26,20 @@
 
 :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
     cm:physicalTime 1704074700005 .
+
+:lcrd-pc-md5-0dfb68e601d3a4e3130be608ad12fbc1 a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 1;
+    cm:physicalTime 0;
+    sync:changedProperty rdf:type;
+    sync:resource :shard .
+
+:lcrd-pc-md5-95a0a9df5676125afdc75b203268d527 a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 2;
+    cm:physicalTime 1704074700005;
+    sync:changedProperty cm:clockHash, idx:indexesClass;
+    sync:resource :entry-1e411ea3d0723c6581c8fe31e69280be .
 
 :shard a idx:Shard;
     idx:containsEntry :entry-1e411ea3d0723c6581c8fe31e69280be;
@@ -38,6 +53,7 @@ GRAPH <https://example.com/groupindextemplate/index-grouped-e093655c%2Findex> {
       cm:hasClockEntry ige:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       idx:belongsToIndexShard :shard;
       sync:hasBlankNodeMapping ige:lcrd-ibn-md5-6463ec91078059cd80e9c4068b39f9ff, ige:lcrd-ibn-md5-161bc2f9cafbc0e9308e262e23c7a0b9;
+      sync:hasPropertyClock ige:lcrd-pc-md5-c2caa89f8cca7229a33fe3f1f063774e;
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:GroupIndexTemplate .
   ige:groupIndexTemplate a idx:GroupIndexTemplate;
@@ -55,6 +71,12 @@ GRAPH <https://example.com/groupindextemplate/index-grouped-e093655c%2Findex> {
       cm:physicalTime 1704067200006 .
   ige:lcrd-ibn-md5-161bc2f9cafbc0e9308e262e23c7a0b9 sync:blankNode _:b4 .
   ige:lcrd-ibn-md5-6463ec91078059cd80e9c4068b39f9ff sync:blankNode _:b3 .
+  ige:lcrd-pc-md5-c2caa89f8cca7229a33fe3f1f063774e a sync:PropertyClock;
+      cm:hasClockEntry ige:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      cm:logicalTime 1;
+      cm:physicalTime 1704067200006;
+      sync:changedProperty rdf:type;
+      sync:resource ige:groupIndexTemplate .
   _:b3 a idx:GroupingRule;
       idx:property _:b4 .
   _:b4 a idx:GroupingRuleProperty;

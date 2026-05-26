@@ -17,6 +17,7 @@
     cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
     idx:belongsToIndexShard ns1:shard;
     sync:hasBlankNodeMapping ns2:lcrd-ibn-md5-74f4d0cc07fa8ce00b8856defa9a0e31, ns2:lcrd-ibn-md5-9110880a000d224b944a75c68db15db9, ns2:lcrd-ibn-md5-6b633c1a88c70726482b0594f2a562b8;
+    sync:hasPropertyClock ns2:lcrd-pc-md5-0a4dc0289aaea98c28a987d9788ef967;
     sync:hasStatement ns2:lcrd-stmt-md5-cd1d2310a69f01b476c46e29bbe76ee3, ns2:lcrd-stmt-md5-5825a174c38216f90a32ec3852c78b6a, ns2:lcrd-stmt-md5-87b9ebf327592f3f6dc856b4d731f06f, ns2:lcrd-stmt-md5-01d451a28460e1b5bc637bc5665303fd;
     sync:isGovernedBy (mappings:recipe-v1);
     sync:managedResourceType schema:Recipe .
@@ -34,6 +35,13 @@ ns2:lcrd-ibn-md5-6b633c1a88c70726482b0594f2a562b8 sync:blankNode _:b3 .
 ns2:lcrd-ibn-md5-74f4d0cc07fa8ce00b8856defa9a0e31 sync:blankNode _:b1 .
 
 ns2:lcrd-ibn-md5-9110880a000d224b944a75c68db15db9 sync:blankNode _:b2 .
+
+ns2:lcrd-pc-md5-0a4dc0289aaea98c28a987d9788ef967 a sync:PropertyClock;
+    cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
+    cm:logicalTime 1;
+    cm:physicalTime 1704067200000;
+    sync:changedProperty rdf:type, schema:name;
+    sync:resource ns2:it .
 
 ns2:lcrd-stmt-md5-01d451a28460e1b5bc637bc5665303fd rdf:object ns2:lcrd-ibn-md5-51dc75a18bbb06dbed4aff41b14f42b2;
     rdf:predicate sync:hasBlankNodeMapping;

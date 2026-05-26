@@ -17,6 +17,7 @@
     cm:createdAt "2024-01-01T04:00:00.004Z"^^xsd:dateTime;
     cm:hasClockEntry ns1:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
     idx:belongsToIndexShard ns4:shard;
+    sync:hasPropertyClock ns1:lcrd-pc-md5-e48728a3ade7c116f332fa4335cf8870;
     sync:isGovernedBy (mappings:index-v1);
     sync:managedResourceType idx:GroupIndex .
 
@@ -26,3 +27,10 @@ ns1:index a idx:GroupIndex;
 
 ns1:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 1;
     cm:physicalTime 1704081600003 .
+
+ns1:lcrd-pc-md5-e48728a3ade7c116f332fa4335cf8870 a sync:PropertyClock;
+    cm:hasClockEntry ns1:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
+    cm:logicalTime 1;
+    cm:physicalTime 1704081600003;
+    sync:changedProperty rdf:type;
+    sync:resource ns1:index .

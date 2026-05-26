@@ -17,6 +17,7 @@
     cm:clockHash "cffc6e578ffc852738518b23b42f74e4";
     cm:createdAt "2024-01-01T02:10:00.003Z"^^xsd:dateTime, "2024-01-01T00:00:00.003Z"^^xsd:dateTime;
     cm:hasClockEntry ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    sync:hasPropertyClock ns4:lcrd-pc-md5-ab764789666d04c8163aaa75fbe582e5, ns4:lcrd-pc-md5-0dfb68e601d3a4e3130be608ad12fbc1, ns4:lcrd-pc-md5-95a0a9df5676125afdc75b203268d527, ns4:lcrd-pc-md5-913d56cdc264d50600d1a355b9f9faf2;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
@@ -33,6 +34,34 @@ ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
 
 ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 2;
     cm:physicalTime 1704075000022 .
+
+ns4:lcrd-pc-md5-0dfb68e601d3a4e3130be608ad12fbc1 a sync:PropertyClock;
+    cm:hasClockEntry ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 1;
+    cm:physicalTime 0;
+    sync:changedProperty rdf:type;
+    sync:resource ns4:shard .
+
+ns4:lcrd-pc-md5-913d56cdc264d50600d1a355b9f9faf2 a sync:PropertyClock;
+    cm:hasClockEntry ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:logicalTime 2;
+    cm:physicalTime 1704075000022;
+    sync:changedProperty cm:clockHash, idx:indexesClass;
+    sync:resource ns4:entry-54d3e307b28129cf784975e808c31ba7 .
+
+ns4:lcrd-pc-md5-95a0a9df5676125afdc75b203268d527 a sync:PropertyClock;
+    cm:hasClockEntry ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 2;
+    cm:physicalTime 1704074700005;
+    sync:changedProperty cm:clockHash, idx:indexesClass;
+    sync:resource ns4:entry-1e411ea3d0723c6581c8fe31e69280be .
+
+ns4:lcrd-pc-md5-ab764789666d04c8163aaa75fbe582e5 a sync:PropertyClock;
+    cm:hasClockEntry ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:logicalTime 1;
+    cm:physicalTime 0;
+    sync:changedProperty rdf:type;
+    sync:resource ns4:shard .
 
 ns4:shard a idx:Shard;
     idx:containsEntry ns4:entry-54d3e307b28129cf784975e808c31ba7, ns4:entry-1e411ea3d0723c6581c8fe31e69280be;

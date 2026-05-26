@@ -23,6 +23,7 @@
     cm:clockHash "f50ec99469b3a1b19547c4d8b69c4cf0";
     cm:createdAt "2024-01-01T00:00:00.000Z"^^xsd:dateTime;
     cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    sync:hasPropertyClock :lcrd-pc-md5-626a60c40cc22f51ad139f3b4acbfbc6, :lcrd-pc-md5-bfa43d1fd2c4773cbe35b8567c633103, :lcrd-pc-md5-528af2ababdec39fc5cf3fa1ec97961d, :lcrd-pc-md5-f734ad4553603bdcba5de2ef7b6d4588, :lcrd-pc-md5-5df976c5aca2d594520a12b13827970e, :lcrd-pc-md5-c2f9bb6191cde75d7afacf2cfccaa10e;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
@@ -49,6 +50,48 @@
 :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 2;
     cm:physicalTime 1704074700001 .
 
+:lcrd-pc-md5-528af2ababdec39fc5cf3fa1ec97961d a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 2;
+    cm:physicalTime 1704074700001;
+    sync:changedProperty cm:clockHash, idx:indexesClass;
+    sync:resource :entry-a68c1c4f5dda5dbf177113200fb133a0 .
+
+:lcrd-pc-md5-5df976c5aca2d594520a12b13827970e a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 2;
+    cm:physicalTime 1704074700001;
+    sync:changedProperty cm:clockHash, idx:indexesClass;
+    sync:resource :entry-6532e1cce2063165cab55f9425c47e0d .
+
+:lcrd-pc-md5-626a60c40cc22f51ad139f3b4acbfbc6 a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 1;
+    cm:physicalTime 0;
+    sync:changedProperty rdf:type;
+    sync:resource :shard .
+
+:lcrd-pc-md5-bfa43d1fd2c4773cbe35b8567c633103 a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 2;
+    cm:physicalTime 1704074700001;
+    sync:changedProperty cm:clockHash, idx:indexesClass;
+    sync:resource :entry-ce394f730640668924968eddf09c01bc .
+
+:lcrd-pc-md5-c2f9bb6191cde75d7afacf2cfccaa10e a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 2;
+    cm:physicalTime 1704074700001;
+    sync:changedProperty cm:clockHash, idx:indexesClass;
+    sync:resource :entry-2e883124d69c377d8daff7f19ee0eaa6 .
+
+:lcrd-pc-md5-f734ad4553603bdcba5de2ef7b6d4588 a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 2;
+    cm:physicalTime 1704074700001;
+    sync:changedProperty cm:clockHash, idx:indexesClass;
+    sync:resource :entry-713129f56a309cabc970f22c7da295cf .
+
 :shard a idx:Shard;
     idx:containsEntry :entry-ce394f730640668924968eddf09c01bc, :entry-a68c1c4f5dda5dbf177113200fb133a0, :entry-713129f56a309cabc970f22c7da295cf, :entry-6532e1cce2063165cab55f9425c47e0d, :entry-2e883124d69c377d8daff7f19ee0eaa6;
     idx:isShardOf ifb:index .
@@ -60,6 +103,7 @@ GRAPH <https://example.com/fullindex/index-full-388036f3%2Findex> {
       cm:createdAt "2024-01-01T00:00:00.013Z"^^xsd:dateTime;
       cm:hasClockEntry if1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       idx:belongsToIndexShard :shard;
+      sync:hasPropertyClock if1:lcrd-pc-md5-085c259cec6284de9677fadda28cb63f;
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:FullIndex .
   if1:index a idx:FullIndex;
@@ -76,6 +120,12 @@ GRAPH <https://example.com/fullindex/index-full-388036f3%2Findex> {
       ] .
   if1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
       cm:physicalTime 1704067200012 .
+  if1:lcrd-pc-md5-085c259cec6284de9677fadda28cb63f a sync:PropertyClock;
+      cm:hasClockEntry if1:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      cm:logicalTime 1;
+      cm:physicalTime 1704067200012;
+      sync:changedProperty rdf:type, idx:populationState;
+      sync:resource if1:index .
 }
 
 GRAPH <https://example.com/fullindex/index-full-5f68b5b7%2Findex> {
@@ -86,6 +136,7 @@ GRAPH <https://example.com/fullindex/index-full-5f68b5b7%2Findex> {
       cm:hasClockEntry if2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       idx:belongsToIndexShard :shard;
       sync:hasBlankNodeMapping if2:lcrd-ibn-md5-f7d7db17ed3c6b875f87c9c8c5e3894f;
+      sync:hasPropertyClock if2:lcrd-pc-md5-3a0a1c0fe82ed0b34cc9d34a23c7d1f4;
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:FullIndex .
   if2:index a idx:FullIndex;
@@ -104,6 +155,12 @@ GRAPH <https://example.com/fullindex/index-full-5f68b5b7%2Findex> {
   if2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
       cm:physicalTime 1704067200004 .
   if2:lcrd-ibn-md5-f7d7db17ed3c6b875f87c9c8c5e3894f sync:blankNode _:b5 .
+  if2:lcrd-pc-md5-3a0a1c0fe82ed0b34cc9d34a23c7d1f4 a sync:PropertyClock;
+      cm:hasClockEntry if2:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      cm:logicalTime 1;
+      cm:physicalTime 1704067200004;
+      sync:changedProperty rdf:type, idx:populationState;
+      sync:resource if2:index .
   _:b5 a idx:IndexedProperty;
       idx:readBy </clientinstallation/foreign-device-installation#installation>;
       idx:trackedProperty idx:indexesClass .
@@ -117,6 +174,7 @@ GRAPH <https://example.com/fullindex/index-full-bbcf09f5%2Findex> {
       cm:hasClockEntry ifb:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       idx:belongsToIndexShard :shard;
       sync:hasBlankNodeMapping ifb:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b;
+      sync:hasPropertyClock ifb:lcrd-pc-md5-e17648f5fe49e49d44b30c950c9536e9;
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:FullIndex .
   ifb:index a idx:FullIndex;
@@ -135,6 +193,12 @@ GRAPH <https://example.com/fullindex/index-full-bbcf09f5%2Findex> {
   ifb:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
       cm:physicalTime 1704067200001 .
   ifb:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b sync:blankNode _:b8 .
+  ifb:lcrd-pc-md5-e17648f5fe49e49d44b30c950c9536e9 a sync:PropertyClock;
+      cm:hasClockEntry ifb:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      cm:logicalTime 1;
+      cm:physicalTime 1704067200001;
+      sync:changedProperty rdf:type, idx:populationState;
+      sync:resource ifb:index .
   _:b8 a idx:IndexedProperty;
       idx:readBy </clientinstallation/foreign-device-installation#installation>;
       idx:trackedProperty idx:indexesClass .
@@ -148,6 +212,7 @@ GRAPH <https://example.com/fullindex/index-full-d06ec919%2Findex> {
       cm:hasClockEntry ifd:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       idx:belongsToIndexShard :shard;
       sync:hasBlankNodeMapping ifd:lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6;
+      sync:hasPropertyClock ifd:lcrd-pc-md5-3ed30a48961d4b5201f7a35cac763fd8;
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:FullIndex .
   ifd:index a idx:FullIndex;
@@ -166,6 +231,12 @@ GRAPH <https://example.com/fullindex/index-full-d06ec919%2Findex> {
   ifd:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
       cm:physicalTime 1704067200015 .
   ifd:lcrd-ibn-md5-3b2da558f7c6b21875e61233a806d1f6 sync:blankNode _:b11 .
+  ifd:lcrd-pc-md5-3ed30a48961d4b5201f7a35cac763fd8 a sync:PropertyClock;
+      cm:hasClockEntry ifd:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      cm:logicalTime 1;
+      cm:physicalTime 1704067200015;
+      sync:changedProperty rdf:type, idx:populationState;
+      sync:resource ifd:index .
   _:b11 a idx:IndexedProperty;
       idx:readBy </clientinstallation/foreign-device-installation#installation>;
       idx:trackedProperty idx:indexesClass .
@@ -178,6 +249,7 @@ GRAPH <https://example.com/fullindex/index-full-e679d72f%2Findex> {
       cm:createdAt "2024-01-01T00:00:00.010Z"^^xsd:dateTime;
       cm:hasClockEntry ife:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
       idx:belongsToIndexShard :shard;
+      sync:hasPropertyClock ife:lcrd-pc-md5-8925b97beefe2986be92e5723ff85c80;
       sync:isGovernedBy (mappings:index-v1);
       sync:managedResourceType idx:FullIndex .
   ife:index a idx:FullIndex;
@@ -194,4 +266,10 @@ GRAPH <https://example.com/fullindex/index-full-e679d72f%2Findex> {
       ] .
   ife:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
       cm:physicalTime 1704067200009 .
+  ife:lcrd-pc-md5-8925b97beefe2986be92e5723ff85c80 a sync:PropertyClock;
+      cm:hasClockEntry ife:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+      cm:logicalTime 1;
+      cm:physicalTime 1704067200009;
+      sync:changedProperty rdf:type, idx:populationState;
+      sync:resource ife:index .
 }

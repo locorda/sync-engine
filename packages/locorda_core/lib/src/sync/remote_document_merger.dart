@@ -1,4 +1,5 @@
 import 'package:locorda_core/src/crdt/crdt_types.dart';
+import 'package:locorda_core/src/crdt/property_clock.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/hlc_service.dart';
 import 'package:locorda_core/src/mapping/framework_iri_generator.dart';
@@ -132,6 +133,8 @@ class RemoteDocumentMerger {
       localGraph: localGraph,
       remoteGraph: remoteGraph,
       mergeContract: mergeContract,
+      localOGraph: localOGraph,
+      remoteOGraph: remoteOGraph,
     );
 
     return result;
@@ -183,9 +186,11 @@ class RemoteDocumentMerger {
         So how should we handle them here?
         */
     if (subject.type == MergeSubjectType.blankNodeIdentifier ||
-        subject.type == MergeSubjectType.statement) {
-      // Skip blank node identifier and statement subjects - they need to be handled
-      // differently (as part of property merges).
+        subject.type == MergeSubjectType.statement ||
+        subject.type == MergeSubjectType.propertyClock) {
+      // Skip blank node identifier, statement, and property-clock subjects
+      // - they need to be handled differently (as part of property merges,
+      // or via the dedicated property-clock merge channel).
       // Note though, that the clock entries will be merged here like all other subjects
       return MergeResults.empty();
     }
@@ -304,6 +309,8 @@ class RemoteDocumentMerger {
     required RdfGraph localGraph,
     required RdfGraph remoteGraph,
     required MergeContract mergeContract,
+    required OrganizedGraph localOGraph,
+    required OrganizedGraph remoteOGraph,
   }) {
     final allTriples = <Triple>{
       ...mergeResults.mergedTriples
@@ -423,12 +430,36 @@ class RemoteDocumentMerger {
           irrecoverableStatementIris.contains(t.object));
     }
 
+    // Merge per-property change clocks (sync:PropertyClock) across both
+    // sides. Same clockIri → take the version with the larger HLC.
+    // Unique IRIs are preserved as-is. The merged set is then emitted
+    // into the document, replacing whatever previous PropertyClock
+    // triples may have leaked into allTriples.
+    final mergedPropertyClocks = mergePropertyClocks(
+        localOGraph.propertyClocks, remoteOGraph.propertyClocks);
+    // Strip any existing sync:hasPropertyClock pointers and PropertyClock
+    // subgraphs that may have been carried over via subject-level merges.
+    final pcSubjectIris = {
+      ...localOGraph.propertyClockSubjectIris,
+      ...remoteOGraph.propertyClockSubjectIris,
+    };
+    allTriples.removeWhere((t) =>
+        (t.subject == documentIri &&
+            t.predicate == SyncPropertyClock.hasPropertyClock) ||
+        pcSubjectIris.contains(t.subject));
+
+    final propertyClockTriples = <Triple>[];
+    for (final pc in mergedPropertyClocks) {
+      propertyClockTriples.addAll(pc.toTriples(documentIri));
+    }
+
     final mergedGraph = RdfGraph.fromTriples(allTriples).withTriples([
       Triple(documentIri, SyncManagedDocument.crdtClockHash,
           LiteralTerm(mergedClock.hash)),
       ...identifiedBlankNodeTriples,
       ...statementTriplesList,
       ...orphanedStatementTriples,
+      ...propertyClockTriples,
     ]);
 
     return MergeResult(

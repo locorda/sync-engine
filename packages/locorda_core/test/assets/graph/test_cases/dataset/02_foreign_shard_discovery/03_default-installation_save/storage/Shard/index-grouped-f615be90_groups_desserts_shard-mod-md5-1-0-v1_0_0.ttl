@@ -14,11 +14,19 @@
     cm:clockHash "2607471d57ac0f5a8beb47a589649f8e";
     cm:createdAt "2024-01-01T06:00:00.002Z"^^xsd:dateTime;
     cm:hasClockEntry ns2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    sync:hasPropertyClock ns2:lcrd-pc-md5-b44e264ef475e9f0021a48d99010fcf5;
     sync:isGovernedBy (mappings:shard-v1);
     sync:managedResourceType idx:Shard .
 
 ns2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
     cm:physicalTime 0 .
+
+ns2:lcrd-pc-md5-b44e264ef475e9f0021a48d99010fcf5 a sync:PropertyClock;
+    cm:hasClockEntry ns2:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f;
+    cm:logicalTime 1;
+    cm:physicalTime 0;
+    sync:changedProperty rdf:type;
+    sync:resource ns2:shard .
 
 ns2:shard a idx:Shard;
     idx:isShardOf ns1:index .

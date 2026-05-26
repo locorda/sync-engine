@@ -16,6 +16,7 @@
     cm:createdAt "2024-01-01T00:00:00.000Z"^^xsd:dateTime;
     cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
     idx:belongsToIndexShard ns1:shard;
+    sync:hasPropertyClock ns2:lcrd-pc-md5-aa64663d0441537b0cadf76fb4e5b79b;
     sync:isGovernedBy (mappings:recipe-v1);
     sync:managedResourceType schema:Recipe .
 
@@ -25,3 +26,10 @@ ns2:it a schema:Recipe;
 
 ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 2;
     cm:physicalTime 1704074400000 .
+
+ns2:lcrd-pc-md5-aa64663d0441537b0cadf76fb4e5b79b a sync:PropertyClock;
+    cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
+    cm:logicalTime 2;
+    cm:physicalTime 1704074400000;
+    sync:changedProperty schema:name;
+    sync:resource ns2:it .

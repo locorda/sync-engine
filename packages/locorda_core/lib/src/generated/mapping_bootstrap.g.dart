@@ -48,7 +48,7 @@ const List<String> bootstrapMappings = [
 
 <> a mc:DocumentMapping;
    # Define class mappings for framework components
-   mc:classMapping ( <#managed-document> <#statement> <#resource-statement> <#blank-node-mapping> ) ;
+   mc:classMapping ( <#managed-document> <#statement> <#resource-statement> <#blank-node-mapping> <#property-clock> ) ;
    # Define predicate mappings for framework components (ordered list)
    mc:predicateMapping ( <#clock-mappings> <#lifecycle-mappings> <#traversal-boundaries> <#standard-rdf> ) .
 
@@ -61,7 +61,11 @@ const List<String> bootstrapMappings = [
      [ mc:predicate sync:managedResourceType; algo:mergeWith algo:Immutable ],  # Resource type for discovery
      [ mc:predicate idx:belongsToIndexShard; algo:mergeWith algo:OR_Set ],  # Index shard memberships
      [ mc:predicate sync:hasStatement; algo:mergeWith algo:OR_Set ],
-     [ mc:predicate sync:hasBlankNodeMapping; algo:mergeWith algo:OR_Set ] .  # Blank node canonical mappings
+     [ mc:predicate sync:hasBlankNodeMapping; algo:mergeWith algo:OR_Set ],
+     # PropertyClock records are merged via a dedicated channel in the
+     # remote merger; OR_Set keeps the loader happy and preserves all
+     # distinct PCs for the deduplicating mergePropertyClocks() call.
+     [ mc:predicate sync:hasPropertyClock; algo:mergeWith algo:OR_Set ] .  # Blank node canonical mappings
 
 # Merge contract for RDF reified statements used as tombstones in CRDT sets
 <#statement> a mc:ClassMapping;
@@ -95,6 +99,23 @@ const List<String> bootstrapMappings = [
      # The blank node reference itself uses LWW and stops traversal into app data
      [ mc:predicate sync:blankNode; algo:mergeWith algo:LWW_Register; mc:stopTraversal true ] .
 
+# Merge contract for PropertyClock — per-property change clocks (LWW scoping).
+#
+# Each `sync:PropertyClock` node records (resource, properties[]) modified
+# together at a specific HLC by a specific installation. PropertyClock
+# nodes are processed by a dedicated channel in the remote merger
+# (`mergePropertyClocks`) instead of property-level CRDT merges; the
+# rules below are only used to keep the merge-contract loader happy and
+# to declare traversal boundaries.
+<#property-clock> a mc:ClassMapping;
+   mc:appliesToClass sync:PropertyClock;
+   mc:rule
+     [ mc:predicate sync:resource; algo:mergeWith algo:Immutable; mc:stopTraversal true ],
+     [ mc:predicate sync:changedProperty; algo:mergeWith algo:OR_Set; mc:stopTraversal true ],
+     [ mc:predicate crdt:hasClockEntry; algo:mergeWith algo:Immutable ],
+     [ mc:predicate crdt:logicalTime; algo:mergeWith algo:Immutable ],
+     [ mc:predicate crdt:physicalTime; algo:mergeWith algo:Immutable ] .
+
 # Standard mapping for lifecycle semantics across all CRDT contexts
 <#lifecycle-mappings> a mc:PredicateMapping;
    mc:rule
@@ -112,7 +133,14 @@ const List<String> bootstrapMappings = [
      # Standard RDF reification predicates create traversal boundaries
      [ mc:predicate rdf:subject; mc:stopTraversal true ],
      [ mc:predicate rdf:predicate; mc:stopTraversal true ],
-     [ mc:predicate rdf:object; mc:stopTraversal true ] .
+     [ mc:predicate rdf:object; mc:stopTraversal true ],
+     # PropertyClock back-pointers must NOT pull the referenced app
+     # resource into the framework subgraph during splitDocument.
+     # Without this, traversal goes documentIri → sync:hasPropertyClock
+     # → <pc-iri> → sync:resource → :it, dragging the whole app
+     # resource into framework metadata and emptying out appGraph.
+     [ mc:predicate sync:resource; mc:stopTraversal true ],
+     [ mc:predicate sync:changedProperty; mc:stopTraversal true ] .
 
 <#standard-rdf> a mc:PredicateMapping;
  mc:rule

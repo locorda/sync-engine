@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:locorda_core/src/crdt/property_clock.dart';
 import 'package:locorda_core/src/vocab/generated/_index.dart';
 import 'package:locorda_core/src/mapping/framework_iri_generator.dart';
 import 'package:locorda_core/src/mapping/identified_blank_node_builder.dart';
@@ -419,27 +420,32 @@ class LwwRegister implements CrdtType {
 
     final comparison = mergeContext.clockComparison;
 
-    // TODO: what about augmenting the CRDT merge with the property change metadata from DB for more precise merges?
+    final Iterable<Triple>? localTriples = subject.local != null
+        ? local.fullGraph
+            .findTriples(subject: subject.local!, predicate: predicate)
+        : null;
+    final Iterable<Triple>? remoteTriples = subject.remote != null
+        ? remote.fullGraph
+            .findTriples(subject: subject.remote!, predicate: predicate)
+        : null;
+
     final Iterable<Triple>? winningTriples = switch (comparison) {
-      ClockComparison.localDominates => subject.local != null
-          ? local.fullGraph
-              .findTriples(subject: subject.local!, predicate: predicate)
-          : null,
-      ClockComparison.remoteDominates => subject.remote != null
-          ? remote.fullGraph
-              .findTriples(subject: subject.remote!, predicate: predicate)
-          : null,
-      ClockComparison.concurrent => _physicalTimeTieBreakTriples(
-          subject.local != null
-              ? local.fullGraph
-                  .findTriples(subject: subject.local!, predicate: predicate)
-              : null,
-          subject.remote != null
-              ? remote.fullGraph
-                  .findTriples(subject: subject.remote!, predicate: predicate)
-              : null,
-          local.maxPhysicalTime,
-          remote.maxPhysicalTime,
+      ClockComparison.localDominates => localTriples,
+      ClockComparison.remoteDominates => remoteTriples,
+      // Per CRDT spec section 2.3: concurrent operations use physical time
+      // for "most recent wins" semantics. To avoid silent data loss on
+      // **uncontested** LWW properties (only one side changed them), scope
+      // the tie-break to each property using per-property change clocks
+      // (sync:PropertyClock) emitted at save time. Falls back to the
+      // document-level physical-time tie-break when no per-property
+      // metadata is available (e.g. legacy documents).
+      ClockComparison.concurrent => _concurrentLwwTriples(
+          subject,
+          predicate,
+          local,
+          remote,
+          localTriples,
+          remoteTriples,
         ),
       ClockComparison.identical => _handleIdenticalClocksTriples(
           subject.local,
@@ -471,6 +477,76 @@ class LwwRegister implements CrdtType {
       mergedStatements: {},
     );
   }
+}
+
+/// Per-property concurrent merge for LWW-Register.
+///
+/// Resolves each LWW property independently by consulting the
+/// per-property change clocks (`sync:PropertyClock`) emitted at save time.
+/// When only one side has changed the property since the divergence point,
+/// that side wins unconditionally — preventing the prior document-level
+/// physical-time tie-break from silently reverting uncontested properties
+/// (see issue: "LwwRegister concurrent merge uses document-level clock,
+/// causing silent data loss on uncontested LWW properties").
+///
+/// Falls back to the document-level `maxPhysicalTime` tie-break when no
+/// per-property metadata is available (legacy documents or blank-node
+/// subjects).
+Iterable<Triple>? _concurrentLwwTriples(
+  MergeSubject subject,
+  RdfPredicate predicate,
+  OrganizedGraph local,
+  OrganizedGraph remote,
+  Iterable<Triple>? localTriples,
+  Iterable<Triple>? remoteTriples,
+) {
+  // Per-property metadata can only key by IRI subjects/predicates.
+  final subjectTerm = subject.subject;
+  if (subjectTerm is! IriTerm || predicate is! IriTerm) {
+    return _physicalTimeTieBreakTriples(
+      localTriples,
+      remoteTriples,
+      local.maxPhysicalTime,
+      remote.maxPhysicalTime,
+    );
+  }
+
+  final localLatest =
+      latestClockFor(local.propertyClocks, subjectTerm, predicate);
+  final remoteLatest =
+      latestClockFor(remote.propertyClocks, subjectTerm, predicate);
+
+  if (localLatest == null && remoteLatest == null) {
+    // Backwards compatibility: documents written before per-property
+    // clocks were introduced fall back to the document-level tie-break.
+    return _physicalTimeTieBreakTriples(
+      localTriples,
+      remoteTriples,
+      local.maxPhysicalTime,
+      remote.maxPhysicalTime,
+    );
+  }
+  // Only one side has a recorded change for this property → that side wins
+  // unconditionally. This is the key fix: an uncontested property no longer
+  // gets dragged along by another property's tie-break.
+  if (localLatest == null) return remoteTriples;
+  if (remoteLatest == null) return localTriples;
+
+  // Both sides recorded a change. Per CRDT spec section 2.3, concurrent
+  // operations use physical time as the tie-break (HLC "most recent
+  // wins"). Logical-time comparisons across different installations are
+  // not meaningful in the concurrent case, so use physical time directly.
+  // Same physical time → deterministic tie-break by clock-entry IRI.
+  if (localLatest.physicalTime != remoteLatest.physicalTime) {
+    return localLatest.physicalTime > remoteLatest.physicalTime
+        ? localTriples
+        : remoteTriples;
+  }
+  return localLatest.clockEntryIri.value
+              .compareTo(remoteLatest.clockEntryIri.value) >=
+          0
+      ? localTriples
+      : remoteTriples;
 }
 
 Set<Triple> addInlineTriples(

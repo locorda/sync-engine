@@ -15,6 +15,7 @@
     cm:createdAt "2024-01-01T00:00:00.019Z"^^xsd:dateTime;
     cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
     idx:belongsToIndexShard if3mm10v:shard;
+    sync:hasPropertyClock :lcrd-pc-md5-501d1294fe9e3beb8702036bff2abc4f;
     sync:isGovernedBy (mappings:client-installation-v1);
     sync:managedResourceType cm:ClientInstallation .
 
@@ -25,3 +26,10 @@
 
 :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
     cm:physicalTime 1704067200018 .
+
+:lcrd-pc-md5-501d1294fe9e3beb8702036bff2abc4f a sync:PropertyClock;
+    cm:hasClockEntry :lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
+    cm:logicalTime 1;
+    cm:physicalTime 1704067200018;
+    sync:changedProperty rdf:type, cm:lastActiveAt, cm:maxInactivityPeriod;
+    sync:resource :installation .

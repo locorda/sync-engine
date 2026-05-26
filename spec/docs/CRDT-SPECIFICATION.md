@@ -117,43 +117,86 @@ The framework uses Hybrid Logical Clocks because they provide the best combinati
 
 Used for properties where only the most recent value matters.
 
+**Per-property change tracking (`sync:PropertyClock`):**
+
+LWW conflicts must be resolved **per property**, not per document. If the
+two replicas' document clocks are concurrent but only one side actually
+modified a given property, that side must win unconditionally — the
+other side has no opinion. Falling back to a document-level
+`maxPhysicalTime` for every LWW property would silently revert
+uncontested values (see issue: "LwwRegister concurrent merge uses
+document-level clock, causing silent data loss").
+
+To make this possible without per-property HLC bloat, every local save
+emits **at most one** `sync:PropertyClock` record per installation for
+the LWW properties touched in that save:
+
+```turtle
+<doc> sync:hasPropertyClock <doc#lcrd-pc-...> .
+
+<doc#lcrd-pc-...> a sync:PropertyClock ;
+    cm:hasClockEntry <doc#lcrd-clk-...> ;
+    cm:logicalTime  N ;
+    cm:physicalTime T ;
+    sync:resource           <doc#it> ;       # which app subject
+    sync:changedProperty    schema:name, schema:description .  # which LWW props
+```
+
+A single PropertyClock node is shared by **all** LWW properties touched
+in the same save (one HLC, many predicates), keeping the per-write
+overhead at one extra blank-node-style fragment regardless of how many
+properties changed. Successive saves by the same installation overwrite
+the prior `changedProperty` triples for each (resource, property) so
+each (resource, property, installation) collapses to exactly one PC.
+
 **Merge Algorithm:**
+
 When merging two versions of a resource, A and B:
 ```
-merge(A, B):
-  // Handle empty/missing clocks first
+merge(A, B, property):
+  // Handle empty/missing clocks first (initialization edge case)
   if A.logicalClock is empty and B.logicalClock is empty:
     if A.value == B.value:
       return A.value  // No conflict
-    else:
-      // Both sides uninitialized but different values - local wins deterministically
-      return A.value  // A is local, B is remote
-  elif A.logicalClock is empty:
-    return B.value  // Empty clock always loses
-  elif B.logicalClock is empty:
-    return A.value  // Empty clock always loses
-    
+    return A.value    // A is local, B is remote — local wins deterministically
+  elif A.logicalClock is empty: return B.value
+  elif B.logicalClock is empty: return A.value
+
   // Normal CRDT comparison for non-empty clocks
   if A.logicalClock dominates B.logicalClock:
     return A.value
   elif B.logicalClock dominates A.logicalClock:
     return B.value
-  else: // Concurrent change - logical clocks don't establish dominance
-    // Use physical time for intuitive tie-breaking
-    A_maxPhysicalTime = max(A.physicalTime[i] for all installations i)
-    B_maxPhysicalTime = max(B.physicalTime[i] for all installations i)
-    if A_maxPhysicalTime > B_maxPhysicalTime:
-        return A.value
-    elif B_maxPhysicalTime > A_maxPhysicalTime:
-        return B.value
-    else: // Same physical time - fallback to installation ID
-        A_maxInstallation = installation with max physical time in A
-        B_maxInstallation = installation with max physical time in B
-        if A_maxInstallation > B_maxInstallation:
-            return A.value
-        else:
-            return B.value
+  else: // Concurrent — scope the tie-break to actually contested writes
+    A_lastChange = latestPropertyClockFor(A, property)  // newest (resource, property) PC in A
+    B_lastChange = latestPropertyClockFor(B, property)  // newest (resource, property) PC in B
+
+    if A_lastChange == null and B_lastChange == null:
+      // Neither side recorded a change — fall back to document-level
+      // maxPhysicalTime (legacy behaviour, used only for docs written
+      // before per-property change tracking existed).
+      return documentLevelTieBreak(A, B)
+    elif A_lastChange == null:
+      return B.value  // Only B touched it after divergence — B wins unconditionally
+    elif B_lastChange == null:
+      return A.value  // Only A touched it after divergence — A wins unconditionally
+
+    // Both sides changed it — physical-time tie-break, identical to
+    // the document-level rule but now correctly scoped.
+    if A_lastChange.physicalTime > B_lastChange.physicalTime: return A.value
+    if B_lastChange.physicalTime > A_lastChange.physicalTime: return B.value
+    // Equal physical times — deterministic fallback by clock-entry IRI
+    return lexicographicMax(A_lastChange.clockEntryIri,
+                            B_lastChange.clockEntryIri) wins
 ```
+
+**`latestPropertyClockFor` picks the PC with the largest `physicalTime`,
+not the largest HLC.** Logical-time comparisons across distinct
+installations are not meaningful in the concurrent case — different
+installations grow their logical clocks independently. The
+`_emitPropertyClocks` step on the writing side guarantees there is at
+most one PC per (resource, property, installation), so this "largest
+physicalTime" is always a well-defined "most recent change by anyone".
 
 **Example:**
 ```turtle
