@@ -47,8 +47,9 @@ void main() async {
 /// - Auth bridge to sync credentials from main thread to worker
 /// - Returns a fully configured sync system
 Future<Locorda> initializeLocorda() async {
-  final bool isSolidAuthSupportedPlatform =
-      kIsWeb || (defaultTargetPlatform != TargetPlatform.linux && defaultTargetPlatform != TargetPlatform.windows);
+  final bool isSolidAuthSupportedPlatform = kIsWeb ||
+      (defaultTargetPlatform != TargetPlatform.linux &&
+          defaultTargetPlatform != TargetPlatform.windows);
 
   const gdriveClientId = String.fromEnvironment('GDRIVE_CLIENT_ID');
   const gdriveClientKey = String.fromEnvironment('GDRIVE_CLIENT_KEY');
@@ -74,29 +75,28 @@ Future<Locorda> initializeLocorda() async {
       ],
       if (isSolidAuthSupportedPlatform)
         await SolidMainIntegration.create(
-          // SECURITY: This example demonstrates secure redirect URI configuration.
-          // - appUrlScheme provides secure custom URI scheme for mobile/macOS
-          // - frontendRedirectUrl provides secure HTTPS redirect for web
-          // See spec/docs/SECURITY.md for detailed security considerations
-          oidcClientId: '${appVocab.appBaseUri}/auth/client-config.json',
-          appUrlScheme: 'dev.locorda.example.personalNotesApp',
-          frontendRedirectUrl: Uri.parse(
-              '${kDebugMode ? 'http://localhost:3815' : appVocab.appBaseUri}/redirect.html'),
-          config: SolidConfig()),
-      
-        await GDriveMainIntegration.create(
-            clientId: gdriveClientId.isNotEmpty ? gdriveClientId : null,
-            clientKey: gdriveClientKey.isNotEmpty ? gdriveClientKey : null,
-            // Most apps will use `GDriveConfig(` default constructor which uses
-            // appDataFolder (private storage, no visible folder in user's Drive)
-            // For demonstration, we use visibleFolder mode which creates a folder in user's Drive
-            // so you can easily inspect the created files.
-            // In production, appDataFolder is recommended for better security and user experience.
-            config: GDriveConfig.visibleFolder(
-                appFolderName: 'Personal Notes App Data',
-                localMirrorConfig:
-                    GDriveLocalMirrorConfig(enabled: false /* !kIsWeb*/),
-                layout: SingleFile(contentType: trig.primaryMimeType))),
+            // SECURITY: This example demonstrates secure redirect URI configuration.
+            // - appUrlScheme provides secure custom URI scheme for mobile/macOS
+            // - frontendRedirectUrl provides secure HTTPS redirect for web
+            // See spec/docs/SECURITY.md for detailed security considerations
+            oidcClientId: '${appVocab.appBaseUri}/auth/client-config.json',
+            appUrlScheme: 'dev.locorda.example.personalNotesApp',
+            frontendRedirectUrl: Uri.parse(
+                '${kDebugMode ? 'http://localhost:3815' : appVocab.appBaseUri}/redirect.html'),
+            config: SolidConfig()),
+      await GDriveMainIntegration.create(
+          clientId: gdriveClientId.isNotEmpty ? gdriveClientId : null,
+          clientKey: gdriveClientKey.isNotEmpty ? gdriveClientKey : null,
+          // Most apps will use `GDriveConfig(` default constructor which uses
+          // appDataFolder (private storage, no visible folder in user's Drive)
+          // For demonstration, we use visibleFolder mode which creates a folder in user's Drive
+          // so you can easily inspect the created files.
+          // In production, appDataFolder is recommended for better security and user experience.
+          config: GDriveConfig.visibleFolder(
+              appFolderName: 'Personal Notes App Data',
+              localMirrorConfig:
+                  GDriveLocalMirrorConfig(enabled: false /* !kIsWeb*/),
+              layout: SingleFile(contentType: trig.primaryMimeType))),
     ],
 
     // Provide storage - web options are sent to worker via connector

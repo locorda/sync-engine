@@ -15,7 +15,8 @@ void main() {
       SharedPreferences.setMockInitialValues({});
     });
 
-    test('initializes with no persisted credentials as unauthenticated', () async {
+    test('initializes with no persisted credentials as unauthenticated',
+        () async {
       final auth = await DesktopGDriveAuth.create(
         clientId: clientId,
         clientKey: clientKey,
@@ -30,7 +31,10 @@ void main() {
     });
 
     test('loads persisted credentials on creation', () async {
-      final expiry = DateTime.now().toUtc().add(const Duration(hours: 1)).toIso8601String();
+      final expiry = DateTime.now()
+          .toUtc()
+          .add(const Duration(hours: 1))
+          .toIso8601String();
       SharedPreferences.setMockInitialValues({
         'flutter.locorda_gdrive_access_token': 'fake_access_token',
         'flutter.locorda_gdrive_refresh_token': 'fake_refresh_token',
@@ -54,7 +58,10 @@ void main() {
     });
 
     test('logout clears credentials', () async {
-      final expiry = DateTime.now().toUtc().add(const Duration(hours: 1)).toIso8601String();
+      final expiry = DateTime.now()
+          .toUtc()
+          .add(const Duration(hours: 1))
+          .toIso8601String();
       SharedPreferences.setMockInitialValues({
         'flutter.locorda_gdrive_access_token': 'fake_access_token',
         'flutter.locorda_gdrive_refresh_token': 'fake_refresh_token',
@@ -84,7 +91,8 @@ void main() {
       expect(prefs.containsKey('locorda_gdrive_user_id'), isFalse);
     });
 
-    test('GDriveAuth.create returns DesktopGDriveAuth on desktop platform', () async {
+    test('GDriveAuth.create returns DesktopGDriveAuth on desktop platform',
+        () async {
       // Since our test runs on the host OS (Linux), GDriveAuth.create should return a DesktopGDriveAuth
       final auth = await GDriveAuth.create(
         clientId: clientId,

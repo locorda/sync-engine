@@ -31,8 +31,7 @@ Future<GDriveAuth> createGDriveAuth({
   required List<String> scopes,
 }) async {
   if (_loopbackAuthValue ||
-      (!_loopbackAuthDefined &&
-          (Platform.isWindows || Platform.isLinux))) {
+      (!_loopbackAuthDefined && (Platform.isWindows || Platform.isLinux))) {
     return DesktopGDriveAuth.create(
       clientId: clientId,
       clientKey: clientKey,

@@ -18,7 +18,7 @@ final _log = Logger('DesktopGDriveAuth');
 class DesktopGDriveAuth implements GDriveAuth {
   final String? _clientId;
   final String? _clientKey;
-  
+
   @override
   final List<String> scopes;
 
@@ -80,10 +80,12 @@ class DesktopGDriveAuth implements GDriveAuth {
           scopesList,
         );
         _isAuthenticatedNotifier.value = true;
-        _log.info('Successfully loaded persisted GDrive credentials for user: $_userId');
+        _log.info(
+            'Successfully loaded persisted GDrive credentials for user: $_userId');
       }
     } catch (e, stackTrace) {
-      _log.warning('Failed to load persisted GDrive credentials', e, stackTrace);
+      _log.warning(
+          'Failed to load persisted GDrive credentials', e, stackTrace);
     }
   }
 
@@ -93,11 +95,13 @@ class DesktopGDriveAuth implements GDriveAuth {
       await prefs.setString(_kAccessTokenKey, credentials.accessToken.data);
       if (credentials.refreshToken != null) {
         await prefs.setString(_kRefreshTokenKey, credentials.refreshToken!);
-      } else if (credentials == _credentials && _credentials?.refreshToken != null) {
+      } else if (credentials == _credentials &&
+          _credentials?.refreshToken != null) {
         // Carry forward the old refresh token if the new credentials did not contain one
         await prefs.setString(_kRefreshTokenKey, _credentials!.refreshToken!);
       }
-      await prefs.setString(_kExpiryKey, credentials.accessToken.expiry.toIso8601String());
+      await prefs.setString(
+          _kExpiryKey, credentials.accessToken.expiry.toIso8601String());
       await prefs.setStringList(_kScopesKey, credentials.scopes);
       if (_userId != null) {
         await prefs.setString(_kUserIdKey, _userId!);
@@ -158,7 +162,8 @@ class DesktopGDriveAuth implements GDriveAuth {
             await launchUrl(uri);
           } else {
             _log.warning('Could not launch user consent URL: $url');
-            throw Exception('Could not launch default web browser for OAuth2 consent.');
+            throw Exception(
+                'Could not launch default web browser for OAuth2 consent.');
           }
         },
       );
@@ -179,9 +184,11 @@ class DesktopGDriveAuth implements GDriveAuth {
         final userInfo = await oauth2.userinfo.get();
         _userId = userInfo.id;
         _userDisplayName = userInfo.name;
-        _log.info('User authenticated successfully: $_userId ($_userDisplayName)');
+        _log.info(
+            'User authenticated successfully: $_userId ($_userDisplayName)');
       } catch (e, stackTrace) {
-        _log.warning('Failed to fetch user info, using defaults', e, stackTrace);
+        _log.warning(
+            'Failed to fetch user info, using defaults', e, stackTrace);
         _userId = 'unknown_user';
         _userDisplayName = 'Google User';
       }
@@ -240,7 +247,8 @@ class DesktopGDriveAuth implements GDriveAuth {
       throw StateError('Cannot refresh token: clientId or clientKey is null.');
     }
 
-    _log.info('Refreshing desktop access token${reason != null ? ': $reason' : ''}');
+    _log.info(
+        'Refreshing desktop access token${reason != null ? ': $reason' : ''}');
 
     try {
       final newCredentials = await refreshCredentials(
