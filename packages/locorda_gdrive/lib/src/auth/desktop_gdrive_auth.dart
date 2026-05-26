@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:googleapis/oauth2/v2.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
@@ -164,6 +164,13 @@ class DesktopGDriveAuth implements GDriveAuth {
       );
 
       _credentials = credentials;
+
+      // Force Flutter to reschedule rendering after the browser window stole
+      // focus during the OAuth consent flow. On Linux/GTK the rendering
+      // surface can end up in an inconsistent state (resulting in black
+      // frames) after an external window interaction; this nudge is a no-op
+      // when rendering is already active.
+      WidgetsBinding.instance.ensureVisualUpdate();
 
       // Fetch user info (ID and display name)
       try {
