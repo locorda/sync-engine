@@ -13,7 +13,7 @@
 
 <> a mc:DocumentMapping;
    # Define class mappings for framework components
-   mc:classMapping ( <#managed-document> <#statement> <#resource-statement> <#blank-node-mapping> ) ;
+   mc:classMapping ( <#managed-document> <#statement> <#property-statement> <#resource-statement> <#versioned-clock> <#blank-node-mapping> ) ;
    # Define predicate mappings for framework components (ordered list)
    mc:predicateMapping ( <#clock-mappings> <#lifecycle-mappings> <#traversal-boundaries> <#standard-rdf> ) .
 
@@ -53,6 +53,29 @@
      # The resource identifier is the immutable identity of this statement
      [ mc:predicate sync:resource; algo:mergeWith algo:LWW_Register; mc:isIdentifying true ] .
 
+# Merge contract for PropertyStatement used for property-level framework metadata
+# (e.g. last-write versioned clock for LWW/FWW conflict resolution).
+# Identified by the (sync:resource, sync:property) pair.
+<#property-statement> a mc:ClassMapping;
+   mc:appliesToClass sync:PropertyStatement;
+   mc:rule
+     [ mc:predicate sync:resource; algo:mergeWith algo:Immutable; mc:isIdentifying true ],
+     [ mc:predicate sync:property; algo:mergeWith algo:Immutable; mc:isIdentifying true ],
+     # crdt:vclk is the last-write versioned-clock pointer. LWW here is a placeholder:
+     # the merger uses vector-clock domination on the referenced crdt:VersionedClock,
+     # falling back to max(physicalTime) within the vclk on 'concurrent'.
+     [ mc:predicate crdt:vclk; algo:mergeWith algo:LWW_Register ] .
+
+# Merge contract for VersionedClock - immutable, content-addressed HLC snapshot.
+# Its IRI is a hash over the contained (installationIri, logicalTime) pairs, so
+# value-identical vclks share an IRI and are automatically deduplicated.
+<#versioned-clock> a mc:ClassMapping;
+   mc:appliesToClass crdt:VersionedClock;
+   mc:rule
+     # The contained clock entries are part of the content-addressed identity:
+     # no path identification needed for the embedded blank nodes.
+     [ mc:predicate crdt:hasClockEntry; algo:mergeWith algo:Immutable; mc:disableBlankNodePathIdentification true ] .
+
 # Merge contract for BlankNodeMapping - framework-reserved fragments for identified blank nodes
 <#blank-node-mapping> a mc:ClassMapping;
    mc:appliesToClass sync:BlankNodeMapping;
@@ -77,7 +100,13 @@
      # Standard RDF reification predicates create traversal boundaries
      [ mc:predicate rdf:subject; mc:stopTraversal true ],
      [ mc:predicate rdf:predicate; mc:stopTraversal true ],
-     [ mc:predicate rdf:object; mc:stopTraversal true ] .
+     [ mc:predicate rdf:object; mc:stopTraversal true ],
+     # PropertyStatement identifiers create traversal boundaries (same role as rdf:subject/predicate)
+     [ mc:predicate sync:resource; mc:stopTraversal true ],
+     [ mc:predicate sync:property; mc:stopTraversal true ],
+     # Versioned-clock references and their entries stay on the framework side
+     [ mc:predicate crdt:vclk; mc:stopTraversal true ],
+     [ mc:predicate crdt:hasClockEntry; mc:stopTraversal true ] .
 
 <#standard-rdf> a mc:PredicateMapping;
  mc:rule

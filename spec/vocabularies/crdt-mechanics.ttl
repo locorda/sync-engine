@@ -21,6 +21,10 @@ crdt:ClientInstallation a rdfs:Class;
     rdfs:label "Client Installation";
     rdfs:comment "A unique installation of a CRDT-enabled application, providing traceability and identity for Hybrid Logical Clock entries across the distributed system." .
 
+crdt:VersionedClock a rdfs:Class;
+    rdfs:label "Versioned Clock";
+    rdfs:comment "An immutable, content-addressed snapshot of a Hybrid Logical Clock at the moment of a specific write or merge event. Used by property- and value-level CRDT bookkeeping (e.g. via crdt:vclk on sync:PropertyStatement or rdf:Statement) to record 'when this happened' in a way that supports full vector-clock comparison (equal / dominates / dominated / concurrent). The IRI is derived as a hash over the contained (installationIri, logicalTime) pairs, sorted by installationIri; crdt:physicalTime is carried on the contained clock entries as a tie-break annotation but is NOT part of the hash (consistent with crdt:clockHash). Identical content ⇒ identical IRI ⇒ automatic deduplication across the document." .
+
 # --- Hybrid Logical Clock Properties ---
 
 crdt:hasClockEntry a rdf:Property;
@@ -52,6 +56,11 @@ crdt:clockHash a rdf:Property;
     rdfs:comment "A pre-calculated, lightweight hash of the resource's full Hybrid Logical Clock, used for efficient change detection in indices. Hash includes only the logical time component (causality state), excluding physical time (which is merely an annotation for tie-breaking). Domain is kept general (rdfs:Resource) to allow usage in various contexts including idx:ShardEntry instances.";
     rdfs:domain rdfs:Resource;
     rdfs:range xsd:string .
+
+crdt:vclk a rdf:Property;
+    rdfs:label "versioned clock";
+    rdfs:comment "Attaches a versioned-clock snapshot (crdt:VersionedClock) to a framework metadata node such as a sync:PropertyStatement (last write of a property) or an rdf:Statement (add event of a multi-value element). Concurrent-write resolution compares the referenced vclks via vector-clock semantics (equal / dominates / dominated / concurrent); ties on 'concurrent' are broken by max(crdt:physicalTime) across the vclk's clock entries.";
+    rdfs:range crdt:VersionedClock .
 
 # --- Installation Management Properties ---
 
