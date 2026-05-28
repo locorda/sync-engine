@@ -40,7 +40,7 @@
 # Standard mapping for predicates of Hybrid Logical Clock entries (fragment-identified nodes)  
 <#clock-mappings> a mc:PredicateMapping;
    mc:rule
-     [ mc:predicate crdt:installationId; algo:mergeWith algo:OR_Set],
+     [ mc:predicate crdt:installationIri; algo:mergeWith algo:OR_Set],
      [ mc:predicate crdt:hasClockEntry; algo:mergeWith algo:OR_Set ],
      [ mc:predicate crdt:clockHash; algo:mergeWith algo:LWW_Register ],
      [ mc:predicate crdt:logicalTime; algo:mergeWith algo:G_Register ],
