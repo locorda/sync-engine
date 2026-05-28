@@ -161,7 +161,7 @@ class TaskRepository {
   /// Like save(), the actual removal from _tasks happens via onDelete callback.
   /// This ensures deletions from any source are handled consistently.
   Future<void> delete(String id) async {
-    await _syncEngine.deleteDocument<Task>(id);
+    await _syncEngine.delete<Task>(id);
     // ↓ onDelete callback will be triggered ↓
     // ↓ which removes from _tasks and notifies listeners ↓
   }
