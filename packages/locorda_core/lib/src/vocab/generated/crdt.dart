@@ -36,6 +36,14 @@ class Crdt {
     'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClientInstallation',
   );
 
+  /// IRI for crdt:VersionedClock
+  ///
+  /// An immutable, content-addressed snapshot of a Hybrid Logical Clock at the moment of a specific write or merge event. Used by property- and value-level CRDT bookkeeping (e.g. via crdt:vclk on sync:PropertyStatement or rdf:Statement) to record 'when this happened' in a way that supports full vector-clock comparison (equal / dominates / dominated / concurrent). Each contained entry is anchored to the document's existing crdt:ClockEntry via crdt:forClockEntry (identity anchor) and carries its own crdt:logicalTime / crdt:physicalTime as frozen snapshot values — the referenced ClockEntry may have advanced since this snapshot was taken. The VersionedClock IRI is derived as a hash over the contained (forClockEntry, logicalTime) pairs, sorted by forClockEntry; crdt:physicalTime is carried per entry as a tie-break annotation but is NOT part of the hash (consistent with crdt:clockHash). Identical content ⇒ identical IRI ⇒ automatic deduplication across the document.
+  ///
+  static const VersionedClock = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#VersionedClock',
+  );
+
   /// IRI for crdt:hasClockEntry [Expects: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClockEntry]
   ///
   /// Links a resource to a IRI resource representing a single entry in its Hybrid Logical Clock (HLC). Each entry tracks both logical time (causality) and physical time (for intuitive tie-breaking) for one installation.
@@ -48,12 +56,22 @@ class Crdt {
 
   /// IRI for crdt:installationIri [Expects: http://www.w3.org/2000/01/rdf-schema#Resource]
   ///
-  /// IRI for a client installation within a Hybrid Logical Clock entry.
+  /// IRI for a client installation within a Hybrid Logical Clock entry. NOTE: usage is currently OPTIONAL and not written or read by the framework — installation identity is conveyed via the deterministic crdt:ClockEntry fragment (lcrd-clk-md5-<hash(installationLocalId)>). The property is retained in the vocabulary for future extension (e.g. enabling cross-document installation discovery) and may be populated by applications that need it.
   ///
   /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClockEntry
   ///
   static const installationIri = IriTerm(
     'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#installationIri',
+  );
+
+  /// IRI for crdt:forClockEntry [Expects: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClockEntry]
+  ///
+  /// Identity anchor on a crdt:VersionedClock entry, referencing the crdt:ClockEntry this snapshot pertains to. The snapshot's own crdt:logicalTime / crdt:physicalTime are authoritative frozen values; the referenced ClockEntry may have advanced since this snapshot was taken. Used as the per-entry key for vector-clock comparison and as the only entry-identifying component of the VersionedClock content hash.
+  ///
+  /// Can be used on all classes in this vocabulary
+  ///
+  static const forClockEntry = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#forClockEntry',
   );
 
   /// IRI for crdt:logicalTime [Expects: http://www.w3.org/2001/XMLSchema#long]
@@ -84,6 +102,16 @@ class Crdt {
   ///
   static const clockHash = IriTerm(
     'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#clockHash',
+  );
+
+  /// IRI for crdt:vclk [Expects: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#VersionedClock]
+  ///
+  /// Attaches a versioned-clock snapshot (crdt:VersionedClock) to a framework metadata node such as a sync:PropertyStatement (last write of a property) or an rdf:Statement (add event of a multi-value element). Concurrent-write resolution compares the referenced vclks via vector-clock semantics (equal / dominates / dominated / concurrent); ties on 'concurrent' are broken by max(crdt:physicalTime) across the vclk's clock entries.
+  ///
+  /// Can be used on all classes in this vocabulary
+  ///
+  static const vclk = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#vclk',
   );
 
   /// IRI for crdt:belongsToUser [Expects: http://www.w3.org/2000/01/rdf-schema#Resource]

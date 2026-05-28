@@ -7,25 +7,25 @@
 
 import 'package:locorda_rdf_core/core.dart';
 
-/// ClientInstallation class from Crdt vocabulary
+/// VersionedClock class from Crdt vocabulary
 ///
-/// A unique installation of a CRDT-enabled application, providing traceability and identity for Hybrid Logical Clock entries across the distributed system.
+/// An immutable, content-addressed snapshot of a Hybrid Logical Clock at the moment of a specific write or merge event. Used by property- and value-level CRDT bookkeeping (e.g. via crdt:vclk on sync:PropertyStatement or rdf:Statement) to record 'when this happened' in a way that supports full vector-clock comparison (equal / dominates / dominated / concurrent). Each contained entry is anchored to the document's existing crdt:ClockEntry via crdt:forClockEntry (identity anchor) and carries its own crdt:logicalTime / crdt:physicalTime as frozen snapshot values — the referenced ClockEntry may have advanced since this snapshot was taken. The VersionedClock IRI is derived as a hash over the contained (forClockEntry, logicalTime) pairs, sorted by forClockEntry; crdt:physicalTime is carried per entry as a tie-break annotation but is NOT part of the hash (consistent with crdt:clockHash). Identical content ⇒ identical IRI ⇒ automatic deduplication across the document.
 ///
 /// Inherits from:
 /// - Resource (http://www.w3.org/2000/01/rdf-schema#Resource)
 ///
-/// This class provides access to all properties that can be used with ClientInstallation.
-/// [Class Reference](https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClientInstallation)
+/// This class provides access to all properties that can be used with VersionedClock.
+/// [Class Reference](https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#VersionedClock)
 ///
 /// [Vocabulary Reference](https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#)
-class CrdtClientInstallation {
+class CrdtVersionedClock {
   // Private constructor prevents instantiation
-  const CrdtClientInstallation._();
+  const CrdtVersionedClock._();
 
-  /// IRI term for the ClientInstallation class
+  /// IRI term for the VersionedClock class
   /// Use this to specify that a resource is of this type.
   static const classIri = IriTerm(
-    'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClientInstallation',
+    'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#VersionedClock',
   );
 
   /// hasClockEntry [Expects: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClockEntry]
@@ -68,26 +68,6 @@ class CrdtClientInstallation {
     'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#vclk',
   );
 
-  /// belongsToUser [Expects: http://www.w3.org/2000/01/rdf-schema#Resource]
-  ///
-  /// Links an installation to the user identity that owns it. In Solid contexts, this would be a WebID; in other contexts, this could be any user identifier.
-  ///
-  /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClientInstallation
-  ///
-  static const belongsToUser = IriTerm(
-    'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#belongsToUser',
-  );
-
-  /// applicationId [Expects: http://www.w3.org/2000/01/rdf-schema#Resource]
-  ///
-  /// The unique identifier for the application that created this installation. In Solid contexts, this would be the OIDC Client ID; in other contexts, this could be any application identifier.
-  ///
-  /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClientInstallation
-  ///
-  static const applicationId = IriTerm(
-    'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#applicationId',
-  );
-
   /// createdAt [Expects: http://www.w3.org/2001/XMLSchema#dateTime]
   ///
   /// Framework-managed timestamp marking when a document or installation was created/recreated. Uses OR-Set semantics to support recreation scenarios and solve zombie deletion problems. Combined with crdt:deletedAt using temporal ordering: document is deleted if max(deletedAt) > max(createdAt). Framework automatically adds creation timestamps during document creation.
@@ -96,26 +76,6 @@ class CrdtClientInstallation {
   ///
   static const createdAt = IriTerm(
     'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#createdAt',
-  );
-
-  /// lastActiveAt [Expects: http://www.w3.org/2001/XMLSchema#dateTime]
-  ///
-  /// Timestamp of the last activity from this installation. Updated collaboratively by other installations to track dormancy.
-  ///
-  /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClientInstallation
-  ///
-  static const lastActiveAt = IriTerm(
-    'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#lastActiveAt',
-  );
-
-  /// maxInactivityPeriod [Expects: http://www.w3.org/2001/XMLSchema#duration]
-  ///
-  /// Duration after which this installation should be considered for tombstoning if no activity is detected. Expressed as ISO 8601 duration (e.g., 'P6M' for 6 months). If not specified, uses framework default.
-  ///
-  /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClientInstallation
-  ///
-  static const maxInactivityPeriod = IriTerm(
-    'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#maxInactivityPeriod',
   );
 
   /// deletedAt [Expects: http://www.w3.org/2001/XMLSchema#dateTime]
@@ -324,26 +284,6 @@ class CrdtClientInstallation {
   ///
   static const idxIsShardOf = IriTerm(
     'https://w3id.org/solid-crdt-sync/vocab/idx#isShardOf',
-  );
-
-  /// belongsToWebID from solidsync vocabulary [Expects: http://www.w3.org/2000/01/rdf-schema#Resource]
-  ///
-  /// Solid-specific interpretation of crdt:belongsToUser. Links an installation to the Solid WebID that owns it. This is a semantic alias that clarifies the user identity type in Solid contexts.
-  ///
-  /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClientInstallation
-  ///
-  static const solidsyncBelongsToWebID = IriTerm(
-    'https://w3id.org/solid-crdt-sync/vocab/solid#belongsToWebID',
-  );
-
-  /// solidOidcClientId from solidsync vocabulary [Expects: http://www.w3.org/2000/01/rdf-schema#Resource]
-  ///
-  /// Solid-specific interpretation of crdt:applicationId. The OIDC Client ID as registered with the Solid identity provider. This is a semantic alias that clarifies the application identifier type in Solid contexts.
-  ///
-  /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClientInstallation
-  ///
-  static const solidsyncSolidOidcClientId = IriTerm(
-    'https://w3id.org/solid-crdt-sync/vocab/solid#solidOidcClientId',
   );
 
   /// isGovernedBy from sync vocabulary [Expects: http://www.w3.org/1999/02/22-rdf-syntax-ns#List]

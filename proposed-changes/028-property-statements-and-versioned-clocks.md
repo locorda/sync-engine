@@ -107,23 +107,39 @@ currently empty.
 
 ### Versioned Clock (`crdt:VersionedClock`)
 
-A `VersionedClock` is an **immutable, content-addressed HLC snapshot**:
+A `VersionedClock` is an **immutable, content-addressed HLC snapshot**.
+Each entry is anchored to the document's existing `crdt:ClockEntry` IRI
+via `crdt:forClockEntry` (identity anchor) and carries its own frozen
+`logicalTime` / `physicalTime` values. The referenced `ClockEntry` may
+advance after the snapshot is taken — the snapshot keeps the values it
+was created with.
 
 ```turtle
 <#lcrd-vclk-md5-…> a crdt:VersionedClock ;
     crdt:hasClockEntry
-        [ a crdt:ClockEntry ;
-          crdt:installationIri <…/installations/A#it> ;
+        [ crdt:forClockEntry <#lcrd-clk-md5-aaa> ;
           crdt:logicalTime 7 ;
-          crdt:physicalTime "2025-..."^^xsd:dateTime ] ,
-        [ a crdt:ClockEntry ;
-          crdt:installationIri <…/installations/B#it> ;
+          crdt:physicalTime 1704074700001 ] ,
+        [ crdt:forClockEntry <#lcrd-clk-md5-bbb> ;
           crdt:logicalTime 3 ;
-          crdt:physicalTime "2025-..."^^xsd:dateTime ] .
+          crdt:physicalTime 1704074700050 ] .
 ```
 
-**Hash input**: canonical N-Quads over `(installationIri, logicalTime)`
-pairs sorted by `installationIri`. `physicalTime` is **annotation only**
+**Why `crdt:forClockEntry` instead of `crdt:installationIri` as the
+identity anchor?** The framework currently does not write
+`crdt:installationIri` onto its `ClockEntry` nodes — installation
+identity is conveyed purely through the deterministic
+`lcrd-clk-md5-<hash(installationLocalId)>` IRI fragment, which is
+content-addressed, stable across local and remote storage, and
+identical on every installation that sees the entry. Using the
+`ClockEntry` IRI as the anchor therefore needs no additional triples
+in the existing HLC representation and stays semantically equivalent
+to an installation-keyed vector clock. `crdt:installationIri` remains
+optional in the vocabulary for future cross-document discovery use
+cases.
+
+**Hash input**: canonical N-Quads over `(forClockEntry, logicalTime)`
+pairs sorted by `forClockEntry`. `physicalTime` is **annotation only**
 and excluded from the hash — consistent with `crdt:clockHash`, and
 necessary because physical time is observer-dependent (clock skew, machine
 speed) and would otherwise produce divergent IRIs for the same logical
@@ -169,7 +185,7 @@ case compareVectorClocks(local_vclk, remote_vclk) of
     Equal           -> values agree (no-op)
     Concurrent      -> tie-break by max(physicalTime) across the two
                        vclks; on physical-time tie, fall back to a
-                       deterministic rule (installationIri ordering)
+                       deterministic rule (forClockEntry ordering)
 ```
 
 This applies symmetrically to:

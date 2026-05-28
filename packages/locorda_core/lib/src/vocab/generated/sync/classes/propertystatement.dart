@@ -7,25 +7,25 @@
 
 import 'package:locorda_rdf_core/core.dart';
 
-/// IdentificationGraph class from Sync vocabulary
+/// PropertyStatement class from Sync vocabulary
 ///
-/// Internal temporary graph structure used during canonical fragment generation for identified blank nodes. Contains only identifying properties and parent relationships. Never persisted in documents.
+/// A statement carrying framework metadata about a (resource, property) pair within a managed document. Distinct from rdf:Statement, which identifies a specific (subject, predicate, object) triple: a PropertyStatement scopes to the property as a whole. Used by property-level CRDT bookkeeping such as the last-write versioned clock (crdt:vclk) for LWW/FWW conflict resolution. Identified by the (sync:resource, sync:property) pair.
 ///
 /// Inherits from:
 /// - Resource (http://www.w3.org/2000/01/rdf-schema#Resource)
 ///
-/// This class provides access to all properties that can be used with IdentificationGraph.
-/// [Class Reference](https://w3id.org/solid-crdt-sync/vocab/sync#IdentificationGraph)
+/// This class provides access to all properties that can be used with PropertyStatement.
+/// [Class Reference](https://w3id.org/solid-crdt-sync/vocab/sync#PropertyStatement)
 ///
 /// [Vocabulary Reference](https://w3id.org/solid-crdt-sync/vocab/sync#)
-class SyncIdentificationGraph {
+class SyncPropertyStatement {
   // Private constructor prevents instantiation
-  const SyncIdentificationGraph._();
+  const SyncPropertyStatement._();
 
-  /// IRI term for the IdentificationGraph class
+  /// IRI term for the PropertyStatement class
   /// Use this to specify that a resource is of this type.
   static const classIri = IriTerm(
-    'https://w3id.org/solid-crdt-sync/vocab/sync#IdentificationGraph',
+    'https://w3id.org/solid-crdt-sync/vocab/sync#PropertyStatement',
   );
 
   /// isGovernedBy [Expects: http://www.w3.org/1999/02/22-rdf-syntax-ns#List]
@@ -58,24 +58,14 @@ class SyncIdentificationGraph {
     'https://w3id.org/solid-crdt-sync/vocab/sync#resource',
   );
 
-  /// parent
+  /// property [Expects: http://www.w3.org/1999/02/22-rdf-syntax-ns#Property]
   ///
-  /// Links an identified blank node to its parent resource within an identification graph during canonical fragment computation.
+  /// The RDF property that a sync:PropertyStatement refers to. Together with sync:resource it identifies the (resource, property) pair the framework metadata is about.
   ///
-  /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/sync#IdentificationGraph
+  /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/sync#PropertyStatement
   ///
-  static const parent = IriTerm(
-    'https://w3id.org/solid-crdt-sync/vocab/sync#parent',
-  );
-
-  /// parentProperty [Expects: http://www.w3.org/1999/02/22-rdf-syntax-ns#Property]
-  ///
-  /// The property IRI connecting the parent resource to this path-identified blank node. Used in identification graphs to represent the property path for path-based canonical IRI generation.
-  ///
-  /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/sync#IdentificationGraph
-  ///
-  static const parentProperty = IriTerm(
-    'https://w3id.org/solid-crdt-sync/vocab/sync#parentProperty',
+  static const property = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/sync#property',
   );
 
   /// type from rdf vocabulary [Expects: http://www.w3.org/2000/01/rdf-schema#Class]

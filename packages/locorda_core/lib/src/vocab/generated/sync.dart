@@ -36,6 +36,14 @@ class Sync {
     'https://w3id.org/solid-crdt-sync/vocab/sync#ResourceStatement',
   );
 
+  /// IRI for sync:PropertyStatement
+  ///
+  /// A statement carrying framework metadata about a (resource, property) pair within a managed document. Distinct from rdf:Statement, which identifies a specific (subject, predicate, object) triple: a PropertyStatement scopes to the property as a whole. Used by property-level CRDT bookkeeping such as the last-write versioned clock (crdt:vclk) for LWW/FWW conflict resolution. Identified by the (sync:resource, sync:property) pair.
+  ///
+  static const PropertyStatement = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/sync#PropertyStatement',
+  );
+
   /// IRI for sync:BlankNodeMapping
   ///
   /// Represents a mapping between a canonical fragment identifier and a blank node in the document. Used for stable references to identified blank nodes across serialization boundaries.
@@ -80,9 +88,9 @@ class Sync {
     'https://w3id.org/solid-crdt-sync/vocab/sync#managedResourceType',
   );
 
-  /// IRI for sync:hasStatement [Expects: http://www.w3.org/1999/02/22-rdf-syntax-ns#Statement]
+  /// IRI for sync:hasStatement
   ///
-  /// Links a managed document to RDF reification statements that contain framework metadata such as property tombstones. This ensures all framework metadata remains connected to the document for proper framework/app data separation during graph traversal.
+  /// Links a managed document to framework metadata statements: RDF reified value-level statements (rdf:Statement) for property-value tombstones, sync:PropertyStatement for property-level CRDT bookkeeping (e.g. last-write versioned clocks), and sync:ResourceStatement for resource-level metadata such as resource tombstones. This keeps all framework metadata connected to the document for proper framework/app data separation during graph traversal.
   ///
   /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/sync#ManagedDocument
   ///
@@ -92,12 +100,22 @@ class Sync {
 
   /// IRI for sync:resource [Expects: http://www.w3.org/2000/01/rdf-schema#Resource]
   ///
-  /// Points to the resource that this framework statement is about. Used in resource statements to identify which resource the metadata applies to.
+  /// Points to the resource that this framework statement is about. Used in sync:ResourceStatement (the resource the metadata applies to) and in sync:PropertyStatement (the resource whose property the metadata applies to).
   ///
-  /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/sync#ResourceStatement
+  /// Can be used on all classes in this vocabulary
   ///
   static const resource = IriTerm(
     'https://w3id.org/solid-crdt-sync/vocab/sync#resource',
+  );
+
+  /// IRI for sync:property [Expects: http://www.w3.org/1999/02/22-rdf-syntax-ns#Property]
+  ///
+  /// The RDF property that a sync:PropertyStatement refers to. Together with sync:resource it identifies the (resource, property) pair the framework metadata is about.
+  ///
+  /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/sync#PropertyStatement
+  ///
+  static const property = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/sync#property',
   );
 
   /// IRI for sync:hasBlankNodeMapping [Expects: https://w3id.org/solid-crdt-sync/vocab/sync#BlankNodeMapping]

@@ -51,14 +51,24 @@ class SyncManagedDocument {
     'https://w3id.org/solid-crdt-sync/vocab/sync#managedResourceType',
   );
 
-  /// hasStatement [Expects: http://www.w3.org/1999/02/22-rdf-syntax-ns#Statement]
+  /// hasStatement
   ///
-  /// Links a managed document to RDF reification statements that contain framework metadata such as property tombstones. This ensures all framework metadata remains connected to the document for proper framework/app data separation during graph traversal.
+  /// Links a managed document to framework metadata statements: RDF reified value-level statements (rdf:Statement) for property-value tombstones, sync:PropertyStatement for property-level CRDT bookkeeping (e.g. last-write versioned clocks), and sync:ResourceStatement for resource-level metadata such as resource tombstones. This keeps all framework metadata connected to the document for proper framework/app data separation during graph traversal.
   ///
   /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/sync#ManagedDocument
   ///
   static const hasStatement = IriTerm(
     'https://w3id.org/solid-crdt-sync/vocab/sync#hasStatement',
+  );
+
+  /// resource [Expects: http://www.w3.org/2000/01/rdf-schema#Resource]
+  ///
+  /// Points to the resource that this framework statement is about. Used in sync:ResourceStatement (the resource the metadata applies to) and in sync:PropertyStatement (the resource whose property the metadata applies to).
+  ///
+  /// Can be used on all classes in this vocabulary
+  ///
+  static const resource = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/sync#resource',
   );
 
   /// hasBlankNodeMapping [Expects: https://w3id.org/solid-crdt-sync/vocab/sync#BlankNodeMapping]

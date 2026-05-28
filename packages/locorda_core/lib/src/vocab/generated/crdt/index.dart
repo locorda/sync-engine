@@ -7,3 +7,5 @@
 
 export 'classes/clientinstallation.dart';
 export 'classes/clockentry.dart';
+export 'classes/versionedclock.dart';
+export 'crdt_universal.dart';
