@@ -1,0 +1,50 @@
+@base <https://example.com/shard/index-full-bbcf09f5%2Fshard-mod-md5-1-0-v1_0_0> .
+@prefix : <#> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix if1: <https://example.com/fullindex/index-full-388036f3%2Findex#> .
+@prefix if2: <https://example.com/fullindex/index-full-5f68b5b7%2Findex#> .
+@prefix ifb: <https://example.com/fullindex/index-full-bbcf09f5%2Findex#> .
+@prefix ifd: <https://example.com/fullindex/index-full-d06ec919%2Findex#> .
+@prefix ife: <https://example.com/fullindex/index-full-e679d72f%2Findex#> .
+@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix schema: <https://schema.org/> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<> a sync:ManagedDocument;
+    foaf:primaryTopic :shard;
+    cm:clockHash "bf6908fc7bf0707d7695d53c445ead5b";
+    cm:createdAt "2024-01-01T00:00:00.000Z"^^xsd:dateTime;
+    cm:hasClockEntry :lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2;
+    sync:isGovernedBy (mappings:shard-v1);
+    sync:managedResourceType idx:Shard .
+
+:entry-2e883124d69c377d8daff7f19ee0eaa6 cm:clockHash "b3c8a56f8f70ee4b346687365ce314d0";
+    idx:indexesClass idx:FullIndex;
+    idx:resource ifb:index .
+
+:entry-6532e1cce2063165cab55f9425c47e0d cm:clockHash "626320842daca5664b91254eb53f4e08";
+    idx:indexesClass idx:GroupIndex;
+    idx:resource ifd:index .
+
+:entry-713129f56a309cabc970f22c7da295cf cm:clockHash "b8d533544c389681c7afd39051f67f71";
+    idx:indexesClass cm:ClientInstallation;
+    idx:resource if1:index .
+
+:entry-a68c1c4f5dda5dbf177113200fb133a0 cm:clockHash "80f845944c541b21be0f6894133de683";
+    idx:indexesClass schema:Recipe;
+    idx:resource ife:index .
+
+:entry-ce394f730640668924968eddf09c01bc cm:clockHash "f41b280ba13945f96a83675bc8b6942c";
+    idx:indexesClass idx:GroupIndexTemplate;
+    idx:resource if2:index .
+
+:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2 cm:logicalTime 2;
+    cm:physicalTime 1704074700001 .
+
+:shard a idx:Shard;
+    idx:containsEntry :entry-ce394f730640668924968eddf09c01bc, :entry-a68c1c4f5dda5dbf177113200fb133a0, :entry-713129f56a309cabc970f22c7da295cf, :entry-6532e1cce2063165cab55f9425c47e0d, :entry-2e883124d69c377d8daff7f19ee0eaa6;
+    idx:isShardOf ifb:index .

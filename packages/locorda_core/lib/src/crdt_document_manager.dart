@@ -105,7 +105,14 @@ final _defaultManagedDocumentLevelPredicates = <IriTerm>{
   // naturally covers them — no copy-through needed and no tombstones generated.
   SyncManagedDocument.crdtDeletedAt,
   SyncManagedDocument.hasBlankNodeMapping,
-  SyncManagedDocument.hasStatement
+  SyncManagedDocument.hasStatement,
+  // crdt:appBaseClock is preserved explicitly by _computeSaveCore (write-
+  // once invariant) rather than via subgraph traversal. Including it here
+  // prevents step 10 from re-traversing the appBaseClock → VersionedClock
+  // subgraph and pulling stale per-installation ClockEntry triples
+  // (logicalTime/physicalTime) into the new document, which would corrupt
+  // the live HLC structure on the next save.
+  Crdt.appBaseClock,
 };
 
 /// Removes resource tombstones from [oldFrameworkGraph] for subjects that are
@@ -626,6 +633,81 @@ class CrdtDocumentManager {
 
       sw?.stopSection('clock');
 
+      // Pre-compute the per-save crdt:VersionedClock snapshot once. Reused
+      // across both app-data and framework-data generateMetadata calls so its
+      // subgraph (rdf:type + hasClockEntry blank nodes) is added to
+      // documentTriples exactly once below, avoiding duplicate triples in the
+      // List<Triple> buffer that would later trip cardinality assertions in
+      // blank-node identification.
+      final versionedClock =
+          _localDocumentMerger.buildVersionedClock(documentIri, clock);
+
+      // --- proposal 028: appBaseClock orchestration ---------------------
+      // The pre-save vclk snapshot captures the document clock BEFORE this
+      // save advanced our own ClockEntry. It is the candidate value for
+      // `crdt:appBaseClock` (lazy-set, write-once).
+      ({IriTerm vclkIri, List<Triple> triples})? preSaveVclk;
+      if (oldFrameworkGraph != null) {
+        try {
+          final preSaveClock =
+              _hlcService.getCurrentClock(oldFrameworkGraph, documentIri);
+          preSaveVclk = _localDocumentMerger.buildVersionedClock(
+              documentIri, preSaveClock);
+        } on StateError {
+          // No prior clock (raw template path); no pre-save vclk.
+          preSaveVclk = null;
+        }
+      }
+
+      final existingAppBaseVclkIri = oldFrameworkGraph
+          ?.findTriples(subject: documentIri, predicate: Crdt.appBaseClock)
+          .map((t) => t.object)
+          .whereType<IriTerm>()
+          .firstOrNull;
+
+      // Decide the prospective implicit-default vclk to pass into the
+      // app-data pass. Per proposal 028 §"Save-time encoding" step 5, a
+      // PropertyStatement is emitted only when its vclk differs from the
+      // effective default. Settling the default UP FRONT lets LWW suppress
+      // statements consistently across changed properties in this save.
+      //
+      //   * existing appBaseClock → reuse it (write-once invariant)
+      //   * else if clock advances AND ≥1 unchanged app prop would dangle
+      //     → commit to setting appBaseClock=preSaveVclk
+      //   * else default == post-save docClock (D itself); every changed
+      //     property has D == default → no PS emitted, no appBaseClock
+      //     written. This keeps the create-and-shard-rewrite paths
+      //     metadata-free.
+      //
+      // Shard documents are excluded from the appBaseClock optimisation:
+      // their entries use OR-Set / Immutable CRDTs (no per-property vclk
+      // stamping), so the default-vclk shortcut would never suppress a
+      // PropertyStatement. Writing appBaseClock on a shard would only
+      // bloat the framework graph AND poison `_resolveEffectiveVclkIri`
+      // on the remote-merge path for non-app predicates like
+      // `crdt:clockHash` (predicates that legitimately resolve to the
+      // document clock, not to any per-property vclk).
+      final bool isShardDocument = type == IdxShard.classIri;
+      final bool willSetAppBaseClock;
+      final IriTerm? implicitDefaultVclkIri;
+      if (isShardDocument) {
+        implicitDefaultVclkIri = versionedClock?.vclkIri;
+        willSetAppBaseClock = false;
+      } else if (existingAppBaseVclkIri != null) {
+        implicitDefaultVclkIri = existingAppBaseVclkIri;
+        willSetAppBaseClock = false;
+      } else if (preSaveVclk != null &&
+          versionedClock != null &&
+          preSaveVclk.vclkIri != versionedClock.vclkIri &&
+          _localDocumentMerger.hasImplicitAppPropertyReference(
+              documentIri, oldAppData, oldFrameworkGraph, appData)) {
+        implicitDefaultVclkIri = preSaveVclk.vclkIri;
+        willSetAppBaseClock = true;
+      } else {
+        implicitDefaultVclkIri = versionedClock?.vclkIri;
+        willSetAppBaseClock = false;
+      }
+
       final (
         metadata: crdtMetadata,
         newBlankNodes: appBlankNodes,
@@ -638,6 +720,8 @@ class CrdtDocumentManager {
         mergeContract,
         clock,
         appDataTypeIri: type,
+        vclkIri: versionedClock?.vclkIri,
+        implicitDefaultVclkIri: implicitDefaultVclkIri,
       );
 
       sw?.stopSection('appMeta');
@@ -672,6 +756,15 @@ class CrdtDocumentManager {
         appBlankNodes,
         allShards,
       );
+      // Apply app-data CRDT removals BEFORE constructing the framework graph
+      // for the second metadata pass. Causality-tracking types
+      // (LWW-Register) replay content-addressed sync:PropertyStatement IRIs
+      // across saves; their `triplesToRemove` strips the stale structural
+      // triples that the step-10 subgraph copy pulled in. Without this,
+      // frameworkGraph briefly contains duplicate rdf:type triples for the
+      // same PropertyStatement IRI and trips findSingleObject in the
+      // subsequent isFrameworkData=true pass.
+      crdtMetadata.triplesToRemove.forEach(documentTriples.remove);
       frameworkGraph = RdfGraph.fromTriples(documentTriples);
       final (
         metadata: frameworkMetadata,
@@ -686,13 +779,93 @@ class CrdtDocumentManager {
         clock,
         appDataTypeIri: type,
         isFrameworkData: true,
+        // Deliberately NOT propagating vclkIri into the framework pass.
+        //
+        // Per-property `crdt:VersionedClock` stamping (issue #50) only adds
+        // value where two installations may concurrently update DIFFERENT
+        // LWW-Register properties of the SAME logical resource and where
+        // document-clock tie-breaks would silently drop the uncontested
+        // write. That preconditions only hold for app-data subjects.
+        //
+        // The framework-data pass operates on subjects whose vclk stamping
+        // would be either redundant or actively harmful:
+        //
+        //   * `sync:PropertyStatement` and `crdt:VersionedClock` IRIs are
+        //     themselves the conflict-resolution infrastructure — stamping
+        //     them recurses without semantic gain and balloons document
+        //     size (each property emits a new statement, which in turn gets
+        //     stamped on the next save, etc. — the set is finite because
+        //     PropertyStatement IRIs are content-addressed, but the bloat
+        //     is significant for documents with many predicates).
+        //
+        //   * `documentIri`-subject framework predicates (`crdt:clockHash`,
+        //     `crdt:hasClockEntry`, `crdt:createdAt`, `sync:hasStatement`,
+        //     `sync:isGovernedBy`, `sync:managedResourceType`,
+        //     `foaf:primaryTopic`, `idx:belongsToIndexShard`, …) are either
+        //     derived from the document clock (so vclk comparison is
+        //     tautological), OR-Set / immutable in their merge contract
+        //     (so LWW tie-breaks never run), or effectively configuration
+        //     that should not diverge across installations.
+        //
+        //   * Shard-entry header properties are NOT merged document-wise:
+        //     shard membership is recomputed on every save from the
+        //     authoritative app-data side, so per-property vclk on entries
+        //     would never be consulted.
+        //
+        // `LwwRegister.remoteMerge` falls back to document-clock comparison
+        // when no per-property vclk is present (see
+        // `_resolvePerPropertyClockComparison` returning null), which is
+        // the correct resolution path for every framework-data case above.
+        vclkIri: null,
       );
       propertyChanges.addAll(frameworkMetadata.propertyChanges);
 
       documentTriples.addNodes(documentIri, SyncManagedDocument.hasStatement,
           frameworkMetadata.statements);
 
-      crdtMetadata.triplesToRemove.forEach(documentTriples.remove);
+      // Materialise the vclk subgraph exactly once when at least one CRDT
+      // type actually stamped a property with crdt:vclk in this save.
+      // Detection is reference-based (any crdt:vclk triple) rather than
+      // tracked per type so future causality-aware CRDT types share the
+      // mechanism transparently.
+      if (versionedClock != null &&
+          documentTriples.any((t) => t.predicate == Crdt.vclk)) {
+        documentTriples.addAll(versionedClock.triples);
+      }
+
+      // Lazy-emit `crdt:appBaseClock` (proposal 028). Conditions were
+      // pre-checked above. The pre-save vclk subgraph is materialised here
+      // — guarded against double-add in the (extremely rare) case where
+      // pre-save and post-save vclks share a clock entry IRI (they share
+      // the per-installation ClockEntry node identity but the vclk hash
+      // IRI itself differs).
+      if (willSetAppBaseClock && preSaveVclk != null) {
+        documentTriples
+            .add(Triple(documentIri, Crdt.appBaseClock, preSaveVclk.vclkIri));
+        if (!documentTriples.any((t) => t.subject == preSaveVclk!.vclkIri)) {
+          documentTriples.addAll(preSaveVclk.triples);
+        }
+      } else if (existingAppBaseVclkIri != null) {
+        // Write-once preservation: appBaseClock and its vclk subgraph are
+        // not auto-copied by step 10 (excluded from the doc-level filter)
+        // — re-emit them here from the old framework graph. Traversal is
+        // bounded by `includeButDontDescend` on IriTerm/Literal so the
+        // `forClockEntry → <clockEntryIri>` reference is preserved as a
+        // leaf and does NOT pull in the live ClockEntry's outgoing edges.
+        documentTriples.add(
+            Triple(documentIri, Crdt.appBaseClock, existingAppBaseVclkIri));
+        final preservedVclk = oldFrameworkGraph!.subgraph(
+          existingAppBaseVclkIri,
+          filter: (triple, depth) => switch (triple.object) {
+            IriTerm() ||
+            LiteralTerm() =>
+              TraversalDecision.includeButDontDescend,
+            BlankNodeTerm() => TraversalDecision.include,
+          },
+        );
+        documentTriples.addAll(preservedVclk.triples);
+      }
+
       frameworkMetadata.triplesToRemove.forEach(documentTriples.remove);
 
       // DEBUG: assert no resourceIri-subject triples snuck in before appData

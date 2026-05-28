@@ -4,6 +4,7 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix crdt: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
 @prefix solid: <http://www.w3.org/ns/solid/terms#> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
 
 # --- Ontology Definition ---
 
@@ -65,6 +66,12 @@ crdt:clockHash a rdf:Property;
 crdt:vclk a rdf:Property;
     rdfs:label "versioned clock";
     rdfs:comment "Attaches a versioned-clock snapshot (crdt:VersionedClock) to a framework metadata node such as a sync:PropertyStatement (last write of a property) or an rdf:Statement (add event of a multi-value element). Concurrent-write resolution compares the referenced vclks via vector-clock semantics (equal / dominates / dominated / concurrent); ties on 'concurrent' are broken by max(crdt:physicalTime) across the vclk's clock entries.";
+    rdfs:range crdt:VersionedClock .
+
+crdt:appBaseClock a rdf:Property;
+    rdfs:label "app base clock";
+    rdfs:comment "Document-wide default crdt:VersionedClock for app properties that have no explicit sync:PropertyStatement. Causality-tracking merge rules (LWW, FWW, …) resolve a property's effective vclk as: PropertyStatement.vclk -> document.appBaseClock -> document's current HLC (docClock). Set lazily on the first save that advances the document clock while at least one app property would otherwise dangle on the previous (now superseded) docClock. Scope is app data only: framework-managed properties never use this fallback. Once set, treated as write-once within this proposal (compaction is future work).";
+    rdfs:domain sync:ManagedDocument;
     rdfs:range crdt:VersionedClock .
 
 # --- Installation Management Properties ---

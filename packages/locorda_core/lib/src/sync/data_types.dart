@@ -59,6 +59,40 @@ class OrganizedStatements {
     for (final entry in statementGraphs.entries) {
       final subject = entry.key;
       final graph = entry.value;
+
+      // Polymorphic statement shapes attached via sync:hasStatement:
+      // 1. Property-level: sync:PropertyStatement with (sync:resource, sync:property)
+      //    — keyed as SubjectPredicateMetadataStatement so per-(s,p) lookups
+      //    (e.g. crdt:vclk for LWW resolution) succeed.
+      // 2. Reified rdf:Statement with rdf:subject [+ rdf:predicate [+ rdf:object]]
+      //    — the existing shape used by OR-Set tombstones and subject-level
+      //    deletion markers.
+      // Detection is shape-driven, not IRI-fragment-driven, so legacy statement
+      // IRIs continue to work.
+      final propertyResource = graph.findSingleObject<RdfSubject>(
+          subject, SyncPropertyStatement.resource);
+      final propertyPredicate = graph.findSingleObject<IriTerm>(
+          subject, SyncPropertyStatement.property);
+      if (propertyResource != null && propertyPredicate != null) {
+        final realPropertyResource =
+            blankNodeMappings.getBlankNode(propertyResource) ??
+                propertyResource;
+        final realKey =
+            MetadataStatementKey.from(realPropertyResource, propertyPredicate);
+        statementsByKey
+            .putIfAbsent(realKey, () => <Node>{})
+            .add((subject, graph));
+        final canonicalKeys = maybeCanonicalKeysByRealKey.putIfAbsent(
+            realKey, () => <MetadataStatementKey>{});
+        canonicalKeys.add(
+            MetadataStatementKey.from(propertyResource, propertyPredicate));
+        if (propertyResource != realPropertyResource) {
+          canonicalKeys.add(MetadataStatementKey.from(
+              realPropertyResource, propertyPredicate));
+        }
+        continue;
+      }
+
       final rdfSubject =
           graph.findSingleObject<RdfSubject>(subject, RdfStatement.subject);
       if (rdfSubject is BlankNodeTerm) {
@@ -493,6 +527,14 @@ class UnIdentifiedBlankNodeKey extends RdfObjectKey {
 }
 
 final class OrganizedGraph {
+  /// The IRI of the `sync:ManagedDocument` this graph represents. Used by
+  /// merge logic to distinguish framework-data subjects (subject ==
+  /// documentIri) from app-data subjects (primaryTopic, nested fragments,
+  /// blank nodes) — relevant e.g. for the proposal 028 `crdt:appBaseClock`
+  /// fallback in per-property vclk resolution, which must NOT apply to
+  /// framework-data predicates like `crdt:clockHash` or
+  /// `sync:managedResourceType`.
+  final IriTerm documentIri;
   final OrganizedStatements statements;
   final OrganizedBlankNodeMappings blankNodeMappings;
   final RdfGraph fullGraph;
@@ -508,6 +550,7 @@ final class OrganizedGraph {
       .fold<int>(0, (prev, element) => element < prev ? element : prev);
 
   OrganizedGraph._({
+    required this.documentIri,
     required this.statements,
     required this.blankNodeMappings,
     required this.fullGraph,
@@ -582,6 +625,7 @@ final class OrganizedGraph {
     }
 
     return OrganizedGraph._(
+      documentIri: documentIri,
       statements: statements,
       blankNodeMappings: blankNodeMappings,
       fullGraph: document,
@@ -619,27 +663,28 @@ enum ClockComparison {
     OrganizedGraph local,
     OrganizedGraph remote,
   ) {
-    // Handle empty clocks (treated as all zeros per spec)
-    final localIsEmpty = local.clockTimes.isEmpty;
-    final remoteIsEmpty = remote.clockTimes.isEmpty;
+    return compareClockMaps(local.clockTimes, remote.clockTimes);
+  }
+
+  /// Vector-clock dominance comparison over two `clockEntryIri → (logical, physical)`
+  /// maps. Used both by the document-level [compareClocks] and by per-property
+  /// `crdt:VersionedClock` resolution in LWW conflict handling.
+  ///
+  /// Physical times are passed through but only logical times participate in
+  /// dominance — consistent with HLC semantics and the vclk hash design.
+  static ClockComparison compareClockMaps(
+    Map<IriTerm, (int, int)> localEntries,
+    Map<IriTerm, (int, int)> remoteEntries,
+  ) {
+    final localIsEmpty = localEntries.isEmpty;
+    final remoteIsEmpty = remoteEntries.isEmpty;
 
     if (localIsEmpty && remoteIsEmpty) {
       return ClockComparison.bothEmpty;
     }
+    if (localIsEmpty) return ClockComparison.remoteDominates;
+    if (remoteIsEmpty) return ClockComparison.localDominates;
 
-    if (localIsEmpty) {
-      return ClockComparison.remoteDominates;
-    }
-
-    if (remoteIsEmpty) {
-      return ClockComparison.localDominates;
-    }
-
-    // Build maps of installation -> (logical, physical) for comparison
-    final localEntries = local.clockTimes;
-    final remoteEntries = remote.clockTimes;
-
-    // Get all installation IDs from both clocks
     final allInstallations = {...localEntries.keys, ...remoteEntries.keys};
 
     var localGreater = false;
@@ -655,19 +700,13 @@ enum ClockComparison {
         remoteGreater = true;
       }
 
-      // If both have been greater at some point, they're concurrent
       if (localGreater && remoteGreater) {
         return ClockComparison.concurrent;
       }
     }
 
-    if (localGreater) {
-      return ClockComparison.localDominates;
-    } else if (remoteGreater) {
-      return ClockComparison.remoteDominates;
-    } else {
-      // All logical times are equal - clocks are identical
-      return ClockComparison.identical;
-    }
+    if (localGreater) return ClockComparison.localDominates;
+    if (remoteGreater) return ClockComparison.remoteDominates;
+    return ClockComparison.identical;
   }
 }

@@ -149,35 +149,101 @@ state.
 deterministic tie-breaker when two vclks are **concurrent** under
 vector-clock domination (see merge semantics below).
 
+### Document-level base clock (`crdt:appBaseClock`)
+
+Naïvely emitting one `sync:PropertyStatement` + one `crdt:vclk` per
+app property would bloat every document — most steady-state documents
+have many properties whose effective vclk is identical (e.g. all
+properties of a freshly created resource, or all properties that have
+not been touched since the last save). To avoid this, the framework
+lets a document declare a single document-level vclk as the **default**
+for any app property whose `sync:PropertyStatement` is absent:
+
+```turtle
+<>  a sync:ManagedDocument ;
+    crdt:appBaseClock <#lcrd-vclk-md5-baseline> .
+```
+
+Any app property without an explicit `sync:PropertyStatement` is read
+as if it carried `crdt:vclk = appBaseClock`. If `crdt:appBaseClock`
+itself is absent, the fallback is the document's current HLC vector
+(`docClock`, built from `crdt:hasClockEntry`). The three-step lookup
+`PS.vclk → appBaseClock → docClock` is uniform across local reads,
+save-time comparisons, and remote merges.
+
+**Scope: app properties only.** Framework properties never participate
+in this scheme — they are stamped via the existing framework-data pass
+(no PS, no vclk; the framework relies on document-wide bookkeeping for
+its own state). The predicate is named `appBaseClock` to make the
+boundary explicit.
+
+#### Why lazy initialisation matters
+
+If `appBaseClock` were always written, the simplest case — a freshly
+created document where every app property carries the same
+(post-create) docClock — would still need one extra triple plus a
+full `VersionedClock` subgraph. By **only** setting `appBaseClock`
+when it is actually needed, freshly created documents and documents
+whose every save is a full rewrite stay maximally compact (no
+PropertyStatements, no VersionedClock subgraphs, no `appBaseClock`).
+
 ### Save-time encoding
 
-On each local save that mutates property `p` on subject `s`, the document
-merger:
+On each local save:
 
-1. Constructs (or reuses, if identical) the current document HLC as a
-   `crdt:VersionedClock` node `V`. Its IRI is determined by the hash, so
-   any two saves with the same logical vector reuse the same `V` —
-   automatic deduplication.
-2. Ensures a `sync:PropertyStatement` `P` for `(s, p)` exists (identity is
-   `(s, p)` — also deduplicated).
-3. Sets `P crdt:vclk V` (LWW on the vclk pointer; vector-clock domination
-   resolves "later than" cleanly).
-4. Emits any value-level statements the rule requires (e.g. `rdf:Statement`
-   tombstones for OR-Set removal) and stamps them with their own
-   `crdt:vclk V` pointer.
+1. Compute the **post-save** docClock `D` as usual (advance the
+   installation's own `ClockEntry`).
+2. For each *changed* app property `(s, p)`, its effective vclk is `D`.
+3. For each *unchanged* app property, its effective vclk is whatever it
+   was before this save:
+      * if an explicit `sync:PropertyStatement` exists → its `crdt:vclk`;
+      * else if `crdt:appBaseClock` is set → that vclk;
+      * else the **pre-save** docClock.
+4. **Set `crdt:appBaseClock` lazily.** If all of the following hold,
+   set `appBaseClock` to the **pre-save** docClock snapshot (creating
+   the corresponding `crdt:VersionedClock` node, deduplicated by
+   content hash like any other vclk):
+      * (a) `crdt:appBaseClock` is currently absent on the document,
+      * (b) the pre-save docClock differs from `D` (this save advances
+        the clock — otherwise nothing would dangle),
+      * (c) at least one app property is *unchanged* by this save and
+        has no explicit `sync:PropertyStatement` (i.e. its implicit
+        reference would dangle once the docClock moves to `D`).
+   Once set, `appBaseClock` is **never overwritten** by this proposal.
+   (Future work may introduce a compaction trigger; see Open questions.)
+5. Emit (or update) a `sync:PropertyStatement` `P` for `(s, p)` with
+   `P crdt:vclk D` **only if** `D` differs from the effective default —
+   that is, from `appBaseClock` when set, or from `D` itself when
+   `appBaseClock` is absent. In the second case `D` *is* the default,
+   so no PS is needed.
+6. Any value-level statements the CRDT rule requires (e.g.
+   `rdf:Statement` tombstones for OR-Set removal) are emitted and
+   stamped with their own `crdt:vclk` (these are *value*-granular and
+   do not benefit from the appBaseClock shortcut).
+7. Existing PropertyStatements whose new effective vclk now equals the
+   implicit default are removed via the standard LWW GC path in
+   `LwwRegister.localValueChange` (`triplesToRemove`) — no new GC
+   mechanism needed.
 
-All statements stamped in the same save share the same `V` (one allocation
-per save, regardless of how many properties changed).
+All statements stamped in the same save share the same `D` (one
+VersionedClock allocation per save, regardless of how many properties
+changed).
 
 ### Merge semantics
 
 For any algorithm that previously asked *"is the incoming value newer than
 the local value?"* and broke ties on document-wide `physicalTime`, the
-question is now answered per statement:
+question is now answered per statement, using the three-step lookup
+on both sides:
 
 ```
-local_vclk    = local PropertyStatement(s,p).vclk
-remote_vclk   = remote PropertyStatement(s,p).vclk
+resolveVclk(doc, s, p) =
+    if exists PS(s,p) in doc with crdt:vclk V -> V
+    else if doc has crdt:appBaseClock V       -> V
+    else                                       -> doc.docClock
+
+local_vclk  = resolveVclk(localDoc,  s, p)
+remote_vclk = resolveVclk(remoteDoc, s, p)
 
 case compareVectorClocks(local_vclk, remote_vclk) of
     LocalDominates  -> keep local value
@@ -187,6 +253,26 @@ case compareVectorClocks(local_vclk, remote_vclk) of
                        vclks; on physical-time tie, fall back to a
                        deterministic rule (forClockEntry ordering)
 ```
+
+The `resolveVclk` fallback is the merge-protocol change required by
+the `appBaseClock` optimisation. It is **symmetric**: each side
+resolves *its own* `appBaseClock`/`docClock`, independently of the
+other side's choices about which properties to materialise as explicit
+`PropertyStatement`s. Two installations may freely differ on whether a
+given property has an explicit `PS` — the comparison still yields the
+same answer, because both sides agree on the *vector content* the
+implicit default represents (the pre-save docClock at the time the
+property was last written or the document was first created).
+
+Note that `appBaseClock` is **monotone within a single installation**
+(set once, never moved) and is normally the *same content* on every
+installation when both have observed the document since its creation
+— two installations only diverge on `appBaseClock` if one observed the
+document *before* the first clock-advancing save and the other did
+not. Even in that case the fallback resolution remains semantically
+correct: each side resolves to a valid vclk snapshot of the document
+at the time the property was last touched, and the standard vector-
+clock comparison handles the rest.
 
 This applies symmetrically to:
 
@@ -205,12 +291,17 @@ benefit from having the mechanism in place when they are implemented.
 ### Garbage collection
 
 - **`sync:PropertyStatement`**: bounded by the merge contract — at most
-  one per `(subject, property)` pair declared by the schema. Never
-  garbage-collected.
+  one per `(subject, property)` pair declared by the schema. Removed
+  by the LWW GC path when its `crdt:vclk` becomes equal to the
+  document's effective implicit default (`appBaseClock` or `docClock`).
 - **`crdt:VersionedClock`**: garbage-collected by local sweep — when no
-  `crdt:vclk` triple in the local graph references a given vclk IRI, it
-  is safe to delete. Deduplication makes the steady-state count small
-  (one per distinct logical vector ever observed locally).
+  `crdt:vclk` *and* no `crdt:appBaseClock` triple in the local graph
+  references a given vclk IRI, it is safe to delete. Deduplication
+  keeps the steady-state count small (one per distinct logical vector
+  ever observed locally, plus the `appBaseClock` snapshot if any).
+- **`crdt:appBaseClock`**: never removed once set by this proposal
+  (write-once). Its target `VersionedClock` subgraph is held alive by
+  the `appBaseClock` reference itself.
 - **`rdf:Statement` tombstones**: continue to follow existing retention
   policies (proposal 002).
 
@@ -248,26 +339,46 @@ writes `schema:rating = 5` (HLC → A=5, B=3):
 Both values survive, because the merger compares per-property vclks
 instead of a single document-wide tie-break.
 
+## Vocabulary additions
+
+Added to `spec/vocabularies/crdt-mechanics.ttl`:
+
+- `crdt:appBaseClock` — optional, functional property on
+  `sync:ManagedDocument` with range `crdt:VersionedClock`. Provides the
+  document-wide default vclk for app properties that have no explicit
+  `sync:PropertyStatement`. Domain restricted to `sync:ManagedDocument`
+  to make the framework-only scope discoverable from the vocabulary.
+
+No changes to `sync:PropertyStatement` or `crdt:VersionedClock` beyond
+what earlier sections of this proposal already introduce.
+
 ## Implementation impact
 
 - `RemoteDocumentMerger` / `LocalDocumentMerger`: replace document-wide
-  `physicalTime` tie-break with per-property `vclk` comparison (helper
-  added in `crdt/vector_clock.dart`). When generating a save, emit one
-  shared `VersionedClock` node + one `PropertyStatement` per changed
-  property.
+  `physicalTime` tie-break with the `resolveVclk` per-property
+  comparison (helper added in `crdt/vector_clock.dart`). When
+  generating a save, emit one shared `VersionedClock` node + one
+  `PropertyStatement` per changed property whose effective vclk differs
+  from the implicit default; on the first clock-advancing save that
+  leaves at least one app property implicit, also write
+  `crdt:appBaseClock` referencing the pre-save docClock snapshot.
 - `crdt_document_manager`: extend the save pipeline to populate
-  `sync:hasStatement` with `PropertyStatement`s for mutated properties,
-  reusing existing `sync:ResourceStatement` plumbing.
+  `sync:hasStatement` with `PropertyStatement`s for mutated properties
+  (subject to the implicit-default check), reusing existing
+  `sync:ResourceStatement` plumbing.
 - Tests: add a new save-scenario asset reproducing issue #50, plus
-  symmetric `update_…` scenarios. Existing asset
+  symmetric `update_…` scenarios and an explicit
+  `appBaseClock`-emission scenario (first incremental edit after
+  creation). Existing asset
   `test_cases/save/38_concurrent_lww_per_property/` will be renamed for
   consistency with the `all_tests.json` index.
-- Generated bootstrap (`mapping_bootstrap.g.dart`) is already regenerated
-  from the new mapping additions in `spec/mappings/core-v1.ttl`.
+- Generated bootstrap (`mapping_bootstrap.g.dart`) is regenerated from
+  the new mapping additions in `spec/mappings/core-v1.ttl`.
 
 No public API change. No on-the-wire breaking change beyond the new
-optional `sync:hasStatement` entries (older readers ignore them, consistent
-with the existing framework/app separation contract).
+optional `sync:hasStatement` and `crdt:appBaseClock` triples (older
+readers ignore them, consistent with the existing framework/app
+separation contract).
 
 ## Open questions / explicit non-goals
 
@@ -276,8 +387,27 @@ with the existing framework/app separation contract).
 - **`PropertyStatement` for nested blank nodes**: identity uses the
   canonical IRI of the subject (proposal 008). No special handling
   required at this layer.
-- **Migration**: pre-existing documents without `PropertyStatement`s
-  continue to work; the merger treats "no local vclk" as the equivalent
-  of the document's `crdt:clockHash` snapshot, so the behavioural change
-  is monotone (concurrent uncontested writes start being preserved; no
-  previously preserved write is lost).
+- **Migration**: pre-existing documents without `PropertyStatement`s or
+  `appBaseClock` continue to work; readers treat "no PS, no
+  appBaseClock" as the document's current docClock (the legacy
+  semantics), so the behavioural change is monotone (concurrent
+  uncontested writes start being preserved; no previously preserved
+  write is lost).
+- **`appBaseClock` compaction**: `appBaseClock` is currently
+  write-once. A future optimisation could move it forward when a save
+  effectively rewrites every app property (making every explicit
+  PropertyStatement collapsible into a new shared default), but the
+  detection rule and merge implications need careful design and are
+  out of scope here.
+- **Shards and "all properties always at docClock" documents**: shard
+  documents are a degenerate case where the shard subject's only
+  property (`rdf:type idx:Shard`) is effectively immutable and every
+  save rewrites the entries collectively. The lazy-set rule in
+  step (4) of *Save-time encoding* (condition (c): "at least one app
+  property is unchanged and has no explicit PS") is designed so that
+  `appBaseClock` is never set on such documents in the first place,
+  but the per-entry properties may still produce `PropertyStatement`s
+  under the current rules. A follow-up proposal will revisit shard
+  encoding once this proposal lands, to evaluate whether shard entries
+  should bypass per-property statementing entirely (treating the entire
+  shard payload as a single immutable-per-save unit).

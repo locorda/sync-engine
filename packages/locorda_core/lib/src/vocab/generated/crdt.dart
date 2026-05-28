@@ -114,6 +114,16 @@ class Crdt {
     'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#vclk',
   );
 
+  /// IRI for crdt:appBaseClock [Expects: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#VersionedClock]
+  ///
+  /// Document-wide default crdt:VersionedClock for app properties that have no explicit sync:PropertyStatement. Causality-tracking merge rules (LWW, FWW, …) resolve a property's effective vclk as: PropertyStatement.vclk -> document.appBaseClock -> document's current HLC (docClock). Set lazily on the first save that advances the document clock while at least one app property would otherwise dangle on the previous (now superseded) docClock. Scope is app data only: framework-managed properties never use this fallback. Once set, treated as write-once within this proposal (compaction is future work).
+  ///
+  /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/sync#ManagedDocument
+  ///
+  static const appBaseClock = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#appBaseClock',
+  );
+
   /// IRI for crdt:belongsToUser [Expects: http://www.w3.org/2000/01/rdf-schema#Resource]
   ///
   /// Links an installation to the user identity that owns it. In Solid contexts, this would be a WebID; in other contexts, this could be any user identifier.

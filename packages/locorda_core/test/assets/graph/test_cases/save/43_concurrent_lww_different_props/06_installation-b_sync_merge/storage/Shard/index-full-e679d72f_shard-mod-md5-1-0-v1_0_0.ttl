@@ -1,0 +1,32 @@
+@base <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1lNjc5ZDcyZi9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC1lNjc5ZDcyZi9pbmRleA==#> .
+@prefix ns2: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1lNjc5ZDcyZi9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=#> .
+@prefix ns3: <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y29uY3VycmVudC1yZWNpcGU=#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1lNjc5ZDcyZi9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=> a sync:ManagedDocument;
+    foaf:primaryTopic ns2:shard;
+    cm:clockHash "33a969d6d7ef83298a083abe24a9a112";
+    cm:createdAt "2024-01-01T02:10:00.006Z"^^xsd:dateTime, "2024-01-01T00:00:00.006Z"^^xsd:dateTime;
+    cm:hasClockEntry ns2:lcrd-clk-md5-328987dee5887a5d0aada0708fbb4c9a, ns2:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2;
+    sync:isGovernedBy (mappings:shard-v1);
+    sync:managedResourceType idx:Shard .
+
+ns2:entry-1d7f2415548862471c9ea296611f9ef6 cm:clockHash "93d7ca83a264f8ffe46d184412d5d7d0";
+    idx:resource ns3:it .
+
+ns2:lcrd-clk-md5-328987dee5887a5d0aada0708fbb4c9a cm:logicalTime 2;
+    cm:physicalTime 1704083400003 .
+
+ns2:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2 cm:logicalTime 3;
+    cm:physicalTime 1704081600003 .
+
+ns2:shard a idx:Shard;
+    idx:containsEntry ns2:entry-1d7f2415548862471c9ea296611f9ef6;
+    idx:isShardOf ns1:index .

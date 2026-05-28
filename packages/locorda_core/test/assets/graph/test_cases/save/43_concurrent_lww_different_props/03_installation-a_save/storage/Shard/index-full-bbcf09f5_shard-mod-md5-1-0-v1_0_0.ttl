@@ -1,0 +1,50 @@
+@base <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1iYmNmMDlmNS9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC01ZjY4YjViNy9pbmRleA==#> .
+@prefix ns2: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC0zODgwMzZmMy9pbmRleA==#> .
+@prefix ns3: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC1iYmNmMDlmNS9pbmRleA==#> .
+@prefix ns4: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC1kMDZlYzkxOS9pbmRleA==#> .
+@prefix ns5: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC1lNjc5ZDcyZi9pbmRleA==#> .
+@prefix ns6: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1iYmNmMDlmNS9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix schema: <https://schema.org/> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1iYmNmMDlmNS9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=> a sync:ManagedDocument;
+    foaf:primaryTopic ns6:shard;
+    cm:clockHash "bf6908fc7bf0707d7695d53c445ead5b";
+    cm:createdAt "2024-01-01T00:00:00.000Z"^^xsd:dateTime;
+    cm:hasClockEntry ns6:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2;
+    sync:isGovernedBy (mappings:shard-v1);
+    sync:managedResourceType idx:Shard .
+
+ns6:entry-2e883124d69c377d8daff7f19ee0eaa6 cm:clockHash "b3c8a56f8f70ee4b346687365ce314d0";
+    idx:indexesClass idx:FullIndex;
+    idx:resource ns3:index .
+
+ns6:entry-6532e1cce2063165cab55f9425c47e0d cm:clockHash "626320842daca5664b91254eb53f4e08";
+    idx:indexesClass idx:GroupIndex;
+    idx:resource ns4:index .
+
+ns6:entry-713129f56a309cabc970f22c7da295cf cm:clockHash "b8d533544c389681c7afd39051f67f71";
+    idx:indexesClass cm:ClientInstallation;
+    idx:resource ns2:index .
+
+ns6:entry-a68c1c4f5dda5dbf177113200fb133a0 cm:clockHash "80f845944c541b21be0f6894133de683";
+    idx:indexesClass schema:Recipe;
+    idx:resource ns5:index .
+
+ns6:entry-ce394f730640668924968eddf09c01bc cm:clockHash "f41b280ba13945f96a83675bc8b6942c";
+    idx:indexesClass idx:GroupIndexTemplate;
+    idx:resource ns1:index .
+
+ns6:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2 cm:logicalTime 2;
+    cm:physicalTime 1704074700001 .
+
+ns6:shard a idx:Shard;
+    idx:containsEntry ns6:entry-ce394f730640668924968eddf09c01bc, ns6:entry-a68c1c4f5dda5dbf177113200fb133a0, ns6:entry-713129f56a309cabc970f22c7da295cf, ns6:entry-6532e1cce2063165cab55f9425c47e0d, ns6:entry-2e883124d69c377d8daff7f19ee0eaa6;
+    idx:isShardOf ns3:index .

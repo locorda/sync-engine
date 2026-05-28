@@ -50,6 +50,8 @@ class LocalDocumentMerger {
     required IriTerm appDataTypeIri,
     bool isFrameworkData = false,
     bool computeCanonicalBlankNodes = true,
+    IriTerm? vclkIri,
+    IriTerm? implicitDefaultVclkIri,
   }) {
     // 4. Detect property changes between old and new app graphs and generate CRDT metadata
     final appBlankNodes = computeCanonicalBlankNodes
@@ -70,12 +72,73 @@ class LocalDocumentMerger {
         mergeContract,
         clock,
         appDataTypeIri: appDataTypeIri,
-        isFrameworkData: isFrameworkData);
+        isFrameworkData: isFrameworkData,
+        vclkIri: vclkIri,
+        implicitDefaultVclkIri: implicitDefaultVclkIri);
     return (
       oldBlankNodes: oldAppBlankNodes,
       newBlankNodes: appBlankNodes,
       metadata: crdtMetadata
     );
+  }
+
+  /// Pre-computes the per-save `crdt:VersionedClock` snapshot from the current
+  /// HLC. Returns null when the clock has no entries (raw template path). The
+  /// returned `(vclkIri, triples)` pair is reused across both app-data and
+  /// framework-data `generateMetadata` calls within one save so the vclk
+  /// subgraph (rdf:type + hasClockEntry blank nodes) is materialised exactly
+  /// once — preventing duplicate triples in the underlying `List<Triple>`
+  /// document buffer and the subsequent cardinality violations during
+  /// blank-node identification.
+  ({IriTerm vclkIri, List<Triple> triples})? buildVersionedClock(
+      IriTerm documentIri, CurrentCrdtClock clock) {
+    final entries = _extractVclkEntries(clock);
+    if (entries.isEmpty) return null;
+    return _metadataGenerator.createVersionedClock(documentIri, entries);
+  }
+
+  /// Lazy-set precondition (c) of proposal 028 `crdt:appBaseClock`:
+  /// returns true iff at least one IRI-subject app-data `(s,p)` slot in
+  /// [oldAppData] is structurally unchanged in [appData] AND has no
+  /// existing `sync:PropertyStatement` in [oldFrameworkGraph]. Such a slot
+  /// would dangle once the document clock advances past the pre-save
+  /// snapshot — exactly the case where `appBaseClock` provides value.
+  ///
+  /// Blank-node subjects are intentionally ignored: they typically use
+  /// non-causality-tracking CRDT types (Immutable / OR-Set) which do not
+  /// emit PropertyStatements anyway, and resolving their canonical IRIs
+  /// here would duplicate work already performed by the app-data pass.
+  /// Being conservative may suppress `appBaseClock` in edge cases but
+  /// never produces incorrect causality.
+  bool hasImplicitAppPropertyReference(
+    IriTerm documentIri,
+    RdfGraph? oldAppData,
+    RdfGraph? oldFrameworkGraph,
+    RdfGraph appData,
+  ) {
+    if (oldAppData == null || oldFrameworkGraph == null) return false;
+    final seen = <(IriTerm, RdfPredicate)>{};
+    for (final triple in oldAppData.triples) {
+      final subject = triple.subject;
+      if (subject is! IriTerm) continue;
+      final key = (subject, triple.predicate);
+      if (!seen.add(key)) continue;
+      final oldValues = oldAppData
+          .findTriples(subject: subject, predicate: triple.predicate)
+          .map((t) => t.object)
+          .toSet();
+      final newValues = appData
+          .findTriples(subject: subject, predicate: triple.predicate)
+          .map((t) => t.object)
+          .toSet();
+      if (oldValues.length != newValues.length) continue;
+      if (!oldValues.containsAll(newValues)) continue;
+      final psIri = _metadataGenerator.propertyStatementIriFor(
+          documentIri, subject, triple.predicate);
+      final hasPs = oldFrameworkGraph.findTriples(subject: psIri).isNotEmpty;
+      if (!hasPs) return true;
+    }
+    return false;
   }
 
 /**
@@ -197,7 +260,9 @@ class LocalDocumentMerger {
       MergeContract mergeContract,
       CurrentCrdtClock clock,
       {bool isFrameworkData = false,
-      required IriTerm appDataTypeIri}) {
+      required IriTerm appDataTypeIri,
+      IriTerm? vclkIri,
+      IriTerm? implicitDefaultVclkIri}) {
     final isShard = appDataTypeIri == IdxShard.classIri;
     final statements = <Node>[];
     final triplesToRemove = <Triple>{};
@@ -220,10 +285,40 @@ class LocalDocumentMerger {
           subject: oldIdentifiedSubjects.lookup(subject)!
     };
     final context = CrdtMergeContext(
-        iriGenerator: _iriGenerator, metadataGenerator: _metadataGenerator);
+        iriGenerator: _iriGenerator,
+        metadataGenerator: _metadataGenerator,
+        vclkIri: vclkIri,
+        implicitDefaultVclkIri: implicitDefaultVclkIri);
 
     // Process deleted subjects - add resource tombstones
     for (final deletedSubject in deletedSubjects) {
+      // VersionedClock and PropertyStatement subjects must NOT be tombstoned
+      // via this mechanism. Their lifecycle is managed exclusively by the
+      // explicit GC in LwwRegister.localValueChange (triplesToRemove):
+      //
+      //   * VersionedClock IRIs are content-addressed over the HLC snapshot,
+      //     so they change identity on every save even when the logical
+      //     subject hasn't changed. The old IRI is removed via triplesToRemove
+      //     (already applied before the framework pass runs). Without this
+      //     guard the framework pass would see the old vclk IRI in
+      //     oldIdentifiedSubjects but not in identifiedSubjects and emit a
+      //     crdt:deletedAt tombstone for a piece of internal infrastructure
+      //     rather than a user-level resource.
+      //
+      //   * PropertyStatement IRIs are content-addressed over (subject,
+      //     predicate) — they are stable across saves of the same property
+      //     and therefore never appear as "deleted" in practice. The guard
+      //     is defensive: if one ever did (e.g. predicate removed), the
+      //     PropertyStatement node would be unreachable anyway and does not
+      //     warrant a tombstone.
+      final subjectType = oldAppGraph!
+          .findSingleObject<IriTerm>(deletedSubject.subject, Rdf.type);
+      if (subjectType == CrdtVersionedClock.classIri ||
+          subjectType == SyncPropertyStatement.classIri) {
+        _log.fine(
+            'Skipping tombstone for framework infrastructure subject: ${deletedSubject.subject.debug}');
+        continue;
+      }
       _log.fine('Deleted subject detected: ${deletedSubject.subject.debug} ');
       statements.addAll(_metadataGenerator.createResourceMetadata(
           documentIri,
@@ -559,6 +654,34 @@ Iterable<Triple> _findSubjectTombstonesToRemove(
             // Remove all triples of the tombstone reification itself
             ...frameworkGraph.findTriples(subject: node),
           ]);
+}
+
+/// Extracts a flat `(forClockEntry, logicalTime, physicalTime)` list from the
+/// post-save HLC snapshot. Used as the input to `crdt:VersionedClock` IRI
+/// derivation and stamping by causality-tracking CRDT types (issue #50).
+List<({IriTerm forClockEntry, int logicalTime, int physicalTime})>
+    _extractVclkEntries(CurrentCrdtClock clock) {
+  final result =
+      <({IriTerm forClockEntry, int logicalTime, int physicalTime})>[];
+  for (final entry in clock.fullClock) {
+    final (clockEntrySubject, entryGraph) = entry;
+    if (clockEntrySubject is! IriTerm) continue;
+    final logical = entryGraph
+        .findSingleObject<LiteralTerm>(
+            clockEntrySubject, CrdtClockEntry.logicalTime)
+        ?.integerValue;
+    final physical = entryGraph
+        .findSingleObject<LiteralTerm>(
+            clockEntrySubject, CrdtClockEntry.physicalTime)
+        ?.integerValue;
+    if (logical == null || physical == null) continue;
+    result.add((
+      forClockEntry: clockEntrySubject,
+      logicalTime: logical,
+      physicalTime: physical,
+    ));
+  }
+  return result;
 }
 
 /// Result of CRDT metadata generation containing metadata triples and property changes

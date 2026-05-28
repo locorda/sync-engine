@@ -1,0 +1,27 @@
+@base <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y29uY3VycmVudC1yZWNpcGU=> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix mappings: <https://example.org/test/mappings/> .
+@prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1lNjc5ZDcyZi9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=#> .
+@prefix ns2: <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y29uY3VycmVudC1yZWNpcGU=#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix schema: <https://schema.org/> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y29uY3VycmVudC1yZWNpcGU=> a sync:ManagedDocument;
+    foaf:primaryTopic ns2:it;
+    cm:clockHash "998b90b0fb24f34fc20392d8cb3223b3";
+    cm:createdAt "2024-01-01T02:00:00.001Z"^^xsd:dateTime;
+    cm:hasClockEntry ns2:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2;
+    idx:belongsToIndexShard ns1:shard;
+    sync:isGovernedBy (mappings:recipe-v1);
+    sync:managedResourceType schema:Recipe .
+
+ns2:it a schema:Recipe;
+    schema:description "Original Description";
+    schema:name "Original Name" .
+
+ns2:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2 cm:logicalTime 1;
+    cm:physicalTime 1704074400000 .

@@ -93,6 +93,7 @@ void main() {
 
     test('GDriveAuth.create returns DesktopGDriveAuth on desktop platform',
         () async {
+      // FIXME: this is a bad / stupid test - you are ignoring mac for example.
       // Since our test runs on the host OS (Linux), GDriveAuth.create should return a DesktopGDriveAuth
       final auth = await GDriveAuth.create(
         clientId: clientId,

@@ -14,10 +14,12 @@
 
 <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y2hvY29sYXRlLWNha2U=> a sync:ManagedDocument;
     foaf:primaryTopic ns4:it;
+    cm:appBaseClock ns4:lcrd-vclk-md5-4f3377a23ab8bb8e8f7b23ec5bc16aa1;
     cm:clockHash "b6f3912093c56e5b2adedda259b48cf4";
     cm:createdAt "2024-01-01T02:00:00.001Z"^^xsd:dateTime;
     cm:hasClockEntry ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f, ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f;
     idx:belongsToIndexShard ns3:shard, ns2:shard, ns1:shard;
+    sync:hasStatement ns4:lcrd-prop-md5-51c73eb3003574459bf9c6f54a0bf9ce;
     sync:isGovernedBy (mappings:recipe-v1);
     sync:managedResourceType schema:Recipe .
 
@@ -35,3 +37,27 @@ ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f cm:logicalTime 1;
 
 ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f cm:logicalTime 1;
     cm:physicalTime 1704088800000 .
+
+ns4:lcrd-prop-md5-51c73eb3003574459bf9c6f54a0bf9ce a sync:PropertyStatement;
+    cm:vclk ns4:lcrd-vclk-md5-df36cf0aec6ae7d7c1b8d437506bc40c;
+    sync:property schema:name;
+    sync:resource ns4:it .
+
+ns4:lcrd-vclk-md5-4f3377a23ab8bb8e8f7b23ec5bc16aa1 a cm:VersionedClock;
+    cm:hasClockEntry [
+        cm:forClockEntry ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f ;
+        cm:logicalTime 1 ;
+        cm:physicalTime 1704074400000
+    ] .
+
+ns4:lcrd-vclk-md5-df36cf0aec6ae7d7c1b8d437506bc40c a cm:VersionedClock;
+    cm:hasClockEntry [
+        cm:forClockEntry ns4:lcrd-clk-md5-4a481c7617b289f7c4fd07cb3a10fd0f ;
+        cm:logicalTime 1 ;
+        cm:physicalTime 1704074400000
+    ],
+        [
+        cm:forClockEntry ns4:lcrd-clk-md5-7934e73e2e637cc2115bd6d7262d680f ;
+        cm:logicalTime 1 ;
+        cm:physicalTime 1704088800000
+    ] .

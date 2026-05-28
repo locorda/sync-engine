@@ -70,6 +70,14 @@
           "local_graph": "test_cases/basic_merge/03_shard_orphaned_tombstones/local.ttl",
           "remote_graph": "test_cases/basic_merge/03_shard_orphaned_tombstones/remote.ttl",
           "expected_merged_graph": "test_cases/basic_merge/03_shard_orphaned_tombstones/expected.ttl"
+        },
+        {
+          "id": "merge_04",
+          "description": "Concurrent LWW updates to different properties on same resource - both winning values must survive merge and PropertyStatements must persist (issue #50 regression)",
+          "document_iri": "tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y29uY3VycmVudC1yZWNpcGU=",
+          "local_graph": "test_cases/basic_merge/04_concurrent_lww_different_props/local.ttl",
+          "remote_graph": "test_cases/basic_merge/04_concurrent_lww_different_props/remote.ttl",
+          "expected_merged_graph": "test_cases/basic_merge/04_concurrent_lww_different_props/expected.ttl"
         }
       ]
     }

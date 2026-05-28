@@ -1,0 +1,34 @@
+@base <https://example.com/shard/index-full-388036f3%2Fshard-mod-md5-1-0-v1_0_0> .
+@prefix : <#> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix if3: <https://example.com/fullindex/index-full-388036f3%2Findex#> .
+@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<> a sync:ManagedDocument;
+    foaf:primaryTopic :shard;
+    cm:clockHash "86a02c401014ba4c533cace07bded484";
+    cm:createdAt "2024-01-01T02:10:00.009Z"^^xsd:dateTime, "2024-01-01T00:00:00.009Z"^^xsd:dateTime;
+    cm:hasClockEntry :lcrd-clk-md5-328987dee5887a5d0aada0708fbb4c9a, :lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2;
+    sync:isGovernedBy (mappings:shard-v1);
+    sync:managedResourceType idx:Shard .
+
+:entry-5374348b61c7646c166b813fe227d5c3 cm:clockHash "b8c583604a46f7834bf04d5a39e00440";
+    idx:resource </clientinstallation/installation-a#installation> .
+
+:entry-cd4d8db60f38e931e4a9394f38d91b32 cm:clockHash "fda68c20d40503084c79579d6948d5eb";
+    idx:resource </clientinstallation/installation-b#installation> .
+
+:lcrd-clk-md5-328987dee5887a5d0aada0708fbb4c9a cm:logicalTime 2;
+    cm:physicalTime 1704075000027 .
+
+:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2 cm:logicalTime 2;
+    cm:physicalTime 1704074700005 .
+
+:shard a idx:Shard;
+    idx:containsEntry :entry-cd4d8db60f38e931e4a9394f38d91b32, :entry-5374348b61c7646c166b813fe227d5c3;
+    idx:isShardOf if3:index .
