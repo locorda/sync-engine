@@ -1,0 +1,46 @@
+@base <https://example.com/fullindex/index-full-bbcf09f5%2Findex> .
+@prefix : <#> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix ifbmm10v: <https://example.com/shard/index-full-bbcf09f5%2Fshard-mod-md5-1-0-v1_0_0#> .
+@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<> a sync:ManagedDocument;
+    foaf:primaryTopic :index;
+    cm:clockHash "fcb3d27573fcb9b7dcdcc7851c84a671";
+    cm:createdAt "2024-01-01T02:10:00.002Z"^^xsd:dateTime, "2024-01-01T00:00:00.002Z"^^xsd:dateTime;
+    cm:hasClockEntry :lcrd-clk-md5-328987dee5887a5d0aada0708fbb4c9a, :lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2;
+    idx:belongsToIndexShard ifbmm10v:shard;
+    sync:hasBlankNodeMapping :lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b;
+    sync:isGovernedBy (mappings:index-v1);
+    sync:managedResourceType idx:FullIndex .
+
+:index a idx:FullIndex;
+    idx:hasShard ifbmm10v:shard;
+    idx:indexedProperty _:b1;
+    idx:indexesClass idx:FullIndex;
+    idx:populationState "active";
+    idx:readBy </clientinstallation/installation-b#installation>, </clientinstallation/installation-a#installation>;
+    idx:shardingAlgorithm [
+        a idx:ModuloHashSharding ;
+        idx:hashAlgorithm "md5" ;
+        idx:numberOfShards 1 ;
+        idx:configVersion "1_0_0" ;
+        idx:autoScaleThreshold 1000
+    ] .
+
+:lcrd-clk-md5-328987dee5887a5d0aada0708fbb4c9a cm:logicalTime 1;
+    cm:physicalTime 1704075000001 .
+
+:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2 cm:logicalTime 1;
+    cm:physicalTime 1704067200001 .
+
+:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b sync:blankNode _:b1 .
+
+_:b1 a idx:IndexedProperty;
+    idx:readBy </clientinstallation/installation-b#installation>, </clientinstallation/installation-a#installation>;
+    idx:trackedProperty idx:indexesClass .

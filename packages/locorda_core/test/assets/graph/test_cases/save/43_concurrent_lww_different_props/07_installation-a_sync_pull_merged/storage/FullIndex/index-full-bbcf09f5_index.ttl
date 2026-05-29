@@ -1,0 +1,48 @@
+@base <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC1iYmNmMDlmNS9pbmRleA==> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix mappings: <https://w3id.org/solid-crdt-sync/mappings/> .
+@prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvY3JkdC1tZWNoYW5pY3MjQ2xpZW50SW5zdGFsbGF0aW9u:aW5zdGFsbGF0aW9uLWE=#> .
+@prefix ns2: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvY3JkdC1tZWNoYW5pY3MjQ2xpZW50SW5zdGFsbGF0aW9u:aW5zdGFsbGF0aW9uLWI=#> .
+@prefix ns3: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC1iYmNmMDlmNS9pbmRleA==#> .
+@prefix ns4: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1iYmNmMDlmNS9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I0Z1bGxJbmRleA==:aW5kZXgtZnVsbC1iYmNmMDlmNS9pbmRleA==> a sync:ManagedDocument;
+    foaf:primaryTopic ns3:index;
+    cm:clockHash "fcb3d27573fcb9b7dcdcc7851c84a671";
+    cm:createdAt "2024-01-01T00:00:00.002Z"^^xsd:dateTime, "2024-01-01T02:10:00.002Z"^^xsd:dateTime;
+    cm:hasClockEntry ns3:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2, ns3:lcrd-clk-md5-328987dee5887a5d0aada0708fbb4c9a;
+    idx:belongsToIndexShard ns4:shard;
+    sync:hasBlankNodeMapping ns3:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b;
+    sync:isGovernedBy (mappings:index-v1);
+    sync:managedResourceType idx:FullIndex .
+
+ns3:index a idx:FullIndex;
+    idx:hasShard ns4:shard;
+    idx:indexedProperty _:b2;
+    idx:indexesClass idx:FullIndex;
+    idx:populationState "active";
+    idx:readBy ns1:installation, ns2:installation;
+    idx:shardingAlgorithm [
+        a idx:ModuloHashSharding ;
+        idx:hashAlgorithm "md5" ;
+        idx:numberOfShards 1 ;
+        idx:configVersion "1_0_0" ;
+        idx:autoScaleThreshold 1000
+    ] .
+
+ns3:lcrd-clk-md5-328987dee5887a5d0aada0708fbb4c9a cm:logicalTime 1;
+    cm:physicalTime 1704075000001 .
+
+ns3:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2 cm:logicalTime 1;
+    cm:physicalTime 1704067200001 .
+
+ns3:lcrd-ibn-md5-e9b4ecd4b5364c752004aeb2ad59d79b sync:blankNode _:b2 .
+
+_:b2 a idx:IndexedProperty;
+    idx:readBy ns1:installation, ns2:installation;
+    idx:trackedProperty idx:indexesClass .

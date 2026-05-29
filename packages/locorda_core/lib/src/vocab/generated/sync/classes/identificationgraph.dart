@@ -48,6 +48,16 @@ class SyncIdentificationGraph {
     'https://w3id.org/solid-crdt-sync/vocab/sync#managedResourceType',
   );
 
+  /// resource [Expects: http://www.w3.org/2000/01/rdf-schema#Resource]
+  ///
+  /// Points to the resource that this framework statement is about. Used in sync:ResourceStatement (the resource the metadata applies to) and in sync:PropertyStatement (the resource whose property the metadata applies to).
+  ///
+  /// Can be used on all classes in this vocabulary
+  ///
+  static const resource = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/sync#resource',
+  );
+
   /// parent
   ///
   /// Links an identified blank node to its parent resource within an identification graph during canonical fragment computation.

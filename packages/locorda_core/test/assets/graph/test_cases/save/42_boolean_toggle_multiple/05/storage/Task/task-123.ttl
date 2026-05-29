@@ -13,10 +13,12 @@
 
 <tag:locorda.org,2025:l:aHR0cHM6Ly9sb2NvcmRhLmRldi9leGFtcGxlL21pbmltYWwvdm9jYWJ1bGFyeS90YXNrI1Rhc2s=:dGFzay0xMjM=> a sync:ManagedDocument;
     foaf:primaryTopic ns2:it;
+    cm:appBaseClock ns2:lcrd-vclk-md5-c8ed3360fa034a74caa66dafc571f184;
     cm:clockHash "70a44486c8f2fcb161f97e057aefe057";
     cm:createdAt "2024-01-01T01:00:00.001Z"^^xsd:dateTime;
     cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
     idx:belongsToIndexShard ns1:shard;
+    sync:hasStatement ns2:lcrd-prop-md5-08e5dbf1589f323918a57a507e0c8ff8;
     sync:isGovernedBy (mappings:task-v1);
     sync:managedResourceType task:Task .
 
@@ -27,3 +29,22 @@ ns2:it a task:Task;
 
 ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 5;
     cm:physicalTime 1704085200000 .
+
+ns2:lcrd-prop-md5-08e5dbf1589f323918a57a507e0c8ff8 a sync:PropertyStatement;
+    cm:vclk ns2:lcrd-vclk-md5-0be66a3a397cf8e2036a13602f0c7b53;
+    sync:property task:completed;
+    sync:resource ns2:it .
+
+ns2:lcrd-vclk-md5-0be66a3a397cf8e2036a13602f0c7b53 a cm:VersionedClock;
+    cm:hasClockEntry [
+        cm:forClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 ;
+        cm:logicalTime 5 ;
+        cm:physicalTime 1704085200000
+    ] .
+
+ns2:lcrd-vclk-md5-c8ed3360fa034a74caa66dafc571f184 a cm:VersionedClock;
+    cm:hasClockEntry [
+        cm:forClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 ;
+        cm:logicalTime 1 ;
+        cm:physicalTime 1704070800000
+    ] .

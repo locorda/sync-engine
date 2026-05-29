@@ -28,4 +28,12 @@ class SyncUniversalProperties {
   static const managedResourceType = IriTerm(
     'https://w3id.org/solid-crdt-sync/vocab/sync#managedResourceType',
   );
+
+  /// resource [Expects: http://www.w3.org/2000/01/rdf-schema#Resource]
+  ///
+  /// Points to the resource that this framework statement is about. Used in sync:ResourceStatement (the resource the metadata applies to) and in sync:PropertyStatement (the resource whose property the metadata applies to).
+  ///
+  static const resource = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/sync#resource',
+  );
 }

@@ -4,6 +4,7 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix crdt: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
 @prefix solid: <http://www.w3.org/ns/solid/terms#> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
 
 # --- Ontology Definition ---
 
@@ -21,6 +22,10 @@ crdt:ClientInstallation a rdfs:Class;
     rdfs:label "Client Installation";
     rdfs:comment "A unique installation of a CRDT-enabled application, providing traceability and identity for Hybrid Logical Clock entries across the distributed system." .
 
+crdt:VersionedClock a rdfs:Class;
+    rdfs:label "Versioned Clock";
+    rdfs:comment "An immutable, content-addressed snapshot of a Hybrid Logical Clock at the moment of a specific write or merge event. Used by property- and value-level CRDT bookkeeping (e.g. via crdt:vclk on sync:PropertyStatement or rdf:Statement) to record 'when this happened' in a way that supports full vector-clock comparison (equal / dominates / dominated / concurrent). Each contained entry is anchored to the document's existing crdt:ClockEntry via crdt:forClockEntry (identity anchor) and carries its own crdt:logicalTime / crdt:physicalTime as frozen snapshot values — the referenced ClockEntry may have advanced since this snapshot was taken. The VersionedClock IRI is derived as a hash over the contained (forClockEntry, logicalTime) pairs, sorted by forClockEntry; crdt:physicalTime is carried per entry as a tie-break annotation but is NOT part of the hash (consistent with crdt:clockHash). Identical content ⇒ identical IRI ⇒ automatic deduplication across the document." .
+
 # --- Hybrid Logical Clock Properties ---
 
 crdt:hasClockEntry a rdf:Property;
@@ -31,9 +36,14 @@ crdt:hasClockEntry a rdf:Property;
 
 crdt:installationIri a rdf:Property;
     rdfs:label "installation IRI";
-    rdfs:comment "IRI for a client installation within a Hybrid Logical Clock entry. ";
+    rdfs:comment "IRI for a client installation within a Hybrid Logical Clock entry. NOTE: usage is currently OPTIONAL and not written or read by the framework — installation identity is conveyed via the deterministic crdt:ClockEntry fragment (lcrd-clk-md5-<hash(installationLocalId)>). The property is retained in the vocabulary for future extension (e.g. enabling cross-document installation discovery) and may be populated by applications that need it.";
     rdfs:domain crdt:ClockEntry;
     rdfs:range rdfs:Resource . # Should be an IRI
+
+crdt:forClockEntry a rdf:Property;
+    rdfs:label "for clock entry";
+    rdfs:comment "Identity anchor on a crdt:VersionedClock entry, referencing the crdt:ClockEntry this snapshot pertains to. The snapshot's own crdt:logicalTime / crdt:physicalTime are authoritative frozen values; the referenced ClockEntry may have advanced since this snapshot was taken. Used as the per-entry key for vector-clock comparison and as the only entry-identifying component of the VersionedClock content hash.";
+    rdfs:range crdt:ClockEntry .
 
 crdt:logicalTime a rdf:Property;
     rdfs:label "logical time";
@@ -52,6 +62,17 @@ crdt:clockHash a rdf:Property;
     rdfs:comment "A pre-calculated, lightweight hash of the resource's full Hybrid Logical Clock, used for efficient change detection in indices. Hash includes only the logical time component (causality state), excluding physical time (which is merely an annotation for tie-breaking). Domain is kept general (rdfs:Resource) to allow usage in various contexts including idx:ShardEntry instances.";
     rdfs:domain rdfs:Resource;
     rdfs:range xsd:string .
+
+crdt:vclk a rdf:Property;
+    rdfs:label "versioned clock";
+    rdfs:comment "Attaches a versioned-clock snapshot (crdt:VersionedClock) to a framework metadata node such as a sync:PropertyStatement (last write of a property) or an rdf:Statement (add event of a multi-value element). Concurrent-write resolution compares the referenced vclks via vector-clock semantics (equal / dominates / dominated / concurrent); ties on 'concurrent' are broken by max(crdt:physicalTime) across the vclk's clock entries.";
+    rdfs:range crdt:VersionedClock .
+
+crdt:appBaseClock a rdf:Property;
+    rdfs:label "app base clock";
+    rdfs:comment "Document-wide default crdt:VersionedClock for app properties that have no explicit sync:PropertyStatement. Causality-tracking merge rules (LWW, FWW, …) resolve a property's effective vclk as: PropertyStatement.vclk -> document.appBaseClock -> document's current HLC (docClock). Set lazily on the first save that advances the document clock while at least one app property would otherwise dangle on the previous (now superseded) docClock. Scope is app data only: framework-managed properties never use this fallback. Once set, treated as write-once within this proposal (compaction is future work).";
+    rdfs:domain sync:ManagedDocument;
+    rdfs:range crdt:VersionedClock .
 
 # --- Installation Management Properties ---
 

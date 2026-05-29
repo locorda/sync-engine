@@ -12,11 +12,12 @@
 
 <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:cmVjaXBlMTIz> a sync:ManagedDocument;
     foaf:primaryTopic ns2:it;
+    cm:appBaseClock ns2:lcrd-vclk-md5-5db318e3f09543a9c08bd25721313403;
     cm:clockHash "287f965265c6f8c9f28cb5f62e062d42";
     cm:createdAt "2024-01-01T00:00:00.000Z"^^xsd:dateTime;
     cm:hasClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54;
     idx:belongsToIndexShard ns1:shard;
-    sync:hasStatement ns2:lcrd-stmt-md5-nested-resource-tombstone, ns2:lcrd-stmt-md5-prop-tombstone;
+    sync:hasStatement ns2:lcrd-stmt-md5-nested-resource-tombstone, ns2:lcrd-stmt-md5-prop-tombstone, ns2:lcrd-prop-md5-8c934c148cfbdb52ad4ea7f4b363a7c4, ns2:lcrd-prop-md5-f2b43b1ac798c8963cd03f9fa4bb39c1, ns2:lcrd-prop-md5-36de68d8a16041ceea7a85efdab5f48e;
     sync:isGovernedBy (mappings:recipe-v1);
     sync:managedResourceType schema:Recipe .
 
@@ -29,6 +30,21 @@ ns2:it a schema:Recipe;
 ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 cm:logicalTime 4;
     cm:physicalTime 1704074400000 .
 
+ns2:lcrd-prop-md5-36de68d8a16041ceea7a85efdab5f48e a sync:PropertyStatement;
+    cm:vclk ns2:lcrd-vclk-md5-62fff66a5427399e86bfa360711ee763;
+    sync:property schema:prepTime;
+    sync:resource ns2:it .
+
+ns2:lcrd-prop-md5-8c934c148cfbdb52ad4ea7f4b363a7c4 a sync:PropertyStatement;
+    cm:vclk ns2:lcrd-vclk-md5-62fff66a5427399e86bfa360711ee763;
+    sync:property schema:name;
+    sync:resource ns2:it .
+
+ns2:lcrd-prop-md5-f2b43b1ac798c8963cd03f9fa4bb39c1 a sync:PropertyStatement;
+    cm:vclk ns2:lcrd-vclk-md5-62fff66a5427399e86bfa360711ee763;
+    sync:property schema:cookTime;
+    sync:resource ns2:it .
+
 ns2:lcrd-stmt-md5-nested-resource-tombstone rdf:subject ns2:nutrition;
     cm:deletedAt "2024-01-01T01:00:00.000Z"^^xsd:dateTime .
 
@@ -36,3 +52,17 @@ ns2:lcrd-stmt-md5-prop-tombstone rdf:object "cocoa";
     rdf:predicate schema:recipeIngredient;
     rdf:subject ns2:it;
     cm:deletedAt "2024-01-01T00:30:00.000Z"^^xsd:dateTime .
+
+ns2:lcrd-vclk-md5-5db318e3f09543a9c08bd25721313403 a cm:VersionedClock;
+    cm:hasClockEntry [
+        cm:forClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 ;
+        cm:logicalTime 3 ;
+        cm:physicalTime 1704067200000
+    ] .
+
+ns2:lcrd-vclk-md5-62fff66a5427399e86bfa360711ee763 a cm:VersionedClock;
+    cm:hasClockEntry [
+        cm:forClockEntry ns2:lcrd-clk-md5-edbd4f839a89c5a2a26e191248168e54 ;
+        cm:logicalTime 4 ;
+        cm:physicalTime 1704074400000
+    ] .

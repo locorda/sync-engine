@@ -21,6 +21,10 @@ sync:ResourceStatement a rdfs:Class;
     rdfs:label "Resource Statement";
     rdfs:comment "A statement containing framework metadata about a specific resource within a managed document. Used for resource-level concerns like deletion tombstones while maintaining clean separation from application data." .
 
+sync:PropertyStatement a rdfs:Class;
+    rdfs:label "Property Statement";
+    rdfs:comment "A statement carrying framework metadata about a (resource, property) pair within a managed document. Distinct from rdf:Statement, which identifies a specific (subject, predicate, object) triple: a PropertyStatement scopes to the property as a whole. Used by property-level CRDT bookkeeping such as the last-write versioned clock (crdt:vclk) for LWW/FWW conflict resolution. Identified by the (sync:resource, sync:property) pair." .
+
 sync:BlankNodeMapping a rdfs:Class;
     rdfs:label "Blank Node Mapping";
     rdfs:comment "Represents a mapping between a canonical fragment identifier and a blank node in the document. Used for stable references to identified blank nodes across serialization boundaries." .
@@ -49,15 +53,23 @@ sync:managedResourceType a rdf:Property;
 
 sync:hasStatement a rdf:Property;
     rdfs:label "has statement";
-    rdfs:comment "Links a managed document to RDF reification statements that contain framework metadata such as property tombstones. This ensures all framework metadata remains connected to the document for proper framework/app data separation during graph traversal.";
+    rdfs:comment "Links a managed document to framework metadata statements: RDF reified value-level statements (rdf:Statement) for property-value tombstones, sync:PropertyStatement for property-level CRDT bookkeeping (e.g. last-write versioned clocks), and sync:ResourceStatement for resource-level metadata such as resource tombstones. This keeps all framework metadata connected to the document for proper framework/app data separation during graph traversal.";
     rdfs:domain sync:ManagedDocument;
-    rdfs:range rdf:Statement .
+    rdfs:range [ a owl:Class;
+        owl:unionOf ( rdf:Statement sync:PropertyStatement sync:ResourceStatement ) ] .
 
 sync:resource a rdf:Property;
     rdfs:label "resource";
-    rdfs:comment "Points to the resource that this framework statement is about. Used in resource statements to identify which resource the metadata applies to.";
-    rdfs:domain sync:ResourceStatement;
+    rdfs:comment "Points to the resource that this framework statement is about. Used in sync:ResourceStatement (the resource the metadata applies to) and in sync:PropertyStatement (the resource whose property the metadata applies to).";
+    rdfs:domain [ a owl:Class;
+        owl:unionOf ( sync:ResourceStatement sync:PropertyStatement ) ];
     rdfs:range rdfs:Resource .
+
+sync:property a rdf:Property;
+    rdfs:label "property";
+    rdfs:comment "The RDF property that a sync:PropertyStatement refers to. Together with sync:resource it identifies the (resource, property) pair the framework metadata is about.";
+    rdfs:domain sync:PropertyStatement;
+    rdfs:range rdf:Property .
 
 sync:hasBlankNodeMapping a rdf:Property;
     rdfs:label "has blank node mapping";

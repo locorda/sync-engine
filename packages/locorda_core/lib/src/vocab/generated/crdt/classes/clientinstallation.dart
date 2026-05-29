@@ -38,6 +38,16 @@ class CrdtClientInstallation {
     'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#hasClockEntry',
   );
 
+  /// forClockEntry [Expects: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClockEntry]
+  ///
+  /// Identity anchor on a crdt:VersionedClock entry, referencing the crdt:ClockEntry this snapshot pertains to. The snapshot's own crdt:logicalTime / crdt:physicalTime are authoritative frozen values; the referenced ClockEntry may have advanced since this snapshot was taken. Used as the per-entry key for vector-clock comparison and as the only entry-identifying component of the VersionedClock content hash.
+  ///
+  /// Can be used on all classes in this vocabulary
+  ///
+  static const forClockEntry = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#forClockEntry',
+  );
+
   /// clockHash [Expects: http://www.w3.org/2001/XMLSchema#string]
   ///
   /// A pre-calculated, lightweight hash of the resource's full Hybrid Logical Clock, used for efficient change detection in indices. Hash includes only the logical time component (causality state), excluding physical time (which is merely an annotation for tie-breaking). Domain is kept general (rdfs:Resource) to allow usage in various contexts including idx:ShardEntry instances.
@@ -46,6 +56,16 @@ class CrdtClientInstallation {
   ///
   static const clockHash = IriTerm(
     'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#clockHash',
+  );
+
+  /// vclk [Expects: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#VersionedClock]
+  ///
+  /// Attaches a versioned-clock snapshot (crdt:VersionedClock) to a framework metadata node such as a sync:PropertyStatement (last write of a property) or an rdf:Statement (add event of a multi-value element). Concurrent-write resolution compares the referenced vclks via vector-clock semantics (equal / dominates / dominated / concurrent); ties on 'concurrent' are broken by max(crdt:physicalTime) across the vclk's clock entries.
+  ///
+  /// Can be used on all classes in this vocabulary
+  ///
+  static const vclk = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#vclk',
   );
 
   /// belongsToUser [Expects: http://www.w3.org/2000/01/rdf-schema#Resource]

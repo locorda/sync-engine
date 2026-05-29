@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
-import 'package:locorda_gdrive/src/gdrive_auth.dart';
 import 'package:locorda_gdrive/src/auth/desktop_gdrive_auth.dart';
+import 'package:locorda_gdrive/src/auth/gdrive_auth_shared.dart';
+import 'package:locorda_gdrive/src/gdrive_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -91,16 +94,19 @@ void main() {
       expect(prefs.containsKey('locorda_gdrive_user_id'), isFalse);
     });
 
-    test('GDriveAuth.create returns DesktopGDriveAuth on desktop platform',
+    test('GDriveAuth.create returns platform-appropriate implementation',
         () async {
-      // Since our test runs on the host OS (Linux), GDriveAuth.create should return a DesktopGDriveAuth
       final auth = await GDriveAuth.create(
         clientId: clientId,
         clientKey: clientKey,
         scopes: scopes,
       );
 
-      expect(auth, isA<DesktopGDriveAuth>());
+      if (Platform.isWindows || Platform.isLinux) {
+        expect(auth, isA<DesktopGDriveAuth>());
+      } else {
+        expect(auth, isA<GoogleSignInGDriveAuth>());
+      }
     });
   });
 }

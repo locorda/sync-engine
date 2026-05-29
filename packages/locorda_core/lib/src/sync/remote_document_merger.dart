@@ -120,7 +120,10 @@ class RemoteDocumentMerger {
         localOGraph,
         remoteOGraph,
         mergeContract,
-        RemoteCrdtMergeContext(clockComparison: clockComparison),
+        RemoteCrdtMergeContext(
+          clockComparison: clockComparison,
+          metadataGenerator: _metadataGenerator,
+        ),
         appDataTypeIri: resourceTypeIri);
 
     _log.fine('Merged ${mergeResults.mergedTriples.length} triples ');
@@ -401,7 +404,12 @@ class RemoteDocumentMerger {
         ...localGraph.findTriples(subject: stmtIri),
         ...remoteGraph.findTriples(subject: stmtIri),
       };
-      if (detailTriples.any((t) => t.predicate == RdfStatement.subject)) {
+      if (detailTriples.any((t) =>
+          // RDF reification (rdf:Statement)
+          t.predicate == RdfStatement.subject ||
+          // sync:PropertyStatement (proposal 028) — identified by
+          // (sync:resource, sync:property) rather than rdf:subject
+          t.predicate == SyncPropertyStatement.resource)) {
         // Recoverable: detail triples exist in at least one side
         orphanedStatementTriples.addAll(detailTriples);
       } else {

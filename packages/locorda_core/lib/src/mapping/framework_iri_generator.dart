@@ -57,6 +57,19 @@ class FrameworkIriGenerator {
         documentIri, fragmentType, RdfGraph.fromTriples(triples), labels);
   }
 
+  /// Generates a canonical content-addressed framework IRI from an arbitrary
+  /// identification graph, supporting blank-node-bearing structures via
+  /// caller-provided deterministic labels. Used by content-addressed
+  /// composite resources such as [crdt:VersionedClock], whose identity is
+  /// derived from a small graph of (forClockEntry, logicalTime) pairs
+  /// attached through embedded blank nodes.
+  IriTerm generateCanonicalIriFromGraph(
+      IriTerm documentIri, String fragmentType, RdfGraph identificationGraph,
+      {Map<BlankNodeTerm, String> labels = const {}}) {
+    return _toCanonicalHashIri(
+        documentIri, fragmentType, identificationGraph, labels);
+  }
+
   // Similar to generateCanonicalIri, but for statements
 
   IriTerm _toCanonicalHashIri(IriTerm documentIri, String type, RdfGraph graph,

@@ -401,9 +401,116 @@ class LwwRegister implements CrdtType {
     required CrdtMergeContext mergeContext,
     required int physicalClock,
   }) {
-    // TODO: what about the case when newValues is empty and oldValues is not? Do we need metadata for that?
-    // No metadata needed for changing a LWW Register value - one will win based on the clock during merge, that is all
-    return noMetadata;
+    // LWW-Register property-level causality (issue #50):
+    //
+    // Without per-property causality tracking, two installations concurrently
+    // editing DIFFERENT properties of the same document would resolve at
+    // document granularity and uncontested writes would be silently dropped
+    // by the physical-time tie-break. To make per-(s,p) merge decisions
+    // possible, we stamp every locally-changed LWW property with an
+    // immutable, content-addressed `crdt:VersionedClock` snapshot via a
+    // `sync:PropertyStatement` keyed by (subject, predicate).
+    //
+    // PropertyStatement IRI is content-addressed over (s, p) so re-saves of
+    // the same property produce the same IRI; only the attached `crdt:vclk`
+    // changes \u2014 which is itself merged via LWW with document-clock fallback,
+    // resolving recursive bootstrap deterministically.
+    //
+    // Old vclk subgraphs (referenced only by this PropertyStatement) are
+    // collected into triplesToRemove so the document does not accumulate
+    // stale snapshots on every save.
+    //
+    // Stamping is OPT-IN per call site: the caller selects via
+    // `mergeContext.vclkIri` whether the current pass should record
+    // per-property causality. `CrdtDocumentManager` enables it only for the
+    // app-data pass — the framework-data pass passes `null` so framework
+    // infrastructure subjects (PropertyStatement / VersionedClock nodes,
+    // document-level CRDT plumbing, shard-entry headers) do not get
+    // recursively stamped. See the rationale comment at the second
+    // `_localDocumentMerger.generateMetadata` call in
+    // `crdt_document_manager._computeSaveCore`. For those subjects the
+    // `remoteMerge` path falls back to document-clock comparison, which is
+    // the semantically correct resolution.
+    final vclkIri = mergeContext.vclkIri;
+    if (vclkIri == null) {
+      // No clock context (raw template processing) OR caller deliberately
+      // opted out of per-property stamping for this pass (framework-data
+      // pass; see policy comment above).
+      return noMetadata;
+    }
+    final documentIri = newPropertyValue.documentIri;
+    final subject =
+        IdTerm.create(newPropertyValue.subject, newPropertyValue.blankNodes);
+    final predicate = newPropertyValue.predicate;
+
+    // Proposal 028 PS-suppression: when this property's effective vclk equals
+    // the document-wide implicit default (crdt:appBaseClock or, when absent,
+    // the docClock), emitting an explicit sync:PropertyStatement would be
+    // pure overhead — the remote-merge resolveVclk chain falls back to the
+    // same vclk via the document-level appBaseClock triple. We still need to
+    // GC any stale PS from a previous save that DID materialise one, so the
+    // garbage-collection branch below runs regardless.
+    final suppressStatement = mergeContext.implicitDefaultVclkIri == vclkIri;
+
+    final statements = suppressStatement
+        ? const <Node>[]
+        : mergeContext.metadataGenerator.createPropertyStatement(
+            documentIri,
+            subject,
+            predicate,
+            (stmt) => [
+              Triple(stmt, Crdt.vclk, vclkIri),
+            ],
+          );
+
+    // Garbage-collect stale vclk references on the (s, p) PropertyStatement
+    // and any vclk subgraphs that become unreachable as a result.
+    //
+    // PropertyStatement IRIs are content-addressed over (s, p), so a re-save
+    // of the same property yields an identical IRI. `_constructCrdtDocument`
+    // copies the old PropertyStatement subgraph via the sync:hasStatement
+    // traversal AND re-adds the freshly emitted node — without removing the
+    // old structural triples (rdf:type, sync:resource, sync:property) and the
+    // hasStatement edge, the resulting List<Triple> document buffer would
+    // accumulate duplicates that trip cardinality validation in
+    // findSingleObject during subsequent merges.
+    final triplesToRemove = <Triple>{};
+    if (oldFrameworkGraph != null) {
+      final newStmtIris = subject.localSubjectIris
+          .map((s) => mergeContext.metadataGenerator
+              .propertyStatementIriFor(documentIri, s, predicate))
+          .toSet();
+      for (final stmtIri in newStmtIris) {
+        // Remove all old triples that the new emission will re-introduce,
+        // plus the inbound hasStatement edge. The new emission re-adds them
+        // via `addNodes(documentIri, sync:hasStatement, ...)`.
+        triplesToRemove.addAll(oldFrameworkGraph.findTriples(subject: stmtIri));
+        triplesToRemove.addAll(oldFrameworkGraph.findTriples(
+            predicate: SyncManagedDocument.hasStatement, object: stmtIri));
+
+        // Vclk subgraph GC: if the OLD vclk this stmt pointed to is now
+        // unreferenced by any OTHER PropertyStatement, drop its subgraph too.
+        final staleVclks = oldFrameworkGraph
+            .findTriples(subject: stmtIri, predicate: Crdt.vclk)
+            .where((t) => t.object != vclkIri)
+            .toList();
+        for (final stale in staleVclks) {
+          final staleVclkIri = stale.object;
+          if (staleVclkIri is! IriTerm) continue;
+          final otherReferences = oldFrameworkGraph
+              .findTriples(predicate: Crdt.vclk, object: staleVclkIri)
+              .where((t) => t.subject != stmtIri);
+          if (otherReferences.isNotEmpty) continue;
+          triplesToRemove.addAll(
+              _collectVclkSubgraphTriples(staleVclkIri, oldFrameworkGraph));
+        }
+      }
+    }
+
+    return (
+      statementsToAdd: statements,
+      triplesToRemove: triplesToRemove,
+    );
   }
 
   @override
@@ -414,12 +521,31 @@ class LwwRegister implements CrdtType {
     required OrganizedGraph remote,
     required RemoteCrdtMergeContext mergeContext,
   }) {
-    // LWW-Register: Compare clocks to determine winner
-    // Per spec: Check logical time dominance first, then physical time for tie-breaking
+    // LWW-Register property-level resolution (issue #50):
+    //
+    // 1. Attempt per-property causality via `sync:PropertyStatement` →
+    //    `crdt:vclk` (a content-addressed `crdt:VersionedClock` snapshot of
+    //    the writer's HLC at save time). When PropertyStatements exist on
+    //    BOTH sides, compare their vclks as proper vector clocks and resolve
+    //    independently from other properties.
+    // 2. Fall back to the document-wide clock comparison when per-property
+    //    snapshots are missing on either side (legacy documents, properties
+    //    saved before this feature, or non-LWW peers).
+    //
+    // Tie-break on `ClockComparison.concurrent` uses the maximum
+    // `crdt:physicalTime` across the side's vclk entries when available,
+    // otherwise the document-level `maxPhysicalTime`.
+    final perPropertyComparison =
+        _resolvePerPropertyClockComparison(subject, predicate, local, remote);
 
-    final comparison = mergeContext.clockComparison;
+    final (ClockComparison comparison, int localPhysical, int remotePhysical) =
+        perPropertyComparison ??
+            (
+              mergeContext.clockComparison,
+              local.maxPhysicalTime,
+              remote.maxPhysicalTime,
+            );
 
-    // TODO: what about augmenting the CRDT merge with the property change metadata from DB for more precise merges?
     final Iterable<Triple>? winningTriples = switch (comparison) {
       ClockComparison.localDominates => subject.local != null
           ? local.fullGraph
@@ -438,8 +564,8 @@ class LwwRegister implements CrdtType {
               ? remote.fullGraph
                   .findTriples(subject: subject.remote!, predicate: predicate)
               : null,
-          local.maxPhysicalTime,
-          remote.maxPhysicalTime,
+          localPhysical,
+          remotePhysical,
         ),
       ClockComparison.identical => _handleIdenticalClocksTriples(
           subject.local,
@@ -466,11 +592,264 @@ class LwwRegister implements CrdtType {
         .map((t) => Triple(subject.subject, predicate, t.object))
         .toSet();
 
+    final allTriples = addInlineTriples(mergedTriples, local, remote);
+
+    // Preserve per-property causality on the merge result (proposal 028 /
+    // issue #50): when the winning side carried an explicit
+    // `sync:PropertyStatement(s,p) → crdt:vclk(V)`, re-emit that PS subgraph
+    // (structural triples, the vclk subgraph, and the inbound
+    // `sync:hasStatement` edge) on the merged document. Without this, the
+    // merged document would lose its per-property vclk and a subsequent peer
+    // re-pulling this state would fall back to document-clock comparison,
+    // re-triggering issue #50 (a later concurrent update to a DIFFERENT
+    // property would be silently dropped by the doc-level tie-break).
+    //
+    // PS IRIs are content-addressed over (documentIri, subject, predicate),
+    // so we can deterministically reconstruct the IRI and look up its
+    // subgraph in the winning side's framework graph. Absent on that side
+    // (PS suppression for the appBaseClock-equivalent case, or non-IRI
+    // subject) → emit nothing; the merged document's `appBaseClock` provides
+    // the same effective vclk via the resolveVclk fallback chain.
+    final winningGraph = _selectWinningSide(
+      comparison: comparison,
+      subject: subject,
+      local: local,
+      remote: remote,
+      localPhysical: localPhysical,
+      remotePhysical: remotePhysical,
+    );
+    if (winningGraph != null) {
+      final winningSubject =
+          identical(winningGraph, local) ? subject.local : subject.remote;
+      final psTriples = _collectExplicitPropertyStatementTriples(
+        winningGraph.documentIri,
+        winningSubject,
+        predicate,
+        winningGraph.fullGraph,
+        mergeContext.metadataGenerator,
+      );
+      if (psTriples.isNotEmpty) {
+        allTriples.addAll(psTriples);
+      }
+    }
+
     return MergeResults(
-      mergedTriples: addInlineTriples(mergedTriples, local, remote),
+      mergedTriples: allTriples,
       mergedStatements: {},
     );
   }
+}
+
+/// Determines which side's data won the per-property merge so that the
+/// caller can preserve auxiliary metadata (e.g. `sync:PropertyStatement`
+/// subgraphs) from that side onto the merge result. Mirrors the side
+/// selection encoded in the `winningTriples` switch in
+/// `LwwRegister.remoteMerge` — keep in sync.
+OrganizedGraph? _selectWinningSide({
+  required ClockComparison comparison,
+  required MergeSubject subject,
+  required OrganizedGraph local,
+  required OrganizedGraph remote,
+  required int localPhysical,
+  required int remotePhysical,
+}) {
+  switch (comparison) {
+    case ClockComparison.localDominates:
+      return subject.local != null ? local : null;
+    case ClockComparison.remoteDominates:
+      return subject.remote != null ? remote : null;
+    case ClockComparison.concurrent:
+      if (localPhysical > remotePhysical) {
+        return subject.local != null ? local : null;
+      } else if (remotePhysical > localPhysical) {
+        return subject.remote != null ? remote : null;
+      }
+      // Equal physical times → local tie-break (matches
+      // `_physicalTimeTieBreakTriples`).
+      return subject.local != null
+          ? local
+          : (subject.remote != null ? remote : null);
+    case ClockComparison.identical:
+    case ClockComparison.bothEmpty:
+      // Values are guaranteed equal (or the merge would have thrown); either
+      // side's PS — if any — encodes equivalent causality. Default to local.
+      return subject.local != null
+          ? local
+          : (subject.remote != null ? remote : null);
+  }
+}
+
+/// Collects the `sync:PropertyStatement` subgraph (structural triples +
+/// `crdt:vclk` subgraph + inbound `sync:hasStatement` edge) for the
+/// `(subject, predicate)` slot from [framework], or an empty set when the
+/// winning side did not materialise a PS (PS suppression, blank-node
+/// subject, or non-IRI predicate).
+Set<Triple> _collectExplicitPropertyStatementTriples(
+  IriTerm documentIri,
+  RdfSubject? subject,
+  RdfPredicate predicate,
+  RdfGraph framework,
+  MetadataGenerator metadataGenerator,
+) {
+  if (subject is! IriTerm) return const {};
+  if (predicate is! IriTerm) return const {};
+  final psIri = metadataGenerator.propertyStatementIriFor(
+      documentIri, subject, predicate);
+  final psTriples = framework.findTriples(subject: psIri).toSet();
+  if (psTriples.isEmpty) return const {};
+
+  final result = <Triple>{
+    ...psTriples,
+    // The OR-Set merge of `sync:hasStatement` on the documentIri subject
+    // already picks up this IRI when it exists on either side, but emitting
+    // it here makes the LWW path self-contained and tolerant of merge
+    // orderings.
+    Triple(documentIri, SyncManagedDocument.hasStatement, psIri),
+  };
+  for (final t in psTriples) {
+    if (t.predicate == Crdt.vclk) {
+      final vclkObj = t.object;
+      if (vclkObj is IriTerm) {
+        result.addAll(_collectVclkSubgraphTriples(vclkObj, framework));
+      }
+    }
+  }
+  return result;
+}
+
+/// Resolves a per-`(subject, predicate)` `ClockComparison` from
+/// `sync:PropertyStatement → crdt:vclk` snapshots on both sides, returning
+/// `null` when neither an explicit PropertyStatement NOR a document-level
+/// `crdt:appBaseClock` fallback resolves on either side (forcing
+/// document-wide fallback). Returns the comparison together with the max
+/// physicalTime per side for concurrent tie-break.
+///
+/// Resolution order per side (proposal 028 `resolveVclk` chain):
+///   1. `sync:PropertyStatement(s,p).crdt:vclk`
+///   2. `<documentIri> crdt:appBaseClock <vclk>`
+///   3. fall through (caller uses document-clock comparison)
+(ClockComparison, int, int)? _resolvePerPropertyClockComparison(
+  MergeSubject subject,
+  RdfPredicate predicate,
+  OrganizedGraph local,
+  OrganizedGraph remote,
+) {
+  final localVclkIri = _resolveEffectiveVclkIri(subject.localKey, predicate,
+      local.documentIri, local.statements, local.fullGraph);
+  final remoteVclkIri = _resolveEffectiveVclkIri(subject.remoteKey, predicate,
+      remote.documentIri, remote.statements, remote.fullGraph);
+  if (localVclkIri == null || remoteVclkIri == null) return null;
+
+  final localEntries = _resolveVclkEntries(localVclkIri, local.fullGraph);
+  final remoteEntries = _resolveVclkEntries(remoteVclkIri, remote.fullGraph);
+  if (localEntries.isEmpty || remoteEntries.isEmpty) return null;
+
+  final logicalLocal = {
+    for (final e in localEntries.entries) e.key: (e.value.$1, e.value.$2)
+  };
+  final logicalRemote = {
+    for (final e in remoteEntries.entries) e.key: (e.value.$1, e.value.$2)
+  };
+
+  final comparison =
+      ClockComparison.compareClockMaps(logicalLocal, logicalRemote);
+
+  final localPhysical = localEntries.values
+      .map((e) => e.$2)
+      .fold<int>(0, (a, b) => a > b ? a : b);
+  final remotePhysical = remoteEntries.values
+      .map((e) => e.$2)
+      .fold<int>(0, (a, b) => a > b ? a : b);
+
+  return (comparison, localPhysical, remotePhysical);
+}
+
+/// Implements the proposal 028 per-side `resolveVclk` chain:
+///   PropertyStatement(s,p).vclk  →  document.appBaseClock  →  null
+///
+/// `appBaseClock` is a document-scoped triple; per ManagedDocument there is
+/// at most one such triple, so a graph-wide `findTriples` lookup is
+/// unambiguous and saves us threading the documentIri through the call
+/// site.
+///
+/// IMPORTANT: the `appBaseClock` fallback is APP-DATA-ONLY. Framework-data
+/// predicates whose subject is the `documentIri` itself (e.g.
+/// `crdt:clockHash`, `sync:managedResourceType`, `sync:isGovernedBy`,
+/// `foaf:primaryTopic`) MUST NOT consult `appBaseClock` — they are never
+/// PS-stamped and their merge semantics fall through to document-clock
+/// comparison. Without this guard, two installations that share a common
+/// `appBaseClock` would resolve identical vclks for framework predicates,
+/// triggering a spurious `ClockComparison.identical` and a fatal
+/// "different values for predicate" error in `_handleIdenticalClocksTriples`.
+IriTerm? _resolveEffectiveVclkIri(
+  RdfObjectKey? subjectKey,
+  RdfPredicate predicate,
+  IriTerm documentIri,
+  OrganizedStatements statements,
+  RdfGraph fullGraph,
+) {
+  if (subjectKey != null) {
+    final stmt = statements.getStatement(subjectKey, predicate, null);
+    if (stmt != null) {
+      final vclkIri = _firstVclkIri(stmt);
+      if (vclkIri != null) return vclkIri;
+    }
+  }
+  // Framework-data subjects (subject == documentIri) never participate in
+  // the appBaseClock fallback — see method dartdoc.
+  if (subjectKey is IriSubjectKey && subjectKey.iri == documentIri) {
+    return null;
+  }
+  return fullGraph
+      .findTriples(predicate: Crdt.appBaseClock)
+      .map((t) => t.object)
+      .whereType<IriTerm>()
+      .firstOrNull;
+}
+
+IriTerm? _firstVclkIri(MetadataStatement stmt) {
+  final objects = stmt.predicateObjectMap[Crdt.vclk];
+  if (objects == null || objects.isEmpty) return null;
+  for (final o in objects) {
+    if (o is IriTerm) return o;
+  }
+  return null;
+}
+
+/// Resolves the vclk subgraph anchored at [vclkIri] into a
+/// `forClockEntry → (logicalTime, physicalTime)` map. Returns an empty map
+/// when the vclk is unreachable or malformed (treated by the caller as a
+/// fallback trigger).
+Map<IriTerm, (int, int)> _resolveVclkEntries(IriTerm vclkIri, RdfGraph graph) {
+  final result = <IriTerm, (int, int)>{};
+  final entryNodes = graph
+      .findTriples(
+          subject: vclkIri, predicate: CrdtVersionedClock.hasClockEntry)
+      .map((t) => t.object)
+      .whereType<RdfSubject>();
+  for (final entryNode in entryNodes) {
+    final forEntry = graph
+        .findTriples(subject: entryNode, predicate: Crdt.forClockEntry)
+        .map((t) => t.object)
+        .whereType<IriTerm>()
+        .firstOrNull;
+    if (forEntry == null) continue;
+    final logical = graph
+        .findTriples(subject: entryNode, predicate: CrdtClockEntry.logicalTime)
+        .map((t) => t.object)
+        .whereType<LiteralTerm>()
+        .map((l) => int.tryParse(l.value))
+        .firstWhere((v) => v != null, orElse: () => null);
+    final physical = graph
+        .findTriples(subject: entryNode, predicate: CrdtClockEntry.physicalTime)
+        .map((t) => t.object)
+        .whereType<LiteralTerm>()
+        .map((l) => int.tryParse(l.value))
+        .firstWhere((v) => v != null, orElse: () => null);
+    if (logical == null || physical == null) continue;
+    result[forEntry] = (logical, physical);
+  }
+  return result;
 }
 
 Set<Triple> addInlineTriples(
@@ -499,6 +878,26 @@ Set<Triple> addInlineTriples(
     ...remoteUnidentifiedBlankNodes
         .expand((bnode) => subjectAndInlineTriples(remote, bnode)),
   };
+}
+
+/// Collects all triples belonging to a `crdt:VersionedClock` subgraph:
+/// the vclk node itself plus the contained `crdt:hasClockEntry` blank nodes
+/// (and all triples about those blank nodes). Used by LWW-Register to
+/// garbage-collect stale vclk snapshots whose only reference has been
+/// replaced. Safe because vclk entry blank nodes are exclusively reachable
+/// from their owning vclk (see `<#versioned-clock>` mapping).
+Set<Triple> _collectVclkSubgraphTriples(IriTerm vclkIri, RdfGraph graph) {
+  final result = <Triple>{};
+  final vclkTriples = graph.findTriples(subject: vclkIri).toList();
+  result.addAll(vclkTriples);
+  final entryBlankNodes = vclkTriples
+      .where((t) => t.predicate == CrdtVersionedClock.hasClockEntry)
+      .map((t) => t.object)
+      .whereType<BlankNodeTerm>();
+  for (final bn in entryBlankNodes) {
+    result.addAll(graph.findTriples(subject: bn));
+  }
+  return result;
 }
 
 class Immutable implements CrdtType {
@@ -756,14 +1155,62 @@ class OrSet implements CrdtType {
 class CrdtMergeContext {
   final FrameworkIriGenerator iriGenerator;
   final MetadataGenerator metadataGenerator;
-  CrdtMergeContext(
-      {required this.iriGenerator, required this.metadataGenerator});
+
+  /// Content-addressed IRI of the `crdt:VersionedClock` snapshot for the
+  /// current save, pre-computed once per save by the caller. Causality-tracking
+  /// CRDT types (e.g. LWW-Register) reference this IRI from
+  /// `sync:PropertyStatement` nodes; the vclk subgraph itself is emitted once
+  /// per save by the orchestrator, not inline per property, to avoid duplicate
+  /// triples in `List<Triple>` document buffers.
+  ///
+  /// `null` signals "skip per-property causality stamping for this pass". The
+  /// caller chooses per pass whether stamping is enabled:
+  ///   * App-data pass: non-null → property-level causality recorded.
+  ///   * Framework-data pass: null → fall back to document-clock comparison
+  ///     during remoteMerge. This avoids stamping framework infrastructure
+  ///     (PropertyStatement / VersionedClock nodes, document-level CRDT
+  ///     plumbing, shard-entry headers) where per-property vclks would
+  ///     either recurse into themselves or be redundant with the document
+  ///     clock derivation.
+  ///   * Raw template / standalone processing: null (no clock context).
+  final IriTerm? vclkIri;
+
+  /// Content-addressed IRI of the document-wide *implicit default* vclk for
+  /// app properties (proposal 028, `crdt:appBaseClock`). A property whose
+  /// effective `crdt:vclk` equals this IRI does NOT need an explicit
+  /// `sync:PropertyStatement` — the remote-merge `resolveVclk` chain will
+  /// fall back to this same vclk via the document's `appBaseClock` triple
+  /// (or, when no `appBaseClock` is set, via the document's `docClock`).
+  ///
+  /// Used by causality-tracking CRDT types to suppress PS emission when the
+  /// stamp would be redundant. `null` is interpreted as "no implicit default
+  /// is known to the orchestrator" — in that case any non-null `vclkIri`
+  /// triggers explicit PS emission (the conservative pre-proposal-028
+  /// behaviour).
+  final IriTerm? implicitDefaultVclkIri;
+
+  CrdtMergeContext({
+    required this.iriGenerator,
+    required this.metadataGenerator,
+    this.vclkIri,
+    this.implicitDefaultVclkIri,
+  });
 }
 
 class RemoteCrdtMergeContext {
   final ClockComparison clockComparison;
 
-  RemoteCrdtMergeContext({required this.clockComparison});
+  /// Used by causality-tracking CRDT types (LWW-Register) to deterministically
+  /// compute `sync:PropertyStatement` IRIs when re-emitting per-property vclk
+  /// snapshots on the merge result. The content-addressed IRI is identical to
+  /// the one the winning side originally produced, allowing the framework
+  /// graph to be looked up via `fullGraph.findTriples(subject: psIri)`.
+  final MetadataGenerator metadataGenerator;
+
+  RemoteCrdtMergeContext({
+    required this.clockComparison,
+    required this.metadataGenerator,
+  });
 }
 
 class CrdtTypeRegistry {

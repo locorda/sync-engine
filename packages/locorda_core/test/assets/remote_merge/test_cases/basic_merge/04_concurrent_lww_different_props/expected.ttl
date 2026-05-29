@@ -1,0 +1,69 @@
+@base <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y29uY3VycmVudC1yZWNpcGU=> .
+@prefix cm: <https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix idx: <https://w3id.org/solid-crdt-sync/vocab/idx#> .
+@prefix ifemm10v: <https://example.com/shard/index-full-e679d72f%2Fshard-mod-md5-1-0-v1_0_0#> .
+@prefix mappings: <https://example.org/test/mappings/> .
+@prefix ns1: <tag:locorda.org,2025:l:aHR0cHM6Ly93M2lkLm9yZy9zb2xpZC1jcmR0LXN5bmMvdm9jYWIvaWR4I1NoYXJk:aW5kZXgtZnVsbC1lNjc5ZDcyZi9zaGFyZC1tb2QtbWQ1LTEtMC12MV8wXzA=#> .
+@prefix ns2: <tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y29uY3VycmVudC1yZWNpcGU=#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix schema: <https://schema.org/> .
+@prefix sync: <https://w3id.org/solid-crdt-sync/vocab/sync#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<tag:locorda.org,2025:l:aHR0cHM6Ly9zY2hlbWEub3JnL1JlY2lwZQ==:Y29uY3VycmVudC1yZWNpcGU=> a sync:ManagedDocument;
+    foaf:primaryTopic ns2:it;
+    cm:appBaseClock ns2:lcrd-vclk-md5-6a0ec9ee6b87df981ba49f16c023af9c;
+    cm:clockHash "93d7ca83a264f8ffe46d184412d5d7d0";
+    cm:createdAt "2024-01-01T02:00:00.001Z"^^xsd:dateTime;
+    cm:hasClockEntry ns2:lcrd-clk-md5-328987dee5887a5d0aada0708fbb4c9a, ns2:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2;
+    idx:belongsToIndexShard ns1:shard, ifemm10v:shard;
+    sync:hasStatement ns2:lcrd-prop-md5-4d4a9f6a8c37c55c31b231bb68da6dd8, ns2:lcrd-prop-md5-c22723dff3603123a5f38727b71b2798;
+    sync:isGovernedBy (mappings:recipe-v1);
+    sync:managedResourceType schema:Recipe .
+
+ns2:it a schema:Recipe;
+    schema:description "Updated by B";
+    schema:name "Updated by A" .
+
+ns2:lcrd-clk-md5-328987dee5887a5d0aada0708fbb4c9a cm:logicalTime 1;
+    cm:physicalTime 1704079800000 .
+
+ns2:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2 cm:logicalTime 2;
+    cm:physicalTime 1704078000000 .
+
+ns2:lcrd-prop-md5-4d4a9f6a8c37c55c31b231bb68da6dd8 a sync:PropertyStatement;
+    cm:vclk ns2:lcrd-vclk-md5-a62f0b723fc9c5c09dd8da6db84ada28;
+    sync:property schema:description;
+    sync:resource ns2:it .
+
+ns2:lcrd-prop-md5-c22723dff3603123a5f38727b71b2798 a sync:PropertyStatement;
+    cm:vclk ns2:lcrd-vclk-md5-46fe2dbd430601987e4b0d3927717006;
+    sync:property schema:name;
+    sync:resource ns2:it .
+
+ns2:lcrd-vclk-md5-46fe2dbd430601987e4b0d3927717006 a cm:VersionedClock;
+    cm:hasClockEntry [
+        cm:forClockEntry ns2:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2 ;
+        cm:logicalTime 2 ;
+        cm:physicalTime 1704078000000
+    ] .
+
+ns2:lcrd-vclk-md5-6a0ec9ee6b87df981ba49f16c023af9c a cm:VersionedClock;
+    cm:hasClockEntry [
+        cm:forClockEntry ns2:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2 ;
+        cm:logicalTime 1 ;
+        cm:physicalTime 1704074400000
+    ] .
+
+ns2:lcrd-vclk-md5-a62f0b723fc9c5c09dd8da6db84ada28 a cm:VersionedClock;
+    cm:hasClockEntry [
+        cm:forClockEntry ns2:lcrd-clk-md5-328987dee5887a5d0aada0708fbb4c9a ;
+        cm:logicalTime 1 ;
+        cm:physicalTime 1704079800000
+    ],
+        [
+        cm:forClockEntry ns2:lcrd-clk-md5-55c3351a967d14f5f816395261cebcd2 ;
+        cm:logicalTime 1 ;
+        cm:physicalTime 1704074400000
+    ] .

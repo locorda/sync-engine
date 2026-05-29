@@ -40,12 +40,22 @@ class CrdtClockEntry {
 
   /// installationIri [Expects: http://www.w3.org/2000/01/rdf-schema#Resource]
   ///
-  /// IRI for a client installation within a Hybrid Logical Clock entry.
+  /// IRI for a client installation within a Hybrid Logical Clock entry. NOTE: usage is currently OPTIONAL and not written or read by the framework — installation identity is conveyed via the deterministic crdt:ClockEntry fragment (lcrd-clk-md5-<hash(installationLocalId)>). The property is retained in the vocabulary for future extension (e.g. enabling cross-document installation discovery) and may be populated by applications that need it.
   ///
   /// Can be used on: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClockEntry
   ///
   static const installationIri = IriTerm(
     'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#installationIri',
+  );
+
+  /// forClockEntry [Expects: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#ClockEntry]
+  ///
+  /// Identity anchor on a crdt:VersionedClock entry, referencing the crdt:ClockEntry this snapshot pertains to. The snapshot's own crdt:logicalTime / crdt:physicalTime are authoritative frozen values; the referenced ClockEntry may have advanced since this snapshot was taken. Used as the per-entry key for vector-clock comparison and as the only entry-identifying component of the VersionedClock content hash.
+  ///
+  /// Can be used on all classes in this vocabulary
+  ///
+  static const forClockEntry = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#forClockEntry',
   );
 
   /// logicalTime [Expects: http://www.w3.org/2001/XMLSchema#long]
@@ -76,6 +86,16 @@ class CrdtClockEntry {
   ///
   static const clockHash = IriTerm(
     'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#clockHash',
+  );
+
+  /// vclk [Expects: https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#VersionedClock]
+  ///
+  /// Attaches a versioned-clock snapshot (crdt:VersionedClock) to a framework metadata node such as a sync:PropertyStatement (last write of a property) or an rdf:Statement (add event of a multi-value element). Concurrent-write resolution compares the referenced vclks via vector-clock semantics (equal / dominates / dominated / concurrent); ties on 'concurrent' are broken by max(crdt:physicalTime) across the vclk's clock entries.
+  ///
+  /// Can be used on all classes in this vocabulary
+  ///
+  static const vclk = IriTerm(
+    'https://w3id.org/solid-crdt-sync/vocab/crdt-mechanics#vclk',
   );
 
   /// createdAt [Expects: http://www.w3.org/2001/XMLSchema#dateTime]
