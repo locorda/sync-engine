@@ -24,7 +24,7 @@ dependencies:
   locorda_worker: ^0.5.2
   drift: ^2.32.1
   drift_flutter: ^0.3.0
-  path_provider: ^2.1.0
+  path_provider: ^2.1.5
   path: ^1.9.0
   sqlite3: ^3.0.0
   locorda_rdf_core: ^0.12.2
